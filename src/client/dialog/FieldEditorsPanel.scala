@@ -1,0 +1,109 @@
+/**
+ * Author: Peter Started:10.10.2010
+ */
+package client.dialog
+
+import java.awt.Dimension
+import javax.swing.BorderFactory
+
+import definition.data.Referencable
+import definition.typ.{AllClasses, SelectGroup}
+
+import scala.swing.BoxPanel
+
+
+/** panel that manages Field Editors for selected Instances
+ * 
+ */
+class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with SelectListener {
+	opaque=false	
+	var groupList:Iterable[SelectGroup[_<:Referencable]]= _
+	var commonTyp:Int = -1
+	var currentEditors=collection.mutable.ArrayBuffer[FieldEditor]()
+	border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),
+	    BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(8,0,6,0),"Felder:"))
+	xLayoutAlignment=0.5d		
+	
+	def selectionChanged [T <: Referencable](sender:SelectSender,groups:Iterable[SelectGroup[T]],alsoSelected:Iterable[T]=Nil) = {
+		groupList=groups.asInstanceOf[Iterable[SelectGroup[_<:Referencable]]]
+		val newCommonTyp=AllClasses.get.getCommonClassForGroups(groupList)
+		visible= contents.nonEmpty
+		//System.out.println("new common Typ:"+newCommonTyp)
+		//println("FieldEditorsPanel sel changed Sender:"+sender+" groups:"+groups.mkString("| "))
+		if(newCommonTyp!=commonTyp) { // type was changed
+			contents.clear()
+			currentEditors.clear()
+			commonTyp=newCommonTyp
+			
+			if(newCommonTyp> 0) {
+				//System.out.println("fieldEditorPanel sel changed "+groups+" "+sender+" commonTyp:"+newCommonTyp)
+				val editorNames=AllClasses.get.getClassByID(newCommonTyp).fieldEditors				
+				for(aName <-editorNames) try {
+					EditorFactory.getEditor(aName) match {
+					  case Some(editor)=>
+							contents+=editor.getPanel
+							currentEditors+=editor
+						case _=>
+					}
+					//System.out.println("editor:"+editor)
+										
+				}	catch {
+				  case e:Throwable => util.Log.e("Error when trying to load editor :"+aName+"\n"+e.toString+"\n",e)
+				}				
+			}
+			if(contents.nonEmpty) maximumSize=new Dimension(DialogManager.sidePanelWidth,preferredSize.height+60)
+			visible= contents.nonEmpty
+			revalidate()
+			repaint()
+		}
+		
+	  notifyEditors()
+	}
+	
+	def notifyEditors():Unit = //println("Notify Editors "+groupList.map(gr=> "gr:"+gr.parent+" ch"+gr.children.mkString(",")))
+		for(editor <-currentEditors)  editor.setData(groupList)
+}
+
+
+
+
+object EditorFactory {
+	val editorCache=collection.mutable.HashMap[String,FieldEditor]()
+	val inplaceEditorCache=collection.mutable.HashMap[String,InplaceFieldEditor]()
+	
+	private def updateFieldEditor(name:String,newEditor:FieldEditor)= {	  
+		newEditor.getPanel.xLayoutAlignment=0.5d
+		editorCache(name)=newEditor		
+	}
+	
+	def getEditor(name:String):Option[FieldEditor] = {	  
+		if(editorCache.contains(name)) Some(editorCache(name))
+		else if(inplaceEditorCache.contains(name)) None
+		else {		  
+			Class.forName(name).newInstance.asInstanceOf[AbstractFieldEditor] match {
+			  case newEditor:FieldEditor =>
+					updateFieldEditor(name,newEditor)
+					Some(newEditor)
+				case inplace:InplaceFieldEditor =>
+					inplaceEditorCache(name)=inplace
+					None
+				case o=> throw new IllegalArgumentException("Wrong editor Type "+ o)
+			}			
+		}
+	}
+	
+	def getInplaceEditor(name:String):Option[InplaceFieldEditor] = {	  
+	  if(editorCache.contains(name)) None		
+		else {		  
+			Class.forName(name).newInstance.asInstanceOf[AbstractFieldEditor] match {
+			  case newEditor:FieldEditor =>
+					updateFieldEditor(name,newEditor)
+					None
+				case inplace:InplaceFieldEditor =>
+					inplaceEditorCache.getOrElseUpdate(name, inplace)
+					Some(inplace)
+				case o=> throw new IllegalArgumentException("Wrong editor Type "+ o)
+			}			
+		}
+	}
+}

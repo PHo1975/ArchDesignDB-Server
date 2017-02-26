@@ -1,0 +1,94 @@
+package client.model
+
+import scala.swing.Dialog
+import scala.swing.Window
+import java.awt.Dimension
+import scala.swing.Button
+import scala.swing.BorderPanel
+import scala.swing.ScrollPane
+import scala.swing.BoxPanel
+import scala.swing.event.ButtonClicked
+import scala.swing.ListView
+import definition.data.Reference
+import scala.swing.event.MouseClicked
+
+class BookmarkDialog(w:Window) extends Dialog(w) {
+  val openBut=new Button("öffnen")
+  val cancelBut=new Button("Abbrechen")
+  val newBut=new Button("Neu Anlegen...")
+  val deleteBut=new Button("Löschen")
+  val listView=new ListView[BMEntry]()
+  var currentPath:Seq[Reference]=Nil
+  var openListener:(Seq[Reference])=>Unit = null
+  
+  
+  val mainPanel=new BorderPanel(){
+    listView.selection.intervalMode=ListView.IntervalMode.Single
+		add(new ScrollPane () {
+			viewportView = listView
+		},BorderPanel.Position.Center)
+		add(new BoxPanel(scala.swing.Orientation.Horizontal){
+	    contents+=openBut+=newBut+=deleteBut+= cancelBut
+		},BorderPanel.Position.South)
+		listenTo(openBut,newBut,deleteBut,cancelBut,listView.mouse.clicks)
+		reactions += {
+			case ButtonClicked(`openBut`)=> openBookmark()
+			case ButtonClicked(`newBut`)=> newBookmark()
+			case ButtonClicked(`deleteBut`)=> deleteBookmark()
+			case ButtonClicked(`cancelBut`)=>cancel()
+			case e:MouseClicked=> if(e.clicks==2) openBookmark()
+		}
+		
+	}  
+  
+  preferredSize=new Dimension(500,400)  
+  modal=true
+  title="Lesezeichen"  
+  contents=mainPanel
+  
+  
+  def openBookmark():Unit = {
+    for(ix<-selectedBookmark)
+      openListener(BookmarkFactory.pathList(ix).list)
+    close()
+  } 
+  
+  
+  def newBookmark():Unit = {
+    val name=Dialog.showInput[String](parent=mainPanel,title="Neues Lesezeichen erstellen",message="Name des Lesezeichens:",initial="")
+    for(n<-name) {
+      BookmarkFactory.addBookmark(n,currentPath)
+      updateListView()
+    }
+    close()
+  }
+  
+  def deleteBookmark():Unit = {
+    for(ix<-selectedBookmark) {
+      BookmarkFactory.deleteBookmark(ix)
+      updateListView()
+    }
+  } 
+  
+  def cancel():Unit = {
+    openListener=null
+    currentPath=null
+    close()
+  }
+  
+  private def selectedBookmark:Option[Int] = {
+    listView.selection.indices.headOption    
+  }
+  
+  private def updateListView() = {
+    listView.listData_=(BookmarkFactory.pathList)
+  }
+  
+  def showBookmarks(ncurrentPath:Seq[Reference],openBMListener:(Seq[Reference])=>Unit)= {
+    currentPath=ncurrentPath   
+    openListener=openBMListener
+    updateListView()
+    visible=true
+  }
+  
+}
