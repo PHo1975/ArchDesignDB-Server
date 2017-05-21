@@ -22,7 +22,7 @@ import scala.util.matching.Regex
 
 object WebClientSocket{
   val executor=new ScheduledThreadPoolExecutor(4)
-  val myPool: ExecutorService =Executors.newCachedThreadPool()
+
 
   def startDelayed(task: =>Unit): ScheduledFuture[_] = executor.schedule(new Runnable(){override def run(): Unit = task},10,TimeUnit.SECONDS)
   def startRepeated(task: =>Unit): Runnable ={
@@ -33,17 +33,13 @@ object WebClientSocket{
 
   val byteBuffer: ByteBuffer =ByteBuffer.wrap(Array[Byte](10))
 
-  val PrFieldPattern: Regex ="(\\d+),(\\d+),(\\d+)(.*)".r
+  val PrFieldPattern: Regex ="""(\d+),(\d+),(-?\d+)(.*)""".r
   val classes: AllClasses[_ <: AbstractObjectClass] =AllClasses.get
 
-  def runInPool( a: => Unit): Unit = {
-    myPool.execute(new Runnable() {
-      def run(): Unit = a})
-  }
 }
 
 /**
- * Created by Peter on 21.03.2015.
+ * Created by Peter on  21.03.2015.
  */
 @SerialVersionUID(4444L) class DBServlet extends WebSocketServlet{
   override def configure(webSocketServletFactory: WebSocketServletFactory): Unit =
@@ -73,25 +69,25 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   override def onWebSocketConnect(sess: Session): Unit = {
     super.onWebSocketConnect(sess)
 
-    println("connect sess address:"+sess.getRemoteAddress)
-    println(" user:"+sess.getUpgradeRequest.getUserPrincipal)
-    val userName=sess.getUpgradeRequest.getUserPrincipal().getName()
-    UserList.getUserByName(userName) match {
-      case Some(u)=> userEntry=u
-      case None=> Log.e("Login unknown user "+userName);userEntry=null;return;
+    Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal)
+    if (sess.getUpgradeRequest.getUserPrincipal != null) {
+      val userName = sess.getUpgradeRequest.getUserPrincipal().getName()
+      UserList.getUserByName(userName) match {
+        case Some(u) => userEntry = u
+        case None => Log.e("Login unknown user " + userName); userEntry = null; return;
+      }
+      mySession = Some(sess)
+      removePinger()
+      pinger = Some(WebClientSocket.startRepeated {
+        val remote = getRemote()
+        if (remote != null) remote.sendPing(WebClientSocket.byteBuffer)
+        else throw new IllegalArgumentException("ping connection closed")
+      })
+      UserList.addConnection(userEntry.id, this)
     }
-    mySession=Some(sess)
-    removePinger()
-    pinger=Some(WebClientSocket.startRepeated{
-      val remote=getRemote()
-      if(remote!=null) remote.sendPing(WebClientSocket.byteBuffer)
-      else throw new IllegalArgumentException ("ping connection closed")
-    })
-    //colSets=Some(TableHandler.getColumnSetups(userName))
-    UserList.addConnection(userEntry.id,this)
   }
 
-  override def onWebSocketText(message: String): Unit = {
+  override def onWebSocketText(message: String): Unit = if (mySession.isDefined) {
     super.onWebSocketText(message)
     //println("Received:"+message+" "+Thread.currentThread().getName)
     handleCommands(message)
@@ -130,14 +126,13 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
   override def onWebSocketClose(statusCode: Int, reason: String): Unit = {
+    Log.w("Sock user:" + userEntry.name + " adress:" + getRemoteAddress + " closed status:" + statusCode + " reason:" + reason)
     super.onWebSocketClose(statusCode, reason)
-    println("Sock closed status:"+statusCode+" reason:"+reason)
     cleanup()
   }
 
 
-  protected def handleCommands(message:String): Unit ={
-    //println("command "+message)
+  protected def handleCommands(message: String): Unit =
     message.split("\\|",2) match {
       case Array(command,data)=> command match {
         case "CreateSubscription"=> initSubscription(data)
@@ -161,29 +156,29 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       case _=> Log.e("Wrong message Data:"+message)
     }
 
-  }
+
 
   // Interface ConnectionEntry
   override def queryHandler: AbstractQueryHandler = this
 
-  override def releaseUndoLock(): Unit = ???
+  override def releaseUndoLock(): Unit = {}
 
-  override def shutDown(): Unit = {
-    println("shut down "+userEntry)
+  override def shutDown(): Unit =
     if(userEntry!=null) {
+      Log.w("shut down name:" + userEntry + " adress:" + mySession.get.getRemoteAddress)
       cleanup()
       val session=this.getSession
       if(session!=null) session.close()
     }
-  }
+
 
   override def userName: String = userEntry.name
 
   override def tellToQuit(): Unit = shutDown()
 
-  override def getRemoteAndress: String = mySession match {case Some(s)=>s.getRemoteAddress.toString();case _=> ""}
+  override def getRemoteAddress: String = mySession match {case Some(s) => s.getRemoteAddress.toString(); case _ => ""}
 
-  override def sendUndoLockInfo(undoName: String): Unit = ???
+  override def sendUndoLockInfo(undoName: String): Unit = {}
 
   override def app: String = "Web"
 
@@ -195,12 +190,13 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
 
   def sendData(command:ServerCommands.Value)(func:DataOutput=>Unit): Unit = try {
+    //println("send data "+command)
     outStreamLock.synchronized {
       val buffer=if(ActionList.isBufferingUpdates) getTransBuffers else new TransBuffers()
       buffer.output.writeInt(command.id)
       func(buffer.output)
       //output.flush()
-      println("send command " + command + " " + buffer.byteStream.size() + " bytes buffering:"+ActionList.isBufferingUpdates)
+      //println("send command " + command + " " + buffer.byteStream.size() + " bytes buffering:"+ActionList.isBufferingUpdates)
       if(!ActionList.isBufferingUpdates) {
         val remote = getRemote()
         if (remote != null) remote.sendBytesByFuture(java.nio.ByteBuffer.wrap(buffer.byteStream.toByteArray))
@@ -233,7 +229,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
               p.writeWithChildInfo(out)
               props.propertyFields(0).propertyList.head.write(out)
               props.propertyFields(1).propertyList.head.write(out)
-            case None => throw new IllegalArgumentException("No Project-Props found "+p.ref+" "+p.fieldValue(0).toString)
+            case None => throw new IllegalArgumentException("No Project-Props found " + p.ref + " " + p.fieldValue.head.toString)
           }
         }}
       case _ => Log.e("no Systemsettings found")
@@ -400,7 +396,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
   protected def createInstance(data:String): Unit =
     data.split("\\|") match {
-      case Array(StrToInt(typ),OwnerRefList(ownerArray))=>{
+      case Array(StrToInt(typ), OwnerRefList(ownerArray)) =>
         var error:CommandError=null
         var result:Int = -1
         try {
@@ -428,7 +424,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
             IntConstant(result).write(out) // the result value
           }
         }
-      }
+
       case _=> Log.e("create wrong syntax:"+data)
     }
 

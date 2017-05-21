@@ -3,21 +3,22 @@ package client.graphicsView
 import java.awt.{BasicStroke, Dimension, Graphics2D}
 
 import client.comm.ClientQueryManager
+import client.dataviewer.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
 import definition.expression.StringConstant
 import definition.typ.CustomInstanceEditor
 
 import scala.swing.event._
-import scala.swing.{Alignment, BorderPanel, BoxPanel, Button, Component, Label, Orientation, Swing, TextField}
+import scala.swing.{Alignment, BorderPanel, BoxPanel, Button, Component, Orientation, Swing, TextField}
 
 
 class TitlePanel(title:String,nameEdit:TextField) extends BorderPanel {
-    val nameLab=new Label("Name:")
-    val titleLab=new Label(title)
+  val nameLab = ViewConstants.label("Name:")
+  val titleLab = ViewConstants.label(title)
     titleLab.preferredSize=new Dimension(100,35)        
     titleLab.horizontalAlignment=Alignment.Left
-    nameLab.preferredSize=new Dimension(60,35)        
+  nameLab.preferredSize = new Dimension(60 * ViewConstants.fontScale / 100, 35)
     add(titleLab,BorderPanel.Position.North)
     add(nameLab,BorderPanel.Position.West)
     add(nameEdit,BorderPanel.Position.Center)    
@@ -44,7 +45,7 @@ class LineStyleDefEditor extends BoxPanel(Orientation.Vertical) /*Panel with Seq
   }*/
   
   val previewGroup=new BorderPanel{
-    val prevLab=new Label("Vorschau:")
+    val prevLab = ViewConstants.label("Vorschau:")
     prevLab.preferredSize=new Dimension(60,50)
     maximumSize=new Dimension(Short.MaxValue,50)
     minimumSize=new Dimension(100,50)
@@ -78,10 +79,10 @@ repaint()
   class LineElemGroup(tix:Int,lineText:String,distText:String) extends BoxPanel(Orientation.Horizontal) {
     var ix:Int=_
     minimumSize=new Dimension(100,33)  
-    maximumSize=new Dimension(Short.MaxValue,33)    
-    val lineLab=new Label()
+    maximumSize=new Dimension(Short.MaxValue,33)
+    val lineLab = ViewConstants.label()
     setIndex(tix)
-    val distLab=new Label("Breite Abstand:")
+    val distLab = ViewConstants.label("Breite Abstand:")
     val lineEdit=new TextField
     lineEdit.preferredSize=new Dimension(80,33)
     lineEdit.maximumSize=lineEdit.preferredSize
@@ -104,7 +105,8 @@ repaint()
     }
     def getValues:Seq[Float]=Seq(textToFloat(lineEdit.text) match {case Some(d)=>d;case _=>0},
         textToFloat(distEdit.text) match {case Some(d)=>d;case _=>0})
-    def setIndex(nix:Int)= {
+
+    def setIndex(nix: Int): Unit = {
       ix=nix
       lineLab.text="Breite "+(ix+1)+". Linie:"
     }
@@ -117,14 +119,14 @@ repaint()
     	Some(tt.toFloat)
     }
   } catch {case e:Exception=> println(e); None}
-  
-  
-  def contentsChanged()= for(r<-currentRef){        
+
+
+  def contentsChanged(): Unit = for (r <- currentRef) {
     val outputString=groupList.flatMap(_.getValues).mkString(";")
     ClientQueryManager.writeInstanceField(r,1,new StringConstant(outputString))
   }
-  
-  def groupClosed(groupIx:Int)= if(groupList.size>1)Swing.onEDT{     
+
+  def groupClosed(groupIx: Int): Unit = if (groupList.size > 1) Swing.onEDT {
      groupList.remove(groupIx)
      contentsChanged()     
   }
@@ -155,7 +157,7 @@ repaint()
                   }
                 }
                 val newGroup=new LineElemGroup(ix,"","")
-                if(groupList.size==0){
+                if (groupList.isEmpty) {
                   groupList+=newGroup
                   contents+=newGroup
                 }
@@ -184,15 +186,15 @@ repaint()
 class DirectStylePreviewPan extends Component {
   var stroke=new BasicStroke(2f)
   opaque=true  
-  preferredSize=new Dimension(40,25)  
-  
-  def setStyle(dotList:Seq[Float])= {
-    if(dotList.size==0 || !dotList.exists(_ !=0)) stroke=new BasicStroke(1f)
+  preferredSize=new Dimension(40,25)
+
+  def setStyle(dotList: Seq[Float]): Unit = {
+    if (dotList.isEmpty || !dotList.exists(_ != 0)) stroke = new BasicStroke(1f)
     else stroke=new BasicStroke(1f,BasicStroke.CAP_BUTT ,BasicStroke.JOIN_BEVEL,10f,dotList.map(z=> z / client.graphicsView.ScaleModel._dotPitch.toFloat).toArray,0f)
     repaint()
   }
-  
-  override def paintComponent(g:Graphics2D)= {
+
+  override def paintComponent(g: Graphics2D): Unit = {
     super.paintComponent(g)    
     g.setColor(background)
     g.fill(g.getClipBounds)    

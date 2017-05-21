@@ -1,12 +1,14 @@
 package client.graphicsView
 
-import scala.swing.BorderPanel
+import javax.swing.AbstractListModel
+
 import client.comm.ClientQueryManager
 import client.dialog.FieldEditor
+import definition.data.Referencable
 import definition.expression.IntConstant
 import definition.typ.SelectGroup
-import javax.swing.AbstractListModel
-import definition.data.Referencable
+
+import scala.swing.BorderPanel
 
 
 
@@ -63,10 +65,10 @@ class CompositionEditor extends FieldEditor {
     	 }
      }*/
    }
-   
-   def getPanel = panel
-   
-   val fieldComponents=Seq.empty
+
+  def getPanel: BorderPanel = panel
+
+  val fieldComponents: Seq[Nothing] = Seq.empty
    
    
    
@@ -137,14 +139,14 @@ class CompositionEditor extends FieldEditor {
      def 	getElementAt(index:Int):Option[TierDef]= {
        comp.map(_.tiers(index))       
      }
-     
-     def	getSize()=  comp match {
+
+     def getSize(): Int = comp match {
        case Some(c)=> c.tiers.size 
        case None => 0
-     }     
-     
-     
-     def setComp(nc:Option[Composition],selfSet:Boolean)={
+     }
+
+
+     def setComp(nc: Option[Composition], selfSet: Boolean): Unit = {
        comp=nc
        fireContentsChanged(this,0,nc match {case Some(c)=> c.tiers.size-1;case _=>0})
        if(!selfSet) for(c<-comp) {
@@ -152,12 +154,12 @@ class CompositionEditor extends FieldEditor {
          foreachSectionLine {
         	  sectLine => 
         	   //println("write "+sectLine.connAreaRef+" "+c.ix)
-        	   ClientQueryManager.writeInstanceField(sectLine.connAreaRef,2,new IntConstant(c.ix))
+              ClientQueryManager.writeInstanceField(sectLine.connAreaRef, 2, IntConstant(c.ix))
         	 }  
          }
-     }  
-     
-     def foreachSectionLine(func:(SectionLineElement)=>Unit) = {
+     }
+
+     def foreachSectionLine(func: (SectionLineElement) => Unit): Unit = {
        for(group<-lastData;el <-group.children) el match {
   			 case sectLine:SectionLineElement => func(sectLine)
   			 case _ =>

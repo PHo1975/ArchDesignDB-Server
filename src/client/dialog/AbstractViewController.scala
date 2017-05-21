@@ -3,10 +3,11 @@
  */
 package client.dialog
 
-import java.awt.{Graphics2D, Point}
 import java.awt.geom.Rectangle2D
+import java.awt.{Graphics2D, Point}
 
-import client.graphicsView.{AbstractLayerModel, AbstractSelectModel, GraphElem, GraphElemConst, LineElement, ObjectSelectMode, ScaleModel, ViewportState}
+import client.dataviewer.ViewConstants
+import client.graphicsView._
 import definition.expression.{Constant, VectorConstant}
 import definition.typ.AllClasses
 //import client.graphicsView.MeasureMode
@@ -28,10 +29,7 @@ object NO_MATCH extends MatchingPoints(None,None,None)
  * 
  */
 trait AbstractViewController[A,ResType] extends FocusContainer with ElemContainer{
-	var rubberStartPoint:VectorConstant=null
-	val lineCatchDistance=4
-	val pointCatchDistance=8
-	val dragTreshold=8
+	var rubberStartPoint: VectorConstant = _
 	var hasCreateActionStarted:Boolean=false
 	var pointListener:PointClickListener=_
 	var objSelectListener:Option[ObjectSelectListener]=None
@@ -50,8 +48,9 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 	var lastHittedElements:Iterable[A]=Nil
 	var lastHittedElementNr:Int= -1	
 	protected var tempObjectsToChoose:Seq[GraphElem]=Nil	    
-	protected var _viewportState=ViewportState.SelectState  
-	def viewportState=_viewportState	
+	protected var _viewportState=ViewportState.SelectState
+
+	def viewportState: ViewportState.Value = _viewportState
 	var isZoomingIn=false  
 	//val containerFocusListeners=collection.mutable.HashSet[ContainerFocusListener]()
 
@@ -74,28 +73,27 @@ def selectModel:AbstractSelectModel[A]
 val pointSelectModel=new PointSelectModel()
 
 
-
-def addDelta(dx:Double,dy:Double,dz:Double) = {
+	def addDelta(dx: Double, dy: Double, dz: Double): Unit = {
 	internSetPoint(lastSelectedPoint +(dx,dy,dz))
 }
 
-def setCoordinate(dx:Double,dy:Double,dz:Double) = {
+	def setCoordinate(dx: Double, dy: Double, dz: Double): Unit = {
 	internSetPoint(new VectorConstant(dx,dy,dz))
 }
 
-def requestFocus() = {
+	def requestFocus(): Unit = {
 	theCanvas.requestFocusInWindow
 	refreshCanvas()
 }
 
-def startBracketMode() = {
+	def startBracketMode(): Unit = {
 	checkIPEMode()
 	if(pointListener!=null) pointListener.bracketModeStarted()
 	bracketMode=true		
 	refreshCanvas()
 }
 
-def stopBracketMode() = {
+	def stopBracketMode(): Unit = {
   //System.out.println("Stop Bracket Mode")
 	bracketMode=false	
 	processPoint(lastSelectedPoint)
@@ -103,7 +101,7 @@ def stopBracketMode() = {
 }
 
 
-def setCustomDragger(ncustomDragger:(VectorConstant,Graphics2D)=>Unit)= {
+	def setCustomDragger(ncustomDragger: (VectorConstant, Graphics2D) => Unit): Unit = {
 	customDragger=Option(ncustomDragger)
 	refreshCanvas()
 }
@@ -114,16 +112,16 @@ def createDraggerToast(listener:(CustomToast,Int,Int,VectorConstant)=>Unit):Cust
   val newToast=new CustomToast(canvas.peer,ClientApp.top)
   customDraggerToast=Some((newToast,listener))
   newToast
-} 
+}
 
-def resetDraggerToast()={
+	def resetDraggerToast(): Unit = {
   //println("reset dragger toast "+customDraggerToast)
   for((toast,_)<-customDraggerToast){toast.visible=false;toast.dispose()} 
   customDraggerToast=None
 }
 
 
-def resetCustomDragger()={
+	def resetCustomDragger(): Unit = {
 	customDragger=None
 	refreshCanvas()
 }
@@ -184,7 +182,7 @@ def askForPointSelection(listener:SelectPointsListener):Unit= if(_viewportState=
  * in that case, an IntConstant is send as answer with the ID of the choosen element
  * 
  */
-def chooseTempObject(listener:ObjectSelectListener,objects:Seq[GraphElem]) = {  
+def chooseTempObject(listener: ObjectSelectListener, objects: Seq[GraphElem]): Unit = {
 	checkIPEMode()
 	objSelectListener=Some(listener)
 	tempObjectsToChoose=objects
@@ -195,17 +193,17 @@ def chooseTempObject(listener:ObjectSelectListener,objects:Seq[GraphElem]) = {
 }
 
 
-def cancelModus() = {  
+	def cancelModus(): Unit = {
 	//if(measureMode!=MeasureMode.NoMeasure) measureMode=MeasureMode.NoMeasure   
 	changeViewportState(ViewportState.SelectState)	
 }
 
 
-def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (layerModel!=null){			
-			val pcd=pointCatchDistance/scaleModel.scale
+def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (layerModel!=null){
+	val pcd = ViewConstants.pointCatchDistance / scaleModel.scale
 			//println("GetNeareastPoint cpx:"+clickPosX+" y:"+clickPosY+" pcd:"+pcd)
-			val rubberList = if(rubberStartPoint!=null) 
-			GraphElemConst.checkHit(clickPosX,clickPosY,pcd,rubberStartPoint)
+			val rubberList = if(rubberStartPoint!=null)
+				GraphElemConst.checkHit(clickPosX, clickPosY, pcd, rubberStartPoint)
 			else Seq.empty
 			val hittedPoints=GraphElemConst.checkHit(clickPosX,clickPosY,pcd,NULLVECTOR) ++ // check for basepoint of coordinate system
 			(if(rubberList.isEmpty)
@@ -243,7 +241,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 			else NO_MATCH
 	} else NO_MATCH
 
-	protected def findMatchingPoint(clickPosX:Double,clickPosY:Double,middleButton:Boolean) = {
+	protected def findMatchingPoint(clickPosX: Double, clickPosY: Double, middleButton: Boolean): VectorConstant = {
 			getNearestPoint(clickPosX,clickPosY) match {
 				case MatchingPoints(Some(nearestPoint),_,_) => nearestPoint
 				case MatchingPoints(None,Some(nearestX),Some(nearestY)) if middleButton =>
@@ -287,8 +285,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
       }
 
 
-
-	def createActionStarted(numEl:Int)= if(numEl>0){
+	def createActionStarted(numEl: Int): Unit = if (numEl > 0) {
 			//System.out.println("CreateActionStarted "+numEl+" selMod:"+selectModel)
 			hasCreateActionStarted=true
 			numCreatedElements=numEl
@@ -297,7 +294,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
       }
 	}
 
-	override def resetCAS()= {
+	override def resetCAS(): Unit = {
     super.resetCAS()
     //System.out.println(" reset cas "+hasCreateActionStarted)
     //System.out.println(Thread.currentThread().getStackTrace.drop(1).take(10).mkString("\n ")+"\n")
@@ -309,10 +306,10 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 
 	protected def optionToScreen(worldPos:Option[VectorConstant]):Option[Point] = 
 		if(worldPos.isDefined) Option(new Point(scaleModel.xToScreen(worldPos.get.x).toInt,scaleModel.yToScreen(worldPos.get.y).toInt))
-		else None	
+		else None
 
 
-		def internSetPoint(point:VectorConstant) = {		
+	def internSetPoint(point: VectorConstant): Unit = {
 				lastSelectedPoint=point
 				if(bracketMode)	refreshCanvas()
 				else processPoint(point)		
@@ -326,7 +323,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 		}
 
 
-	def processPoint(point:VectorConstant) = {			
+	def processPoint(point: VectorConstant): Unit = {
 				rubberStartPoint=point
 				pointListener.pointClicked(point)		
 		}
@@ -339,7 +336,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 				refreshCanvas()
 		}
 
-	def stopModus() = {
+	def stopModus(): Unit = {
 				bracketMode=false
 				if(isZoomingIn) deselectZoomInBut()
 				else _viewportState match {
@@ -349,22 +346,19 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 		}
 
 
-
-	def getLineToFactory(factoryName:String) = {
+	def getLineToFactory(factoryName: String): (VectorConstant, VectorConstant) => GraphElem = {
 				factoryName match {
-					case "Line" => lineFactoryFunc _
-					case "Poly" => lineFactoryFunc _
+					case "Line" => lineFactoryFunc
+					case "Poly" => lineFactoryFunc
 					case a => throw new IllegalArgumentException("Wrong LineTo Constraint '"+a+"' in answerDesc ")
 				}
 		}
 
-	def lineFactoryFunc (p1:VectorConstant,p2:VectorConstant):GraphElem = {
-				//System.out.println("processing factory "+p1+" "+p2)
-				new LineElement(null,0,10,0,p1,p2) 
-		}
+	def lineFactoryFunc(p1: VectorConstant, p2: VectorConstant): GraphElem =
+		LineElement(null, 0, 10, 0, p1, p2)
 
 
-	def focusGained() = {
+	def focusGained(): Unit = {
 				AnswerPanelsData.currentViewController=this				
 				checkIPEMode()
 				notifyContainerListeners(0)
@@ -390,18 +384,18 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 	def cancelIPEMode():Unit = changeViewportState(ViewportState.SelectState)
 
 
-	def askForPointClick(plistener:PointClickListener) = {  
+	def askForPointClick(plistener: PointClickListener): Unit = {
 		pointListener=plistener	
 		changeViewportState(ViewportState.AskPoint)
 	}
 
-	def zoomInClicked() = {
+	def zoomInClicked(): Unit = {
 		checkIPEMode()
 		isZoomingIn=true
 	}
 
 
-	def zoomAll() = {
+	def zoomAll(): Unit = {
 	  //println("ZoomAll "+Thread.currentThread().getStackTrace().take(10).mkString("\n"))
 		checkIPEMode()
 		if(isZoomingIn) {
@@ -418,7 +412,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 		refreshCanvas()
 	}
 
-	def zoomOut()={
+	def zoomOut(): Unit = {
 		checkIPEMode()
 		if(isZoomingIn) {
 			isZoomingIn=false
@@ -427,7 +421,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 		scaleModel.zoomOut()
 	}
 
-	def dragCompleted(startPoint:Point,endPoint:Point,control:Boolean,shift:Boolean,rightButton:Boolean,middleButton:Boolean) = {
+	def dragCompleted(startPoint: Point, endPoint: Point, control: Boolean, shift: Boolean, rightButton: Boolean, middleButton: Boolean): Unit = {
 		checkIPEMode()
 		if(isZoomingIn&&middleButton){
 			deselectZoomInBut()			
@@ -476,14 +470,14 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
 			checkIPEMode()			
 			resetCustomDragger()  
 			clearNewElements()
-			changeViewportState(ViewportState.SelectState,true)
+		changeViewportState(ViewportState.SelectState)
 			pointSelectModel.deselect()
 			theCanvas.requestFocusInWindow
 	}
 
 	def getElementByRef(ref:Reference):Option[GraphElem]=None
 
-	def getCurrentLineCatchDistance=lineCatchDistance.toDouble/scaleModel.scale
+	def getCurrentLineCatchDistance: Double = ViewConstants.lineCatchDistance.toDouble / scaleModel.scale
 	def getChoosableElements(onlyEdible:Boolean,clickPosX:Double,clickPosY:Double):Iterable[ResType]
 	def getFirstHittedElement(hittedElements:Iterable[A]):A
 	def getNextHittedElementNr(hittedElements:Iterable[A],lastNr:Int):(Int,A)
@@ -546,7 +540,10 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
         }
         case ViewportState.AskPoint =>
 					lastHittedElements = Nil
-					internSetPoint(findMatchingPoint(clickPosX, clickPosY, middleButton))
+					if (pointListener != null && pointListener.forcePrecision) findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {
+						case Some(mPoint) => internSetPoint(mPoint)
+						case None =>
+					} else internSetPoint(findMatchingPoint(clickPosX, clickPosY, middleButton))
 				case ViewportState.AskPointOrObject =>
 					lastHittedElements = Nil
 					findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {
@@ -561,7 +558,7 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
         }
         case ViewportState.InPlaceEdit =>
 					stopIPEMode()
-				case ViewportState.SelectPoints =>
+				case ViewportState.SelectPoints => if (!middleButton)
 					getNearestPoint(clickPosX, clickPosY) match {
             case MatchingPoints(Some(nearestPoint), _, _) =>
 							val elems = filterSelection(clickPosX, clickPosY, lcd)
@@ -597,14 +594,13 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
     if (hittedElements.nonEmpty) processElementClick(clickPosX, clickPosY, hittedElements, false)
     hittedElements.nonEmpty
   }
-	
-	
 
-	def refreshCanvas()= Swing.onEDT{		
+
+	def refreshCanvas(): Unit = Swing.onEDT {
 		theCanvas.repaint()
 	}
-	
-	def flipPointSelectionBracketMode()= if(viewportState==ViewportState.SelectPoints){	  
+
+	def flipPointSelectionBracketMode(): Unit = if (viewportState == ViewportState.SelectPoints) {
 	  if(pointSelectModel.bracketMode) {	    
 	    if(pointSelectModel.selectList.nonEmpty) processSelectedPoints()
 	  }
@@ -614,15 +610,15 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
     }
 	    
 	     
-	} 
+	}
 
-	def processSelectedPoints()= {
+	def processSelectedPoints(): Unit = {
 	  //println("Process selected points")
 	  for(s<-selectPointsListener ) s.pointsSelected(pointSelectModel.selectList.toSeq)	
 	  bracketMode=false
 	}
-	
-	def importDDToLayer(data:GraphElemTransferable,action:Int,layer:AbstractLayer)= {    
+
+	def importDDToLayer(data: GraphElemTransferable, action: Int, layer: AbstractLayer): Unit = {
     if(action==TransferHandler.COPY)               
     	for(sourceLay<-data.layerList;sourceOwner=new OwnerReference(0,sourceLay.layerRef))             
         ClientQueryManager.copyInstances(sourceLay.graphElems, sourceOwner, layer.ownerRef, -1)
@@ -630,8 +626,8 @@ def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (laye
       for(sourceLay<-data.layerList;sourceOwner=new OwnerReference(0,sourceLay.layerRef))             
         ClientQueryManager.moveInstances(sourceLay.graphElems, sourceOwner, layer.ownerRef, -1)    
   }
-	
-	def setColorsFixed(value:Boolean)= {
+
+	def setColorsFixed(value: Boolean): Unit = {
 	  scaleModel.colorsFixed=value
 	  canvas.repaint()
 	}

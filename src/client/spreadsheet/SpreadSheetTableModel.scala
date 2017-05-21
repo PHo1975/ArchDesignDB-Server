@@ -1,61 +1,46 @@
 package client.spreadsheet
 
-import javax.swing.table.AbstractTableModel
-import client.comm.ClientQueryManager
-import definition.data.Reference
-import definition.comm.NotificationType
-import definition.data.InstanceData
-import javax.swing.table.DefaultTableColumnModel
-import javax.swing.table.TableColumn
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import definition.expression.EMPTY_EX
-import definition.expression.Expression
 import javax.swing.event.TableModelEvent
-import client.comm.MapDataModel
-import client.comm.TreeMapDataModel
-import definition.expression.CollectingFuncCall
-import definition.data.EMPTY_OWNERREF
+import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
+
+import client.comm.{ClientQueryManager, MapDataModel, TreeMapDataModel}
+import client.dataviewer.ViewConstants
+import definition.comm.NotificationType
+import definition.data.{EMPTY_OWNERREF, InstanceData, Reference}
+import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.swing.Swing
-import java.beans.PropertyChangeListener
-import java.beans.PropertyChangeEvent
-import scala.collection.JavaConversions.enumerationAsScalaIterator
 
 class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTableModel {
-  
-  /*val myPropertyChangeListener=new PropertyChangeListener(){
-     def propertyChange(ev:PropertyChangeEvent)= {
-       ev.getSource match {
-         case mc:MyTableColumn=> println("col:"+mc.getIdentifier()+" name:"+ev.getPropertyName()+" value:"+ev.getNewValue())  
-         case _=>
-       }
-       
-     }
-  }*/
+
   
   class MyTableColumn(modelIndex:Int,startWidth:Int) extends TableColumn(modelIndex) {
     var widthChanged=false
     super.setWidth(startWidth)
-    override def setWidth(nWidth:Int)= if(controller.table.peer.isValid()){      
+
+    override def setWidth(nWidth: Int): Unit = if (controller.table.peer.isValid()) {
       super.setWidth(nWidth)
       widthChanged=true
     } //else println("want set Width but not valid "+modelIndex)
-    def initWidth(nWidth:Int)= {
+    def initWidth(nWidth: Int): Unit = {
       super.setWidth(nWidth)
-      //println("Init Width "+modelIndex)
       widthChanged=false
     }
-    //addPropertyChangeListener(myPropertyChangeListener)
   }
   
   
   
   
   class MyColumnModel extends DefaultTableColumnModel{
-    def clear()=tableColumns.clear()
-    def insertAt(col:TableColumn,pos:Int)=  tableColumns.add(pos,col)
-    def getMyColumn(i:Int)=getColumn(i).asInstanceOf[MyTableColumn]
-    def hasWidthChanged:Boolean= this.getColumns().exists {
+    def clear(): Unit = tableColumns.clear()
+
+    def insertAt(col: TableColumn, pos: Int): Unit = tableColumns.add(pos, col)
+
+    def getMyColumn(i: Int): MyTableColumn = getColumn(i).asInstanceOf[MyTableColumn]
+
+    def hasWidthChanged: Boolean = this.getColumns().asScala.exists {
       case mc: MyTableColumn => mc.widthChanged;
       case _ => false
     }
@@ -66,38 +51,44 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
   
   val columnData=new TreeMapDataModel[Int,SpreadSheetColumnData](){
     def elemFactory(data:InstanceData)=new SpreadSheetColumnData(data,controller)
-    def sendData() = {
+
+    def sendData(): Unit = {
       myFireTableStructureChanged()
       loadCells()
     }
-    override def updateUndo()= updateColumns()
-    override def fieldChanged(elem:SpreadSheetColumnData) = {
+
+    override def updateUndo(): Unit = updateColumns()
+
+    override def fieldChanged(elem: SpreadSheetColumnData): Unit = {
       //println("column changed "+elem)      
       updateColumns()//(elem)
     	myFireTableStructureChanged()
-    }    
-    override def childAdded(elem:SpreadSheetColumnData) = fieldChanged(elem)
-    override def instanceRemoved(elem:SpreadSheetColumnData)={
+    }
+
+    override def childAdded(elem: SpreadSheetColumnData): Unit = fieldChanged(elem)
+
+    override def instanceRemoved(elem: SpreadSheetColumnData): Unit = {
       //println("column instacne removed "+elem)
       updateColumns()   
     }
-  } 
-  
-  def loadColumnData()= {
+  }
+
+  def loadColumnData(): Unit = {
     columnData.load(controller.spreadSheetRef,1)
   }
   
  val collFuncList=new MapDataModel[Reference,SpreadSheetCollFuncData]() {
-    def elemFactory(data:InstanceData)=new SpreadSheetCollFuncData(data.ref,data.fieldValue.head.toObjectReference,data.fieldData(1) match {
-      case c:CollectingFuncCall=>Some(c)
-      case _=> None
-    },SpreadSheetRange.apply(data.fieldValue(2).toInt,data.fieldValue(4).toInt,data.fieldValue(3).toInt,data.fieldValue(5).toInt))
-    def sendData() = loadColumnData()    
+   def elemFactory(data: InstanceData) = SpreadSheetCollFuncData(data.ref, data.fieldValue.head.toObjectReference, data.fieldData(1) match {
+     case c: CollectingFuncCall => Some(c)
+     case _ => None
+   }, SpreadSheetRange.apply(data.fieldValue(2).toInt, data.fieldValue(4).toInt, data.fieldValue(3).toInt, data.fieldValue(5).toInt))
+
+   def sendData(): Unit = loadColumnData()
   }
-  
-  
-  val colCellList=collection.mutable.HashMap[Int,SpreadSheetColCellList]()  
-  var cellSubsID= -1
+
+
+  val colCellList: mutable.HashMap[Int, SpreadSheetColCellList] = collection.mutable.HashMap[Int, SpreadSheetColCellList]()
+  var cellSubsID: Int = -1
 
   override def getColumnClass(col:Int):java.lang.Class[_] =   classOf[Expression]  
   
@@ -116,38 +107,37 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     else if(colCellList.contains(col)){      
       colCellList(col).getValue(row)
     } else null
-  }  
-  
-  def getColumns(range:Range)=columnData.theMap.filterKeys(range.contains).values
-  
-  override def isCellEditable(row:Int,col:Int)=col<getColumnCount-1&& col >=0
-   
-  
-  override def setValueAt(value:Object , row:Int , col:Int )= if(col> -1){ 
+  }
+
+  def getColumns(range: Range): Iterable[SpreadSheetColumnData] = columnData.theMap.filterKeys(range.contains).values
+
+  override def isCellEditable(row: Int, col: Int): Boolean = col < getColumnCount - 1 && col >= 0
+
+
+  override def setValueAt(value: Object, row: Int, col: Int): Unit = if (col > -1) {
     val ncol=IntConstant(col)
     val nrow=IntConstant(row)
     val nnul=IntConstant(0)
     ClientQueryManager.executeAction(EMPTY_OWNERREF,List(controller.spreadSheetRef),"insertCells",
         Seq(("startCol",ncol),("endCol",ncol),("startRow",nrow),("endRow",nrow),("dx",nnul),("dy",nnul),(value.toString,EMPTY_EX)))
   }
-  
-  
-  
-  def maxRowNum= if(colCellList.isEmpty)0 else colCellList.values.maxBy(_.maxRowNum).maxRowNum  
+
+
+  def maxRowNum: Int = if (colCellList.isEmpty) 0 else colCellList.values.maxBy(_.maxRowNum).maxRowNum
   
   
   def findCellByRef(ref:Reference):Option[SpreadSheetCell]=colCellList.synchronized{
     util.CollUtils.iterHeadOption(colCellList.valuesIterator.flatMap(_.findCellByRef(ref)))
   }
-    
-  
-  protected def addCells(cells:Seq[SpreadSheetCell])= colCellList.synchronized{
+
+
+  protected def addCells(cells: Seq[SpreadSheetCell]): Unit = colCellList.synchronized {
     colCellList.clear()
     for(c<-cells) addCell(c,false)
   }
-  
-  
-  def getCellList(col:Int)=colCellList.synchronized{colCellList.getOrElseUpdate(col,new SpreadSheetColCellList(col,controller))}
+
+
+  def getCellList(col: Int): SpreadSheetColCellList = colCellList.synchronized {colCellList.getOrElseUpdate(col, new SpreadSheetColCellList(col, controller))}
   
   
   //TODO: optimize this function
@@ -240,7 +230,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     columnModel.clear()
     val cc=getColumnCount-1
     for(i<-0 until cc) {
-    	val nColumn=new MyTableColumn(i,SpreadSheet.defaultColumnWidth)
+      val nColumn = new MyTableColumn(i, SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
     	columnData.theMap.get(i) match {
     		case Some(col)=>
           setColDataToModel(col,nColumn)
@@ -248,10 +238,10 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     	}
     	columnModel.addColumn(nColumn)
     }
-    val lastColumn=new MyTableColumn(cc,SpreadSheet.lastColumnWidth)
+    val lastColumn = new MyTableColumn(cc, SpreadSheet.lastColumnWidth * ViewConstants.fontScale / 100)
     lastColumn.setResizable(false)
     lastColumn.setHeaderValue('+')
-    lastColumn.setMaxWidth(SpreadSheet.lastColumnWidth)
+    lastColumn.setMaxWidth(SpreadSheet.lastColumnWidth * ViewConstants.fontScale / 100)
     columnModel.addColumn(lastColumn)
     myFireTableStructureChanged()
   }
@@ -259,7 +249,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
   
   def updateColumn(colData:SpreadSheetColumnData):Unit= {
     if(colData.col== columnModel.getColumnCount()-1){
-      val newCol=new MyTableColumn(colData.col,SpreadSheet.defaultColumnWidth)
+      val newCol = new MyTableColumn(colData.col, SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
       setColDataToModel(colData,newCol)
       columnModel.insertAt(newCol,colData.col)
       val lastIx=columnModel.getColumnCount()-1
@@ -276,16 +266,16 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     nColumn.setModelIndex(colData.col)
     nColumn.setHeaderValue(if(colData.name.length>0) colData.name else SpreadSheetUtil.columnIdToLetter(colData.col))
     if(colData.width>0){
-    	nColumn.initWidth(colData.width)
-    	nColumn.setPreferredWidth(colData.width)
+      nColumn.initWidth(colData.width * ViewConstants.fontScale / 100)
+      nColumn.setPreferredWidth(colData.width * ViewConstants.fontScale / 100)
     } else{
-      nColumn.initWidth(SpreadSheet.defaultColumnWidth)
-    	nColumn.setPreferredWidth(SpreadSheet.defaultColumnWidth)
+      nColumn.initWidth(SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
+      nColumn.setPreferredWidth(SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
     }
   }
-  
-  
-  def writeColumnWidths()= {
+
+
+  def writeColumnWidths(): Unit = {
       //println("writeColWidths"+ getColumnCount)
       for(i<-0 until math.min(getColumnCount(),columnModel.getColumnCount())-1){
         val theCol=columnModel.getMyColumn(i)
@@ -293,8 +283,8 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
         if(theCol.widthChanged ) {
           //println("Write width col "+i+" w:"+theCol.getWidth())
           columnData.theMap.get(i) match{
-          	case Some(colData)=>colData.writeWidth(width)
-          	case None =>  createColumnData(i,width)         
+            case Some(colData) => colData.writeWidth(width * 100 / ViewConstants.fontScale)
+            case None => createColumnData(i, width * 100 / ViewConstants.fontScale)
           }
           theCol.widthChanged=false
         }
@@ -302,8 +292,8 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     }  
   
   def createColumnData(col:Int,width:Int):Unit={
-    
     ClientQueryManager.createInstances(Array(controller.columnOwnerRef),Seq((SpreadSheet.spreadSheetColumnType,
-                Array(new IntConstant(col),EMPTY_EX,new IntConstant(width),EMPTY_EX))))}
+      Array(IntConstant(col), EMPTY_EX, IntConstant(width), EMPTY_EX))))
+  }
 
 }

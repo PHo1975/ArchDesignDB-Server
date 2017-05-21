@@ -3,13 +3,13 @@
  */
 package client.dialog
 
-import scala.swing._
-import scala.collection.mutable.ArrayBuffer
-import definition.typ._
+import client.dataviewer.ViewConstants
 import definition.expression.Constant
-import client.comm.ClientQueryManager
-import java.awt.Color
+import definition.typ._
+
+import scala.collection.mutable.ArrayBuffer
 import scala.reflect._
+import scala.swing._
 
 
 
@@ -22,28 +22,28 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   val doublePool=new PanelPool[DoubleAnswerPanel]
   val stringPool=new PanelPool[StringAnswerPanel]
   val optionPool=new PanelPool[OptionAnswerPanel]
-  val poolArray=Array(boolPool,intPool,stringPool,doublePool,optionPool) 
-  val eitherLab=createOrLab("  Entweder")  
+  val poolArray=Array(boolPool,intPool,stringPool,doublePool,optionPool)
+  val eitherLab: Label = createOrLab("  Entweder")
   
   opaque=true
-  background=DialogManager.leftPanelColor
+  background = ViewConstants.leftPanelColor
   
   val customPools=new collection.mutable.HashMap[DataType.Value,PanelPool[_ <: AnswerPanel]]
   
   var func: (AnswerDefinition,Constant)=>Unit = _
-  
-  
-  def createOrLab(text:String)= {
-    val ol=new Label(text)
+
+
+  def createOrLab(text: String): Label = {
+    val ol = ViewConstants.label(text)
     ol.opaque=true
-    ol.background=DialogManager.eitherColor
+    ol.background = ViewConstants.eitherColor
     ol.xLayoutAlignment=0.5d
     ol.maximumSize=new Dimension(Short.MaxValue,25)
-    ol.preferredSize=new Dimension(DialogManager.sidePanelWidth,25)
+    ol.preferredSize = new Dimension(ViewConstants.sidePanelWidth, 25)
     ol
   }
-  
-  def reset()= {
+
+  def reset(): Unit = {
   	//System.out.println("answerArea reset")
   	poolArray foreach( _.reset())
   	customPools.values.foreach( _.reset())
@@ -51,9 +51,11 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   	revalidate()
   	repaint()
   }
-  
-  def loadAnswerDefinitions(pquestion:ParamQuestion) = Swing.onEDT{
+
+  def loadAnswerDefinitions(pquestion: ParamQuestion): Unit = Swing.onEDT {
+    //println("load answer def "+pquestion)
   	reset()
+    var hasFocusSet = false
   	pquestion match{
       case question:DialogQuestion=>
         var counter=0
@@ -77,11 +79,12 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
           panel.loadParamAnswer(ans)
           //println("Add Panel:"+panel.getClass()+" size:"+panel.size+" prefSize:"+panel.preferredSize)
           contents+=panel
+          panel.peer.invalidate()
           counter +=1
           if(counter<question.possibleAnswers.size)
             contents+=Swing.VStrut(15)+=createOrLab("  oder ")
           else contents+=Swing.VStrut(20)
-          panel.setFocus()
+          if (!hasFocusSet && panel.setFocus()) hasFocusSet = true
         }
       case panelQuestion:PanelQuestion =>
         panelQuestion.panel match {
@@ -94,19 +97,20 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   	revalidate()
   	repaint()
   }
-  
-  def registerAnswerCallBack(nfunc: (AnswerDefinition,Constant)=>Unit) =  {
+
+  def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = {
   	func=nfunc
   }
-  
-  def registerCustomPanel[T <: AnswerPanel](typ:DataType.Value)(implicit m: ClassTag[T]) = {
+
+  def registerCustomPanel[T <: AnswerPanel](typ: DataType.Value)(implicit m: ClassTag[T]): Unit = {
   	customPools(typ)=new PanelPool[T]
   }
   
   class PanelPool [T <: AnswerPanel](implicit m: ClassTag[T]) {
-  	val pool=ArrayBuffer[T]()
+    val pool: ArrayBuffer[T] = ArrayBuffer[T]()
   	var usedPanels=0
-  	def setupPanel() = pool.synchronized{
+
+    def setupPanel(): T = pool.synchronized {
   		usedPanels+= 1
   		if(pool.size>=usedPanels) pool(usedPanels-1)
   		else {
@@ -116,7 +120,8 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   			newPan
   		}
   	}
-  	def reset() = pool.synchronized{
+
+    def reset(): Unit = pool.synchronized {
   		for(i <- 0 until usedPanels) pool(i).reset()
   		usedPanels=0  		
   	}

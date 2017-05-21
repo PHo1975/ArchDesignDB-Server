@@ -2,22 +2,26 @@
  * Author: Peter Started:04.10.2010
  */
 package client.comm
+
+import java.io._
+
 import definition.data._
 import definition.expression.Expression
-import java.io._
+
+import scala.collection.mutable
 
 /** a factory that creates instances of user defined classes
  * 
  */
 abstract class SubscriptionFactory [T <: Referencable] {
-	
-	val typeMap=collection.mutable.HashMap[Int,(Reference,DataInput)=>T]()
+
+  val typeMap: mutable.HashMap[Int, (Reference, DataInput) => T] = collection.mutable.HashMap[Int, (Reference, DataInput) => T]()
 	def emptyFunc(ref:Reference):T
-	
-  def registerClass(typID:Int,createFunc: (Reference,DataInput)=>T)	= typeMap(typID)=createFunc
+
+  def registerClass(typID: Int, createFunc: (Reference, DataInput) => T): Unit = typeMap(typID) = createFunc
   
   def createObject(nref:Reference,in:DataInput):T ={
-	  //print(" "+nref.sToString())
+    //print("creating "+nref.sToString())
 	  if(typeMap.contains(nref.typ))  typeMap(nref.typ)(nref,in)
 	  else throw new IllegalArgumentException("Unknown Factory Element "+nref)
 	  //print("| ")

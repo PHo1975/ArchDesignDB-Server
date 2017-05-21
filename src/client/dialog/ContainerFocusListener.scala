@@ -5,7 +5,8 @@ package client.dialog
 
 import definition.data.Referencable
 import definition.expression.Constant
-import scala.swing.Swing
+
+import scala.collection.mutable
 
 /** 
  *  Container Listeners are notified when a Container of elements is focused
@@ -16,12 +17,12 @@ trait ContainerFocusListener {
 }
 
 trait FocusContainer {
-  
-  val containerFocusListeners=collection.mutable.HashSet[ContainerFocusListener]()
+
+  val containerFocusListeners: mutable.HashSet[ContainerFocusListener] = collection.mutable.HashSet[ContainerFocusListener]()
   
   protected var afterCASReceived:Option[ ()=>Unit]=None
-  
-  def registerContainerListener(newList:ContainerFocusListener) = 
+
+  def registerContainerListener(newList: ContainerFocusListener): Unit =
 		containerFocusListeners+=newList
 
 	def notifyContainerListeners(propField:Int):Unit = 				
@@ -52,10 +53,10 @@ trait FocusContainer {
   def containerRef:Option[Referencable]
   
   def requestFocus():Unit
-  
-  def onCASReceived(func: ()=>Unit)=afterCASReceived=Some(func)
-  
-  protected def casReceived()={
+
+  def onCASReceived(func: () => Unit): Unit = afterCASReceived = Some(func)
+
+  protected def casReceived(): Unit = {
     //println("Cas Received "+afterCASReceived)
     for (listener<-afterCASReceived) listener()      
     resetCAS()
@@ -72,7 +73,7 @@ trait FocusContainer {
 }
 
 trait AbstractFocusContainer extends FocusContainer {
-  def createActionStarted(numCreatedElements:Int)= {}	
+  def createActionStarted(numCreatedElements: Int): Unit = {}
 		
 	def actionStopped():Unit=requestFocus()
   def hasCreateActionStarted:Boolean=false

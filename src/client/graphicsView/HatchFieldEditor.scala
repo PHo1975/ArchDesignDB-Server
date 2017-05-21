@@ -1,31 +1,23 @@
 package client.graphicsView
 
 import java.awt.Dimension
+
+import client.dataviewer.ViewConstants
+import client.dialog._
+import definition.expression.{Constant, IntConstant}
+
 import scala.collection.Seq
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.CheckBox
-import scala.swing.Label
-import scala.swing.Panel
-import scala.swing.event.ButtonClicked
-import scala.swing.event.SelectionChanged
-import definition.expression.Constant
-import definition.expression.IntConstant
-import client.dialog.FieldEditor
-import client.dialog.RenderedComboBox
-import client.dialog.PanelPart
-import client.dialog.RenderComponent
-import client.dialog.SidePanelComponent
-import client.dialog.SidePanelDoubleTextField
-import scala.swing.Alignment
+import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
+import scala.swing.event.{ButtonClicked, SelectionChanged}
 
 
 class HatchFieldEditor extends FieldEditor {  
   
   val tcn="PolyElem"
   val apn="AreaPolygon"
-  var allowedClassNames=Seq(tcn,apn)	
-	val angleEdit=new SidePanelDoubleTextField(Map((tcn,7),(apn,8)),this)  
+  val wof = "Wohnfläche"
+  var allowedClassNames = Seq(tcn, apn, wof)
+  val angleEdit = new SidePanelDoubleTextField(Map((tcn, 7), (apn, 8), (wof, 8)), this)
   angleEdit.addSearchLookup({
     case c:PolyElement => c.hatchAngle      
   })
@@ -39,7 +31,7 @@ class HatchFieldEditor extends FieldEditor {
     val styleCombo=new RenderedComboBox(HatchHandler.hatchList,new HatchFieldPreview(()=>paperScaleBut.selected))
     
     val defaultValue=0
-    val allowedFields=Map((tcn,5.toByte),(apn,6.toByte))
+    val allowedFields = Map((tcn, 5.toByte), (apn, 6.toByte), (wof, 6.toByte))
     
     add(styleCombo,BorderPanel.Position.Center)
     add( paperScaleBut,BorderPanel.Position.South)
@@ -64,12 +56,13 @@ class HatchFieldEditor extends FieldEditor {
     	val ix=styleCombo.selection.index    	
     	val hValue=ix*(if (paperScaleBut.selected) -1 else 1)
     	storeValue(hValue,this)    	
-    }    
-    
-    def getConstant(value:Int)=new IntConstant(value)  
-    def valueFromConstant(c:Constant)=c.toInt
-    
-    override def setValue(newHatch:Option[Int])= {	
+    }
+
+    def getConstant(value: Int) = IntConstant(value)
+
+    def valueFromConstant(c: Constant): Int = c.toInt
+
+    override def setValue(newHatch: Option[Int]): Unit = {
 		  super.setValue(newHatch)
 		  setToolTip(newHatch)
 			newHatch match {
@@ -82,7 +75,8 @@ class HatchFieldEditor extends FieldEditor {
           paperScaleBut.selected=false
       }
 		}
-    def setToolTip(newHatch:Option[Int])= {		
+
+    def setToolTip(newHatch: Option[Int]): Unit = {
 		styleCombo.peer.setToolTipText(newHatch match {
 		  case Some(hatch) =>  HatchHandler.quickGetHatch(math.abs(hatch)).name	  		   
 		  case None => "Undefiniert"		    
@@ -97,9 +91,9 @@ class HatchFieldEditor extends FieldEditor {
     val topPan=new PanelPart("Schraff:",hatchPanel)
     topPan.maximumSize=new Dimension(FieldEditor.panelSize.width,FieldEditor.panelSize.height*2)
 		contents +=topPan
-		contents += new PanelPart("Winkel:",angleEdit)		
-		preferredSize=new Dimension(70,100)
-		maximumSize=new Dimension(Short.MaxValue,100)		
+		contents += new PanelPart("Winkel:",angleEdit)
+    preferredSize = new Dimension(70, 100 * ViewConstants.fontScale / 100)
+    maximumSize = new Dimension(Short.MaxValue, 100 * ViewConstants.fontScale / 100)
 	}  
 
   def getPanel: Panel = panel
@@ -108,24 +102,24 @@ class HatchFieldEditor extends FieldEditor {
 class HatchFieldPreview (getPaperScaleCallBack: ()=> Boolean) extends BorderPanel with RenderComponent[HatchStyle]{
    opaque=false
    val hatchPreview=new HatchPreview
-   val label=new Label
+  val label: Label = ViewConstants.label()
    label.horizontalAlignment=Alignment.Left 
    label.horizontalTextPosition=Alignment.Left
    var currentMaterial:MaterialDef=MaterialHandler.undefinedMaterial
-   
-   preferredSize=new Dimension(100,50)
+
+  preferredSize = new Dimension(100 * ViewConstants.fontScale / 100, 50 * ViewConstants.fontScale / 100)
    add(hatchPreview,BorderPanel.Position.Center)
-   add(label,BorderPanel.Position.North)   
-   
-   def setStyle(hatch:HatchStyle)={
+   add(label,BorderPanel.Position.North)
+
+  def setStyle(hatch: HatchStyle): Unit = {
      hatchPreview.setHatch(HatchHandler.quickGetHatch(hatch.ix),getPaperScaleCallBack(),true)
      label.text=f"${hatch.ix}%2d"+" "+hatch.name
      label.background=background
      label.foreground=foreground
      peer.setToolTipText(hatch.name)
    }
-   
-   def setEmpty()= {
+
+  def setEmpty(): Unit = {
      hatchPreview.setHatch(null,false,true)
      label.text=""
      label.background=background

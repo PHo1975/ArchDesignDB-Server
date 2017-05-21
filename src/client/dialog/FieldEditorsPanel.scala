@@ -6,9 +6,12 @@ package client.dialog
 import java.awt.Dimension
 import javax.swing.BorderFactory
 
+import client.dataviewer.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.BoxPanel
 
 
@@ -16,15 +19,17 @@ import scala.swing.BoxPanel
  * 
  */
 class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with SelectListener {
-	opaque=false	
+  opaque = false
+  lazy val maxSize = new Dimension(ViewConstants.sidePanelWidth, Short.MaxValue)
+
 	var groupList:Iterable[SelectGroup[_<:Referencable]]= _
 	var commonTyp:Int = -1
-	var currentEditors=collection.mutable.ArrayBuffer[FieldEditor]()
+  var currentEditors: ArrayBuffer[FieldEditor] = collection.mutable.ArrayBuffer[FieldEditor]()
 	border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),
 	    BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(8,0,6,0),"Felder:"))
-	xLayoutAlignment=0.5d		
-	
-	def selectionChanged [T <: Referencable](sender:SelectSender,groups:Iterable[SelectGroup[T]],alsoSelected:Iterable[T]=Nil) = {
+	xLayoutAlignment=0.5d
+
+  def selectionChanged[T <: Referencable](sender: SelectSender, groups: Iterable[SelectGroup[T]], alsoSelected: Iterable[T] = Nil): Unit = {
 		groupList=groups.asInstanceOf[Iterable[SelectGroup[_<:Referencable]]]
 		val newCommonTyp=AllClasses.get.getCommonClassForGroups(groupList)
 		visible= contents.nonEmpty
@@ -51,7 +56,8 @@ class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with 
 				  case e:Throwable => util.Log.e("Error when trying to load editor :"+aName+"\n"+e.toString+"\n",e)
 				}				
 			}
-			if(contents.nonEmpty) maximumSize=new Dimension(DialogManager.sidePanelWidth,preferredSize.height+60)
+      if (contents.nonEmpty) maximumSize = new Dimension(ViewConstants.sidePanelWidth, preferredSize.height + 60)
+      else maximumSize = maxSize
 			visible= contents.nonEmpty
 			revalidate()
 			repaint()
@@ -68,8 +74,8 @@ class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with 
 
 
 object EditorFactory {
-	val editorCache=collection.mutable.HashMap[String,FieldEditor]()
-	val inplaceEditorCache=collection.mutable.HashMap[String,InplaceFieldEditor]()
+  val editorCache: mutable.HashMap[String, FieldEditor] = collection.mutable.HashMap[String, FieldEditor]()
+  val inplaceEditorCache: mutable.HashMap[String, InplaceFieldEditor] = collection.mutable.HashMap[String, InplaceFieldEditor]()
 	
 	private def updateFieldEditor(name:String,newEditor:FieldEditor)= {	  
 		newEditor.getPanel.xLayoutAlignment=0.5d

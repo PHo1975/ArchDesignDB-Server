@@ -2,31 +2,28 @@
  * Author: Peter Started:18.12.2010
  */
 package server.config
-import definition.data.{InstanceData, InstanceProperties, PropertyFieldData, Reference}
-import transaction.handling.SessionManager
-import server.storage.StorageManager
-import definition.typ.{EnumDefinition, NOENUM, SystemSettings}
 import java.io.DataOutput
 
-import transaction.handling.{ActionList, TransactionManager}
-import definition.data.OwnerReference
+import definition.data._
 import definition.expression.StringConstant
-import server.storage.ActionNameMap
-import definition.data.HolidayDefinition
+import definition.typ.{EnumDefinition, NOENUM, SystemSettings}
+import server.storage.{ActionNameMap, StorageManager}
+import transaction.handling.{ActionList, TransactionManager}
 import util.Log
 
+import scala.collection.{Map, mutable}
 import scala.util.control.NonFatal
 /**
  * 
  */
 class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
-	val _systemTypes=collection.mutable.Map[String,Int]()
+	val _systemTypes: mutable.Map[String, Int] = collection.mutable.Map[String, Int]()
 	
 	var userFolders:Map[String,Reference]= StorageManager.getInstPropList(FSPaths.userRootRef, 1).map(
       ref =>  (StorageManager.getInstanceData(ref).fieldValue.head.toString, ref)).toMap
-	
-	var enums=collection.mutable.LinkedHashMap[String,EnumDefinition]("Undefined" -> NOENUM)
-	var enumByID=collection.Map[Int,EnumDefinition]()
+
+	var enums: mutable.LinkedHashMap[String, EnumDefinition] = collection.mutable.LinkedHashMap[String, EnumDefinition]("Undefined" -> NOENUM)
+	var enumByID: Map[Int, EnumDefinition] = collection.Map[Int, EnumDefinition]()
 	val topProperties:InstanceProperties= try { 
 	  //System.out.println("Init topProperties settingsRef:"+settingsRef)
 		StorageManager.getInstanceProperties(settingsRef) match {		  
@@ -47,11 +44,11 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 		}	
 	} catch {
 		case NonFatal(e)=> util.Log.e(e);null
-		case other:Throwable =>println(other);System.exit(0);null
+		case other: Throwable => util.Log.e(other); null
 	}
-	
-	
-	lazy val customFolderList= if(topProperties==null)IndexedSeq.empty else for(pField<-topProperties.propertyFields(2).propertyList) 
+
+
+	lazy val customFolderList: IndexedSeq[InstanceData] = if (topProperties == null) IndexedSeq.empty else for (pField <- topProperties.propertyFields(2).propertyList)
 		yield StorageManager.getInstanceData(pField)
 	
 	
@@ -73,15 +70,15 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	
 	lazy val clientSettingsMap:Map[String,String]=(for(data <-getCustomSettings("ClientSettings")) 
 		yield data.fieldValue(0).toString -> data.fieldValue(1).toString).toMap
-	
-	override lazy val holidays=getCustomSettings("Holidays")	map(new HolidayDefinition(_))
+
+	override lazy val holidays: IndexedSeq[HolidayDefinition] = getCustomSettings("Holidays") map (new HolidayDefinition(_))
 		
 	def getClientSetting(settingName:String):String=
 		if(clientSettingsMap.contains(settingName)) clientSettingsMap(settingName)
 		else ""
-		
-	
-	def write(out:DataOutput)= {
+
+
+	def write(out: DataOutput): Unit = {
 		out.writeInt(_systemTypes.size)
 		for(t<-_systemTypes) {
 			out.writeUTF(t._1)
@@ -118,7 +115,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
     }
     var inst:InstanceData= null
     TransactionManager.doTransaction(-1, ActionNameMap.getActionID("createUserFolder"), FSPaths.userRootRef, true, userType,{
-	      inst=TransactionManager.tryCreateInstance(userType, Array(new OwnerReference(1,FSPaths.userRootRef)), false).setField(0, new StringConstant(userName))
+			inst = TransactionManager.tryCreateInstance(userType, Array(new OwnerReference(1, FSPaths.userRootRef)), false).setField(0, StringConstant(userName))
 	    TransactionManager.tryWriteInstanceData(inst)
 	    if(FSPaths.libraryRootRef.instance>0) {
 	      val libraryInst=ActionList.getInstanceData(FSPaths.libraryRootRef)
@@ -131,7 +128,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	      case fn=>
 					val ownerRef=Array(new OwnerReference(3,inst.ref))
 					for(folderName<-fn.split(',')) {
-            val finst=TransactionManager.tryCreateInstance(folderType,ownerRef,false).setField(0,new StringConstant(folderName))
+						val finst = TransactionManager.tryCreateInstance(folderType, ownerRef, false).setField(0, StringConstant(folderName))
             TransactionManager.tryWriteInstanceData(finst)
           }
 			}

@@ -1,32 +1,17 @@
 package client.plotdesign
 
-import scala.swing.BoxPanel
-import scala.swing.Component
-import scala.swing.Button
-import scala.swing.ToggleButton
-import scala.swing.TextField
-import util.MyComboBox
-import scala.swing.ButtonGroup
-import scala.swing.RadioButton
-import java.awt.Font
-import scala.swing.Swing
-import java.awt.Insets
-import java.awt.Color
-import client.graphicsView.ScalePanel
-import scala.swing.Label
-import javax.print.PrintServiceLookup
-import javax.print.PrintService
-import scala.swing.event.SelectionChanged
-import client.print.MediaSizeWrapper
-import javax.print.attribute.standard.MediaSizeName
-import client.print.{MediaTrayWrapper,AutoTray}
-import javax.print.attribute.standard.MediaTray
-import scala.swing.event.ButtonClicked
+import java.awt.{Color, Insets}
+import javax.print.attribute.standard.{MediaSizeName, MediaTray}
 import javax.swing.BorderFactory
-import client.print.PrintOutDialog
+
 import client.dataviewer.ViewConstants
-import scala.swing.Orientation
+import client.graphicsView.ScalePanel
+import client.print.{MediaSizeWrapper, MediaTrayWrapper, PrintOutDialog}
 import client.ui.ClientApp
+import util.MyComboBox
+
+import scala.swing.{BoxPanel, Button, ButtonGroup, Label, Orientation, RadioButton, Swing, TextField, ToggleButton}
+import scala.swing.event.{ButtonClicked, SelectionChanged}
 
 
 class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.swing.Orientation.Vertical) {  
@@ -40,7 +25,7 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
 	val zoomOutBut=new Button("-")  
 	val scaleEdit=new TextField("")  
   val miniInsets=new Insets(0,0,0,0)
-  val designNameLabel=new Label()
+  val designNameLabel: Label = ViewConstants.label()
   var combosAdjusting=false
   val printBut=new Button("")
   val archiveBut=new Button("")
@@ -61,8 +46,8 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   archiveBut.margin=miniInsets
   val printerBox=new MyComboBox[String](controller.pageModel.printServiceNames)
   val maxComboSize=new java.awt.Dimension(90,40)
-  printerBox.maximumSize=maxComboSize  
-  val sizeBox:MyComboBox[MediaSizeWrapper]=new MyComboBox(List(new MediaSizeWrapper(MediaSizeName.ISO_A4))){
+  printerBox.maximumSize=maxComboSize
+  val sizeBox: MyComboBox[MediaSizeWrapper] = new MyComboBox(List(MediaSizeWrapper(MediaSizeName.ISO_A4))) {
 		peer.setModel(controller.pageModel.mediaModel)
   }
   sizeBox.maximumSize=maxComboSize
@@ -143,46 +128,46 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   }
   
   //def model=controller.scaleModel
-  
-  def setName(id:Int,name:String)= {
+
+  def setName(id: Int, name: String): Unit = {
     designNameLabel.text="    "+id+". "+name+" "
-  } 
-  
-  def selectForm(inst:Int)= {
+  }
+
+  def selectForm(inst: Int): Unit = {
     val ix=PrintFormInfo.plotDesignForms.indexWhere(_.id==inst)
     combosAdjusting=true
     formCombo.selection.index=ix
     combosAdjusting=false
   }
-  
-  def selectPrinter(ix:Int)= {
+
+  def selectPrinter(ix: Int): Unit = {
     combosAdjusting=true
     printerBox.selection.index=ix
     combosAdjusting=false
   }
-  
-  def selectSize(ix:Int) = {
+
+  def selectSize(ix: Int): Unit = {
     //println("selectSize "+ix)
     combosAdjusting=true
     sizeBox.selection.index=ix
     combosAdjusting=false
-  } 
-  
-  def selectTray(ix:Int) = {
+  }
+
+  def selectTray(ix: Int): Unit = {
     combosAdjusting=true
     trayCombo.selection.index=ix
     combosAdjusting=false
   }
-  
-  def selectOrientation(portrait:Boolean) = if(!combosAdjusting){
+
+  def selectOrientation(portrait: Boolean): Unit = if (!combosAdjusting) {
     combosAdjusting=true
     if(portrait) portraitBut.selected=true else landscapeBut.selected=true
     combosAdjusting=false
-  } 
-  
-  def turnoutAdjusting()= combosAdjusting=false  
-  
-  def showFormDialog() = {
+  }
+
+  def turnoutAdjusting(): Unit = combosAdjusting = false
+
+  def showFormDialog(): Unit = {
     
   }
 }

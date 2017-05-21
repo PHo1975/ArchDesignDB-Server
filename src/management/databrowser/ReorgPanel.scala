@@ -2,21 +2,22 @@ package management.databrowser
 
 import javax.swing.SwingWorker
 
+import client.dataviewer.ViewConstants
 import definition.data.{OwnerReference, Reference}
 import server.storage.StorageManager
 import transaction.handling.TransactionManager
 
-import scala.swing.{BoxPanel, Button, Dialog, Label, Orientation, ProgressBar, Swing}
 import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Dialog, Label, Orientation, ProgressBar, Swing}
 import scala.util.control.NonFatal
 
 class ReorgPanel extends BoxPanel(Orientation.Vertical){
-  val textField=new Label("Warning: all users get logged off !")
+  val textField: Label = ViewConstants.label("Warning: all users get logged off !")
   val reorgBut=new Button("Reorganize database")
   val fixInhBut=new Button("Fix inheritance")
   val fixOrphBut=new Button("Fix Orphans")
   val delOrphBut=new Button("Delete Orphans")
-  val fileTextField=new Label()
+  val fileTextField: Label = ViewConstants.label()
   listenTo(reorgBut,fixInhBut,delOrphBut,fixOrphBut)
   val fileProgressBar=new ProgressBar
   val buttonPanel=new BoxPanel(Orientation.Horizontal ){

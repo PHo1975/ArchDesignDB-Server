@@ -3,25 +3,16 @@
  */
 package client.dataviewer
 
-import client.dialog.form.FormBox
-
-import scala.swing._
 import client.dataviewer.sidePanel.SidePanelController
-import client.dialog.AbstractFocusContainer
-import client.dialog.EMPTY_GROUP
-import client.dialog.SelectSender
-import client.model.FormPanel
-import client.model.PathControllable
-import definition.data.EMPTY_OWNERREF
-import definition.data.InstanceData
-import definition.data.Referencable
-import definition.data.Reference
-import definition.typ.AbstractObjectClass
-import definition.typ.AllClasses
-import definition.typ.CustomInstanceEditor
-import definition.typ.SelectGroup
-import client.model.TableViewbox
-//import server.test.SimpleProfiler
+import client.dialog.form.FormBox
+import client.dialog.{AbstractFocusContainer, EMPTY_GROUP, SelectSender}
+import client.model.{AbstractTableViewbox, FormPanel, PathControllable}
+import definition.data.{EMPTY_OWNERREF, InstanceData, Referencable, Reference}
+import definition.typ.{AbstractObjectClass, AllClasses, CustomInstanceEditor, SelectGroup}
+
+import scala.collection.mutable.ArrayBuffer
+import scala.swing._
+
 
 /** controls the DataViewer
  *  manages the general loading of data
@@ -29,32 +20,29 @@ import client.model.TableViewbox
  */
 
 
-class DataViewController(val viewBox:TableViewbox)  extends PathControllable with SelectSender with AbstractFocusContainer with Referencable  {
+class DataViewController(val viewBox: AbstractTableViewbox) extends PathControllable with SelectSender with AbstractFocusContainer with Referencable {
 	//SimpleProfiler.dprint =true
 	private var loaded=false
 	var ref:Reference= _
 	var mainClass:AbstractObjectClass = _	
 	var selGroup=new SelectGroup[InstanceData](EMPTY_OWNERREF,Seq.empty)
-	var selGroupList=List(selGroup)		
-	val propertyModels =scala.collection.mutable.ArrayBuffer[PropertyModel]()
-		
+	var selGroupList=List(selGroup)
+  val propertyModels: ArrayBuffer[PropertyModel] = scala.collection.mutable.ArrayBuffer[PropertyModel]()
 	var activeSidePanelController:Option[SidePanelController]=None
 	val formModel=new FormModel(this)
-	//var openChildCallBack:(Reference)=> Unit = _
-	
 	var runningEditor:Option[CustomInstanceEditor[Component]]=None
 	val maxDimension=new Dimension(Int.MaxValue,Int.MaxValue)
 	val minDimension=new Dimension
-	
 	var lastFocusedTable:Option[Table]=None
-		
 	val tablePanel=new BoxPanel(Orientation.Vertical)  {		  
 		override lazy val peer = new javax.swing.JPanel with SuperMixin with javax.swing.Scrollable {       
 			val l = new javax.swing.BoxLayout(this, Orientation.Vertical.id)
 			setLayout(l)			
-			def getPreferredScrollableViewportSize: Dimension=getPreferredSize		  
-			override def getMaximumSize=maxDimension
-			override def getMinimumSize=getPreferredSize
+			def getPreferredScrollableViewportSize: Dimension=getPreferredSize
+
+      override def getMaximumSize: Dimension = maxDimension
+
+      override def getMinimumSize: Dimension = getPreferredSize
 			def getScrollableTracksViewportHeight: Boolean =false
 			def getScrollableTracksViewportWidth: Boolean=false
 			def getScrollableBlockIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int = 200  
@@ -77,8 +65,8 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 	    contents+=formPanel+=tableScroller	    
 	    maximumSize=new Dimension(Short.MaxValue,Short.MaxValue)
 	  }
-	
-	def closeSplitBox()= {	  
+
+  def closeSplitBox(): Unit = {
 	  if(splitBox.contents.contains(formPanel))
 	  	splitBox.contents.-=(formPanel)
 	  splitBox.revalidate()
@@ -103,22 +91,58 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 	/** is called by PathModel when another instance should be loaded
 	 *  @param parentRef the new Instance to be loaded
 	 *  @param selectRef reference of an instance that should be selected
+	 *  @param ident for FormField identation
 	 */
-	def openData(nparentRef:Reference,selectRef:Option[Reference],indent:Int,doneListener:Option[()=>Unit]) = {		
+  def openData(nparentRef: Reference, selectRef: Option[Reference], indent: Int, doneListener: Option[() => Unit]): Unit = {
 		
 	  if(loaded) shutDown()
 	  ref=nparentRef	  	  
 	  mainClass=AllClasses.get.getClassByID(ref.typ)
 	  
 	  def numPropfieldsToLoad=if(DataViewController.hideProperties) mainClass.propFields.foldLeft(0)((a,b)=>if(!b.hidden)a+1 else a)
-	    else mainClass.propFields.size	   
-	  var loadedField=0	  
+	    else mainClass.propFields.size
+
+    var loadedField = 0
+
+    val propFieldLoaded: () => Unit = () => {
+      loadedField += 1
+      //println("PropFieldLoaded "+loadedField+" numFieldsToLoad:"+numPropfieldsToLoad)
+      if (loadedField >= numPropfieldsToLoad) {
+        if (selectRef.isEmpty) notifySelectListeners(EMPTY_GROUP.list)
+        //println("Loaded=true")
+        loaded = true
+        tableScroller.horizontalScrollBar.value = 0
+        for (d <- doneListener) d()
+      }
+    }
+
+    val formsLoaded: () => Unit = () => {
+      loadedField = 0
+      //println("Forms loaded "+nparentRef+" numFieldsToLoad:"+numPropfieldsToLoad)
+      val hiddenFields = mainClass.getNum_FirstHiddenPropFields
+      var propIx = 0
+      if (numPropfieldsToLoad == 0) {
+        //println("NumPropfieldsToLoad==0")
+        for (d <- doneListener) d()
+      }
+      else for (i <- mainClass.propFields.indices) {
+        val propFieldInfo = mainClass.propFields(i)
+        if (!(propFieldInfo.hidden && DataViewController.hideProperties)) {
+          val mod = new PropertyModel(propIx, this)
+          propIx += 1
+          propertyModels append mod
+          tablePanel.contents += mod.panel
+          mod.load(propFieldInfo.allowedClass, i.toByte, propFieldInfo.name, selectRef, i == hiddenFields, mainClass.propFields.size == 1,
+            propFieldInfo.single, propFieldLoaded)
+        }
+      }
+    }
 	  
 	  mainClass.customInstanceEditor match {
 	  	case Some(editorName) =>
 				val ed=Class.forName(editorName).newInstance.asInstanceOf[CustomInstanceEditor[Component]]
 				runningEditor=Some(ed)
-				if(ed.fullSize)ed.load(nparentRef,()=>for(d<-doneListener)d()) else ed.load(nparentRef,formsLoaded _)
+        if (ed.fullSize) ed.load(nparentRef, () => for (d <- doneListener) d()) else ed.load(nparentRef, formsLoaded)
 				formPanel.setCustomEditor(ed)
 				tableScroller.visible= !ed.fullSize
 			case None => // no editor, load FormBox
@@ -133,44 +157,9 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 						formModel.setForms(mainClass,None)
 					case _=> util.Log.w("unknown formbox "+newForm)
 				}
-				formModel.loadData(nparentRef,formsLoaded _)
+        formModel.loadData(nparentRef, formsLoaded)
 		}
-
-		def formsLoaded()={
-		  loadedField=0
-		  //println("Forms loaded "+nparentRef+" numFieldsToLoad:"+numPropfieldsToLoad)
-			val hiddenFields=mainClass.getNum_FirstHiddenPropFields
-			var propIx=0
-			if(numPropfieldsToLoad==0){
-			  //println("NumPropfieldsToLoad==0")
-			  for(d<-doneListener)d()
-			} 
-			else for(i <- 0 until mainClass.propFields.size) {
-				val propFieldInfo=mainClass.propFields(i)
-				if(!(propFieldInfo.hidden && DataViewController.hideProperties)) {
-					val mod= new PropertyModel(propIx,this)
-					propIx+=1
-					propertyModels append mod
-					tablePanel.contents+=mod.panel	  	
-					mod.load(propFieldInfo.allowedClass,i.toByte,propFieldInfo.name,selectRef,i==hiddenFields,mainClass.propFields.size==1,
-					    propFieldInfo.single, propFieldLoaded _)
-				}	  	
-			}					  
-		}	  
-		
-		def propFieldLoaded() = {		  
-		  loadedField+=1
-		  //println("PropFieldLoaded "+loadedField+" numFieldsToLoad:"+numPropfieldsToLoad)
-		  if(loadedField>=numPropfieldsToLoad) {
-		  	if(!selectRef.isDefined) notifySelectListeners(EMPTY_GROUP.list)
-		  	//println("Loaded=true")
-		  	loaded =true
-				tableScroller.horizontalScrollBar.value=0
-		  	for(d<- doneListener)d()  
-		  }
-		}	  
 	}
-	
 	
 	def propFieldExitsToUp(propIx:Int):Unit={
 	  var ix=propIx
@@ -191,16 +180,10 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 	      return
 	    }
 	    ix+=1
-	  } 
-	  
+    }
 	}
-	
-	/*def registerOpenChildCallBack(callBack: (Reference)=> Unit) = {
-		openChildCallBack=callBack
-	}	*/
-	
-	
-	def updateHeight() = Swing.onEDT {	 
+
+  def updateHeight(): Unit = Swing.onEDT {
 	  tablePanel.revalidate()
 	  formPanel.revalidate()
 	  splitBox.revalidate()
@@ -237,8 +220,8 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 	  }
 	  notifyContainerListeners(currPropertyField)		
 	}
-	
-	def deselect(notify:Boolean) = {
+
+  def deselect(notify: Boolean): Unit = {
 		for(mod<-propertyModels)
 			mod.deselect(-1)
 		if(notify)
@@ -249,13 +232,14 @@ class DataViewController(val viewBox:TableViewbox)  extends PathControllable wit
 	 * 
 	 * @param ref the reference of the child instance
 	 */
-	def openChild(ref:Reference) = viewBox.pathController.addPathElement(ref)
+  def openChild(ref: Reference): Unit = viewBox.pathController.addPathElement(ref)
     
 	
 	// FocusContainer interface	
 	def containerName=""	
 	def containerRef=Some(this)
-	def requestFocus() = {
+
+  def requestFocus(): Unit = {
 	  lastFocusedTable match {
 	    case Some(table)=> table.requestFocusInWindow()
 	    case _=>

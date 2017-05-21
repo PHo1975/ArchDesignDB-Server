@@ -1,11 +1,15 @@
 package server.webserver
 
+import java.util
+import javax.servlet.DispatcherType
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
+
 import management.databrowser.ConsolePanel
 import org.eclipse.jetty.security.authentication.DigestAuthenticator
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
-import org.eclipse.jetty.server.Server
-import org.eclipse.jetty.server.session.{HashSessionIdManager, HashSessionManager, SessionHandler}
-import org.eclipse.jetty.servlet.{DefaultServlet, ServletContextHandler, ServletHolder}
+import org.eclipse.jetty.server.session.HashSessionIdManager
+import org.eclipse.jetty.server.{Request, Server}
+import org.eclipse.jetty.servlet._
 import org.eclipse.jetty.util.log.{Log, StdErrLog}
 import org.eclipse.jetty.util.security.Constraint
 import server.config.FSPaths
@@ -13,20 +17,34 @@ import server.config.FSPaths
 /**
  * Created by Kathi on 09.03.2015.
  */
-object WebServer extends Server(8080) {
-  /*val ste=new StdErrLog()
-  Log.setLog(ste)
-  ste.setDebugEnabled(true)*/
-
+object WebServer extends Server() {
+  val securityHandler = new ConstraintSecurityHandler()
+  lazy val dummySecurityHandler = new ConstraintSecurityHandler()
+  val digestAuthenticator = new DigestAuthenticator()
+  val loginService = DBLoginService
+  loginService.setName("db.holzer-architektur.de")
+  val servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS)
+  val safeServlet = new ServletHolder("safe", classOf[DefaultServlet])
+  //val sessionManager = new HashSessionManager()
+  //val sessionHandler = new SessionHandler(sessionManager)
 
   def setup(): Unit = {
     System.setProperty("org.eclipse.jetty.servlet.LEVEL","DEBUG")
-    val idManager = new HashSessionIdManager()
-    val loginService =  DBLoginService
-    addBean(loginService)
 
-    val securityHandler = new ConstraintSecurityHandler()
-    setHandler(securityHandler)
+    val idManager = new HashSessionIdManager()
+
+    addBean(loginService)
+    val mapping = new FilterMapping()
+    mapping.setFilterName("Security Filter")
+    mapping.setPathSpecs(Array("/*", "/files/*", "/events"))
+    mapping.setServletNames(Array("mein"))
+    mapping.setDispatcherTypes(util.EnumSet.of(DispatcherType.INCLUDE, DispatcherType.REQUEST))
+    val fholder = new FilterHolder(classOf[ContentSecurityFilter])
+    fholder.setName("Security Filter")
+    if (management.databrowser.MainWindow.webSocketSSL)
+      servletContextHandler.getServletHandler.addFilter(fholder, mapping)
+    //servletContextHandler.addFilter(classOf[ContentSecurityFilter],"/*",null   )
+    setHandler(servletContextHandler)
 
     val userConstraint = new Constraint()
     userConstraint.setName("user_auth")
@@ -35,31 +53,26 @@ object WebServer extends Server(8080) {
     val userConstraintMapping = new ConstraintMapping()
     userConstraintMapping.setPathSpec("/*")
     userConstraintMapping.setConstraint(userConstraint)
-    val adminConstraint = new Constraint()
-    adminConstraint.setName("admin_auth")
-    adminConstraint.setAuthenticate(true)
-    adminConstraint.setRoles(Array("admin"))
-    val adminConstraintMapping = new ConstraintMapping()
-    adminConstraintMapping.setPathSpec("/admin/*")
-    adminConstraintMapping.setConstraint(adminConstraint)
-    securityHandler.setConstraintMappings(Array(userConstraintMapping/*, adminConstraintMapping*/))
+    userConstraint.setDataConstraint(Constraint.DC_CONFIDENTIAL)
 
-    securityHandler.setAuthenticator(new DigestAuthenticator())
+    val traceConstraint = new Constraint()
+    traceConstraint.setName("Disable TRACE")
+    traceConstraint.setAuthenticate(true)
+    val traceMapping = new ConstraintMapping()
+    traceMapping.setConstraint(traceConstraint)
+    traceMapping.setMethod("TRACE")
+    traceMapping.setPathSpec("/")
 
+
+    securityHandler.setConstraintMappings(Array(userConstraintMapping, traceMapping))
+    securityHandler.setAuthenticator(digestAuthenticator)
     securityHandler.setLoginService(loginService)
-
     setSessionIdManager(idManager)
-
-    val sessionManager = new HashSessionManager()
-    sessionManager.setSessionCookie("JSESSIONID_PetersServer")
-
-    val sessionHandler = new SessionHandler(sessionManager)
-
-    val servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS)
-    servletContextHandler.setContextPath("/")
-
+    //sessionManager.setSessionCookie("JSESSIONID_PetersServer")
     val servletHolder=new ServletHolder("mein",classOf[DBServlet])
     servletContextHandler.addServlet(servletHolder,"/events")
+    servletContextHandler.setContextPath("/")
+
     val fileServlet=new ServletHolder("files",classOf[DefaultServlet])
     fileServlet.setInitParameter("dirAllowed","true")
     fileServlet.setInitParameter("gzip","true")
@@ -68,27 +81,53 @@ object WebServer extends Server(8080) {
     fileServlet.setInitParameter("pathInfoOnly","true")
     servletContextHandler.addServlet(fileServlet,"/files/*")
 
+    safeServlet.setInitParameter("dirAllowed", "false")
+    safeServlet.setInitParameter("gzip", "true")
+    safeServlet.setInitParameter("resourceBase", FSPaths.deployDir + "safe\\")
+    safeServlet.setInitParameter("useFileMappedBuffer", "false")
+    safeServlet.setInitParameter("pathInfoOnly", "true")
 
-    val mainServlet=new ServletHolder("welco",classOf[DefaultServlet])
-    mainServlet.setInitParameter("resourceBase",FSPaths.deployDir+"welcome\\")
-    mainServlet.setInitParameter("dirAllowed","true")
-    mainServlet.setInitParameter("useFileMappedBuffer","false")
-    mainServlet.setInitParameter("gzip","true")
-    servletContextHandler.addServlet(mainServlet,"/")
+    val errorHandler = new ErrorPageErrorHandler() {
+      override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
+        response.getWriter().append("{\"status\":\"ERROR\",\"message\":\"HTTP ").append(
+          response.getStatus().toString).append("\"}")
+        ContentSecurityFilter.changeHeaders(response)
+      }
+    }
+    addBean(errorHandler)
 
-    //setHandler(servletContextHandler)
-    sessionHandler.setHandler(servletContextHandler)
-    securityHandler.setHandler(sessionHandler)
+    servletContextHandler.setErrorHandler(errorHandler)
+
+    //sessionHandler.setHandler(servletContextHandler)
+    servletContextHandler.setSecurityHandler(securityHandler)
+    //securityHandler.setHandler(sessionHandler)
+  }
+
+  def switchToCertMode(): Unit = {
+    stop()
+    removeBean(loginService)
+    servletContextHandler.setSecurityHandler(dummySecurityHandler)
+
+    safeServlet.setEnabled(true)
+    servletContextHandler.addServlet(safeServlet, "/*")
+    start()
+  }
+
+  def switchToProductionMode(): Unit = {
+    stop()
+    addBean(loginService)
+    servletContextHandler.removeBean(safeServlet)
+    servletContextHandler.setSecurityHandler(securityHandler)
+    start()
   }
 
   def setLogConsole(console:ConsolePanel): Unit = {
-    println("set log console "+console)
     Log.getLog match {
       case l:StdErrLog=>l.setStdErrStream(console.out)
       import scala.collection.JavaConverters._
       for(alog<-Log.getLoggers.asScala.valuesIterator) alog match {
          case slog:StdErrLog=> slog.setStdErrStream(console.out)
-         case _=>
+         case o => println("logger:" + o)
        }
       case _=>
     }

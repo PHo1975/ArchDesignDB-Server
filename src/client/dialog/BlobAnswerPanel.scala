@@ -1,9 +1,9 @@
 package client.dialog
 
-import definition.expression.VectorConstant
-import scala.swing._
-import definition.expression.BlobConstant
+import definition.expression.{BlobConstant, VectorConstant}
 import definition.typ.AnswerDefinition
+
+import scala.swing._
 import scala.swing.event.ButtonClicked
 
 trait SelectPointsListener extends BracketListener {
@@ -14,20 +14,18 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
   
   val bracketBut=new ToggleButton("Summe")
   var active=false
-  var selectModel:PointSelectModel=null
-  
+  var selectModel: PointSelectModel = _
   
   def pointsSelected(points:Seq[VectorConstant]):Unit= {      
     func(ansParm,BlobConstant.fillData(out=> {
       out.writeInt(points.size)
       for(p<-points) p.write(out)
     }))
-  }  
-  
-  def bracketModeStarted()={
+  }
+
+  def bracketModeStarted(): Unit = {
     bracketBut.selected=true
   }
-  
   
   bracketBut.focusable=false  
   bracketBut.xLayoutAlignment=0.5d  
@@ -38,28 +36,21 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
     case ButtonClicked(`bracketBut`)=>if(AnswerPanelsData.currentViewController!=null )
       AnswerPanelsData.currentViewController.flipPointSelectionBracketMode()
   }
-  
-  def setFocus(): Unit = {  }  
-  
-  
-  override def loadParamAnswer(answerDesc:AnswerDefinition) = {
+
+  override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
   	super.loadParamAnswer(answerDesc)
-  	active=true  
-  	if(answerDesc.constraint=="SelectPoints"&& AnswerPanelsData.currentViewController!=null) {	  
-	  	AnswerPanelsData.currentViewController.askForPointSelection(this)  
-	  	//selectModel=AnswerPanelsData.currentViewController.pointSelectModel
-	  } 	  		
+  	active=true
+    if (answerDesc.constraint == "SelectPoints" && AnswerPanelsData.currentViewController != null)
+      AnswerPanelsData.currentViewController.askForPointSelection(this)
   }
-  
-  
-  override def reset()= {  	
+
+  override def reset(): Unit = {
   	super.reset()
   	bracketBut.selected=false
   	if(active) {  		
   		active=false
   		if(AnswerPanelsData.currentViewController!=null) 
   			AnswerPanelsData.currentViewController.cancelModus()
-  			//selectModel.deselect()
   	}
   }
 

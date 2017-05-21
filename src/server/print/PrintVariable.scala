@@ -3,9 +3,10 @@
  */
 package server.print
 
-import definition.expression.{Expression,Constant,EMPTY_EX}
-import definition.typ.DataType
 import java.io.DataOutput
+
+import definition.expression.{Constant, EMPTY_EX, Expression}
+import definition.typ.DataType
 
 /**
  * 
@@ -17,8 +18,8 @@ class PrintVariable(val name:String) extends Expression {
 	def getType:DataType.Value=value.getType
 	
 	def getValue:Constant=value
-	
-	def createCopy():Expression=new PrintVariable(name)
+
+  //def createCopy():Expression=new PrintVariable(name)
 	
 	def getChildCount:Int=0
 	
@@ -32,12 +33,12 @@ class PrintVariable(val name:String) extends Expression {
      file.writeByte(DataType.StringTyp.id)
      file.writeUTF("PR_"+name)
 	}
-	
-	override def toString=getTerm
-	
-	def updateVariable(cx:Context)=	value=cx.getVarValue(name)	
-	
-	def encode=getTerm
+
+  override def toString: String = getTerm
+
+  def updateVariable(cx: Context): Unit = value = cx.getVarValue(name)
+
+  def encode: String = getTerm
 
 }
 

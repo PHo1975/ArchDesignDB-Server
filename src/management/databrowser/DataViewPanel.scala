@@ -3,15 +3,18 @@
  */
 package management.databrowser
 
-import scala.swing._
-import scala.swing.event._
 import javax.swing.JOptionPane
+
+import client.dataviewer.ViewConstants
+import definition.comm._
+import definition.data._
+import definition.typ.AllClasses
 import server.storage._
 import transaction.handling._
-import definition.data._
-import definition.comm._
-import definition.typ.AllClasses
 import util.StrToInt
+
+import scala.swing._
+import scala.swing.event._
 
 /** Panel to show the Data of a certain class
  * 
@@ -40,18 +43,16 @@ object DataViewPanel extends BorderPanel
 		model=RefLinksTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
-	
-	val collFuncTable=new Table()
-	{
+
+  val collFuncTable = new Table() {
 		model=CollFuncTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
-	
 
-	add (new BorderPanel() // left rail
-	{
+
+  add(new BorderPanel() { // left rail
 		preferredSize=new Dimension(190,200)
-		add (new Label("Index-Table"),BorderPanel.Position.North)
+    add(ViewConstants.label("Index-Table"), BorderPanel.Position.North)
 		add (new ScrollPane()
 		{
 			viewportView=ixTable 
@@ -81,7 +82,7 @@ object DataViewPanel extends BorderPanel
 
 	add (new BorderPanel(){ // center rail
 		add (new BorderPanel() {
-			add (new Label("Instance view"),BorderPanel.Position.North)
+      add(ViewConstants.label("Instance view"), BorderPanel.Position.North)
 		  add (new ScrollPane(){
 		  	viewportView= fieldTable
 		  	preferredSize=new Dimension(200,200)
@@ -90,7 +91,7 @@ object DataViewPanel extends BorderPanel
 		add (new BorderPanel(){
 			//preferredSize=new Dimension(200,300)
       add(new BorderPanel(){
-        add (new Label("Property Data"),BorderPanel.Position.North)
+        add(ViewConstants.label("Property Data"), BorderPanel.Position.North)
         add (new ScrollPane(){
           viewportView=propTable
           preferredSize=new Dimension(200,150)
@@ -98,12 +99,12 @@ object DataViewPanel extends BorderPanel
       },BorderPanel.Position.North)
 			add (new BorderPanel(){
 				preferredSize=new Dimension(200,150)
-				add (new Label("CollFunc Data"),BorderPanel.Position.North)
+        add(ViewConstants.label("CollFunc Data"), BorderPanel.Position.North)
 				add (new ScrollPane(){
 					viewportView=collFuncTable
 					preferredSize=new Dimension(200,100)
 				},BorderPanel.Position.Center)
-        add(new Label("Ref"),BorderPanel.Position.South)
+        add(ViewConstants.label("Ref"), BorderPanel.Position.South)
 			},BorderPanel.Position.Center)
 			add(new ScrollPane(){
 					viewportView=refTable
@@ -114,9 +115,8 @@ object DataViewPanel extends BorderPanel
 		
 	},BorderPanel.Position.Center)
 
-	
-	def openInstance() =
-	{		
+
+  def openInstance(): Unit = {
 		//System.out.println("openBut "+ixTable.selection.rows)
 		if(ixTable.selection.rows.nonEmpty)
 		{			
@@ -137,8 +137,8 @@ object DataViewPanel extends BorderPanel
 			} 
 		}
 	}
-	
-	def createInstance() =	{
+
+  def createInstance(): Unit = {
 	  val parentRefArray=JOptionPane.showInputDialog(peer,"Parent Reference like '5,40' or empty for None:") match {	    
 	    case Reference(ref)=>
 				val theClass=AllClasses.get.getClassByID(ref.typ)
@@ -153,13 +153,13 @@ object DataViewPanel extends BorderPanel
 	  
 		TransactionManager.doTransaction(0,ClientCommands.createInstance.id.toShort,Reference(0,0),false,
 			InstFieldTableModel.theClass.id,{
-		  val inst=TransactionManager.tryCreateInstance(InstFieldTableModel.theClass.id, parentRefArray,true)
+        TransactionManager.tryCreateInstance(InstFieldTableModel.theClass.id, parentRefArray, true)
 		  //TransactionManager.tryWriteInstanceData(inst)	
 		}		)
-		IndexTableModel.readTheList
+    IndexTableModel.readTheList()
 	}
-	
-	def deleteInstance() =	{
+
+  def deleteInstance(): Unit = {
 		if(ixTable.selection.rows.nonEmpty){
 			val ix:Int= ixTable.selection.rows.head
 			val inst:Int=IndexTableModel.ixList(ix).inst
@@ -169,12 +169,12 @@ object DataViewPanel extends BorderPanel
 		  TransactionManager.doTransaction(0,ClientCommands.deleteInstance.id.toShort,ref,false,0,{
 			  TransactionManager.tryDeleteInstance(ref,None,None)	
 			}	  )
-		  
-		  IndexTableModel.readTheList
+
+      IndexTableModel.readTheList()
 		}
 	}
-	
-	def checkCollData() =	{
+
+  def checkCollData(): Unit = {
 		if(ixTable.selection.rows.nonEmpty) {
 			val ix:Int= ixTable.selection.rows.head
 			val inst:Int=IndexTableModel.ixList(ix).inst
@@ -183,8 +183,8 @@ object DataViewPanel extends BorderPanel
 		  
 		}
 	}
-	
-	def restoreChildren()= {
+
+  def restoreChildren(): Unit = {
 	  if(ixTable.selection.rows.nonEmpty)
 		{			
 			val ix:Int= ixTable.selection.rows.head

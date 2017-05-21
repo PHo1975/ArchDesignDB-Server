@@ -8,9 +8,9 @@ import java.io.{DataInputStream, DataOutput}
 import definition.comm.{ClientCommands, NotificationType, ServerCommands}
 import definition.data.{InstanceData, Reference}
 import server.storage.StorageManager
+import util.Log
 
 import scala.util.control.NonFatal
-import util.Log
 
 
 trait AbstractQueryHandler{
@@ -63,8 +63,8 @@ trait AbstractQueryHandler{
 			}
 		}
 	} catch {
-    case NonFatal(e) => util.Log.e(e)
-	  case other:Throwable =>println(other);System.exit(0)
+    case NonFatal(e) => util.Log.e("Refresh subscription", e)
+    case other: Throwable => util.Log.e("Refresh subscription", other)
 	}
 
 	protected def sendQueryData(out:DataOutput,parentRef:Reference,propertyField:Byte): Unit =
@@ -184,7 +184,7 @@ trait AbstractQueryHandler{
 				Log.e(e) // filter out nonexisting instances
 				for(cRef <- childRefs;if StorageManager.instanceExists(cRef.typ, cRef.instance))
 					yield StorageManager.getInstanceData(cRef)
-			case other:Throwable =>Log.e("Fatal:"+other);println(other);System.exit(0);null
+      case other: Throwable => Log.e("Fatal:" + other); println(other); null
 		}
 		else if(childRefs.nonEmpty){
 			if(StorageManager.instanceExists(childRefs.head.typ,childRefs.head.instance)) IndexedSeq(StorageManager.getInstanceData(childRefs.head))
@@ -250,18 +250,54 @@ trait AbstractQueryHandler{
 	}
 
 
-	protected def seachRecursive(rootRef:Reference,searchTerm:String,childtyp:Int,options:Int,
-															 callBack:(List[InstanceData],InstanceData)=>Unit) : Unit = {
+  protected def searchRecursive(rootRef: Reference, searchTerm: String,
+                                callBack:(List[InstanceData],InstanceData)=>Unit) : Unit = {
+    lazy val groupedMatcher ="""-?^[0-9]{1,3}(\.[0-9]{3})+(\,[0-9]+)?$""".r
+    val doubleMatcher ="""-?(\d+[\.,]\d*|\d*[\.,]\d+|\d+)""".r
+    val checkNums = searchTerm match {
+      case doubleMatcher(_*) => true
+      case groupedMatcher(_*) => true
+      case _ => false
+    }
+    //println("Search recursive: root:"+rootRef+" term:"+searchTerm)
 
 		def loopChildren(tree:List[InstanceData])(elem:InstanceData):Unit={
-			var hit=false
-			for(v<-elem.fieldValue) if(v.toString.contains(searchTerm)) hit=true
-			if(hit) callBack(tree,elem)
-			StorageManager.forEachChild(elem.ref)(loopChildren(elem::tree))
+      //println("loop children inst:"+elem.ref+" "+elem+" tree:"+tree.mkString("|"))
+      if (elem.containsString(searchTerm, checkNums)) callBack(tree, elem)
+      StorageManager.forEachChild(elem.ref, loopChildren(elem :: tree))
 		}
 
-	  StorageManager.forEachChild(rootRef)(loopChildren(Nil))
+    StorageManager.forEachChild(rootRef, loopChildren(Nil))
 	}
+
+  private def writeInst(inst: InstanceData, out: DataOutput): Unit = {
+    inst.ref.write(out)
+    inst.writeWithChildInfo(out)
+  }
+
+  def searchForText(rootRef: Reference, text: String): Unit = ThreadPool.runInPool {
+    try {
+      searchRecursive(rootRef, text, (tree: List[InstanceData], inst: InstanceData) => {
+        userSocket.sendData(ServerCommands.sendSearchResult) { out =>
+          //println("Searchresult tree:" + tree.mkString("|") + " inst:" + inst)
+          out.writeInt(tree.size)
+          for (t <- tree.reverse) writeInst(t, out)
+          writeInst(inst, out)
+        }
+      })
+      userSocket.sendData(ServerCommands.sendSearchResult)(out => {
+        //println("search finish")
+        out.writeInt(-1)
+      })
+    }
+    catch {
+      case NonFatal(e) => Log.e("Error when search ", e)
+        userSocket.sendData(ServerCommands.sendSearchResult)(out => {
+          //println("search finish")
+          out.writeInt(-1)
+        })
+    }
+  }
 }
 
 
@@ -283,6 +319,9 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	userSocket.registerCommandHandler(ClientCommands.pathSubs_openChild )(pathSubs_openChild)
 	userSocket.registerCommandHandler(ClientCommands.pathSubs_jumpUp  )(pathSubs_jumpUp)
 	userSocket.registerCommandHandler(ClientCommands.pathSubs_changePath  )(pathSubs_changePath)
+  userSocket.registerCommandHandler(ClientCommands.searchForText)(search)
+
+
 	
 
 	private def handleQuery(in:DataInputStream) = {
@@ -362,7 +401,13 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		val subsID=in.readInt
 		val count=in.readInt
 		val pathList=for(i <-0 until count) yield Reference(in)
-		CommonSubscriptionHandler.changePath(subsID,pathList)
+    val corrList = pathList.filter(ref => StorageManager.instanceExists(ref.typ, ref.instance))
+    CommonSubscriptionHandler.changePath(subsID, corrList)
+    userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
+      out.writeInt(subsID)
+      out.writeInt(NotificationType.updateUndo.id)
+      writePathElements(out, subsID, corrList)
+    }
 	}
 	
 	private def stopSubscription(in:DataInputStream):Unit = {
@@ -376,5 +421,12 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		//System.out.println("pause Subscription "+subsID)
 		CommonSubscriptionHandler.pauseSubscription(subsID)
 	}
+
+  private def search(in: DataInputStream): Unit = {
+    val parentRef = Reference(in)
+    val searchText = in.readUTF()
+    // println("search "+parentRef+" test:"+searchText)
+    searchForText(parentRef, searchText)
+  }
 	 
 }

@@ -3,30 +3,21 @@
  */
 package client.dataviewer.sidePanel
 
-import scala.swing._
-import definition.data.Reference
-import definition.typ._
-import scala.swing.event.ButtonClicked
-import java.awt.{Color,Dimension}
-import java.awt.event.{MouseAdapter,MouseEvent}
-import client.dataviewer.TypeTableModel
-import sun.swing.table.DefaultTableCellHeaderRenderer
-import javax.swing.BorderFactory
-import definition.expression.Expression
-import client.dataviewer.MultilineEditor
-import javax.swing.table.TableCellEditor
-import client.dataviewer.ViewConstants
+import java.awt.event.{MouseAdapter, MouseEvent}
+import java.awt.{Color, Dimension}
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
+import javax.swing.table.{JTableHeader, TableCellEditor, TableCellRenderer}
+import javax.swing.{BorderFactory, ImageIcon}
+
+import client.dataviewer.{MultilineEditor, TypeTableModel, ViewConstants}
+import client.dialog.{AbstractFocusContainer, NewButtonsList, SelectEventDispatcher, SelectSender}
 import client.icons.IconManager
-import client.dialog.FocusContainer
-import client.dialog.SelectSender
-import javax.swing.event.ListSelectionListener
-import client.dialog.AbstractFocusContainer
-import javax.swing.event.ListSelectionEvent
-import definition.data.EMPTY_REFERENCE
-import definition.data.EMPTY_OWNERREF
-import definition.data.OwnerReference
-import client.dialog.NewButtonsList
-import client.dialog.SelectEventDispatcher
+import definition.data.{EMPTY_OWNERREF, OwnerReference, Reference}
+import definition.expression.Expression
+import definition.typ._
+
+import scala.swing._
+import scala.swing.event.ButtonClicked
 
 /** Controller for XTab SidePanel
  * 
@@ -48,16 +39,19 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	class LineComponent(align:Double) extends Component{
       border=BorderFactory.createLineBorder(Color.GRAY)
       yLayoutAlignment=align
+		xLayoutAlignment = 0d
       minimumSize=new Dimension(2,1)
       preferredSize=minimumSize
+		maximumSize = new Dimension(2, Short.MaxValue)
     }
 	
 	var dropTransferHandler=new XTabHeaderTransferHandler(XTabSidePanelController.this)	
 		
 	val rightDropComp=new Panel {
-		maximumSize=new Dimension(Short.MaxValue,Short.MaxValue)
+		maximumSize = new Dimension(closeBut.preferredSize.width, Short.MaxValue)
 		preferredSize=new Dimension(closeBut.preferredSize.width/*+15*/,10)
-		yLayoutAlignment=0d		
+		yLayoutAlignment = 0d
+		xLayoutAlignment = 0d
 		border=BorderFactory.createEtchedBorder()
 		peer.setTransferHandler(dropTransferHandler)
 	}
@@ -108,12 +102,12 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	}
 	
 	val noteEditor:MultilineEditor=new MultilineEditor(table.peer,None,Some(new Dimension(220,80)))	{
-		def setEditorValue(value:Object) = value.toString
+		def setEditorValue(value: Object): String = value.toString
 	}
 	
 	
 	val instEditor:MultilineEditor=new MultilineEditor(table.peer)	{
-		def setEditorValue(value:Object) = value match {
+		def setEditorValue(value: Object): String = value match {
 		  case expr:Expression=> if(expr.getType==DataType.StringTyp) expr.toString
 				else expr.getTerm			
 		  case null=>"" 
@@ -124,8 +118,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	lazy val XTabRowType:Int=SystemSettings().systemTypes("XTabRow")
 	registerSelectListener(SelectEventDispatcher)
   registerContainerListener(NewButtonsList)
-	
-	def getDefaultHeaderRenderer=table.peer.getTableHeader.getDefaultRenderer
+
+	def getDefaultHeaderRenderer: TableCellRenderer = table.peer.getTableHeader.getDefaultRenderer
 	
 	def classFits(tableClass:AbstractObjectClass):Boolean = {
 		tableClass.inheritsFrom(XTabRowType)
@@ -137,9 +131,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	  table.font=ViewConstants.tableFont
 	  table.peer.getTableHeader().setFont(ViewConstants.smallFont)
 	}
-	
-  def parentsFits(dataModel:TypeTableModel,parentRef:Reference):Boolean = 
-  {
+
+	def parentsFits(dataModel: TypeTableModel, parentRef: Reference): Boolean = {
   	val result= AllClasses.get.getClassByID(parentRef.typ).inheritsFrom(XTabRowType)
   	if(result) setYDataModel(dataModel)  	
   	result
@@ -147,8 +140,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	
 
   def panelName:String="XT"
-  
-  lazy val panelIcon=IconManager.getIcon("xtab","open3")
+
+	lazy val panelIcon: Option[ImageIcon] = IconManager.getIcon("xtab", "open3")
 
   def openPanel(parentRef: Reference, tableClass:AbstractObjectClass,cont:ControllerContainer): Unit = { 
   	//println("openPanel:"+parentRef)
@@ -163,13 +156,18 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 
   
 
-  lazy val headerComp= new BoxPanel(Orientation.Horizontal ) {  	
-  	closeBut.yLayoutAlignment=1d
+  lazy val headerComp= new BoxPanel(Orientation.Horizontal ) {
+		closeBut.yLayoutAlignment = 0d
+		closeBut.xLayoutAlignment = 0d
+		xLayoutAlignment = 0d
+		yLayoutAlignment = 0d
   	peer.setTransferHandler(dropTransferHandler)
-  	val header=table.peer.getTableHeader
+		val header: JTableHeader = table.peer.getTableHeader
   	val headerWrapper= new XTabHeaderPanel(header)
+
   	headerWrapper.peer.setMaximumSize(new Dimension(tmodel.colModel.columnWidth,headerWrapper.preferredSize.height))
-  	contents+=new LineComponent(1d)
+		//headerWrapper.peer.setPreferredSize(new Dimension(tmodel.colModel.columnWidth,headerWrapper.preferredSize.height))
+		contents += new LineComponent(0d)
   	contents+=headerWrapper  	
   	contents+=closeBut
   	listenTo(closeBut)
@@ -178,8 +176,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 				container.closeSideBar()
 		}
   	table.peer.getTableHeader.addMouseListener(new MouseAdapter(){
-		override def mouseClicked(ev:MouseEvent) = {
-			var x=ev.getPoint.x
+			override def mouseClicked(ev: MouseEvent): Unit = {
+				val x = ev.getPoint.x
 			val colMod=tmodel.colModel.colModel
 			val col=colMod.getColumnIndexAtX(x)
 			var offset=0
@@ -195,6 +193,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
   }
 
   lazy val mainComp= new BoxPanel(Orientation.Horizontal ) {
+		xLayoutAlignment = 0d
+		yLayoutAlignment = 0d
     contents+=new LineComponent(0d)
   	contents+=new XTabMainPanel(table)  	
   	contents+=rightDropComp
@@ -208,8 +208,8 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
   // *************FocusContainer Interface
   
   def containerName:String="Preisspiegel"
-  
-  def containerRef=tmodel.getParentRef
+
+	def containerRef: Option[Reference] = tmodel.getParentRef
   
   def requestFocus():Unit=table.requestFocus()
   

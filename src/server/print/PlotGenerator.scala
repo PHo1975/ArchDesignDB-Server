@@ -110,7 +110,7 @@ class PlotGenerator extends CustomGenerator {
              val hatch = data.fieldValue(6).toInt
              val startPoint = data.fieldValue(7).toVector
              val angle = data.fieldValue(8).toDouble
-             val name = data.fieldValue(9).getValue().toString
+             val name = data.fieldValue(9).getValue.toString
              //System.out.println("create Area "+name)
              PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle, name)

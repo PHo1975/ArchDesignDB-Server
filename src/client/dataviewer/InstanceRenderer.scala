@@ -3,32 +3,30 @@
  */
 package client.dataviewer
 
-import java.util.Date
-
-import client.dialog.DialogManager
-import definition.typ._
-import definition.expression._
-
-import scala.swing._
 import java.awt.Color
+import javax.swing.border.Border
 import javax.swing.{JLabel, UIManager}
 
+import definition.expression._
+import definition.typ._
 import util.{JavaUtils, Log}
 
+import scala.swing._
 import scala.util.control.NonFatal
 
 
 class RendererLabel extends Label {  
   override lazy val peer: JLabel = 
     new JLabel("", null, Alignment.Left.id) with SuperMixin {
-		override def validate()= {}
-		override def invalidate() = {}
+			override def validate(): Unit = {}
+
+			override def invalidate(): Unit = {}
 	}
-  
-  val nofocusBorder=UIManager.getBorder("Table.cellNoFocusBorder")
-	val focusBorder=UIManager.getBorder("Table.focusCellHighlightBorder")
-	val focusForeground = UIManager.getColor("Table.focusCellForeground")
-  val focusBackground = UIManager.getColor("Table.focusCellBackground")
+
+	val nofocusBorder: Border = UIManager.getBorder("Table.cellNoFocusBorder")
+	val focusBorder: Border = UIManager.getBorder("Table.focusCellHighlightBorder")
+	val focusForeground: Color = UIManager.getColor("Table.focusCellForeground")
+	val focusBackground: Color = UIManager.getColor("Table.focusCellBackground")
 
 }
 
@@ -120,6 +118,7 @@ class InstanceRenderer(theClass:AbstractObjectClass) extends RendererLabel {
 
 object InstanceRenderer {	
 	val alternateColor=new Color(250,251,254)
-	val emptyColor=DialogManager.leftPanelColor//Color.lightGray.brighter()
+	val emptyColor: Color = ViewConstants.leftPanelColor
+	//Color.lightGray.brighter()
 	val linkColor=new Color(0,150,0)
 }

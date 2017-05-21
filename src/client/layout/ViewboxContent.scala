@@ -39,16 +39,16 @@ trait ViewboxContent extends Component {
 
 case class ViewboxContentType(id:Int, name:String, buttonText:String,tooltipText:String, factory:()=>ViewboxContent)
 
-object ViewboxContentTypeList {	
-	val list=ArrayBuffer[ViewboxContentType]()
-	
-	def addType(newType:ViewboxContentType)= {
+object ViewboxContentTypeList {
+  val list: ArrayBuffer[ViewboxContentType] = ArrayBuffer[ViewboxContentType]()
+
+  def addType(newType: ViewboxContentType): Unit = {
 		list +=newType
 	}
-	
-	def getType(typeName:String)= {
+
+  def getType(typeName: String): Option[ViewboxContentType] =
 	  list.find(_.name==typeName)
-	}
-	
-	def size=list.size
+
+
+  def size: Int = list.size
 }

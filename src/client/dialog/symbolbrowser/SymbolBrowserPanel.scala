@@ -1,42 +1,27 @@
 package client.dialog.symbolbrowser
 
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import scala.swing.Label
-import scala.swing.ScrollPane
-import scala.swing.Swing
-import scala.swing.Button
-import scala.swing.event.ButtonClicked
-import client.dialog.DialogManager
-import definition.expression.StringConstant
-import definition.typ.{CustomPanel, AnswerDefinition, DataType}
-import client.model.PathModel
-import util.MyListView
-import definition.data.InstanceData
-import client.model.PathControllable
-import definition.data.Reference
-import client.model.PathController
-import client.comm.ListDataModel
-import scala.swing.event.ListSelectionChanged
-import client.model.PathLineLabel
-import client.model.AdaptedScroller
-import javax.swing.JList
-import definition.expression.ObjectReference
-import client.comm.InstanceDataListModel
-import client.graphicsView.symbol.SymbolStamp
 import java.awt.Dimension
-import scala.swing.TextField
-import scala.swing.event.ButtonClicked
-import client.comm.ClientQueryManager
-import definition.data.OwnerReference
+
+import client.comm.{ClientQueryManager, InstanceDataListModel, ListDataModel}
+import client.dataviewer.ViewConstants
+import client.dialog.DialogManager
+import client.graphicsView.symbol.SymbolStamp
+import client.model._
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{ObjectReference, StringConstant}
+import definition.typ.CustomPanel
+import util.MyListView
+
+import scala.swing.{BoxPanel, Button, Label, Orientation, ScrollPane, Swing, TextField}
+import scala.swing.event.{ButtonClicked, ListSelectionChanged}
 
 
 class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel with PathControllable {
-  
-  val folderLab=new Label("Symbol-Ordner:")  
+
+  val folderLab: Label = ViewConstants.label("Symbol-Ordner:")
   
   override var name="Neues Symbol absetzen"
-  val symbolLab=new Label("Symbole:") 
+  val symbolLab: Label = ViewConstants.label("Symbole:")
   val pathModel=new PathModel
   val pathList=new MyListView[InstanceData]()
   val folderList=new MyListView[InstanceData]()
@@ -50,6 +35,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   val symbolList=new MyListView[SymbolStamp]()  
   val symbolScroller=new ScrollPane{
     viewportView=symbolList
+    preferredSize = new Dimension(ViewConstants.sidePanelWidth, 800)
   }
   var folderSelfSelected=false
   var symbolSelfSelected=false
@@ -99,7 +85,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
         if(a!=null) {component.setStyle(a);} else component.setEmpty()    }
   }
   contents+=Swing.VStrut(10)+=folderLab+=pathScroller+=pathLineLabel+=Swing.VStrut(2)+=folderScroller +=Swing.VStrut(10)+=
-    symbolLab+=symbolScroller+=createStampPanel
+    symbolLab += symbolScroller += createStampPanel += Swing.VGlue
   for(c<-contents) {c.xLayoutAlignment=0.5d}
   listenTo(folderList.selection)
   symbolList.listenTo(symbolList.selection)
@@ -115,14 +101,16 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
       if(!live&& !range.isEmpty&& !folderSelfSelected && folderList.selection.indices.nonEmpty)
         pathController.addPathElement(folderModel.theList(folderList.selection.indices.head).ref)       
   }
-  
-  def open()={
+
+  def open(): Unit = {
+    println("open " + Thread.currentThread() + " loaded:" + loaded + " pr:" + currentFolder)
     //println("open createStamp:"+createStampMode+" loaded:"+loaded)
     symbolScroller.visible= !createStampMode
     symbolLab.visible= !createStampMode
     createStampPanel.visible=createStampMode
     symbolList.peer.clearSelection()  
     name=if(createStampMode)"Symbol erstellen" else "Neues Symbol absetzen"
+    peer.invalidate()
     revalidate()
     if(loaded){
       for(pr<-currentFolder) 
@@ -131,11 +119,12 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
       pathController.loadPath(Seq(sr.ref),()=> {  loaded=true })
     }
   }
-  def setFocus() = {    
+
+  def setFocus(): Unit = {
     
   }
-  
-  def shutDown() = {
+
+  def shutDown(): Unit = {
     //pathLineLabel.shutDown()
     //pathModel.shutDown()
     //folderModel.shutDown()
@@ -143,9 +132,9 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
     symbolSelfSelected=false
     folderEdit.text=""
   }
-  
-  def openData(parentRef:Reference,selectRef:Option[Reference],indent:Int,doneListener:Option[()=>Unit])= {
-    //println("folderList open Data "+parentRef+" indent:"+indent+ "sel:"+selectRef)
+
+  def openData(parentRef: Reference, selectRef: Option[Reference], indent: Int, doneListener: Option[() => Unit]): Unit = {
+    println("folderList open Data " + parentRef + " indent:" + indent + "sel:" + selectRef)
     pathLineLabel.shutDown()
     currentFolder=Some(parentRef)
     lastIndent=indent
@@ -155,27 +144,14 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
     pathLineLabel.load(parentRef, indent)        
     folderModel.load(parentRef, 1,()=>{      
       folderSelfSelected=false
-      /*selectRef match {
-        case Some(sr)=>
-        folderModel.theList.indexWhere(_.ref==sr) match {
-          case -1 =>
-          case ix =>{
-            folderSelfSelected=true
-            folderList.selectIndices(ix)
-            folderSelfSelected=false
-          }
-        }
-        case None=>*/ folderList.peer.clearSelection()
-      //}
-      //loaded=true
       revalidate()  
       for(d<-doneListener)d()      
     })    
     folderOpen(parentRef)
     revalidate()
   }
-  
-  def folderOpen(parentRef:Reference)= {
+
+  def folderOpen(parentRef: Reference): Unit = {
     if(createStampMode) {
       
     } else symbolModel.load(parentRef,1,()=>{

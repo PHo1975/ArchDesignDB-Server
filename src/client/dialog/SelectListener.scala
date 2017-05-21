@@ -6,17 +6,21 @@ package client.dialog
 import definition.data._
 import definition.typ.SelectGroup
 
+import scala.collection.mutable
+
 
 /** a  component that sends out selection messages 
  * 
  */
 
-trait SelectSender {	
-	val selectListeners=collection.mutable.LinkedHashSet[SelectListener]()
+trait SelectSender {
+  protected val selectListeners: mutable.LinkedHashSet[SelectListener] = collection.mutable.LinkedHashSet[SelectListener]()
 	
 	def deselect(notify:Boolean):Unit
-	
-	def registerSelectListener(listener:SelectListener) =	selectListeners+=listener	
+
+  def registerSelectListener(listener: SelectListener): Unit = selectListeners += listener
+
+  def unregisterSelectListener(listener: SelectListener): Unit = selectListeners -= listener
 	
 	def notifySelectListeners[T <: Referencable](selection:Iterable[SelectGroup[T]]):Unit= 
 	  for(s<-selectListeners) 

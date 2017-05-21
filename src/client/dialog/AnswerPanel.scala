@@ -3,15 +3,16 @@
  */
 package client.dialog
 
-import definition.typ._
-import definition.expression._
-import util.{Log, StrToDouble, StrToInt}
-import scala.swing._
-import scala.swing.event._
-import java.awt.Font
 import javax.swing.BorderFactory
+
 import client.comm.{ClientQueryManager, KeyStrokeManager}
 import client.dataviewer.ViewConstants
+import definition.expression._
+import definition.typ._
+import util.Log
+
+import scala.swing._
+import scala.swing.event._
 import scala.util.control.NonFatal
 
 /** abstract superclass for all answer panels
@@ -20,48 +21,44 @@ import scala.util.control.NonFatal
 abstract class AnswerPanel extends BoxPanel (Orientation.Vertical) {
 	val infoLabel=new MultiLineLabel()
 	opaque=true
-	background=DialogManager.leftPanelColor
+  background = ViewConstants.leftPanelColor
 	infoLabel.font=ViewConstants.labelFont
 	infoLabel.border=BorderFactory.createEmptyBorder(2,3,2,3)
 	infoLabel.xLayoutAlignment=0.5d
 
-	/*val infoScroller=new ScrollPane{
-		opaque=false
-		viewportView=infoLabel
-		//preferredSize=new Dimension(DialogManager.sidePanelWidth-10,27)
-		//maximumSize=new Dimension(sidePanelWidth,60)
-		peer.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
-		xLayoutAlignment=0.5d
-	}*/
 	var func: (AnswerDefinition,Constant)=>Unit = _
 	var ansParm:AnswerDefinition = _
-	
-	def loadParamAnswer(answerDesc:AnswerDefinition) = {
+
+  def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
 		ansParm=answerDesc
 		//reset()
 		infoLabel.text=answerDesc.name
 		infoLabel.visible=answerDesc.name.length>0
 	}
-	def registerAnswerCallBack(nfunc: (AnswerDefinition,Constant)=>Unit) = func=nfunc
-	def reset()={}
-	def setFocus(): Unit
+
+  def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = func = nfunc
+
+  def reset(): Unit = {}
+
+  // returns true if the focus was set
+  def setFocus(): Boolean = false
 	
 
 	def removeLastFocusListener(c:Component):Unit= {
 	  val fl=c.peer.getFocusListeners()
-	  if(fl.length>0) c.peer.removeFocusListener(fl(fl.length-1))
+    if (fl.nonEmpty) c.peer.removeFocusListener(fl(fl.length - 1))
 	}
 
-	def printError(emessage:String)= {}
+  //def printError(emessage:String): Unit = {}
 
 	def parse(text:String):Constant= try {
 		StringParser.parse( text) match {
-			case e:ParserError=>printError(e.message); new StringConstant(text)
+      case e: ParserError => ClientQueryManager.printErrorMessage(e.message); StringConstant(text)
 			case ex:Expression=>ex.getValue
 		}
 	}
 	catch {
-		case NonFatal(e) =>Log.e(e); new StringConstant(text)
+    case NonFatal(e) => Log.e(e); StringConstant(text)
 	}
 		
 }
@@ -77,19 +74,19 @@ class BoolAnswerPanel  extends AnswerPanel {
 	}
 	listenTo(yesBut,noBut)	
 	reactions+= {
-		case ButtonClicked(e) => func(ansParm,new BoolConstant(e.text=="Ja"))															
+    case ButtonClicked(e) => func(ansParm, BoolConstant(e.text == "Ja"))
 	}
-	def setFocus()={}
 }
+
 
 class OptionAnswerPanel extends AnswerPanel {
   var buttons:Seq[StrokableButton]=Nil
   
   reactions += {
-		  case b:ButtonClicked=> func(ansParm,new StringConstant( b.source.text)); visible=false
+    case b: ButtonClicked => func(ansParm, StringConstant(b.source.text)); visible = false
 	}
-  
-  override def loadParamAnswer(answerDesc:AnswerDefinition)= {
+
+  override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
     visible=true
 		super.loadParamAnswer(answerDesc)
 		contents +=infoLabel+= Swing.RigidBox(new Dimension(0,10))
@@ -101,55 +98,62 @@ class OptionAnswerPanel extends AnswerPanel {
 		
 		//println("option panel buttons:"+buttons.map(_.text).mkString(" | "))
 		contents++=buttons
-		listenTo(buttons:_*)		
+    listenTo(buttons: _*)
+    contents += Swing.VGlue
 	}
-  
-  def setFocus()={}
-  override def reset()={ contents.clear()}
+
+  override def reset(): Unit = {contents.clear()}
 }
+
 
 class StringAnswerPanel extends  AnswerPanel {	
 	val textField=new TextField("")
   var checkNoNull=false
 
-
-
-	override def loadParamAnswer(answerDesc:AnswerDefinition)= {
+  override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
 		super.loadParamAnswer(answerDesc)
-		textField.requestFocusInWindow()
+    //textField.requestFocusInWindow()
+    textField.text = ""
     checkNoNull= answerDesc.constraint==AnswerDefinition.NonNullConstraint
 	}
 	contents +=infoLabel+= Swing.RigidBox(new Dimension(0,10))+=textField
-	maximumSize=new Dimension(Short.MaxValue,70)
+  //maximumSize=new Dimension(Short.MaxValue,70)
 
-  def doCheckNoNull()=textField.text.trim.length>0
+  def doCheckNoNull(): Boolean = textField.text.trim.length > 0
 
 	listenTo(textField.keys)	
 	reactions+= {
 		case KeyPressed(_, Key.Enter, _, _) =>
       if(checkNoNull && doCheckNoNull || !checkNoNull) editDone()
-	}	
-	def editDone() = {
+    case KeyPressed(_, Key.Escape, _, _) => DialogManager.reset()
+	}
+
+  def editDone(): Unit = {
 		//System.out.println("Edit done "+this.getClass)	  
 		func(ansParm,parse(textField.text))
+    reset()
 	}
-	override def reset()= textField.text=""
-	def setFocus()= textField.requestFocusInWindow()
+
+  override def reset(): Unit = textField.text = ""
+
+  override def setFocus(): Boolean = {
+    textField.requestFocusInWindow()
+    true
+  }
 }
 
 
 
 class IntAnswerPanel extends  StringAnswerPanel {
-	override def printError(emessage:String)=ClientQueryManager.printErrorMessage(emessage)
-    override def doCheckNoNull=super.doCheckNoNull && (parse(textField.text).convertTo(DataType.IntTyp).toInt!=0)
+  override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.IntTyp).toInt != 0)
 
-		override def editDone() = func(ansParm,parse(textField.text).convertTo(DataType.IntTyp))					
+  override def editDone(): Unit = {func(ansParm, parse(textField.text).convertTo(DataType.IntTyp)); reset()}
 }
 
 
 class DoubleAnswerPanel extends  StringAnswerPanel {
-	override def printError(emessage:String)=ClientQueryManager.printErrorMessage(emessage)
-  override def doCheckNoNull=super.doCheckNoNull && (parse(textField.text).convertTo(DataType.DoubleTyp).toDouble!=0d)
-	override def editDone()= func(ansParm,parse(textField.text).convertTo(DataType.DoubleTyp))
+  override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.DoubleTyp).toDouble != 0d)
+
+  override def editDone(): Unit = {func(ansParm, parse(textField.text).convertTo(DataType.DoubleTyp)); reset()}
 }	
 

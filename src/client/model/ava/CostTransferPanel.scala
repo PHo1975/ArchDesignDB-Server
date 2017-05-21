@@ -1,21 +1,22 @@
 package client.model.ava
 
 import client.comm.ClientQueryManager
-import client.dialog.{DialogManager, PanelPart, ActiveTextField}
-import client.model.AdaptedScroller
-import definition.data.{InstanceData, Reference, Referencable}
-import definition.expression.{StringConstant, DoubleConstant, ObjectReference}
-import definition.typ.{DataType, AnswerDefinition, SelectGroup, CustomPanel}
-import util.{StrToDouble, MyListView}
+import client.dataviewer.ViewConstants
+import client.dialog.{DialogManager, PanelPart}
+import definition.data.{InstanceData, Referencable, Reference}
+import definition.expression.{DoubleConstant, ObjectReference, StringConstant}
+import definition.typ.{AnswerDefinition, CustomPanel, DataType, SelectGroup}
 import util.MyListView.IntervalMode
+import util.{MyListView, StrToDouble}
 
 import scala.swing._
 import scala.swing.event.ButtonClicked
 
 
 class BieterData (val psColData:InstanceData){
-  val headerObject=ClientQueryManager.queryInstance(psColData.ref,1).headOption
-  def bieterName=headerObject match {
+  val headerObject: Option[InstanceData] = ClientQueryManager.queryInstance(psColData.ref, 1).headOption
+
+  def bieterName: String = headerObject match {
     case Some(inst)=> inst.toString
     case None => "nicht zugeordnet"
   }
@@ -24,7 +25,7 @@ class BieterData (val psColData:InstanceData){
 }
 
 /**
- * Created by Kathi on 12.02.2015.
+ * Created by Peter on 12.02.2015.
  */
 class CostTransferPanel extends BoxPanel(Orientation.Vertical) with CustomPanel {
   println("create panel ")
@@ -36,7 +37,7 @@ class CostTransferPanel extends BoxPanel(Orientation.Vertical) with CustomPanel 
   bieterListView.selection.intervalMode=IntervalMode.Single
   val bieterScroller=new ScrollPane {
     viewportView=bieterListView
-    preferredSize=new Dimension(DialogManager.sidePanelWidth,100)
+    preferredSize = new Dimension(ViewConstants.sidePanelWidth, 100)
   }
   val nachlassField=new TextField
   val skontoField=new TextField
@@ -53,9 +54,9 @@ class CostTransferPanel extends BoxPanel(Orientation.Vertical) with CustomPanel 
     case ButtonClicked(`vergabeBut`)=>if(bieterListView.selection.items.size==1) {
       DialogManager.addAnswer(CostTransferPanel.answer1,
         new ObjectReference(bieterListView.selection.items.get(0).psColData.ref))
-      DialogManager.addAnswer(CostTransferPanel.answer2,new StringConstant(nachlassField.text))
+      DialogManager.addAnswer(CostTransferPanel.answer2, StringConstant(nachlassField.text))
       DialogManager.addAnswer(CostTransferPanel.answer2,dcFromText(skontoField.text.replace("%","")))
-      DialogManager.answerGiven(CostTransferPanel.answer2,new StringConstant(dateField.text))
+      DialogManager.answerGiven(CostTransferPanel.answer2, StringConstant(dateField.text))
     }
   }
 

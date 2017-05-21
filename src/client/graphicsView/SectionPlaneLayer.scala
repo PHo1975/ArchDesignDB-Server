@@ -1,10 +1,11 @@
 package client.graphicsView
 
-import definition.data.{Reference,InstanceData,OwnerReference}
-import definition.expression.{VectorConstant,Polygon}
-import java.awt.geom.{Rectangle2D,Area}
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.VectorConstant
+
+import scala.collection.mutable
 import scala.swing.Swing
 
 trait SimpleLoader[A <: GraphElem]{
@@ -16,11 +17,18 @@ trait SimpleLoader[A <: GraphElem]{
   var listenerVar:Option[()=>Unit]=None
   
   def createElement(inst:InstanceData):Option[A]
-  
-  def updateElements(zoomAll:Boolean)={
-    calcBounds()    
-    controller.layerChanged(this,zoomAll)														
-    controller.graphElementsChanged(this,elemList,true)
+
+  def updateElements(zoomAll: Boolean): Unit = {
+    calcBounds()
+    //controller.layerChanged(this,zoomAll)
+
+    controller.graphElementsChanged(this, elemList)
+  }
+
+  def updateElement(el: A, zoomAll: Boolean): Unit = {
+    //calcBounds()
+    //controller.layerChanged(this,zoomAll)
+    controller.graphElementsChanged(this, List(el))
   }
   
   def load(listener:Option[()=>Unit]=None,alwaysNotify:Boolean): Unit = {    
@@ -43,18 +51,21 @@ trait SimpleLoader[A <: GraphElem]{
               createElement(data.head) match {
                 case Some(el)=>
                   elemList=elemList :+ el
-                  controller.graphElemAdded(this,el)
+                  if (visible) controller.graphElemAdded(this, el)
                 case None =>
               }
             case NotificationType.fieldChanged =>
               val sref=data.head.ref
+              val nElement = createElement(data.head)
+              //println("Lay field changed "+nElement)
               elemList=elemList.map(el =>if(el.ref==sref){
-                createElement(data.head) match {
+                nElement match {
                   case Some(crel)=>crel
                   case None =>el
                 }
               }  else el)
-              updateElements(false)
+              if (visible) for (ne <- nElement)
+                updateElement(ne, false)
             case NotificationType.instanceRemoved =>
               val searchRef=data.head.ref
               elemList.find(searchRef==_.ref) match {
@@ -92,11 +103,12 @@ class SectionPlaneLayer(ncontroller:GraphViewController,nref:Reference,val name:
   var scale=1 
   var ownerRef:OwnerReference= new OwnerReference(2,nref)  
   def id="Sect"
-  val pointMap=collection.mutable.HashMap[VectorConstant,List[LineConnection]]()
+
+  val pointMap: mutable.HashMap[VectorConstant, List[LineConnection]] = collection.mutable.HashMap[VectorConstant, List[LineConnection]]()
   
-  CompositionHandler.registerListener(compositionsUpdated)  
-  
-  override def updateElements(zoomAll:Boolean)= {
+  CompositionHandler.registerListener(compositionsUpdated)
+
+  override def updateElements(zoomAll: Boolean): Unit = {
     connectLines()    
     super.updateElements(zoomAll)
     //controller.canvas.repaint

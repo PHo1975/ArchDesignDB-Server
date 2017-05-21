@@ -3,11 +3,12 @@
  */
 package client.dataviewer.sidePanel
 import java.awt.Color
-import javax.swing.BorderFactory
+import javax.swing.border.CompoundBorder
 import javax.swing.table.AbstractTableModel
+import javax.swing.{BorderFactory, ImageIcon}
 
 import client.comm.{ClientObjectClass, ClientQueryManager}
-import client.dataviewer.{EnumRenderer, InstanceRenderer, RendererLabel, TableHeaderMap}
+import client.dataviewer._
 import client.icons.IconManager
 import definition.data.{OwnerReference, Reference}
 import definition.expression.{EMPTY_EX, Expression}
@@ -22,32 +23,32 @@ import scala.swing.Table
 class XTabSidePanelModel(val controller:XTabSidePanelController) extends AbstractTableModel {
   
 	class Structure(val parentRef:Reference) {
-		val pathToTopParent=findTopParent(parentRef)
-		val topParent=pathToTopParent.last
+    val pathToTopParent: List[Reference] = findTopParent(parentRef)
+    val topParent: Reference = pathToTopParent.last
 		val Some((topColumnClass,topParentColPropField))=propFieldInheritsFromType(topParent.typ,XTabColType)
-		val Some((dataCellType,dataCellPropField))=propFieldInheritsFromType(controller.ydataModel.typ,XTabCellType)	
-		val dataCellClass=AllClasses.get.getClassByID(dataCellType).asInstanceOf[ClientObjectClass]
+		val Some((dataCellType,dataCellPropField))=propFieldInheritsFromType(controller.ydataModel.typ,XTabCellType)
+    val dataCellClass: ClientObjectClass = AllClasses.get.getClassByID(dataCellType).asInstanceOf[ClientObjectClass]
 		val dataCellColumns:Seq[AbstractFieldDefinition]= dataCellClass.fields
-		val isNoteColumn=dataCellColumns.map(_.name.contains("Note_"))
-		val numDataCellFields=dataCellColumns.size
-		val yParent=pathToTopParent.head		
+    val isNoteColumn: Seq[Boolean] = dataCellColumns.map(_.name.contains("Note_"))
+    val numDataCellFields: Int = dataCellColumns.size
+    val yParent: Reference = pathToTopParent.head
 		val Some((subHeaderType,yParentPropField))=propFieldInheritsFromType(yParent.typ,XTabCellType)    
     val Some((_,dataCellPropFieldInSubHeaders))=propFieldInheritsFromType(subHeaderType,XTabCellType)
-    val actualColumnModel=TableHeaderMap.getColumnModel(dataCellType)
-    
-    lazy val subHeaderClass=AllClasses.get.getClassByID(subHeaderType)
+    val actualColumnModel: MyColumnModel = TableHeaderMap.getColumnModel(dataCellType)
+
+    lazy val subHeaderClass: AbstractObjectClass = AllClasses.get.getClassByID(subHeaderType)
 		val instRenderer=new InstanceRenderer(dataCellClass)
 		lazy val noteRenderer=new NoteRenderer
 		val itcr = new Table.AbstractRenderer[Expression, InstanceRenderer](instRenderer) {
-			def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int) =     
+      def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int): Unit =
 				component.config(t,sel,foc,o,row,col)
 		}
 		lazy val ntcr = new Table.AbstractRenderer[Expression, NoteRenderer](noteRenderer) {
-			def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int) =     
+      def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int): Unit =
 				component.config(t,sel,foc,o,row,col)
 		}
 		lazy val etcr = new Table.AbstractRenderer[(String, Int), EnumRenderer](new EnumRenderer) {
-			def configure(t: Table, sel: Boolean, foc: Boolean, o:(String, Int), row: Int, col: Int) = {
+      def configure(t: Table, sel: Boolean, foc: Boolean, o: (String, Int), row: Int, col: Int): Unit = {
 				component.prepare(t,sel,o,row)
     }
 		}
@@ -92,26 +93,25 @@ class XTabSidePanelModel(val controller:XTabSidePanelController) extends Abstrac
 		}			
 		None
 	}
-	
-		
-	
-	def initData(parentRef:Reference) = {
+
+
+  def initData(parentRef: Reference): Unit = {
 	  val st=new Structure(parentRef)
 		structure=Some(st)				
 		colModel.loadColumns(st.topParent,st.topParentColPropField.toByte)
 	}
-	
-	def shutDown()= {
+
+  def shutDown(): Unit = {
 	  colModel.shutDown()
 	  structure=None
 	}
-	
-	def notifyRowsChanged() = {
+
+  def notifyRowsChanged(): Unit = {
 		fireTableDataChanged()
 		controller.mainComp.peer.invalidate()
 	}
-	
-	def getParentRef= structure.map(_.parentRef)
+
+  def getParentRef: Option[Reference] = structure.map(_.parentRef)
 	
 	/** @return the index of the first property field that has no allowed class and is single*/
 	def findHeaderPropField(testClass:Int):Byte = {
@@ -121,16 +121,16 @@ class XTabSidePanelModel(val controller:XTabSidePanelController) extends Abstrac
 			throw new IllegalArgumentException("FindHeaderPropField can't find fitting propfield in class "+		
 				testClass)
 		}
-	
-	def addColumn(headerRef:Reference,fromOwner:OwnerReference)= for (s<-structure){
+
+  def addColumn(headerRef: Reference, fromOwner: OwnerReference): Unit = for (s <- structure) {
 		val inst = ClientQueryManager.createInstance(s.topColumnClass,Array( new OwnerReference(s.topParentColPropField,s.topParent)))		
 		
 		val headerPropField = findHeaderPropField(s.topColumnClass)
 		//println("add column new inst:"+inst+" headerField :"+headerPropField+ " headerOBj: "+headerRef+ " fromOwner:" +fromOwner)
 		ClientQueryManager.secondUseInstances(List(headerRef), fromOwner, new OwnerReference(headerPropField,new Reference(s.topColumnClass,inst)), -1)
 	}
-	
-	def deleteColumn(ix:Int) = for (s<-structure){
+
+  def deleteColumn(ix: Int): Unit = for (s <- structure) {
 		if(getModelColIndex(ix) == s.numDataCellFields -1)
 		ClientQueryManager.deleteInstance(colModel.getColumn(ix / s.numDataCellFields).colData.ref,new OwnerReference(s.topParentColPropField,s.topParent))
 	}
@@ -138,21 +138,23 @@ class XTabSidePanelModel(val controller:XTabSidePanelController) extends Abstrac
 		
 		
 	//******************** Interface TableModel ***************************************************
-	
-	def getColumnCount= colModel.colModel.getColumnCount	
+
+  def getColumnCount: Int = colModel.colModel.getColumnCount
 	
 	/** gets the column of the Data cell field. Can be used to reverse the data cell fields
 	 * 
 	 */
-	def getModelColIndex(col:Int)=structure match {
+  def getModelColIndex(col: Int): Int = structure match {
 		case Some(s)=> s.numDataCellFields -1 -(col % s.numDataCellFields)
 		case None=>col
 	}
 	
 	override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean =  true
-	override def getColumnName(col:Int) = colModel.getColumnName(col)		
-	override def getColumnClass(col:Int):java.lang.Class[_] = classOf[String]	
-	def getRowCount=	controller.ydataModel .getRowCount
+
+  override def getColumnName(col: Int): String = colModel.getColumnName(col)
+	override def getColumnClass(col:Int):java.lang.Class[_] = classOf[String]
+
+  def getRowCount: Int = controller.ydataModel.getRowCount
 	
 	
 	def getValueAt(row:Int,col:Int):Object= structure match {
@@ -172,8 +174,8 @@ class XTabSidePanelModel(val controller:XTabSidePanelController) extends Abstrac
       }
 		case None =>EMPTY_EX
 	}
-	
-	override def setValueAt(value:Object,row:Int,col:Int) = for(s <-structure){
+
+  override def setValueAt(value: Object, row: Int, col: Int): Unit = for (s <- structure) {
 		controller.ydataModel.getRowReference(row).foreach(colModel.getColumn(col/s.numDataCellFields).
 			setCellValue(_, getModelColIndex(col).toByte,value))
 	}
@@ -181,9 +183,9 @@ class XTabSidePanelModel(val controller:XTabSidePanelController) extends Abstrac
 }
 
 class NoteRenderer extends RendererLabel {
-  val myFocusBorder=BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0,1,0,0,Color.black), focusBorder)
-  val myNoFocusBorder=BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0,1,0,0,Color.black), nofocusBorder)
-  val exIcon=IconManager.getIcon("XTab", "Exclamation")
+  val myFocusBorder: CompoundBorder = BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.black), focusBorder)
+  val myNoFocusBorder: CompoundBorder = BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.black), nofocusBorder)
+  val exIcon: Option[ImageIcon] = IconManager.getIcon("XTab", "Exclamation")
   
 	def config(t:Table, isSelected: Boolean, focused: Boolean, expression: Expression,row:Int, col: Int) :Unit= {
 		font=t.font

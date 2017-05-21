@@ -1,17 +1,18 @@
 package client.dialog
 
 import java.awt.Dimension
-import scala.swing.BoxPanel
-import scala.swing.Dialog
-import scala.swing.Orientation
-import definition.data.Named
-import scala.swing.ScrollPane
 
-class NameFieldEditor extends FieldEditor { 
-  
-  val textField:SidePanelTextArea=new SidePanelTextArea(Map(("Teilvolumen",0),("Plane",0),("RoomBox",1),("AreaPolygon",9)),this) {
+import definition.data.Named
+
+import scala.collection.Iterable
+import scala.swing.{BoxPanel, Dialog, Orientation, ScrollPane}
+
+class NameFieldEditor extends FieldEditor {
+
+  val textField: SidePanelTextArea = new SidePanelTextArea(Map(("Teilvolumen", 0), ("Plane", 0), ("RoomBox", 1), ("AreaPolygon", 9),
+    ("MeasurePolyLine", 10), ("Wohnfläche", 9)), this) {
     //println("name field ")
-  	override	def fieldChanged(newVal:String)= {
+    override def fieldChanged(newVal: String): Unit = {
   		if(dataList.size==1||( currentValue.isDefined || Dialog.showConfirmation(getPanel,"Unterschiedliche Objekte gleichzeitig umbenennen ?",
   				"Mehrere Objekte markiert",Dialog.Options.OkCancel,Dialog.Message.Question,null)==Dialog.Result.Ok ))        
   			storeValue(newVal,this)
@@ -20,7 +21,7 @@ class NameFieldEditor extends FieldEditor {
   }  
   
   val fieldComponents=Seq(textField)
-  val allowedClassNames=textField.allowedFields.map(_._1)
+  val allowedClassNames: Iterable[String] = textField.allowedFields.keys
   
   val panel=new BoxPanel(Orientation.Vertical) {
 	  opaque=false
@@ -35,8 +36,8 @@ class NameFieldEditor extends FieldEditor {
 	  //textField.preferredSize=new Dimension(40,55)
 	  xLayoutAlignment=0d
 	}
-  
-  def getPanel=panel
+
+  def getPanel: BoxPanel = panel
   
    
     

@@ -1,43 +1,28 @@
 package client.spreadsheet
 
-import scala.swing.Label
-import client.dataviewer.RendererLabel
-import scala.swing.Table
-import definition.expression.Expression
-import java.awt.Color
-import java.awt.Font
-import scala.swing.Alignment
-import definition.typ.DataType
-import definition.expression.CurrencyConstant
-import client.dataviewer.InstanceRenderer
-import java.awt.font.TextAttribute
-import definition.data.StyleService
-import javax.swing.JComponent
-import scala.swing.Component
-import javax.swing.UIManager
-import java.awt.Graphics
-import java.awt.Dimension
-import java.awt.font.TextLayout
-import java.awt.Graphics2D
-import java.awt.font.LineMetrics
-import javax.swing.BorderFactory
-import javax.swing.border.MatteBorder
+import java.awt.font.{LineMetrics, TextAttribute, TextLayout}
+import java.awt.{Color, Dimension, Font, Graphics, Graphics2D}
+import javax.swing.border.{Border, MatteBorder}
+import javax.swing.{JComponent, UIManager}
+
+import client.dataviewer.ViewConstants
 import client.graphicsView.LineStyleHandler
-import client.graphicsView.LineStyleHandler
-import client.graphicsView.ScaleModel
+import definition.expression.{CurrencyConstant, Expression}
 import util.StringUtils
-import java.awt.geom.Rectangle2D
+
+import scala.swing.{Component, Table}
 import scala.util.control.NonFatal
 
 class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component   {
   var myPrefSize:Dimension=new Dimension(10,10)
-  var lineMetrics:LineMetrics=null
+  var lineMetrics: LineMetrics = _
   override lazy val peer: JComponent = 
     new JComponent( ) with SuperMixin {
-		override def validate()= {}
-		override def invalidate() = {}
-		
-		override def paintComponent(g:Graphics) = {
+      override def validate(): Unit = {}
+
+      override def invalidate(): Unit = {}
+
+      override def paintComponent(g: Graphics): Unit = {
 		  super.paintComponent(g)
 		  val g2=g.asInstanceOf[Graphics2D]
 		  g2.setColor(background)
@@ -66,30 +51,27 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
 			  //System.out.print(" |  ho:"+horOffset+" vo:"+verOffset+" txB:"+txBounds)			  
 		  }	  
 		}
-		override def getPreferredSize=myPrefSize
+
+      override def getPreferredSize: Dimension = myPrefSize
 	}
-  
-  val nofocusBorder=UIManager.getBorder("Table.cellNoFocusBorder")
-	val focusBorder=UIManager.getBorder("Table.focusCellHighlightBorder")
-	val focusForeground = UIManager.getColor("Table.focusCellForeground")
-  val focusBackground = UIManager.getColor("Table.focusCellBackground")
+
+  val nofocusBorder: Border = UIManager.getBorder("Table.cellNoFocusBorder")
+  val focusBorder: Border = UIManager.getBorder("Table.focusCellHighlightBorder")
+  val focusForeground: Color = UIManager.getColor("Table.focusCellForeground")
+  val focusBackground: Color = UIManager.getColor("Table.focusCellBackground")
 
   var horOffset:Int=0
 	var verOffset:Int=0
-  var fontColor=Color.black
+  var fontColor: Color = Color.black
   var text:String=""
 	
   /** gets the current text for the given expression
    *   
    */  
-	def textFromExpression(expression:Expression,formats:List[SpreadSheetFormatRange]):String= {  
-	  if(expression== null || expression.isNullConstant|| !SpreadSheetFormat.boolFromFormats(formats,_.visible)) { 
-  	 ""
-  	}  	
-  	else { 		
-  		if (SpreadSheetFormat.boolFromFormats(formats,_.showFormula)) {	
-  			expression.getTerm 			
-  		}
+	def textFromExpression(expression:Expression,formats:List[SpreadSheetFormatRange]):String= {
+    if (expression == null || expression.isNullConstant || !SpreadSheetFormat.boolFromFormats(formats, _.visible)) ""
+    else {
+      if (SpreadSheetFormat.boolFromFormats(formats, _.showFormula)) expression.getTerm
   		else { // show value  		  
   			val value=expression.getValue
   			import definition.typ.DataType._
@@ -130,7 +112,7 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
 	      val prevText=textFromExpression(prevExpression,prevFormats)	      
 	      if(prevText.length>0) {
 		      val fontName=prevFormats.find(_.format.font.isDefined).flatMap(_.format.font).getOrElse(SpreadSheet.tableFont.getName)
-					val fontSize=prevFormats.find(_.format.fontSize.isDefined).flatMap(_.format.fontSize).getOrElse(SpreadSheet.tableFont.getSize().toFloat)
+          val fontSize = prevFormats.find(_.format.fontSize.isDefined).flatMap(_.format.fontSize).getOrElse(SpreadSheet.tableFont.getSize().toFloat) * ViewConstants.fontScale / 100
 					val bold=SpreadSheetFormat.boolFromFormats(prevFormats,_.bold)
 					val italic=SpreadSheetFormat.boolFromFormats(prevFormats,_.italic)
 					val underline=SpreadSheetFormat.boolFromFormats(prevFormats,_.underline)
@@ -144,7 +126,6 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
 		      val bounds=prevFont.getStringBounds(prevText,SpreadSheet.frc)
 		      val prevPrefWidth=bounds.getWidth().toInt
 		  		val currWidth=table.peer.getColumnModel().getColumn(prevCol).getWidth -1
-		  		val currHeight=table.peer.getRowHeight(row)			  		
 		      val prevHorAlign= prevFormats.find(_.format.horAlign != HorAlign.UNDEFINED).fold(HorAlign.LEFT)(_.format.horAlign)match {
 		  	    case HorAlign.LEFT=> 1
 		  	    case HorAlign.CENTER =>(currWidth-prevPrefWidth)/2
@@ -178,9 +159,9 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
         formats=nformats
         text=ntext
       }
-    } else {   
-			val fontName=formats.find(_.format.font.isDefined).flatMap(_.format.font).getOrElse(SpreadSheet.tableFont.getName)
-			val fontSize=formats.find(_.format.fontSize.isDefined).flatMap(_.format.fontSize).getOrElse(SpreadSheet.tableFont.getSize().toFloat)
+    } else {
+      val fontName = formats.find(_.format.font.isDefined).flatMap(_.format.font).getOrElse(ViewConstants.tableFont.getName)
+      val fontSize = formats.find(_.format.fontSize.isDefined).flatMap(_.format.fontSize).getOrElse(ViewConstants.tableFont.getSize().toFloat) * ViewConstants.fontScale / 100
 			val bold=SpreadSheetFormat.boolFromFormats(formats,_.bold)
 			val italic=SpreadSheetFormat.boolFromFormats(formats,_.italic)
 			val underline=SpreadSheetFormat.boolFromFormats(formats,_.underline)
@@ -236,8 +217,8 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
 
 class SpreadSheetBorder(borderWidths:Seq[Int],borderStyles:Seq[Int],focus:Boolean) extends 
 		  MatteBorder(borderWidths(1),borderWidths.head,borderWidths(3)+15,borderWidths(2),Color.black){
-  
-  override def paintBorder(c:java.awt.Component,g:java.awt.Graphics,x:Int, y:Int,width:Int,height:Int) ={
+
+  override def paintBorder(c: java.awt.Component, g: java.awt.Graphics, x: Int, y: Int, width: Int, height: Int): Unit = {
     val insets = getBorderInsets(c)
     val oldColor = g.getColor()
     val g2=g.asInstanceOf[Graphics2D]

@@ -3,24 +3,15 @@
  */
 package server.storage
 
-import java.io.ByteArrayInputStream
-import java.io.DataInputStream
-import java.io.DataOutput
-import java.io.DataOutputStream
-import java.io.File
-import java.io.RandomAccessFile
+import java.io._
 
+import definition.data.{InstanceData, Reference, TransType}
+import server.config.FSPaths
 import util.UnsyncBAInputStream
 
 import scala.Array.canBuildFrom
-
-import definition.data.InstanceData
-import definition.data.InstanceProperties
-import definition.data.Reference
-import definition.data.TransType
-import server.config.FSPaths
-
 import scala.annotation.tailrec
+import scala.collection.immutable
 
 trait RecordListener {
  def nextRecord(inst:Int,dataPos:Long,dataLen:Int,propPos:Long,propLen:Int,linkPos:Long,linkLen:Int,collPos:Long,collLen:Int): Unit
@@ -32,11 +23,11 @@ trait RecordListener {
 
 class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".idx") {
 	val fileName=new File(FSPaths.dataDir+theClass.name+extension)	
-	var theFile= new RandomAccessFile(fileName,"rwd") 
-	final val recordSize=8*4+4*5
+	var theFile= new RandomAccessFile(fileName,"rwd")
+  final val recordSize: Int = 8 * 4 + 4 * 5
 	var numRecords:Int=(theFile.length/recordSize).toInt
 	//System.out.println("Typ: "+theClass.id+" numRecords:"+numRecords)
-	var firstID= if(numRecords>0) readIxInst(0) else 0
+  var firstID: Int = if (numRecords > 0) readIxInst(0) else 0
 	var lastID:Int= if(numRecords>0) readIxInst(numRecords-1) else 0	
 	
 	var lastReadID:Int= -2	
@@ -50,9 +41,9 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	val outStream=new DataOutputStream(bufferStream)
 	for(i <-0 until 6 )	outStream.writeLong(0)
 	outStream.writeInt(0)
-	
-	val readBuffer= Array.ofDim[Byte](recordSize)
-	var bulkReadBuffer=readBuffer
+
+  val readBuffer: Array[Byte] = Array.ofDim[Byte](recordSize)
+  var bulkReadBuffer: Array[Byte] = readBuffer
 	val inBufferStream=new UnsyncBAInputStream(readBuffer)
 	val dataInStream=new DataInputStream(inBufferStream)
 	
@@ -82,21 +73,21 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 		numRecords+=1
 		lastID=inst		
 		inst
-	}	
-	
-	def resetLastReadID()=if(lastReadID!= -2) lastReadID= -2	
-	
-	
-	def writeData(inst:Int,dataPos:Long,dataLength:Int,created:Boolean,withLog:Boolean=true) =	{	  
+	}
+
+  def resetLastReadID(): Unit = if (lastReadID != -2) lastReadID = -2
+
+
+  def writeData(inst: Int, dataPos: Long, dataLength: Int, created: Boolean, withLog: Boolean = true): Unit = {
 	  internalWrite(inst,dataPos,dataLength,0) 
 	  if(withLog){
 	  	if(created) TransLogHandler.dataChanged(TransType.created,theClass.id,inst,dataPos,dataLength) 
 	  	else        TransLogHandler.dataChanged(TransType.dataChanged,theClass.id,inst,dataPos,dataLength)
 	  }
 	}
-	
-	
-	def reorgWriteRecord(inst:Int,dataPos:Long,dataLen:Int,propPos:Long,propLen:Int,linkPos:Long,linkLen:Int,collPos:Long,collLen:Int)={
+
+
+  def reorgWriteRecord(inst: Int, dataPos: Long, dataLen: Int, propPos: Long, propLen: Int, linkPos: Long, linkLen: Int, collPos: Long, collLen: Int): Unit = {
 	  bufferStream.reset()
 	  outStream.writeInt(inst)
 	  outStream.writeLong(dataPos)
@@ -123,29 +114,29 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	  miniOutStream.writeInt(dataLength)
 	  theFile.write(miniBufferStream.buffer,0,12)
 	}
-	
-	def writePropertiesData(inst:Int,dataPos:Long,dataLength:Int,withLog:Boolean=true) =	{
+
+  def writePropertiesData(inst: Int, dataPos: Long, dataLength: Int, withLog: Boolean = true): Unit = {
     internalWrite(inst,dataPos,dataLength,8+4)
     if(withLog)TransLogHandler.dataChanged(TransType.propertyChanged ,theClass.id,inst,dataPos,dataLength)
 	}
-	
-	def writeLinksData(inst:Int,dataPos:Long,dataLength:Int,withLog:Boolean=true) =	{
+
+  def writeLinksData(inst: Int, dataPos: Long, dataLength: Int, withLog: Boolean = true): Unit = {
     internalWrite(inst,dataPos,dataLength,(8+4)*2)
     if(withLog)TransLogHandler.dataChanged(TransType.linksChanged ,theClass.id,inst,dataPos,dataLength)
 	}
-	
-	def writeCollFuncData(inst:Int,dataPos:Long,dataLength:Int,withLog:Boolean=true) =	{
+
+  def writeCollFuncData(inst: Int, dataPos: Long, dataLength: Int, withLog: Boolean = true): Unit = {
 		internalWrite(inst,dataPos,dataLength,(8+4)*3)
 		if(withLog)TransLogHandler.dataChanged(TransType.collFuncChanged ,theClass.id,inst,dataPos,dataLength)
 	}
-	
-	
-	def foreachInstance(func:(Reference)=> Unit) = {
+
+
+  def foreachInstance(func: (Reference) => Unit): Unit = {
 		for(i <-1 to lastID; if instanceExists(i))
 			func(Reference(theClass.id,i))
 	}
-	
-	def foreachInstance(listener:RecordListener) = {
+
+  def foreachInstance(listener: RecordListener): Unit = {
 	  theFile.seek(0)
 		for(i <-0 until numRecords) {
 	    theFile.read(readBuffer,0,recordSize)
@@ -156,11 +147,11 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 			dataInStream.readLong,dataInStream.readInt,dataInStream.readLong,dataInStream.readInt)
 	  }
 	}
-	
-	def getInstancesRefs= readFully.filter(_.dataPos>=0).map(record=>new Reference(theClass.id,record.inst))	
-	
-	
-	def deleteInstance(inst:Int,withLog:Boolean=true) =	{
+
+  def getInstancesRefs: Array[Reference] = readFully.filter(_.dataPos >= 0).map(record => new Reference(theClass.id, record.inst))
+
+
+  def deleteInstance(inst: Int, withLog: Boolean = true): Unit = {
 		internalWrite(inst,-1,0,0)
 		if(withLog)TransLogHandler.dataChanged(TransType.deleted,theClass.id,inst,0,0)
 	}
@@ -180,9 +171,9 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	
 	
 	def shutDown():Unit = theFile.close()
-	
-	
-	def bulkGetInstanceRecords(startInst:Int,endInst:Int,dataFileHandler:BoolContFileHandler[InstanceData])=  {		
+
+
+  def bulkGetInstanceRecords(startInst: Int, endInst: Int, dataFileHandler: BoolContFileHandler[InstanceData]): immutable.IndexedSeq[InstanceData] = {
 		if (bulkReadBuffer.length<(endInst-startInst+1)*recordSize)
 			bulkReadBuffer=Array.ofDim[Byte](recordSize* (endInst-startInst+1))
 		
@@ -197,8 +188,8 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	}
 	
 	
-	def bulkPushInstanceRecords(startInst:Int,endInst:Int,dataFileHandler:BoolContFileHandler[InstanceData],
-	                           out:DataOutput)=  {
+	def bulkPushInstanceRecords(startInst:Int, endInst:Int, dataFileHandler:BoolContFileHandler[InstanceData],
+                              out: DataOutput): Unit = {
 		if (bulkReadBuffer.length<(endInst-startInst+1)*recordSize)
 			bulkReadBuffer=Array.ofDim[Byte](recordSize* (endInst-startInst+1))
 		
@@ -288,7 +279,7 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	}
 	
 	private def findIxRecord(inst:Int):Int =	{
-		resetLastReadID
+    resetLastReadID()
 		internFindIxRecord(inst) match		{ 
 			case Some(v)=>v ;
 			case None => throw new IllegalArgumentException("Instance "+inst+" not found in class "+theClass.name )
@@ -300,13 +291,9 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 		theFile.seek(pos*recordSize)
 		theFile.readInt
 	}
-	
-	def printCaches() = {
-		/*System.out.println(instCache)
-		System.out.println(propCache)*/
-	}
-	
-	def takeOverFromReorgFile(reorgFile:File)={
+
+
+  def takeOverFromReorgFile(reorgFile: File): Unit = {
 	  theFile.close()
 		val backupFile=new File(fileName.toString+".bak")
 	  if(backupFile.exists()) backupFile.delete

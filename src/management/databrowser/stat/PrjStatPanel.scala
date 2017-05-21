@@ -1,14 +1,11 @@
 package management.databrowser.stat
 
-import scala.swing.Table
-import client.dataviewer.FieldColumnModel
 import java.awt.Color
-import scala.swing.BorderPanel
-import scala.swing.ScrollPane
-import scala.swing.Label
-import scala.swing.BoxPanel
-import scala.swing.Orientation
 import javax.swing.JTable
+
+import client.dataviewer.{FieldColumnModel, ViewConstants}
+
+import scala.swing.{BorderPanel, BoxPanel, Label, Orientation, ScrollPane, Table}
 
 class PrjStatPanel extends BorderPanel {
    
@@ -38,14 +35,14 @@ class PrjStatPanel extends BorderPanel {
   }
   
   val buttonPanel=new BoxPanel(Orientation.Vertical)
-  val sumLabel=new Label()
+  val sumLabel: Label = ViewConstants.label()
   buttonPanel.contents+=sumLabel
   
   add(new Label("Daten"),BorderPanel.Position.North)
   add(scroller,BorderPanel.Position.Center)
   add(buttonPanel,BorderPanel.Position.South)
-  
-  def load(prjID:Int)= {
+
+  def load(prjID: Int): Unit = {
     stModel.readForProject(prjID)
     val sumMins=stModel.getSumMins
     sumLabel.text="Summe: "+sumMins+" min = "+(sumMins/60)+" std"

@@ -1,18 +1,11 @@
 package client.graphicsView
 
-import java.awt.Graphics2D
-import definition.expression.Constant
-import java.awt.geom.Rectangle2D
-import definition.expression.VectorConstant
-import java.awt.Color
-import definition.data.Reference
-import java.io.DataInput
-import definition.expression.Line3D
 import java.awt.font.TextLayout
-import definition.expression.IntConstant
-import definition.expression.EMPTY_EX
-import definition.data.DimensionPoint
-import definition.expression.NULLVECTOR
+import java.awt.geom.Rectangle2D
+import java.awt.{BasicStroke, Color, Graphics2D}
+
+import definition.data.{DimensionPoint, Reference}
+import definition.expression._
 import util.StringUtils
 
 
@@ -21,30 +14,35 @@ class ProxyScaleModel(master:Scaler) extends ScaleModel {
       var myScale:Double=1
       var xoff:Double=0
       var yoff:Double=0
-      override def xToScreen(x:Double)=  master.xToScreen(x*myScale+xoff)
-      override def yToScreen(y:Double)=  master.yToScreen(y*myScale+yoff) 
-      override def getStroke(thick:Float,style:Int)=master.getStroke(thick,style)
-      override def thicknessScale=master.thicknessScale
-      override def scale=master.scale
+
+  override def xToScreen(x: Double): Float = master.xToScreen(x * myScale + xoff)
+
+  override def yToScreen(y: Double): Float = master.yToScreen(y * myScale + yoff)
+
+  override def getStroke(thick: Float, style: Int): BasicStroke = master.getStroke(thick, style)
+
+  override def thicknessScale: Double = master.thicknessScale
+
+  override def scale: Double = master.scale
 }
 
 
 class DimLineElement(nref:Reference,ncolor:Int,position:VectorConstant,style:Int,val angle:Double,val mainRefPoint:VectorConstant,
     val relDist:Double,val textScale:Double,val points:IndexedSeq[DimensionPoint]) extends 
 GraphElem(nref,ncolor) {
- val radAngle=angle*math.Pi/180d
- val mdirVector=VectorConstant.fromAngle2D(radAngle)
+  val radAngle: Double = angle * math.Pi / 180d
+  val mdirVector: VectorConstant = VectorConstant.fromAngle2D(radAngle)
  val hdirVector=new VectorConstant(-mdirVector.y,mdirVector.x,0)
- val mline=new Line3D(position,mdirVector) 
- lazy val intersectionLines=points.map(p=>(p,mline.intersectionWith(new Line3D(p.refPoint,hdirVector)))).sortBy(_._2)(VectorConstant.pointOrdering)
- lazy val mainRefIntersection=mline.intersectionWith(new Line3D(mainRefPoint,hdirVector))
- lazy val firstInterPoint=if(intersectionLines.isEmpty)NULLVECTOR else intersectionLines.head._2
- lazy val lastInterPoint=if(intersectionLines.isEmpty)mainRefPoint else intersectionLines.last._2
- lazy val styleInfo=DimLineStyleHandler.getStyle(style)
- lazy val hitPoints=intersectionLines.map (_._2)
+  val mline = Line3D(position, mdirVector)
+  lazy val intersectionLines: IndexedSeq[(DimensionPoint, VectorConstant)] = points.map(p => (p, mline.intersectionWith(Line3D(p.refPoint, hdirVector)))).sortBy(_._2)(VectorConstant.pointOrdering)
+  lazy val mainRefIntersection: VectorConstant = mline.intersectionWith(Line3D(mainRefPoint, hdirVector))
+  lazy val firstInterPoint: VectorConstant = if (intersectionLines.isEmpty) NULLVECTOR else intersectionLines.head._2
+  lazy val lastInterPoint: VectorConstant = if (intersectionLines.isEmpty) mainRefPoint else intersectionLines.last._2
+  lazy val styleInfo: DimLineStyle = DimLineStyleHandler.getStyle(style)
+  lazy val hitPoints: IndexedSeq[VectorConstant] = intersectionLines.map(_._2)
  //println("new DimLine pos:"+position+" angle:"+angle+" points:"+points.mkString("\n")+"\n refpoint:"+mainRefPoint+" relDist:"+relDist)
- 
- lazy val bounds={
+
+  lazy val bounds: Rectangle2D.Double = {
   	  var minx=Double.MaxValue
   	  var miny=Double.MaxValue
   	  var maxx=Double.MinValue
@@ -74,9 +72,10 @@ GraphElem(nref,ncolor) {
   	  maxy+= delta
   	  new Rectangle2D.Double(minx,miny,maxx,maxy)
   	}
-  override lazy val  getEdiblePoints=points.map(_.refPoint)++points.flatMap(_.textPos):+ mainRefPoint
+  override lazy val getEdiblePoints: IndexedSeq[VectorConstant] = points.map(_.refPoint) ++ points.flatMap(_.textPos) :+ mainRefPoint
   
   def getBounds(container: ElemContainer): Rectangle2D.Double = bounds
+
 
   def draw(g: Graphics2D, sm: Scaler, selectColor: Color): Unit = {
     val font=GraphElemConst.getFont(styleInfo.textFont,styleInfo.textHeight,0)
@@ -127,21 +126,21 @@ GraphElem(nref,ncolor) {
 	      val fontHeight=((GraphElemConst.toMM(font.getSize2D())*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
 	      val oldTrans=g.getTransform()
 	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-	      val textWidth=layout.getBounds().getWidth      
-	      var moveitX=0.5f
-	      var moveitY=0.1f
+	      val textWidth=layout.getBounds().getWidth
+        val moveitX = 0.5f
+        val moveitY = 0.1f
 	      val withHtext= text.size>1&&text(1)!="0"
-	      val worldTextWidth=(if(withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth+4)/sm.scale
+        //val worldTextWidth=(if(withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth+4)/sm.scale
 	     
 	      val xpos=sm.xToScreen(il._2.x-textDistance.y)
 	      val ypos=sm.yToScreen(il._2.y-textDistance.x)-moveitY*fontHeight
 	      g.rotate(-radAngle+Math.PI/2,xpos,ypos)
-	      StringUtils.fillTextLayout(g, layout, xpos+moveitX*fontHeight, ypos)
+        StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, false)
 	      g.setPaint(thePaint) 
 	      layout.draw(g,xpos+moveitX*fontHeight,ypos)
 	      if(withHtext) {               
 	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-	        StringUtils.fillTextLayout(g, hlayout, xpos-moveitX*fontHeight+textWidth.toFloat+1f, ypos-fontHeight*0.45f)
+          StringUtils.fillTextLayout(g, hlayout, xpos - moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
 	        g.setPaint(thePaint) 
 	        hlayout.draw(g,xpos+moveitX*fontHeight+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
 	      }
@@ -175,12 +174,12 @@ GraphElem(nref,ncolor) {
       val ypos=sm.yToScreen(midPoint.y+textDistance.y)-moveitY*fontHeight
       //println("Ypos:"+ypos)
       if(angle!=0d) g.rotate(-radAngle,xpos+(textWidth/2f*moveitX).toFloat,ypos+moveitY*fontHeight)
-      StringUtils.fillTextLayout(g, layout, xpos, ypos)
+      StringUtils.fillTextLayout(g, layout, xpos, ypos, wide = false)
       g.setPaint(thePaint)
       layout.draw(g,xpos,ypos)
       if(withHtext) {               
         val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-        StringUtils.fillTextLayout(g, hlayout, xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)
+        StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
         g.setPaint(thePaint)
         hlayout.draw(g,xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
       }
@@ -190,18 +189,19 @@ GraphElem(nref,ncolor) {
   }
 
   def hits(cont: ElemContainer, px: Double, py: Double, dist: Double): Boolean = {
-    /*if*/(GraphElemConst.hitLine(firstInterPoint,lastInterPoint,px,py,dist)) /*true
-    else {
-      for (li <- intersectionLines; refp = li._1.refPoint; ip = li._2)
-        if (GraphElemConst.hitLine(refp, ip, px, py, dist)) return true
-      false
-    }*/
+    /*if*/ GraphElemConst.hitLine(firstInterPoint, lastInterPoint, px, py, dist)
+    /*true
+       else {
+         for (li <- intersectionLines; refp = li._1.refPoint; ip = li._2)
+           if (GraphElemConst.hitLine(refp, ip, px, py, dist)) return true
+         false
+       }*/
   }
 
   def getFormatFieldValue(fieldNr: Int): Constant = {
     fieldNr match {
-      case 0=> new IntConstant(color)
-      case 2=> new IntConstant(style)
+      case 0 => IntConstant(color)
+      case 2 => IntConstant(style)
       case _ => EMPTY_EX
     }
  }

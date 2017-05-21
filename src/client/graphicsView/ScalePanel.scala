@@ -3,44 +3,28 @@
  */
 package client.graphicsView
 
+import java.awt.Color
+import java.awt.geom.{Area, Rectangle2D}
+import javax.swing.BorderFactory
+
+import client.comm.KeyStrokeManager
+import client.dataviewer.{TitlePopupMenu, ViewConstants}
+import client.dialog.{AbstractPanelButton, DialogManager}
+import definition.data.StyleService
+import definition.expression.{PointList, Polygon, VectorConstant}
+import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
+
+import scala.collection.mutable.ArrayBuffer
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Font,Color,Insets}
-import client.dataviewer.TitlePopupMenu
-import client.dialog.StrokableButton
-import client.comm.KeyStrokeManager
-import client.icons.IconManager
-import client.dataviewer.ViewConstants
-import client.dialog.AbstractPanelButton
-import client.dialog.DialogManager
-import javax.swing.BorderFactory
-import client.dialog.PointClickListener
-import client.dialog.EmptyPointClickListener
-import definition.expression.VectorConstant
-import definition.typ.AnswerDefinition
-import definition.typ.DialogQuestion
-import definition.typ.DataType
-import scala.collection.mutable.ArrayBuffer
-import definition.expression.Polygon
-import definition.data.StyleService
-import definition.expression.PointList
-import java.awt.Shape
-import java.awt.geom.Area
-import java.awt.geom.Rectangle2D
 
-
-
-
-/**
- * 
- */
 class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPanel(scala.swing.Orientation.Horizontal) {
   import client.graphicsView.ScalePanel._
   
   trait AbstractScalePanelButton extends AbstractPanelButton {
     listenTo(this.mouse.clicks)
     reactions+={
-      case ev:MousePressed=>if(!controller.canvasPanel.peer.isFocusOwner()){       
+			case _: MousePressed => if (!controller.canvasPanel.peer.isFocusOwner()) {
         controller.canvasPanel.requestFocus()
         controller.focusGained()
       } 
@@ -49,15 +33,15 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 
   class PanelButton(alabel:String,val commandName:String,val groupName:String) extends Button(alabel) with AbstractScalePanelButton 
   
-  class PanelToggleButton(alabel:String,val commandName:String,val groupName:String) extends ToggleButton(alabel) with AbstractScalePanelButton 
-  
-  lazy val relScaleCombo={
+  class PanelToggleButton(alabel:String,val commandName:String,val groupName:String) extends ToggleButton(alabel) with AbstractScalePanelButton
+
+	lazy val relScaleCombo: ComboBox[(Int, Double)] = {
 		//println("create combo "+model.scales.size)
 		val scc=new ComboBox[(Int,Double)](ScaleModel.scales.toSeq)
-		scc.maximumSize=new Dimension(70,30)
+		scc.maximumSize = new Dimension(70 * ViewConstants.fontScale / 100, 30 * ViewConstants.fontScale / 100)
 		scc.preferredSize=scc.maximumSize
 		scc.font=ViewConstants.smallFont
-		scc.renderer=new ListView.AbstractRenderer[(Int,Double),Label](new Label){
+		scc.renderer = new ListView.AbstractRenderer[(Int, Double), Label](ViewConstants.label()) {
 			def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: (Int,Double), index: Int): Unit = {
 				val rel=a._2
 						component.text=if(rel<1)"1 : "+math.round(1d/rel) else math.round(rel)+" : 1"
@@ -82,7 +66,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	zoomOutBut.tooltip="Zurück zur letzten Vergrößerung"
 	zoomInBut.tooltip="Hereinzoomen"	
 	filterBut.tooltip="Nach Elementtyp filtern"
-	scaleEdit.maximumSize=new Dimension(70,30)
+	scaleEdit.maximumSize = new Dimension(70 * ViewConstants.fontScale / 100, 30 * ViewConstants.fontScale / 100)
 	scaleEdit.preferredSize=scaleEdit.maximumSize
 	scaleEdit.font=ViewConstants.smallFont		
 	//measureBut.icon=measureIcon
@@ -109,7 +93,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 		case ButtonClicked(`zoomAllBut`)=> controller.zoomAll()
 		case ButtonClicked(`zoomLassoBut`)=> controller.zoomInClicked()
 		case ButtonClicked(`zoomOutBut`)=> model.zoomOut()
-		case ButtonClicked(`zoomInBut` )=> model.zoomPlus()
+		case ButtonClicked(`zoomInBut`) => model.zoomPlus(0.5d, 0.5d)
 		case ButtonClicked(`measureBut`)=> measurePopup.show(measureBut.peer)
 		case ButtonClicked(`measureCoordsBut`)=>measureCoords()
 		case ButtonClicked(`measureDistBut`)=>measureLength()
@@ -130,23 +114,19 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	
 	model.registerScaleListener(()=>{
 	  selfChanged=true
-		val sc=model.getScaleRatio		
-		scaleEdit.text=scaleToText(sc._1)+" : "+scaleToText(sc._2)		
-		//relativeEdit.text=scaleToText(rm._1)+" : "+scaleToText(rm._2)
+		val sc=model.getScaleRatio
+		scaleEdit.text = scaleToText(sc._1) + " : " + scaleToText(sc._2)
 		selfRelativeSelected=true
 		val rm=1d/model.relativeScaleValue		
-		//println("Set relScale:"+rm +" scales:"+model.scales.size)
-	  //if(relScaleCombo.peer.getModel.getSize()==0&& ScaleModel.scales.size>0) relScaleCombo.peer.setModel(ComboBox.newConstantModel(ScaleModel.scales.toSeq))
 		val ix=ScaleModel.scales.valuesIterator.indexWhere(_==rm)
 		relScaleCombo.selection.index=ix
 		selfRelativeSelected=false
 		selfChanged=false
 	})
-	//background=Color.gray	
-	contents+=newElemBut+=zoomAllBut+=zoomLassoBut+=zoomInBut+=zoomOutBut +=Swing.HGlue+=filterBut+=colorsFixedBut+= measureBut+=Swing.HGlue+= new Label("Anzeige: ")+=
-		scaleEdit+=Swing.HStrut(20)+=new Label("Bezug: ")+=relScaleCombo
-		
-	def activateKeyStrokes() = {
+	contents += newElemBut += zoomAllBut += zoomLassoBut += zoomInBut += zoomOutBut += Swing.HGlue += filterBut += colorsFixedBut += measureBut += Swing.HGlue += ViewConstants.label("Anzeige: ") +=
+		scaleEdit += Swing.HStrut(20) += ViewConstants.label("Bezug: ") += relScaleCombo
+
+	def activateKeyStrokes(): Unit = {
 	  KeyStrokeManager.registerReceiver(zoomAllBut)
 	  KeyStrokeManager.registerReceiver(zoomInBut)
 	  KeyStrokeManager.registerReceiver(zoomOutBut)
@@ -155,22 +135,21 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	  KeyStrokeManager.registerReceiver(newElemBut)
 	  KeyStrokeManager.registerReceiver(filterBut)
 	}
-	
-	def measureCoords()={
+
+	def measureCoords(): Unit = {
 		controller.requestFocus()
-	  val xLabel=new Label()
-	  val yLabel=new Label()
-	  val sm=controller.scaleModel
-	  xLabel.font=ViewConstants.tableFont	     
-	  yLabel.font=ViewConstants.tableFont
+		val xLabel = ViewConstants.label()
+		val yLabel = ViewConstants.label()
+		//val sm=controller.scaleModel
+
 	  
 	  val panel=new BoxPanel(Orientation.Vertical){	     
 	     contents+=xLabel+=yLabel
 	     background=Color.white
 	     border=BorderFactory.createCompoundBorder(
 	         BorderFactory.createLineBorder(Color.LIGHT_GRAY,2),
-	         BorderFactory.createEmptyBorder(5,5,5,5)) 
-	     preferredSize=new Dimension(200,50)
+	         BorderFactory.createEmptyBorder(5,5,5,5))
+			preferredSize = new Dimension(200 * ViewConstants.fontScale / 100, 50 * ViewConstants.fontScale / 100)
     }
 	  val toast=controller.createDraggerToast((ntoast,x,y,worldPos)=>{
 	    xLabel.text="X: "+worldPos.x
@@ -178,17 +157,17 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	    ntoast.updatePos(x+10, y+1)
 	  })
 	  
-	  toast.setContent(panel)	  
-    DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Koordinaten messen","Punkt berühren"),(answerList)=>{
+	  toast.setContent(panel)
+		DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Koordinaten messen", "Punkt berühren", Some(true)), (answerList) => {
       DialogManager.resetDraggerToast()  },false)
 	}
-	
-	def measureLength()={
+
+	def measureLength(): Unit = {
 		controller.requestFocus()
-	  val dxLabel=new Label()
-	  val dyLabel=new Label()
-    val angleLabel=new Label()
-	  val lengthLabel=new Label()
+		val dxLabel = ViewConstants.label()
+		val dyLabel = ViewConstants.label()
+		val angleLabel = ViewConstants.label()
+		val lengthLabel = ViewConstants.label()
 	  val sm=controller.scaleModel
 	  var lastPos: VectorConstant=null
 	  dxLabel.font=ViewConstants.tableFont	     
@@ -200,12 +179,12 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	     background=Color.white
 	     border=BorderFactory.createCompoundBorder(
 	         BorderFactory.createLineBorder(Color.LIGHT_GRAY,2),
-	         BorderFactory.createEmptyBorder(5,5,5,5)) 
-	     preferredSize=new Dimension(200,82)
-    }	  
-	  
-	  val nextPointQuestion=new DialogQuestion("Strecke messen",Seq(new AnswerDefinition("nächster Punkt",DataType.VectorTyp,None)),true)
-	  val question=new DialogQuestion("Strecke messen",Seq(new AnswerDefinition("StartPunkt",DataType.VectorTyp,None)))
+	         BorderFactory.createEmptyBorder(5,5,5,5))
+			preferredSize = new Dimension(200 * ViewConstants.fontScale / 100, 82 * ViewConstants.fontScale / 100)
+    }
+
+		val nextPointQuestion = DialogQuestion("Strecke messen", Seq(new AnswerDefinition("nächster Punkt", DataType.VectorTyp, None)), true)
+		val question = DialogQuestion("Strecke messen", Seq(new AnswerDefinition("StartPunkt", DataType.VectorTyp, None)))
 	  
 	  def dragger(pos:VectorConstant,g:Graphics2D)= {
 	    g.setColor(Color.blue)
@@ -232,12 +211,12 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
       },false)
     },false)
 	}
-  
-  
-  def measureArea()={
+
+
+	def measureArea(): Unit = {
 		controller.requestFocus()
-    val areaLabel=new Label()
-    val umfangLabel=new Label()    
+		val areaLabel = ViewConstants.label()
+		val umfangLabel = ViewConstants.label()
     val sm=controller.scaleModel
     val transform=GraphElemConst.transform(sm) _
     val points=ArrayBuffer[VectorConstant]()
@@ -257,10 +236,10 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
            BorderFactory.createLineBorder(Color.LIGHT_GRAY,2),
            BorderFactory.createEmptyBorder(5,5,5,5))
        preferredSize=panSize
-    }   
-    
-    val nextPointQuestion=new DialogQuestion("Fläche messen",Seq(new AnswerDefinition("nächster Punkt",DataType.VectorTyp,None)),true)
-    val question=new DialogQuestion("Fläche messen",Seq(new AnswerDefinition("StartPunkt",DataType.VectorTyp,None)))
+    }
+
+		val nextPointQuestion = DialogQuestion("Fläche messen", Seq(new AnswerDefinition("nächster Punkt", DataType.VectorTyp, None)), true)
+		val question = DialogQuestion("Fläche messen", Seq(new AnswerDefinition("StartPunkt", DataType.VectorTyp, None)))
     
     def dragger(pos:VectorConstant,g:Graphics2D)= {
       val outShape= if(points.size==1) createRect(points.head,pos) else
@@ -286,7 +265,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
     }
     
     def createPolyShape(spoints:Seq[VectorConstant])= {
-      val plist=new PointList(spoints)
+			val plist = PointList(spoints)
       new Area(new Polygon(Nil,List(plist)).toPathTransformed(transform))
     }
         
@@ -309,7 +288,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
           //shape=createRect(p1,points(1))                    
           (Math.abs(delta.x*delta.y),(Math.abs(delta.x)+Math.abs(delta.y))*2)
         } else if(points.size>2){
-          val plist=new PointList(points)
+					val plist = PointList(points)
           val areaPoly=new Polygon(Nil,List(plist))
           //shape=new Area(areaPoly.toPathTransformed ( transform ))                    
           (Math.abs(areaPoly.getAreaValue),plist.getUmfang)

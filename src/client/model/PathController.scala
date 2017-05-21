@@ -3,16 +3,15 @@
  */
 package client.model
 
+import java.awt.{Color, Dimension}
+
+import client.dataviewer.{DataViewController, ViewConstants}
 import definition.data._
+import util.MyListView
+
 import scala.swing._
 import scala.swing.event._
-import javax.swing.SwingUtilities
-import client.comm.ClientQueryManager
-import java.awt.{Dimension,Color}
-import client.dataviewer.DataViewController
-import client.dialog.ContainerFocusListener
-import util.MyListView
-//import server.test.SimpleProfiler
+
 
 
 
@@ -21,18 +20,19 @@ import util.MyListView
  * 
  */
 class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientation.Horizontal ) {
-		val firstLabel=new Label
-		val resultLabel=new Label	
+  val firstLabel: Label = ViewConstants.label("")
+  val resultLabel: Label = ViewConstants.label("")
+
 		firstLabel.yLayoutAlignment=0d
 		resultLabel.yLayoutAlignment=0d
 		val glue=Swing.Glue
 		glue.yLayoutAlignment=0d
-		maximumSize=new Dimension(Short.MaxValue,21)		
+  maximumSize = new Dimension(Short.MaxValue, 21 * ViewConstants.fontScale / 100)
 		contents+=firstLabel+=glue+=resultLabel		
 		yLayoutAlignment=0
 		xLayoutAlignment=0
-		
-		override def foreground_=(c: Color) = {			 
+
+  override def foreground_=(c: Color): Unit = {
 			firstLabel.foreground= c
 			resultLabel.foreground=c
 		}
@@ -87,9 +87,9 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 	view.reactions += {
 		case e:ListSelectionChanged[_] =>
 			if (!e.live&& view.selection.indices.nonEmpty) selectionChanged(view.selection.indices.head)
-	}	
-	
-	def selectionChanged(newPos:Int)= lock.synchronized{
+	}
+
+  def selectionChanged(newPos: Int): Unit = lock.synchronized {
 		//println("selectionChanged: newPos:"+newPos+" oldIndex:"+oldIndex+ " model.getSize:"+model.getSize/*+" updating:"+updating*/)
 		if (  (newPos!=oldIndex) && (newPos <= model.getSize) ) {
 			
@@ -108,51 +108,44 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 			listener.openData(model.getInstanceAt(newPos).ref,selectRef,newPos,None)			
 		}		
 		notifySizeListeners()
-	}	
-	
-	
-	def loadPath(newPath:Seq[Reference],doneListener:()=>Unit):Unit = lock.synchronized{	  
+	}
+
+
+  def loadPath(newPath: Seq[Reference], doneListener: () => Unit, selectRef: Option[Reference] = None): Unit = lock.synchronized {
 	  var firstTime=true
-	  def selectLastLine(sendPath:collection.Seq[Reference]):Unit = Swing.onEDT {			
+
+    def selectLastLine(sendPath: Seq[Reference]): Unit = Swing.onEDT {
 		  //println("Select last Line newpath size:"+ sendPath.size+" firstTime:"+firstTime+ "listener:" +doneListener)
 			view.selectIndices(-1)
 			oldIndex=model.getSize()
 			notifySizeListeners()
-      
-			listener.openData(sendPath.last,None,sendPath.size-1,if(firstTime)Some(doneListener) else None)
-			if(firstTime) firstTime=false
-		}						
-	    
-	  
-	  if(pathEquals(model.dataList,newPath)) doneListener()		    
-	  else model.loadPath(newPath,selectLastLine)						
+      //doneListener()
+      //if(selectRef.isEmpty)
+      listener.openData(sendPath.last, selectRef, sendPath.size - 1, if (firstTime) Some(doneListener) else None)
+      //else if(firstTime) doneListener
+      if (firstTime) firstTime = false
+    }
+
+    //if(pathEquals(model.dataList,newPath)) doneListener()
+    //else
+    model.loadPath(newPath, selectLastLine)
 	} 
-	
-	def pathEquals(oldPath:Seq[InstanceData],newPath:Seq[Reference]):Boolean = {
-	  if(oldPath==null || newPath== null) false
-	  else if (oldPath.size!=newPath.size) false
-	  else {
-	    for(ix <-oldPath.indices)
-	      if(oldPath(ix).ref!=newPath(ix)) return false
-	    true
-	  }
-	}
+
 	
 	
 	/** adds a new element to the path
 	 */
-	def addPathElement(newElement:Reference) = lock.synchronized{						
+  def addPathElement(newElement: Reference): Unit = lock.synchronized {
 		oldIndex+=1
 		model.addPathElement(newElement)
 		notifySizeListeners()		 
-	}	
-	
-	
-	def shutDown() = model.shutDown()
-	
-	
-	
-	def registerSizeChangeListener(func:(Int)=>Unit) = sizeChangeListeners += func
+	}
+
+
+  def shutDown(): Unit = model.shutDown()
+
+
+  def registerSizeChangeListener(func: (Int) => Unit): Unit = sizeChangeListeners += func
 	
 	
 	private def notifySizeListeners() = {		

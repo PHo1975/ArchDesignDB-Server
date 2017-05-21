@@ -35,7 +35,7 @@ class EventForm(mod:CalendarModel) {
      case None =>
    })
    GridPane.setConstraints(eventTextField, 0, 0,2,1)
-   val userLabel=new Label("Beteiligte:") 
+  val userLabel = new Label("Beteiligte:")
    userLabel.setTooltip(new Tooltip("Beteiligte können aus den Projekt-Adressen mit der Maus\nin diese Liste gezogen werden"))
    GridPane.setConstraints(userLabel, 0, 1)   
    val userListView=new ListView[Address]

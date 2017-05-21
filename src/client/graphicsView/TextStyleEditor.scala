@@ -1,30 +1,20 @@
 package client.graphicsView
 
-import java.awt.Color
-import java.awt.Dimension
-import java.awt.Font
-import java.awt.Graphics2D
-import scala.swing.BoxPanel
-import scala.swing.ButtonGroup
-import scala.swing.GridPanel
-import scala.swing.Orientation
-import scala.swing.RadioButton
-import scala.swing.ToggleButton
+import java.awt.{Color, Dimension, Font, Graphics2D}
+
+import client.dataviewer.ViewConstants
+import client.dialog._
+import definition.expression.{Constant, IntConstant, StringConstant}
+
+import scala.swing.{BoxPanel, ButtonGroup, GridPanel, Orientation, RadioButton, ToggleButton}
 import scala.swing.event.ButtonClicked
-import definition.expression.Constant
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import client.dialog.FieldEditor
-import client.dialog.RenderComponent
-import client.dialog.SidePanelComboBox
-import client.dialog.SidePanelComponent
-import client.dialog.SidePanelDoubleTextField
 
 
 
 class TextStyleEditor extends FieldEditor {
-  final val HORBITS=8+16
-  final val VERBITS=1+2  
+  final val HORBITS: Int = 8 + 16
+  final val VERBITS: Int = 1 + 2
+  final val FRAMEBITS: Int = 1024 + 2048
   val tcn="TextElem"
   val allowedClassNames=Seq(tcn)    
   
@@ -40,7 +30,8 @@ class TextStyleEditor extends FieldEditor {
     xLayoutAlignment=0d
     val allowedFields=Map((tcn,6.toByte))
     val boldBut=new ToggleButton("F")
-    val italicBut=new ToggleButton("K")    
+    val italicBut = new ToggleButton("K")
+    val capitalBut = new ToggleButton("G")
     val alLeftBut=new RadioButton("<     ")
     val alHCentBut=new RadioButton("|     ")
     val alRightBut=new RadioButton(">")
@@ -48,6 +39,9 @@ class TextStyleEditor extends FieldEditor {
     val alVCentBut=new RadioButton("-     ")
     val alBotBut=new RadioButton("v")
     val alHGroup=new ButtonGroup
+    val noFrameBut = new RadioButton("X  ")
+    val roundFrameBut = new RadioButton("( )  ")
+    val squareFrameBut = new RadioButton("[ ]")
     alHGroup.buttons+=alLeftBut+=alHCentBut+=alRightBut
     val alHBox=new BoxPanel(Orientation.Horizontal)
     alHBox.opaque=false
@@ -57,22 +51,31 @@ class TextStyleEditor extends FieldEditor {
     val alVBox=new BoxPanel(Orientation.Horizontal)
     alVBox.opaque=false
     alVBox.contents++=alVGroup.buttons
-    
-    contents+=getPanelPart("Stil:",new GridPanel(1,2){contents+=boldBut+=italicBut;opaque=false})+=  
-	  getPanelPart("HBezug:",alHBox)+=getPanelPart("VBezug:",alVBox)
-	  
-	  listenTo(boldBut,italicBut)
+    val frameGroup = new ButtonGroup
+    frameGroup.buttons += noFrameBut += roundFrameBut += squareFrameBut
+    val frameBox = new BoxPanel(Orientation.Horizontal)
+    frameBox.contents ++= frameGroup.buttons
+
+    contents += getPanelPart("Stil:", new GridPanel(1, 3) {contents += boldBut += italicBut += capitalBut; opaque = false}) +=
+      getPanelPart("HBezug:", alHBox) += getPanelPart("VBezug:", alVBox) += getPanelPart("Rahmen", frameBox)
+
+    listenTo(boldBut, italicBut, capitalBut)
     listenTo(alHGroup.buttons.toSeq:_*)
-		listenTo(alVGroup.buttons.toSeq:_*)		
+    listenTo(alVGroup.buttons.toSeq: _*)
+    listenTo(frameGroup.buttons.toSeq: _*)
 		reactions+={			
 			case ButtonClicked(`boldBut`)=> writeStyleBit(GraphElemConst.boldStyle,boldBut.selected)
 			case ButtonClicked(`italicBut`)=> writeStyleBit(GraphElemConst.italicStyle,italicBut.selected)
+      case ButtonClicked(`capitalBut`) => writeStyleBit(GraphElemConst.capitalStyle, capitalBut.selected)
 			case ButtonClicked(`alLeftBut`)=> if(alLeftBut.selected) writeStyleMapped(HORBITS,0)
 			case ButtonClicked(`alHCentBut`)=> if(alHCentBut.selected) writeStyleMapped(HORBITS,8)
 			case ButtonClicked(`alRightBut`)=> if(alRightBut.selected) writeStyleMapped(HORBITS,16)
 			case ButtonClicked(`alTopBut`)=> if(alTopBut.selected) writeStyleMapped(VERBITS,2)
 			case ButtonClicked(`alVCentBut`)=> if(alVCentBut.selected) writeStyleMapped(VERBITS,1)
 			case ButtonClicked(`alBotBut`)=> if(alBotBut.selected) writeStyleMapped(VERBITS,0)
+      case ButtonClicked(`noFrameBut`) => if (noFrameBut.selected) writeStyleMapped(FRAMEBITS, 0)
+      case ButtonClicked(`roundFrameBut`) => if (roundFrameBut.selected) writeStyleMapped(FRAMEBITS, 1024)
+      case ButtonClicked(`squareFrameBut`) => if (squareFrameBut.selected) writeStyleMapped(FRAMEBITS, 2048)
     }   
     
     addSearchLookup({
@@ -80,31 +83,37 @@ class TextStyleEditor extends FieldEditor {
     })
     
     val defaultValue=0
-    var isBoldSet:Option[Boolean]=null
-    var isItalicSet:Option[Boolean]=null
-    var horAlign= -2
-    var verAlign= -2
-    
-    def getConstant(value:Int):Constant=new IntConstant(value)  
-    def valueFromConstant(c:Constant)=c.toInt
-    
-    def writeStyle(func:(Int)=>Int):Unit= storeValueMapped(this,func)
-    def writeStyleBit(styleBit:Int,newValue:Boolean) = 
+    var isBoldSet: Option[Boolean] = _
+    var isItalicSet: Option[Boolean] = _
+    var isCapitalSet: Option[Boolean] = _
+    var horAlign: Int = -2
+    var verAlign: Int = -2
+    var frames: Int = -2
+
+    def getConstant(value: Int): Constant = IntConstant(value)
+
+    def valueFromConstant(c: Constant): Int = c.toInt
+
+    def writeStyle(func: (Int) => Int): Unit = storeValueMapped(this, func)
+
+    def writeStyleBit(styleBit: Int, newValue: Boolean): Unit =
     	writeStyle( (oldStyle)=>if(newValue) oldStyle | styleBit else oldStyle & (~styleBit) )
-    
-    def writeStyleMapped(bitMap:Int,newValue:Int)= {    
-    		val filter= ~bitMap
-    		writeStyle( o=> (o & filter)+newValue  )
-    }
+
+    def writeStyleMapped(bitMap: Int, newValue: Int): Unit =
+      writeStyle(o => (o & (~bitMap)) + newValue)
+
     
     override def resetSearchValue():Unit= {
       isBoldSet=null
       isItalicSet=null
+      isCapitalSet = null
       horAlign= -2
       verAlign= -2
+      frames = -2
     }
-  
-    override def internSetSearchValue(style:Int)=  {
+
+    override def internSetSearchValue(style: Int): Unit = {
+      println("internSetSearchValue " + GraphElemConst.styleIsBold(style) + " isSet: " + isBoldSet)
     	if(isBoldSet!=None){
     		if(isBoldSet==null) isBoldSet=Some(GraphElemConst.styleIsBold(style))
     		else if (isBoldSet.get!=GraphElemConst.styleIsBold(style)) isBoldSet=None
@@ -113,35 +122,52 @@ class TextStyleEditor extends FieldEditor {
     		if(isItalicSet==null) isItalicSet=Some(GraphElemConst.styleIsItalic(style))
     		else if (isItalicSet.get!=GraphElemConst.styleIsItalic(style)) isItalicSet=None
     	}
+      if (isCapitalSet != None) {
+        if (isCapitalSet == null) isCapitalSet = Some(GraphElemConst.styleIsCapital(style))
+        else if (isCapitalSet.get != GraphElemConst.styleIsCapital(style)) isCapitalSet = None
+      }
     	if(horAlign != -1) {
-    		val da=style& (8+16)
+        val da = style & HORBITS
     		if(horAlign == -2)horAlign=da else if(horAlign!=da) horAlign= -1      		  
     	}
     	if(verAlign != -1) {
-    		val da=style& (1+2)
-    		if(verAlign == -2)verAlign=da else if(verAlign!=da) verAlign= -1      		  
-    	} 
+        val da = style & VERBITS
+    		if(verAlign == -2)verAlign=da else if(verAlign!=da) verAlign= -1
+      }
+      if (frames != -1) {
+        val da = style & FRAMEBITS
+        if (frames == -2) frames = da else if (frames != da) frames = -1
+      }
     }
   
     override def updateSearchValue():Unit = {
-    		if(isBoldSet==None||isBoldSet==null) {boldBut.selected=false;boldBut.foreground=Color.GRAY}
+      println("updateSearchvale isBoldSet " + isBoldSet)
+      if (isBoldSet == null || isBoldSet.isEmpty) {boldBut.selected = false; boldBut.foreground = Color.GRAY}
     		else {boldBut.foreground=Color.BLACK;boldBut.selected=isBoldSet.get   }
-    		if(isItalicSet==None||isItalicSet==null) {italicBut.selected=false;italicBut.foreground=Color.GRAY}
+      if (isItalicSet == null || isItalicSet.isEmpty) {italicBut.selected = false; italicBut.foreground = Color.GRAY}
     		else {italicBut.foreground=Color.BLACK;italicBut.selected=isItalicSet.get   }
+      if (isCapitalSet == null || isCapitalSet.isEmpty) {capitalBut.selected = false; capitalBut.foreground = Color.GRAY}
+      else {capitalBut.foreground = Color.BLACK; capitalBut.selected = isItalicSet.get}
     		if(horAlign<0)alHGroup.peer.clearSelection()
     		else horAlign match {
     			case 0 => alLeftBut.selected=true
-    			case 8 => alHCentBut.selected=true
-    			case 16 => alRightBut.selected=true
+          case GraphElemConst.hCenterStyle => alHCentBut.selected = true
+          case GraphElemConst.rightStyle => alRightBut.selected = true
     			case _=>alHGroup.peer.clearSelection()
     		}
     		if(verAlign<0) alVGroup.peer.clearSelection()
     		else verAlign match {
-    			case 2 =>alTopBut.selected=true
+          case GraphElemConst.bottomStyle => alTopBut.selected = true
     			case 1 =>alVCentBut.selected=true
     			case 0=>alBotBut.selected=true
     			case _=>alVGroup.peer.clearSelection()
-    		}    
+        }
+      if (frames < 0) frameGroup.peer.clearSelection()
+      else frames match {
+        case 0 => noFrameBut.selected = true
+        case GraphElemConst.roundBorderSyle => roundFrameBut.selected = true
+        case GraphElemConst.squareBorderSyle => squareFrameBut.selected = true
+      }
     		resetSearchValue()
     }
   }
@@ -152,50 +178,50 @@ class TextStyleEditor extends FieldEditor {
     opaque=false
     contents += getPanelPart("Schrift:",fontCombo) += getPanelPart("Höhe:",sizeEditor)+=textStylePanel+=
 	  getPanelPart("Winkel:",angleEditor)
-		preferredSize=new Dimension(70,190)
-		maximumSize=new Dimension(Short.MaxValue,190)	
-  }   
-  
-  def getPanel=panel  
+    //preferredSize=new Dimension(70,190)
+    maximumSize = new Dimension(Short.MaxValue, 190 * ViewConstants.fontScale / 100)
+  }
+
+  def getPanel: BoxPanel = panel
 }
 
 class FontPreviewPan extends RenderComponent[FontInfo] {  
-  opaque=true  
-  preferredSize=new Dimension(40,28)
-  var fontName:String="Arial"
-  
-  def setStyle(f:FontInfo)= {
+  opaque=true
+  preferredSize = new Dimension(40 * ViewConstants.fontScale / 100, 28 * ViewConstants.fontScale / 100)
+  protected var fontName: String = "Arial"
+
+  def setStyle(f: FontInfo): Unit = {
     fontName=f.name
     peer.setToolTipText(fontName)
-    //repaint
+    if (f.name.length > 0) font = new Font(fontName, 0, (ViewConstants.tableFont.getSize * 1.1).toInt)
   }
-  
-  def setEmpty()= {
+
+  def setEmpty(): Unit = {
     fontName=""
     peer.setToolTipText("")      
   }
-  
-  override def paintComponent(g:Graphics2D)= {
+
+  override def paintComponent(g: Graphics2D): Unit = {
     super.paintComponent(g)    
     g.setColor(background)
     g.fill(g.getClipBounds)       
     g.setColor(foreground)
-    if(fontName.length>0) {
-    	g.setFont(new Font(fontName,0,17))
-    	g.drawString(fontName,2,18)
-    }
+    if (font != null) g.setFont(font)
+    g.drawString(fontName, 2, 18)
   }
 }
 
 
 class SidePanelFontBox(neditor:FieldEditor,val nallowedFields:Map[String,Byte]) 
 		extends SidePanelComboBox(FontHandler.fontList,new FontPreviewPan,neditor,nallowedFields) {
-    val defaultValue=FontHandler.defaultFont
-    def getConstant(value:FontInfo):Constant=new StringConstant(value.name)  
-    def valueFromConstant(c:Constant)=FontHandler.getFontInfo(c.toString)
+  val defaultValue: FontInfo = FontHandler.defaultFont
+
+  def getConstant(value: FontInfo): Constant = StringConstant(value.name)
+
+  def valueFromConstant(c: Constant): FontInfo = FontHandler.getFontInfo(c.toString)
     override def setValue(newFont:Option[FontInfo]):Unit= {
       super.setValue(newFont)
-      if(newFont==None||newFont==null)selection.index= -1
+      if (newFont.isEmpty || newFont == null) selection.index = -1
       else {      	
       	selfSelected=true      	
       	selection.index=FontHandler.fontList.indexWhere(_.name==newFont.get.name)

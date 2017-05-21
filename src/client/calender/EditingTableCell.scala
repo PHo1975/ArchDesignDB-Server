@@ -23,9 +23,17 @@ class EditingTableView[T] extends TableView[T]{
 } 
 
 trait CellInfoReceiver[T] {
-  var mouseOverColumn:TableColumn[_,T]=_
-  var mouseOverRow:Int=0
-  var currentItem:T=_
+  def mouseOverColumn: TableColumn[_, T]
+
+  def mouseOverRow: Int
+
+  def currentItem: T
+
+  def setMouseOverColumn(c: TableColumn[_, T]): Unit
+
+  def setMouseOverRow(r: Int): Unit
+
+  def setCurrentItem(i: T): Unit
   var startEditChar:Option[String]=None
 }
 
@@ -35,10 +43,11 @@ abstract class EditingTableCell[R, D](receiver:CellInfoReceiver[D]) extends Tabl
 	var textField:TextInputControl = _
 	var mouseOver=false 
 	var oldView:Parent=_
-	
-	EditingTableCell.this.setOnDragEntered(handleEvent(e=> {receiver.currentItem=getItem()
-	  receiver.mouseOverColumn=getTableColumn()
-	  receiver.mouseOverRow=getIndex()
+
+  EditingTableCell.this.setOnDragEntered(handleEvent(e => {
+    receiver.setCurrentItem(getItem())
+    receiver.setMouseOverColumn(getTableColumn())
+    receiver.setMouseOverRow(getIndex())
 	}))
 
 	def convertToEditString(data:D):String	

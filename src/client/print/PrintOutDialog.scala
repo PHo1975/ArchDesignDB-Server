@@ -2,37 +2,19 @@
  * Author: Peter Started:01.05.2011
  */
 package client.print
-import scala.swing.Window
-import scala.swing.Dialog
-import java.awt.Dimension
 
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import scala.swing.Button
-import java.awt.Color
-
-import scala.swing.BorderPanel
-import javax.swing.BorderFactory
-
-import scala.swing.Label
-import scala.swing.RadioButton
-import scala.swing.ButtonGroup
-import scala.swing.TextField
-import scala.swing.ScrollPane
-import scala.swing.event.ButtonClicked
-import scala.swing.Component
-import javax.swing.JOptionPane
-import javax.swing.event.DocumentListener
-import javax.swing.event.DocumentEvent
-import javax.swing.ImageIcon
-import java.net.URL
-
-import definition.data.Reference
+import java.awt.{Color, Dimension}
 import javax.print.attribute.standard.PageRanges
+import javax.swing.{BorderFactory, ImageIcon, JOptionPane}
+import javax.swing.event.{DocumentEvent, DocumentListener}
 
+import client.dataviewer.ViewConstants
 import client.icons.IconManager
+import definition.data.Reference
 import util.StrToInt
 
+import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, Component, Dialog, Label, Orientation, RadioButton, ScrollPane, TextField}
+import scala.swing.event.ButtonClicked
 import scala.util.control.NonFatal
 
 /**
@@ -40,11 +22,11 @@ import scala.util.control.NonFatal
  */
 object PrintOutDialog{
   val printGroup="print"
-  lazy val printerIcon=IconManager.getIcon(printGroup,"printer-icon30").get
-  lazy val printerMIcon=IconManager.getIcon(printGroup,"printer-m").get
-  lazy val portraitIcon=IconManager.getIcon(printGroup,"portrait").get
-  lazy val landscapeIcon=IconManager.getIcon(printGroup,"landscape").get
-  lazy val archiveIcon=IconManager.getIcon(printGroup,"archive30").get
+	lazy val printerIcon: ImageIcon = IconManager.getIcon(printGroup, "printer-icon30").get
+	lazy val printerMIcon: ImageIcon = IconManager.getIcon(printGroup, "printer-m").get
+	lazy val portraitIcon: ImageIcon = IconManager.getIcon(printGroup, "portrait").get
+	lazy val landscapeIcon: ImageIcon = IconManager.getIcon(printGroup, "landscape").get
+	lazy val archiveIcon: ImageIcon = IconManager.getIcon(printGroup, "archive30").get
   lazy val dialog=new PrintOutDialog
 }
 
@@ -52,9 +34,9 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
   preferredSize=new Dimension(350,400)  
   
   var pageRange:PageRanges=_
-  
-  val dlabel=new Label()
-  val plabel=new Label()
+
+	val dlabel: Label = ViewConstants.label()
+	val plabel: Label = ViewConstants.label()
   val allPagesBut=new RadioButton("Alle Seiten drucken")
   val pageRangeBut=new RadioButton("Seitenbereich:")
   val currentPageBut=new RadioButton("Aktuelle Seite drucken")
@@ -63,9 +45,11 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
 	val copyEdit=new TextField
   
   pageRangeEdit.peer .getDocument.addDocumentListener(new DocumentListener{
-  	def changedUpdate(e:DocumentEvent)= checkPages()
-  	def insertUpdate(e:DocumentEvent)= checkPages()
-  	def removeUpdate(e:DocumentEvent)= checkPages()
+		def changedUpdate(e: DocumentEvent): Unit = checkPages()
+
+		def insertUpdate(e: DocumentEvent): Unit = checkPages()
+
+		def removeUpdate(e: DocumentEvent): Unit = checkPages()
   })
   
   val addReceiverBut=new Button("Hinzufügen...")
@@ -78,12 +62,12 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
   val outputPane=new BoxPanel(Orientation.Vertical){  	
   	border=BorderFactory.createTitledBorder("Ausgabe auf")
   	contents+=new BoxPanel(Orientation.Horizontal ){
-  	 val olabel=new Label("Gerät: ")
+			val olabel: Label = ViewConstants.label("Gerät: ")
   	 contents+=olabel+=dlabel
   	 xLayoutAlignment=0
   	}
   	contents+=new BoxPanel(Orientation.Horizontal ){
-  	 val olabel=new Label("Papier: ")
+			val olabel: Label = ViewConstants.label("Papier: ")
   	 contents+=olabel+=plabel
   	 xLayoutAlignment=0
   	}
@@ -94,7 +78,7 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
   val pagesPane= new BoxPanel(Orientation.Vertical){  	
   	xLayoutAlignment=0
   	border=BorderFactory.createTitledBorder("Druckbereich")
-  	val exampleLab=new Label(" z.B.: 1-5, 8, 11 ")
+		val exampleLab: Label = ViewConstants.label(" z.B.: 1-5, 8, 11 ")
   	exampleLab.foreground=Color.gray
   	val rangeBox=new BoxPanel(Orientation.Horizontal ){
   		contents+=pageRangeBut+=pageRangeEdit+=exampleLab
@@ -110,7 +94,7 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
 	val copyPan=new BoxPanel(Orientation.Horizontal){
 		xLayoutAlignment=0
 		border=BorderFactory.createTitledBorder("Kopien")
-		val copyLab=new Label("Anzahl Kopien:")
+		val copyLab: Label = ViewConstants.label("Anzahl Kopien:")
 		contents+=copyLab+=copyEdit
 		maximumSize=new Dimension(Short.MaxValue,preferredSize.height)
 	}
@@ -136,8 +120,8 @@ class PrintOutDialog (/*preDialog:NewOutdefDialog*/)  extends BoxPanel(Orientati
   reactions += {
   	 case ButtonClicked(`addReceiverBut`)=> 
   }
-  
-  def checkPages()= {
+
+	def checkPages(): Unit = {
   	if(currPageable!=null) 
   	pageRangeEdit.foreground=if(parsePages(pageRangeEdit.text)==null)Color.red else Color.black
   	if(!pageRangeBut.selected) pageRangeBut.selected=true

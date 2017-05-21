@@ -3,11 +3,13 @@
  */
 package transaction.handling
 
-import definition.data.{CollFuncResult, ExtFieldRef, InstanceData, OwnerReference, Reference, ReferencingLinks}
-import definition.expression.{CollectingFuncCall, Constant, EMPTY_EX, Expression, FieldReference, ParentFieldRef}
+import definition.data._
+import definition.expression._
 import definition.typ.{AllClasses, DataType}
 import server.comm.{CommonSubscriptionHandler, ConnectionEntry, UserList}
 import server.storage._
+
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 
@@ -16,21 +18,23 @@ import scala.util.control.NonFatal
  * 
  */
 object TransactionManager {
-  @volatile var running=false
+	@volatile protected var running = false
   
   val numUndoSteps=10
   var currentUser:Short=0
   var currentActionCode:Short=0
-  var currentRef:Reference=null
+	var currentRef: Reference = _
   var multiInst:Boolean=false
   var logCreateType:Int=0
-  
-	
-	private val transLock : AnyRef = new Object()	
-  
-  val delayedActionsList=collection.mutable.ArrayBuffer[() => Unit]()
-			
-	@volatile var undoUserEntry:ConnectionEntry=null
+
+
+	val transLock: AnyRef = new Object()
+
+	val delayedActionsList: ArrayBuffer[() => Unit] = collection.mutable.ArrayBuffer[() => Unit]()
+
+	@volatile var undoUserEntry: ConnectionEntry = _
+
+	def isRunning: Boolean = running
 	
 	// Starts a new Transaction
 	private def startTransaction():Unit =	{		
@@ -53,9 +57,11 @@ object TransactionManager {
 		}		
 		//System.out.println("Finish Trans "+ TransLogHandler.transID)
 		running=false
+		currentUser = -1
+
 	}
-	
-	def canModify = running && undoUserEntry==null
+
+	def canModify: Boolean = running && undoUserEntry == null
 	
 	
 	// breaks an transaction if an error occurs during the transaction
@@ -99,8 +105,8 @@ object TransactionManager {
 	                      notifySubs:Boolean=true,withStartValues:Boolean=true):InstanceData =	{	
 		if(!canModify ) throw new IllegalArgumentException("No transaction defined ")
 		//TODO: Check if the child type is allowed in the owner property fields
-		
-		println("Create typ"+typ+" owners:"+owners.mkString(",")+" "+notifyRefandColl+" pos:"+pos+" notifySubs:"+notifySubs+" withStart:"+withStartValues)
+
+		//println("Create typ"+typ+" owners:"+owners.mkString(",")+" "+notifyRefandColl+" pos:"+pos+" notifySubs:"+notifySubs+" withStart:"+withStartValues)
 		var newInst=StorageManager.createInstance(typ,owners,withStartValues)	
 		var collData:Option[CollFuncResultSet]=None
 		var newLinkDataForThis:ReferencingLinks=null
@@ -120,7 +126,7 @@ object TransactionManager {
 				}
 				// check new links
 				val newRefList:Seq[FieldReference]=expr.getElementList[FieldReference](DataType.FieldRefTyp,Nil)
-				for(nr<-newRefList;if nr.remInst == None)	{
+				for (nr <- newRefList; if nr.remInst.isEmpty) {
 					nr.cachedValue =newInst.fieldValue(nr.remField)	//side effect !!! should be changed !
 					fieldsChanged=true									
 					if(newLinkDataForThis==null)newLinkDataForThis=		new ReferencingLinks(newInst.ref,Map())
@@ -138,9 +144,9 @@ object TransactionManager {
 				}	
 			}	// for
 			if(fieldsChanged) newInst=new InstanceData(newInst.ref,newInst.fieldData,newInst.owners) // update caches
-		}  
-		ActionList.addTransactionData(newInst.ref,new CreateAction(newInst.ref,Some(newInst),None,
-			Option(newLinkDataForThis),collData,copyInfo))
+		}
+		ActionList.addTransactionData(newInst.ref, CreateAction(newInst.ref, Some(newInst), None,
+			Option(newLinkDataForThis), collData, copyInfo))
 		// notify owners
 		for(owner <-owners)
 			internAddPropertyToOwner(newInst,owner,pos,!notifySubs)
@@ -152,7 +158,7 @@ object TransactionManager {
 		if(withStartValues){ // create AutoCreate children
 			AllClasses.get.getClassByID(typ) match {
 				case theClass:ServerObjectClass => for (ac <-theClass.ownAutoCreateInfos ) {
-					val childInst=tryCreateInstance(ac.childType ,Array(new OwnerReference(ac.propField,newInst.ref )),true,-1,false,true)
+					val childInst = tryCreateInstance(ac.childType, Array(new OwnerReference(ac.propField, newInst.ref)), true, -1, false)
 					for(sv<-ac.startValues ) // write start Values in child instance
 						tryWriteInstanceField(childInst.ref,sv._1,sv._2)
 				}
@@ -201,8 +207,8 @@ object TransactionManager {
   	ActionList.addTransactionData(owner.ownerRef,DataChangeAction(None,Some(newProp),None,None,
   		 Some(RefreshDestinationOwner) ))
 	}
-	
-	def sortProperty(owner:OwnerReference,fieldNr:Int) = {
+
+	def sortProperty(owner: OwnerReference, fieldNr: Int): Unit = {
 		val newProp= (ActionList.getInstanceProperties(owner.ownerRef) match {  								
   				case Some(a) => a 				
   				case _ => throw new IllegalArgumentException("sorting "+owner+", has no Property data ")
@@ -211,12 +217,11 @@ object TransactionManager {
   	ActionList.addTransactionData(owner.ownerRef,DataChangeAction(None,Some(newProp),None,None,
   		 Some(RefreshDestinationOwner) ))
 	}
-	
-	
-	
-	def tryWriteInstanceData(data:InstanceData) =	{
+
+
+	def tryWriteInstanceData(data: InstanceData): Unit = {
 		if(!canModify ) throw new IllegalArgumentException("No transaction defined ")
-		ActionList.addTransactionData(data.ref,new DataChangeAction (Some(data) ))
+		ActionList.addTransactionData(data.ref, DataChangeAction(Some(data)))
 	}
 	
 	/**
@@ -317,7 +322,7 @@ object TransactionManager {
 					case None => util.Log.e("Cant find Colldate when updating cached values"+stillCalls+" ref:"+ref)
 				}		  
 			}
-			if (collDataChanged) ActionList.addTransactionData(ref,new DataChangeAction(None,None,None,collData))
+			if (collDataChanged) ActionList.addTransactionData(ref, DataChangeAction(None, None, None, collData))
 		}    
 		 
 		  
@@ -326,7 +331,7 @@ object TransactionManager {
 		// set field in instance to new expression
 		val newInst=instD.setField(fieldNr,theExpression)
 		// store data
-		ActionList.addTransactionData(ref,new DataChangeAction (Some(newInst) ))
+		ActionList.addTransactionData(ref, DataChangeAction(Some(newInst)))
 		
 		// pass on the changed value to referencing instances
 		val newValue=theExpression.getValue
@@ -488,7 +493,7 @@ object TransactionManager {
 		//resetFuncExpressions(theField)
 		val newRemoteValue=theField.getValue
 		val newTargetData=targetData.setField(targetFieldRef.field,theField)
-		ActionList.addTransactionData(targetRef,new DataChangeAction(Some(newTargetData)))
+		ActionList.addTransactionData(targetRef, DataChangeAction(Some(newTargetData)))
 		if(newRemoteValue!=oldRemoteValue){ // if the value has changed after the change of the referenced field
 			//pass on the changed value of the target instance to it's targets
 			passOnChangedValue(newTargetData,targetFieldRef.field,oldRemoteValue,newRemoteValue)			
@@ -658,7 +663,7 @@ object TransactionManager {
 				}
 				else res
 		  val newResultSet=new CollFuncResultSet(owner.ownerRef,newCollDataList)
-		  ActionList.addTransactionData(owner.ownerRef ,new DataChangeAction(Some(parentInstData),None,None,Some(newResultSet)))
+			ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
 		  // pass on to owners
 		  for(fieldNr <-fieldMatchSet;if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
 		  	passOnChangedValue(parentInstData,fieldNr.toByte,oldParentValues(fieldNr),parentInstData.fieldData(fieldNr).getValue)
@@ -692,7 +697,7 @@ object TransactionManager {
 						}
 						else res
 						val newResultSet=new CollFuncResultSet(owner.ownerRef,newCollDataList)
-				ActionList.addTransactionData(owner.ownerRef ,new DataChangeAction(Some(parentInstData),None,None,Some(newResultSet)))
+				ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
 				// pass on to owners
 				for(fieldNr <-fieldMatchSet;if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
 					passOnChangedValue(parentInstData,fieldNr.toByte,oldParentValues(fieldNr),parentInstData.fieldData(fieldNr).getValue)
@@ -732,8 +737,8 @@ object TransactionManager {
   			internRemovePropertyFromOwner(ref,fromOwner.get)
   			passOnDeletedInstanceToCollFuncParents(instD,fromOwner.toList)
   			val newSU=instD.secondUseOwners.filterNot(_ == fromOwner.get)
-  			val newInst=instD.changeSecondUseOwners(newSU)  			
-  			ActionList.addTransactionData(ref,new DataChangeAction(Some(newInst),None,None,None,None,Some(fromOwner.get))) // store that target  			
+  			val newInst=instD.changeSecondUseOwners(newSU)
+				ActionList.addTransactionData(ref, DataChangeAction(Some(newInst), None, None, None, None, Some(fromOwner.get))) // store that target
   			return true
   		} 
   		else if(instD.owners .contains(fromOwner.get)) {
@@ -743,8 +748,8 @@ object TransactionManager {
   				val newOwners=instD.owners.filterNot(_ ==fromOwner.get) :+ instD.secondUseOwners.head
   				val newSUOwners=instD.secondUseOwners.drop(1)
   				// raise one of the su owners to a general owner
-  				val newInst=instD.clone(ref,newOwners,newSUOwners)  				
-  				ActionList.addTransactionData(ref,new DataChangeAction(Some(newInst),None,None,None,None,Some(fromOwner.get))) // store that target  				
+  				val newInst=instD.clone(ref,newOwners,newSUOwners)
+					ActionList.addTransactionData(ref, DataChangeAction(Some(newInst), None, None, None, None, Some(fromOwner.get))) // store that target
   				return true
   			}  			
   			// else do the standard procedure and delete the instance fully
@@ -764,10 +769,10 @@ object TransactionManager {
   		if(dontNotifyOwner match {case Some(dno)=> owner.ownerRef!=dno;case _ =>true}) 			
   			internRemovePropertyFromOwner(ref,owner)
   	passOnDeletedInstanceToCollFuncParents(instD,instD.owners)
-  	passOnDeletedInstanceToCollFuncParents(instD,instD.secondUseOwners)  	  
-  	
-  	
-  	ActionList.addTransactionData(ref,new DeleteAction(instD))  	
+  	passOnDeletedInstanceToCollFuncParents(instD,instD.secondUseOwners)
+
+
+		ActionList.addTransactionData(ref, DeleteAction(instD))
   	
   	// remove link information at external source instances
   	for(afield <-instD.fieldData) // check all fields for FieldReferences
@@ -804,7 +809,7 @@ object TransactionManager {
 
 										case other => other // dont change any other elements
                 }
-                ActionList.addTransactionData(targetRef,new DataChangeAction(Some(targetData.setField(aref.field, theField)))) // store that target
+								ActionList.addTransactionData(targetRef, DataChangeAction(Some(targetData.setField(aref.field, theField)))) // store that target
               }
             }
           }
@@ -888,7 +893,7 @@ object TransactionManager {
 				 }
 			}
 			// store
-			ActionList.addTransactionData(subRef, new DataChangeAction(Some( newInst),None,None,None,Some(ChangeDontNotifyOwners)))
+			ActionList.addTransactionData(subRef, DataChangeAction(Some(newInst), None, None, None, Some(ChangeDontNotifyOwners)))
 			passOnNewInstanceToCollFuncParents(newInst,List(toOwner))
 			passOnDeletedInstanceToCollFuncParents(instData,List(fromOwner))
 			
@@ -913,10 +918,9 @@ object TransactionManager {
 		  else if(checkIsChildOf(owner.ownerRef,source)) return true	
 		false
 	}
-	
-	
-	
-	def tryCopyMultiInstances(instList:Seq[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int) = {
+
+
+	def tryCopyMultiInstances(instList: Seq[Reference], fromOwner: OwnerReference, toOwner: OwnerReference, atPos: Int): Int = {
 		if(!canModify ) throw new IllegalArgumentException("No transaction defined ")		
 		var pos=atPos
 		var lastInst:Int=0		
@@ -1052,7 +1056,7 @@ object TransactionManager {
 						case other => other // dont change any other elements
 					}
 					// store copied target instance again with new reference
-					ActionList.addTransactionData(targetCopyRef,new DataChangeAction(Some(targetCopyData.setField(alRef.field, newFieldValue))))
+					ActionList.addTransactionData(targetCopyRef, DataChangeAction(Some(targetCopyData.setField(alRef.field, newFieldValue))))
 				}
 			}			
 			case _ =>
@@ -1063,7 +1067,7 @@ object TransactionManager {
 		for(c <-collData)
 			collData=Some(c.changeReference(createInst.ref))
 		// store new instance	
-		ActionList.addTransactionData(createInst.ref,new DataChangeAction(Some(createInst),None,None,collData))		
+		ActionList.addTransactionData(createInst.ref, DataChangeAction(Some(createInst), None, None, collData))
 		// notify owners
 		if(collNotifyOwners)
 		passOnNewInstanceToCollFuncParents(createInst,createInst.owners)
@@ -1116,8 +1120,8 @@ object TransactionManager {
 	 * @param collNotifyOwners should owners be notified of the change, is used when called from copy
 	 * 
 	 */
-	def trySecondUseInstances(instList:Iterable[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,
-	                          atPos:Int,collNotifyOwners:Boolean=true)= {	  
+	def trySecondUseInstances(instList:Iterable[Reference], fromOwner:OwnerReference, toOwner:OwnerReference,
+														atPos: Int, collNotifyOwners: Boolean = true): Unit = {
 		if(!canModify ) throw new IllegalArgumentException("No transaction defined ")	
 		if(fromOwner==toOwner) throw new IllegalArgumentException("cant make second use with same owner "+fromOwner)
 		var pos=atPos
@@ -1134,7 +1138,7 @@ object TransactionManager {
 			internAddPropertyToOwner(newInst,toOwner,pos,true)
 			if(collNotifyOwners)
 				passOnNewInstanceToCollFuncParents(newInst,Seq(toOwner))
-			ActionList.addTransactionData(instRef,new DataChangeAction(Some(newInst),None,None,None))
+			ActionList.addTransactionData(instRef, DataChangeAction(Some(newInst), None, None, None))
 			if(toOwnerModuleWantsNotify) {
 			  toOwnerModule.onChildAdded(toOwnerInst,toOwner.ownerField,instD)
 			}
@@ -1154,17 +1158,17 @@ object TransactionManager {
   			} // and add the new child to the prop list
   			).removeChildInstance(fromOwner.ownerField ,subRef)
   	ActionList.addTransactionData(fromOwner.ownerRef,DataChangeAction(None,Some(newProp),None,None,
-  		if(notifyOwner) Some(new RemoveNotifySourceOwners(fromOwner,List(subRef))) else None ))
+			if (notifyOwner) Some(RemoveNotifySourceOwners(fromOwner, List(subRef))) else None))
   	//  notify subscriptions
   	//CommonSubscriptionHandler.instanceDeleted(fromOwner,subRef)
 	}
-	
-	
-	def runDelayed (func: () => Unit)= {
+
+
+	def runDelayed(func: () => Unit): delayedActionsList.type = {
 	  delayedActionsList+=func
 	}
-	
-	  def canReorg= TransDetailLogHandler.getInsertPos>0
+
+	def canReorg: Boolean = TransDetailLogHandler.getInsertPos > 0
 	
 	/**
 	 *  encapsulates a transaction so that StartTransaction and Finishtransaction/BreakTransaction
@@ -1175,7 +1179,7 @@ object TransactionManager {
 	 *  @param multi are there multiple instances changed in this transaction - for the transaction log
 	 *  @param f a function that does all the work for this transaction
 	 */
-	def doTransaction (userID:Short,actionCode:Short,ref:Reference,multi:Boolean,createType:Int,f :  => Unit):Option[Exception] = transLock.synchronized{
+	def doTransaction(userID: Short, actionCode: Short, ref: Reference, multi: Boolean, createType: Int, f: => Unit): Option[Exception] = transLock.synchronized {
     //println("Try transaction "+ActionNameMap.getActionName(actionCode)+ " "+ref)	  
 		startTransaction()		
     currentUser=userID
@@ -1189,15 +1193,26 @@ object TransactionManager {
         f        
         for(d<-delayedActionsList) 
           d.apply() // run delayed actions          
-    } catch { case e:Exception => util.Log.e("transaction ",e); success=false; breakTransaction(); return Some(e)}
+		} catch {
+			case e: Exception => util.Log.e("transaction " + ref + " code:" + actionCode, e); success = false; breakTransaction(); return Some(e)
+			case NonFatal(e) => util.Log.e("transaction " + ref + " code:" + actionCode, e)
+		}
+
     if(success) try {
 			finishTransaction()
-		} catch { case e:Exception => util.Log.e("transaction ",e); success=false; breakTransaction();  return Some(e)}
-
-
+		} catch {
+			case e: Exception => util.Log.e("transaction finish ", e); success = false; breakTransaction(); return Some(e)
+			case NonFatal(e) => util.Log.e("transaction finish " + ref + " code:" + actionCode, e)
+		}
 			//println("Transaction done  ["+ActionNameMap.getActionName(actionCode)+ " "+ref+"] "+(System.currentTimeMillis()-cm))
 		None
+	}
 
+	/** notifies that an user logged of, so cancel a running transaction of that user
+	*
+*/
+	def userLogsOff(userID: Short): Unit = if (running && userID == currentUser) {
+		breakTransaction()
 	}
 	
 	def doFixingJob[A](listener:(Int,String)=>Unit,job: ((Int,String)=>Unit)=>A):Option[A]={
@@ -1212,21 +1227,20 @@ object TransactionManager {
 	    running=false
 		}
 	  result
-	}  
-	  
-	def doReorgDB(listener:(Int,String)=>Unit)=doFixingJob(listener, StorageManager.reorgDatabase)	  
-	
-	def doFixInheritance(listener:(Int,String)=>Unit)=doFixingJob(listener, StorageManager.fixInheritance)
-	
-	def doDeleteOrphans(listener:(Int,String)=>Unit)=doFixingJob(listener, StorageManager.deleteOrphans)
-	
-	def doFindOrphans(listener:(Int,String)=>Unit)=doFixingJob[Map[OwnerReference,Iterable[Reference]]](listener, StorageManager.findOrphans)
-	
-	
-	def doUndo(connection:ConnectionEntry)= {
+	}
+
+	def doReorgDB(listener: (Int, String) => Unit): Option[Unit] = doFixingJob(listener, StorageManager.reorgDatabase)
+
+	def doFixInheritance(listener: (Int, String) => Unit): Option[Unit] = doFixingJob(listener, StorageManager.fixInheritance)
+
+	def doDeleteOrphans(listener: (Int, String) => Unit): Option[Unit] = doFixingJob(listener, StorageManager.deleteOrphans)
+
+	def doFindOrphans(listener: (Int, String) => Unit): Option[Map[OwnerReference, Iterable[Reference]]] = doFixingJob[Map[OwnerReference, Iterable[Reference]]](listener, StorageManager.findOrphans)
+
+
+	def doUndo(connection: ConnectionEntry): Unit = {
 		if(undoUserEntry!=null && connection==undoUserEntry) {
 			//System.out.println("do undo "+TransLogHandler.transID)
-      StorageManager.clearCaches()
 			StorageManager.undoLastStep()
 			CommonSubscriptionHandler.refreshAfterUndo()	
 			UserList.releaseUsersForUndo(connection)

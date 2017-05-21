@@ -1,18 +1,13 @@
 package management.databrowser
 
-import scala.swing.Dialog
-import scala.swing.Window
-import server.storage.ServerObjectClass
-import definition.typ.DTWrap
-import scala.swing.ComboBox
-import scala.swing.BoxPanel
-import scala.swing.Label
 import java.awt.Dimension
-import scala.swing.Orientation
-import scala.swing.Button
-import java.awt.Color
+
+import client.dataviewer.ViewConstants
+import definition.typ.{DTWrap, DataType}
+import server.storage.ServerObjectClass
+
 import scala.swing.event.ButtonClicked
-import definition.typ.DataType
+import scala.swing.{BoxPanel, Button, ComboBox, Dialog, Label, Orientation, Window}
 
 class AddFieldDialog (w:Window) extends Dialog(w) {
   val fieldName= new FormatLine(100,"Field Name:",()=>"",(text)=> {})
@@ -20,7 +15,7 @@ class AddFieldDialog (w:Window) extends Dialog(w) {
   var typCombo=new ComboBox[DTWrap](Seq.empty)
   var selectedType:Option[DataType.Value]=None
   var currentClass:Option[ServerObjectClass]=None
-  val typeLabel=new Label("DataType:")  
+  val typeLabel: Label = ViewConstants.label("DataType:")
   typeLabel.preferredSize=new Dimension(100,0)
  
   val typeBox=new BoxPanel(Orientation.Horizontal) {
@@ -48,9 +43,9 @@ class AddFieldDialog (w:Window) extends Dialog(w) {
   }
   
   contents=mainPanel
-  
- 
-  def showDialog(aClass:ServerObjectClass,types:Seq[DTWrap])= {	
+
+
+  def showDialog(aClass: ServerObjectClass, types: Seq[DTWrap]): Unit = {
 		currentClass match {
 		  case Some(_)=>
 		  case None => //typCombo.peer.setModel(ComboBox.newConstantModel(types))		       

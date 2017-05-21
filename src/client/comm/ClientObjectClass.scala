@@ -6,7 +6,7 @@ package client.comm
 import javax.swing.JComponent
 
 import client.dialog.form.{FormBox, FormCreateContext}
-import client.dialog.{ActionStrokeButton, CreateActionMenuButton, CreateMenuButton, IconableButton, IconableToggleButton, Toast}
+import client.dialog._
 import client.ui.ClientApp
 import definition.typ._
 import util.XMLUtils.readOptString
@@ -31,21 +31,21 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
 	 protected val superClasses:Seq[Int], val shortFormat:InstFormat,val longFormat:InstFormat,val resultFormat:InstFormat,val formBox:Option[FormBox],
 	 val customInstanceEditor:Option[String],val importDescriptor:Option[String]=None)
 	 extends AbstractObjectClass {
-   def ownActions=theActions  
+  def ownActions: Seq[ActionDescription] = theActions
    var enumFields:Map[Int,EnumDefinition]= Map.empty // position of enum fields
    var actionButtons:Seq[ActionStrokeButton]=Seq.empty
-   
-   lazy val createMenuItems:Map[Int,Seq[CreateMenuButton]]=( for(i<-0 until propFields.size;pf=propFields(i)) yield {     
-     val buttons=pf.createChildDefs .filter(! _.action.isDefined).map(new CreateMenuButton(description,i.toByte,_))
+
+  lazy val createMenuItems: Map[Int, Seq[CreateMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
+    val buttons = pf.createChildDefs.filter(_.action.isEmpty).map(new CreateMenuButton(description, i.toByte, _))
      i -> buttons
    }).toMap
-   lazy val createActionMenuItems:Map[Int,Seq[CreateActionMenuButton]]=( for(i<-0 until propFields.size;pf=propFields(i)) yield {
+  lazy val createActionMenuItems: Map[Int, Seq[CreateActionMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
      val buttons=pf.createChildDefs .filter(_.action.isDefined).map(new CreateActionMenuButton(description,i.toByte,_))
      i -> buttons
-   }).toMap 
-   
-   
-   override def resolveSuperFields()= if(!hasResolved) {
+   }).toMap
+
+
+  override def resolveSuperFields(): Unit = if (!hasResolved) {
   	 super.resolveSuperFields()
   	 try {  	   
   	   enumFields=fields.view.zipWithIndex.collect(
@@ -56,7 +56,8 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
   		     theActions.map(new ActionStrokeButton(description,_))  		 
   	 } catch {
 			 case NonFatal(e) => util.Log.e("resolveSuperFields",e)
-		   case other:Throwable =>println(other);System.exit(0)}
+       case other: Throwable => util.Log.e("resolveSuperFields", other)
+     }
    }   
    
 }
@@ -65,14 +66,15 @@ object ClientObjectClass {
 	val readFormContext=new FormCreateContext {
 	  def getIconableButton(commandName:String,groupName:String,ntooltipText:String)=new IconableButton(commandName,groupName,ntooltipText)
 	  def getIconableToggleButton(commandName:String,groupName:String,ntooltipText:String)=new IconableToggleButton(commandName,groupName,ntooltipText)
-	  def showError(text:String,component:JComponent)= {
+
+    def showError(text: String, component: JComponent): Unit = {
 	    ClientQueryManager.printErrorMessage(text)
 	    new Toast(text,component,ClientApp.top).visible=true
 	  }
 }
 	
 	// creates an ObjectClass object from XML
-	def fromXML(node: scala.xml.Node) = 	{
+  def fromXML(node: scala.xml.Node): ClientObjectClass = {
 		val name=(node \"@name").text
 		val id=(node \"@id").text.toInt
 		val actionsNode=node \"Actions"
@@ -107,8 +109,7 @@ object ClientObjectClass {
 	
 	def readFormBox(node:scala.xml.NodeSeq): Option[FormBox] = {
 		val elList=for(abox <- node \ "FormBox") yield FormBox(abox,readFormContext)
-		if(elList.isEmpty) None
-		else Some(elList.head)
+    elList.headOption
 	}
 	
 }

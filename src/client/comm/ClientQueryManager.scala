@@ -7,16 +7,17 @@ import java.io._
 import java.util.concurrent._
 
 import client.dialog.DialogManager
+import client.search.{AbstractSearchResult, SearchFinished, SearchResult}
 import definition.comm._
 import definition.data._
 import definition.expression._
 import definition.typ._
+import util.Log
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.swing.Swing
 import scala.util.control.NonFatal
-import util.Log
 
 /** manages Queries and Subscriptions
  * 
@@ -26,9 +27,9 @@ trait StepListReader{
 	def loadStepList(list:Seq[TransStepData]):Unit
 }
 
-trait ErrorListener{
+/*trait ErrorListener{
 	def printError(errorText:String):Unit
-}
+}*/
 
 object ClientQueryManager {
 	//type InstArrayFunc=(Array[InstanceData])=> Unit
@@ -36,45 +37,46 @@ object ClientQueryManager {
 	//type PosUpdateFunc=(NotificationType.Value,IndexedSeq[InstanceData],Int)=>Unit
 	
 	type FactUpdateFunc[T<: Referencable]=(NotificationType.Value,IndexedSeq[T])=>Unit
-	
-	val errorListeners=new collection.mutable.HashSet[ErrorListener]()	
-	
-	trait Subscriber
+
+  type SearchListener = (AbstractSearchResult) => Unit
+
+  //val errorListeners=new collection.mutable.HashSet[ErrorListener]()
+
+  sealed trait Subscriber
 	case class SimpleSubscriber(func: UpdateFunc) extends Subscriber{
-    override def toString="SimpleSubscriber "+func.getClass 
+    override def toString: String = "SimpleSubscriber " + func.getClass
   }
-	//case class PositionSubscriber(func: PosUpdateFunc) extends Subscriber
-	case class FactSubscriber[T<: Referencable](factory:SubscriptionFactory[T],func: FactUpdateFunc[T]) extends Subscriber{
-    
-  }
-	//case class PathSubscriber(func:PathUpdateFunc)
-	
+
+  case class FactSubscriber[T <: Referencable](factory: SubscriptionFactory[T], func: FactUpdateFunc[T]) extends Subscriber
+
 	private val queryQueue = new SynchronousQueue[IndexedSeq[InstanceData]](true)	
 	private val factQueryQueue = new SynchronousQueue[IndexedSeq[Referencable]](true)
 	private val queryFactories=mutable.Stack[SubscriptionFactory[_]]()
 	
 	private val newSubscriberQueue=new ArrayBlockingQueue[Subscriber](8,true)
 	private val subscriptionMap=new ConcurrentHashMap[Int,Subscriber]()
-	
-	private var stepListReader:StepListReader=null
+
+  private var stepListReader: StepListReader = _
 	
 	private val commandResultQueue = new SynchronousQueue[CommandResult](true)
 	private val subscriptionAcceptQueue = new SynchronousQueue[Int](true)
 	//private val pathSubsAcceptQueue=new SynchronousQueue[Int]()
-	
-	private var sock:ClientSocket=null
-	val myPool=Executors.newCachedThreadPool() 
+
+  private var sock: ClientSocket = _
+  val myPool: ExecutorService = Executors.newCachedThreadPool()
 	private var isSetup=false
 	private var setupListenerMap=collection.mutable.HashSet[() => Unit]()
 	//private var afterSetupListeners=collection.mutable.HashSet[Function0[Unit]]()
 	private val storeSettingsListenerMap= collection.mutable.HashSet[() => Unit]()
-	val EmptyResultListener= (result:CommandResult)=>{}
+  private var searchListener: Option[SearchListener] = None
+
+  val EmptyResultListener: (CommandResult) => Unit = (result: CommandResult) => {}
   
 	var undoLockListener:Option[(Boolean, String) => Unit]=None
 	
 	FunctionManager.setManager(new CommonFuncMan)
-	
-	def setClientSocket(newSock:ClientSocket) = {
+
+  def setClientSocket(newSock: ClientSocket): Unit = {
 		sock=newSock
 		// register Handler
 		sock.registerCommandHandler(ServerCommands.sendQueryResponse)(handleQueryResults)
@@ -85,7 +87,8 @@ object ClientQueryManager {
 		sock.registerCommandHandler(ServerCommands.lockForUndo )(lockForUndo)
 		sock.registerCommandHandler(ServerCommands.releaseUndoLock )(releaseUndoLock)
 		sock.registerCommandHandler(ServerCommands.sendUndoInformation )(sendUndoInformation)
-		sock.registerCommandHandler(ServerCommands.askEnquiry )(askEnquiry)		
+    sock.registerCommandHandler(ServerCommands.askEnquiry)(askEnquiry)
+    sock.registerCommandHandler(ServerCommands.sendSearchResult)(receiveSearchResults)
 	}
 		
 	/** reads instances from the DataBase
@@ -168,8 +171,8 @@ object ClientQueryManager {
 		}
 		subscriptionAcceptQueue.take()
 	}
-	
-	def changeSubscription(subsID:Int,newParent:Reference,newPropField:Byte) = {
+
+  def changeSubscription(subsID: Int, newParent: Reference, newPropField: Byte): Unit = {
 	 // print("change Subscription id:"+subsID+" newParent:"+newParent+" newpropField:"+newPropField)
 		sock.sendData(ClientCommands.changeSubscription ) {out =>
 			out.writeInt(subsID)
@@ -187,8 +190,8 @@ object ClientQueryManager {
 		}
 		subscriptionAcceptQueue.take()
 	}
-	
-	def pathSubs_addPathElement(subsID:Int, childRef:Reference) = {
+
+  def pathSubs_addPathElement(subsID: Int, childRef: Reference): Unit = {
 		sock.sendData(ClientCommands.pathSubs_openChild ) { out =>
 			out.writeInt(subsID)
 			childRef.write(out)
@@ -198,23 +201,24 @@ object ClientQueryManager {
 	/** changes the subscription only to the remaining elements
 	 * @param newPathPos the number of the element that should be the last one starting with 0
 	 */
-	def pathSubs_jumpUp(subsID:Int,newPathPos:Int) = {
+  def pathSubs_jumpUp(subsID: Int, newPathPos: Int): Unit = {
+    //println("jumpup "+newPathPos)
 		sock.sendData(ClientCommands.pathSubs_jumpUp  ) { out =>
 			out.writeInt(subsID)
 			out.writeInt(newPathPos)
 		}
 	}
-	
-	def pathSubs_changePath(subsID:Int,newPath:Seq[Reference]) = {
-		sock.sendData(ClientCommands.pathSubs_jumpUp  ) { out =>
+
+  def pathSubs_changePath(subsID: Int, newPath: Seq[Reference]): Unit = {
+    sock.sendData(ClientCommands.pathSubs_changePath) { out =>
 			out.writeInt(subsID)
 			out.writeInt(newPath.size)
 			for(p <-newPath) p.write(out)
 		}
 	}
-	
-	
-	def removeSubscription(subsID:Int) = {	
+
+
+  def removeSubscription(subsID: Int): Unit = {
 	  //println("remove Subscription "+subsID)
 	  if(subsID<0) {
       util.Log.e("Trying to remove SubsID :"+subsID+" but ",Thread.currentThread().getStackTrace)
@@ -230,9 +234,9 @@ object ClientQueryManager {
 	  	}
 	  }
 	}
-	
-	
-	def pauseSubscription(subsID:Int) = {
+
+
+  def pauseSubscription(subsID: Int): Unit = {
 		//Thread.dumpStack
 		sock.sendData(ClientCommands.pauseSubscription ) {out =>
 			out.writeInt(subsID)			
@@ -259,8 +263,8 @@ object ClientQueryManager {
 		}
 		commandResultQueue.take()			
 	}
-	
-	def writeKeyStrokes() = {
+
+  def writeKeyStrokes(): Unit = {
 	  sock.sendData(ClientCommands.writeKeyStrokes) { out =>
 	    KeyStrokeManager.write(out)
 	  }
@@ -396,7 +400,7 @@ object ClientQueryManager {
 	
 	def executeCreateAction(parentList:Iterable[Referencable],newType:Int,propField:Byte,actionName:String,params:Seq[(String,Constant)],
       formatValues:Seq[(Int,Constant)]):Unit = runInPool{
-		System.out.println("execute create parents:"+parentList.mkString(",")+" newType:" + newType+" ")
+    //System.out.println("execute create parents:"+parentList.mkString(",")+" newType:" + newType+" ")
 		sock.sendData(ClientCommands.executeCreateAction) { out =>
 			out.writeInt(parentList.size)
 			parentList foreach(_.ref.write(out))
@@ -515,8 +519,7 @@ object ClientQueryManager {
 				case a => util.Log.e("HandleSubsNotification unknown SubscriberType " + a + " class: " + (if (a != null) a.getClass else "Null") + " for Subscription " + substID)
 			}
 		}
-	}	
-	
+  }
 	
 	private def handleCommandResponse(in:DataInputStream ) = {		
 		val hasError=in.readBoolean
@@ -531,9 +534,9 @@ object ClientQueryManager {
 		  commandResultQueue.put(result)
 		}
 	}
-	
-	
-	def askEnquiry(in:DataInputStream ) = {
+
+
+  def askEnquiry(in: DataInputStream): Unit = {
 	  //println("Ask Enquiry ")
 	  val st=in.readUTF
 	  //println("St:"+st)
@@ -546,8 +549,8 @@ object ClientQueryManager {
 			case _ => util.Log.e("cant create ParamQuestion from : "+st)
 		}		
 	}
-	
-	def answerEnquiry(params:Seq[(String,Constant)])= {
+
+  def answerEnquiry(params: Seq[(String, Constant)]): Unit = {
 		sock.sendData(ClientCommands.answerEnquiry) { out =>
 			out.writeInt(params.size)
 			params foreach((x) => {out.writeUTF(x._1); x._2 .write(out)})
@@ -564,11 +567,12 @@ object ClientQueryManager {
 		storeSettingsListenerMap+=listener
 		
 	}
-	
-	private[comm] def notifySetupListeners() = Swing.onEDT{
+
+  private[comm] def notifySetupListeners(): Unit = Swing.onEDT {
 		setupListenerMap.foreach(a => try { a()} catch {
 			case NonFatal(e)=> util.Log.e(e)
-			case other:Throwable =>util.Log.w(other.toString);System.exit(0);null})
+      case other: Throwable => util.Log.w(other.toString)
+    })
 		isSetup=true
 	}
 	
@@ -578,7 +582,7 @@ object ClientQueryManager {
 	private[comm] def notifyStoreSettingsListeners() = {
 		storeSettingsListenerMap.foreach(a => try { a()} catch {
 			case NonFatal(e)=> util.Log.e(e)
-			case other:Throwable =>println(other);System.exit(0)
+      case other: Throwable => util.Log.e("store settings", other); //System.exit(0)
 		})
 	}
 	
@@ -586,11 +590,37 @@ object ClientQueryManager {
 	/** runs a given function in a new Thread from the ThreadPool
 	 *  to avoid deadlocks
 	 */
-	def runInPool( a: => Unit) = {
-		myPool.execute(new Runnable() {
-						            	def run() = a})
+  def runInPool(a: => Unit): Unit = {
+    myPool.execute(() => a)
 	}
-	
+
+  def startSearch(rootRef: Reference, searchText: String, listener: SearchListener): Boolean =
+    if (searchListener.isDefined) {
+      Log.e("cant start Search, search is running")
+      false
+    }
+    else {
+      //println("Start Search")
+      searchListener = Some(listener)
+      sock.sendData(ClientCommands.searchForText) { out =>
+        rootRef.write(out)
+        out.writeUTF(searchText)
+      }
+      true
+    }
+
+  def receiveSearchResults(in: DataInputStream): Unit = {
+    val numTree = in.readInt()
+    //println("receive search "+searchListener+" num:"+numTree)
+    if (numTree == -1) {
+      for (r <- searchListener) Swing.onEDT(r(SearchFinished))
+      searchListener = None
+    } else {
+      val tree = for (i <- 0 until numTree) yield InstanceData.readWithChildInfo(Reference(in), in)
+      val inst = InstanceData.readWithChildInfo(Reference(in), in)
+      for (r <- searchListener) Swing.onEDT(r(SearchResult(tree, inst)))
+    }
+  }
 			
 	// ************************************ UNDO ********************************************
 	
@@ -617,42 +647,26 @@ object ClientQueryManager {
     util.Log.w("send ready ")
 			
 	}
-	
-	def registerStepListReader(slr:StepListReader)= {
-		stepListReader=slr
-	}
-	
-	def requestUndoData() = {
-		sock.sendData(ClientCommands.requestUndoData) { out =>
-		  
-		}
-	}
-	
-	def doUndo() = {
-		sock.sendData(ClientCommands.undo) { out =>
-		  
-		}
-	}
-	
-	def stopUndo() = {
-		sock.sendData(ClientCommands.stopUndo) { out =>
-		  
-		}
-	}
-	
-	def registerErrorListener(newListener:ErrorListener) = errorListeners += newListener
-	
-	def printErrorMessage(message:String) ={
-	  errorListeners foreach (_.printError( message))
-    val ss=Thread.currentThread().getStackTrace
-    val newStack=java.util.Arrays.copyOfRange(ss,2,Math.min(14,ss.length))
-    //println(newStack.mkString("\n "))
-    if(message==null) println("message==null" )
-	  else if( message.length>1) util.Log.e(message,newStack)
 
-	}
-	
-	def getMyUserId=SystemSettings.settings match {
+  def registerStepListReader(slr: StepListReader): Unit = stepListReader = slr
+
+  def requestUndoData(): Unit = sock.sendData(ClientCommands.requestUndoData) { out => }
+
+  def doUndo(): Unit = sock.sendData(ClientCommands.undo) { out => }
+
+  def stopUndo(): Unit = sock.sendData(ClientCommands.stopUndo) { out => }
+
+
+  def printErrorMessage(message: String): Unit =
+    if (message == null) println("message==null")
+    else {
+      DialogManager.printError(message)
+      val ss = Thread.currentThread().getStackTrace
+      val newStack = java.util.Arrays.copyOfRange(ss, 2, Math.min(14, ss.length))
+      if (message.length > 1) util.Log.e(message, newStack)
+    }
+
+  def getMyUserId: Int = SystemSettings.settings match {
 	  case s:definition.typ.ClientSystemSettings=>s.myUserID
 	  case _=> -1
 	}

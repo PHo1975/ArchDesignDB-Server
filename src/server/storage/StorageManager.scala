@@ -4,17 +4,16 @@
 package server.storage
 
 import java.io.{DataOutput, EOFException}
-import java.util.NoSuchElementException
 
-import definition.data.{InstanceData, InstanceProperties, LogIndexSet, OwnerReference, PropertyFieldData, Reference, ReferencingLinks, TransType}
+import definition.data._
 import definition.expression.{CommonFuncMan, FunctionManager}
 import definition.typ.{AllClasses, SystemSettings}
-import runtime.function.ServerFuncMan
 import server.comm.CommonSubscriptionHandler
 import server.config.FSPaths
 import transaction.handling.{ActionList, TransactionManager}
 
 import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 
@@ -23,7 +22,9 @@ import scala.util.control.NonFatal
  * 
  */
 object StorageManager {
-  var _ixHandlerList=collection.mutable.HashMap[Int,ClassIndexHandler]()
+  private val fileLock = new Object()
+
+  var _ixHandlerList: mutable.HashMap[Int, ClassIndexHandler] = collection.mutable.HashMap[Int, ClassIndexHandler]()
   val dataFileHandler=new BoolContFileHandler[InstanceData]("InstData.dat",InstanceData.read)
   val propFileHandler=new ContainerFileHandler("PropData.dat",InstanceProperties.read)
   val linkFileHandler=new ContainerFileHandler("ExternLinks.dat",ReferencingLinks.read)
@@ -45,15 +46,15 @@ object StorageManager {
   	if(shuttedDown)	shuttedDown=false
   	FunctionManager.setManager(new CommonFuncMan)
   }
-  
-  
-  def instanceExists(typ:Int,inst:Int): Boolean = if(serverClassList.contains(typ)) ixHandler(typ).instanceExists(inst) else false
+
+
+  def instanceExists(typ: Int, inst: Int): Boolean = fileLock.synchronized {if (serverClassList.contains(typ)) ixHandler(typ).instanceExists(inst) else false}
   
   
   /** loads an instance from the data file
    * 
    */
-  def getInstanceData(ref:Reference):InstanceData = 	{
+  def getInstanceData(ref: Reference): InstanceData = fileLock.synchronized {
 		val rec=ixHandler(ref.typ).getInstanceRecord(ref.instance )
 		if (rec.dataPos < 0 || rec.dataLength==0) throw new
 							 IllegalArgumentException("get Instance() instance "+ref+" is deleted")
@@ -62,16 +63,16 @@ object StorageManager {
 			instObj
 		} catch { case NonFatal(er)=> util.Log.e("loading ref:"+ref,er);null
 		case eo:EOFException=>util.Log.e("loading ref:"+ref,eo);null}
-  } 
-  
-  def loadChildren(parent:Reference,ofType:Int,propField:Int) :Seq[InstanceData]= 
-  	getInstanceProperties(parent) match 
-  	{
-  		case Some(props) =>
-				for (child <-props.propertyFields(propField).propertyList;if (ofType == -1) || (child.typ == ofType))
+  }
+
+  def loadChildren(parent: Reference, ofType: Int, propField: Int): Seq[InstanceData] =
+    getInstanceProperties(parent) match {
+      case Some(props) =>
+        for (child <- props.propertyFields(propField).propertyList; if (ofType == -1) || (child.typ == ofType))
           yield getInstanceData(child)
-			case None=> Seq.empty
-  	}
+      case None => Seq.empty
+    }
+
   
   
   def getNextParentOfType(childRef:Reference,parentType:Int):Option[Reference]= {
@@ -82,14 +83,14 @@ object StorageManager {
     	if(inst.owners.isEmpty) None
       else {
       	for(owner <-inst.owners) {
-      		if(owner.ownerRef.typ ==parentType)return Some(owner.ownerRef)
+          if (owner.ownerRef.typ == parentType) return Some(owner.ownerRef)
       		else {
       			val ret =getNextParentOfType(owner.ownerRef,parentType)
       			if(ret.isDefined) return ret
       		}
       	}
       	for(owner <-inst.secondUseOwners ) {
-      		if(owner.ownerRef.typ ==parentType)return Some(owner.ownerRef)
+          if (owner.ownerRef.typ == parentType) return Some(owner.ownerRef)
       		else {
       			val ret =getNextParentOfType(owner.ownerRef,parentType)
       			if(ret.isDefined) return ret
@@ -100,11 +101,8 @@ object StorageManager {
     }
   }
 
-
-  def isChildOf(child:Reference,parent:Reference):Boolean = {
-    instanceExists(child.typ,child.instance) &&
-  //  instanceExists(parent.typ,parent.instance)&&
-    child==parent || {
+  def isChildOf(child: Reference, parent: Reference): Boolean =
+    instanceExists(child.typ, child.instance) && child == parent || {
       val inst=getInstanceData(child)
       for(owner<-inst.owners)
         if(owner.ownerRef==parent) return true
@@ -114,10 +112,8 @@ object StorageManager {
 				else if(isChildOf(owner.ownerRef,parent))return true
 			false
     }
-  }
 
-
-  def getPathToParent(child:Reference,parent:Reference):List[Reference]= {
+  def getPathToParent(child: Reference, parent: Reference): List[Reference] =
     if(!instanceExists(child.typ,child.instance)|| child==parent ||
        !instanceExists(parent.typ,parent.instance)) Nil
     else {
@@ -136,7 +132,6 @@ object StorageManager {
         }
       Nil
     }
-  }
 
 
   lazy val folderType: Int =SystemSettings.settings.systemTypes("Folder")
@@ -158,7 +153,7 @@ object StorageManager {
   /** loads an instance from the data file. When that instance is deleted, tries to find the old state
    * 
    */
-  def getZombieInstanceData(ref:Reference):InstanceData = {
+  def getZombieInstanceData(ref: Reference): InstanceData = fileLock.synchronized {
   	val rec=ixHandler(ref.typ).getInstanceRecord(ref.instance )
   	var pos= rec.dataPos
   	var length=rec.dataLength
@@ -174,22 +169,22 @@ object StorageManager {
   	val instObj=dataFileHandler.readWithBool(ref,pos,length,false )
   	instObj
   }
-  
-  def pushInstanceData(ref:Reference,out:DataOutput): Unit = {
+
+  def pushInstanceData(ref: Reference, out: DataOutput): Unit = fileLock.synchronized {
   	val rec=ixHandler(ref.typ).getInstanceRecord(ref.instance )
   	ref.write(out)
   	dataFileHandler.pushData(rec.dataPos,rec.dataLength,out )
   	out.writeBoolean((rec.propPos !=0)&&(rec.propLength !=0))
   }
-  
-  
-  def bulkGetInstanceData(startRef:Reference,endRef:Reference): IndexedSeq[InstanceData] = {
+
+
+  def bulkGetInstanceData(startRef: Reference, endRef: Reference): IndexedSeq[InstanceData] = fileLock.synchronized {
   	//System.out.println("bulkget:"+startRef+" - "+endRef)
   	ixHandler(startRef.typ).bulkGetInstanceRecords(startRef.instance,endRef.instance,dataFileHandler)
   }
-  
-  
-  def bulkPushInstanceData(startRef:Reference,endRef:Reference,out:DataOutput):Unit = {
+
+
+  def bulkPushInstanceData(startRef: Reference, endRef: Reference, out: DataOutput): Unit = fileLock.synchronized {
   	//System.out.println("bulkpush:"+startRef+" - "+endRef)
   	ixHandler(startRef.typ).bulkPushInstanceRecords(startRef.instance,endRef.instance,dataFileHandler,out)
   }
@@ -198,7 +193,7 @@ object StorageManager {
   /** creates a new empty instance
    * 
    */
-  def createInstance(typ:Int,owners:Array[OwnerReference],withStartValues:Boolean):InstanceData =  {
+  def createInstance(typ: Int, owners: Array[OwnerReference], withStartValues: Boolean): InstanceData = fileLock.synchronized {
   	val hand =ixHandler(typ)
   	val inst=hand.theClass.createInstance(
   		new Reference(typ,hand.createInstance()),owners,withStartValues)  	  	
@@ -210,38 +205,34 @@ object StorageManager {
    *  @param created was this instance created during this transaction and should a created
    *  record be stored in the transaction log 
    */
-  def writeInstance(data:InstanceData,created:Boolean):Unit =  {  	
+  def writeInstance(data: InstanceData, created: Boolean): Unit = fileLock.synchronized {
   	val (pos,size)=dataFileHandler.writeInstance(data)
   	val handler= ixHandler(data.ref.typ)
   	handler.writeData(data.ref.instance, pos, size,created)
-  	//handler.instCache.putInstanceData(data)
   }
   
   
   /** deletes an instace from the index
    * 
    */
-  def deleteInstance(typ:Int,inst:Int): Unit =  {
+  def deleteInstance(typ: Int, inst: Int): Unit = fileLock.synchronized {
   	val handler=ixHandler(typ)
   	handler.deleteInstance(inst)
-  	/*handler.instCache.removeInstanceData(inst)
-  	handler.propCache.removeInstanceData(inst)*/
   }
-  
-  
-  /** creates an empty Properties object with default values
-   * this object will not be stored with this function call
-   */
-  def createInstanceProperties(ref:Reference):InstanceProperties =
-  	ixHandler(ref.typ).theClass.createInstanceProperty(ref)
-
 
   
   // *************************************************************************************
   //                                       PROPERTIES
-  
-  
-  def getInstanceProperties(ref:Reference):Option[InstanceProperties] =  {
+
+  /** creates an empty Properties object with default values
+   * this object will not be stored with this function call
+   */
+  def createInstanceProperties(ref: Reference): InstanceProperties = fileLock.synchronized {
+    ixHandler(ref.typ).theClass.createInstanceProperty(ref)
+  }
+
+
+  def getInstanceProperties(ref: Reference): Option[InstanceProperties] = fileLock.synchronized {
   	val handler=ixHandler(ref.typ)
 		val rec=handler.getInstanceRecord(ref.instance)
 		if (rec.propPos == 0 && rec.propLength==0) None
@@ -254,44 +245,38 @@ object StorageManager {
       case Some(props) =>if(props.propertyFields.length>propField)props.propertyFields(propField).propertyList
       else {util.Log.e("getInstProp ref="+ref+" propField:"+propField+" is > stored PropData.size:"+props.propertyFields.length);Seq.empty}
       case None=> Seq.empty
-  }  
-  
-  
-  def writeInstanceProperties(data:InstanceProperties):Unit = {
+  }
+
+
+  def writeInstanceProperties(data: InstanceProperties): Unit = fileLock.synchronized {
   	val hasChildren=data.hasChildren
   	val (pos,size)= if(hasChildren)propFileHandler.writeInstance(data)
   									else (0L,0)// if there are no children, delete this property data set
   	ixHandler(data.ref.typ).writePropertiesData(data.ref.instance, pos, size)
   }
 
-	def forEachChild(ref:Reference)(func:InstanceData=>Unit):Unit = {
-    val rec=ixHandler(ref.typ).getInstanceRecord(ref.instance)
-		if (rec.dataPos < 0 || rec.propLength!=0){
-			 val theClass=AllClasses.get.getClassByID(ref.typ)
-
-			 val stream=propFileHandler.readInStream(rec.dataPos,rec.dataLength)
-			 val numProps=stream.readByte()
-			 for(propField<-0 until numProps) {
-				 val visible= !theClass.propFields(propField).hidden
-				 val single=stream.readBoolean()
-				 val numChildren=stream.readShort()
-				 for(childix<-0 until numChildren) {
-					 val ctyp=stream.readInt()
-					 val cinst=stream.readInt()
-					 if(visible&&instanceExists(ctyp,cinst)) {
-						 func(getInstanceData(Reference(ctyp,cinst)))
-					 }
-				 }
-			 }
-		}
-
+  def forEachChild(ref: Reference, func: InstanceData => Unit): Unit = {
+    //println("foreach child:"+ref)
+    getInstanceProperties(ref) match {
+      case Some(props) =>
+        val theClass = AllClasses.get.getClassByID(ref.typ)
+        val classProps = theClass.propFields.size
+        for (prf <- props.propertyFields.indices
+             if prf < classProps && !theClass.propFields(prf).hidden;
+             propField = props.propertyFields(prf);
+             child <- propField.propertyList
+             if instanceExists(child.typ, child.instance)) {
+          func(getInstanceData(child))
+        }
+      case None =>
+    }
 	}
   
   // *************************************************************************************
   //                                    L I N K S
-  
-  
-  def getReferencingLinks(ref:Reference):Option[ReferencingLinks] = {
+
+
+  def getReferencingLinks(ref: Reference): Option[ReferencingLinks] = fileLock.synchronized {
   	val handler=ixHandler(ref.typ)
   	val rec=handler.getInstanceRecord(ref.instance)
   	    //System.out.println("recpos "+rec.propPos +" recsize:"+rec.propSize)
@@ -303,9 +288,9 @@ object StorageManager {
   	      Some(propObj)
   	    }
   }
-  
-  
-  def writeReferencingLinks(data:ReferencingLinks): Unit = {
+
+
+  def writeReferencingLinks(data: ReferencingLinks): Unit = fileLock.synchronized {
   	val (pos,size)=linkFileHandler.writeInstance(data)
     ixHandler(data.ref.typ).writeLinksData(data.ref.instance, pos, size)
   }
@@ -313,8 +298,8 @@ object StorageManager {
   
   // *************************************************************************************
   //                                   Collecting-Functions
-  
-  def getCollectingFuncData(ref:Reference):Option[CollFuncResultSet] = {
+
+  def getCollectingFuncData(ref: Reference): Option[CollFuncResultSet] = fileLock.synchronized {
   	val rec=ixHandler(ref.typ).getInstanceRecord(ref.instance)
     if (rec.collPos == 0 && rec.collLength==0) None
     else  {
@@ -323,40 +308,31 @@ object StorageManager {
       Some(propObj)
     }
   }
-  
-  
-  def writeCollectingFuncData(data:CollFuncResultSet): Unit = {
+
+
+  def writeCollectingFuncData(data: CollFuncResultSet): Unit = fileLock.synchronized {
   	val (pos,size)=collFuncFileHandler.writeInstance(data)
   	ixHandler(data.ref.typ).writeCollFuncData(data.ref.instance, pos, size)
   }
-  
-  
-  def shutDown(): Unit =
-  	if(!shuttedDown) {
-  		for (i <- _ixHandlerList.valuesIterator) i.shutDown()
-  		dataFileHandler.shutDown()
-  		propFileHandler.shutDown()
-  		TransLogHandler.shutDown()
-  		TransDetailLogHandler.shutDown()
-  		linkFileHandler.shutDown()
-  		collFuncFileHandler.shutDown()
-  		shuttedDown=true
-  		inited=false
+
+
+  def shutDown(): Unit = fileLock.synchronized {
+    if (!shuttedDown) {
+      for (i <- _ixHandlerList.valuesIterator) i.shutDown()
+      dataFileHandler.shutDown()
+      propFileHandler.shutDown()
+      TransLogHandler.shutDown()
+      TransDetailLogHandler.shutDown()
+      linkFileHandler.shutDown()
+      collFuncFileHandler.shutDown()
+      shuttedDown = true
+      inited = false
       util.Log.w("Storage shutted down")
-  	}
-  
-  def printCacheReport(): Unit = {
-   for (i <- _ixHandlerList.valuesIterator) i.printCaches
+    }
   }
 
-  def clearCaches(): Unit ={
-    /*for (i <- _ixHandlerList.valuesIterator){
-      i.instCache.clear()
-      i.propCache.clear()
-    }*/
-  }
-  
-  def undoLastStep(): Unit = {
+
+  def undoLastStep(): Unit = fileLock.synchronized {
     val startTime=System.currentTimeMillis()
   	val currTrID=TransLogHandler.getTransID
   	val startLogPos=TransLogHandler.getInsertPos-1
@@ -421,7 +397,7 @@ object StorageManager {
    * transaction logs are deleted so undo is not possible anymore
    * 
    */
-	def reorgDatabase(listener:(Int,String)=>Unit): Unit = {
+  def reorgDatabase(listener: (Int, String) => Unit): Unit = fileLock.synchronized {
 		UsageStatFileHandler.updateStatistics()
     util.Log.w("Reorg translog insertPos:"+TransLogHandler.getInsertPos+" detail:"+TransDetailLogHandler.getInsertPos)
 	  TransDetailLogHandler.deleteLogFile()
@@ -469,9 +445,9 @@ object StorageManager {
     util.Log.w("\nReorg complete translog:"+TransLogHandler.getInsertPos+" detail:"+TransDetailLogHandler.getInsertPos)
   	//System.out.println("\nReorg completely done")
 	}
-	
-	
-	def fixInheritance(listener:(Int,String)=>Unit): Unit = {
+
+
+  def fixInheritance(listener: (Int, String) => Unit): Unit = fileLock.synchronized {
 	  var lix=1
 	  var ownerList:List[(Int,Long,Int)]=Nil
 	  
@@ -522,19 +498,14 @@ object StorageManager {
   	  lix+=1  	  
 	  }	  
 	}
-	
-	
-	
-	
-	
-	def deleteOrphans(listener:(Int,String)=>Unit): Unit = {
+
+
+  def deleteOrphans(listener: (Int, String) => Unit): Unit = fileLock.synchronized {
 	  var lix=1
 	  var dList:List[(Int,Long,Int)]=Nil
 	  val  myListener =new  RecordListener{
-	     def nextRecord(inst:Int,dataPos:Long,dataLen:Int,propPos:Long,propLen:Int,linkPos:Long,linkLen:Int,collPos:Long,collLen:Int): Unit =
-				 if(dataLen>0)
-	       dList=(inst,dataPos,dataLen)::dList	         
-
+      def nextRecord(inst: Int, dataPos: Long, dataLen: Int, propPos: Long, propLen: Int, linkPos: Long, linkLen: Int, collPos: Long, collLen: Int): Unit =
+        if (dataLen > 0) dList = (inst, dataPos, dataLen) :: dList
 	  }
 	  
 	  for (typ<- serverClassList.keysIterator;handler = ixHandler(typ)){
@@ -588,20 +559,18 @@ object StorageManager {
 	  }
     util.Log.w("check done")
 	}
-	
-	
-	
-	def findOrphans(listener:(Int,String)=>Unit):Map[OwnerReference,Iterable[Reference]] = {
+
+
+  def findOrphans(listener: (Int, String) => Unit): Map[OwnerReference, Iterable[Reference]] = fileLock.synchronized {
 	  var lix=1	  
 	  val orphanMap= collection.mutable.HashMap[OwnerReference,collection.mutable.ArrayBuffer[Reference]]()
-	  
-	  def addOrphan(parentRef:OwnerReference,orphanRef:Reference)= orphanMap.getOrElseUpdate(parentRef, new collection.mutable.ArrayBuffer()).+=(orphanRef)
-	  
 	  var dList:List[(Int,Long,Int)]=Nil
 	  val  myListener =new  RecordListener{	     
 	     def nextRecord(inst:Int,dataPos:Long,dataLen:Int,propPos:Long,propLen:Int,linkPos:Long,linkLen:Int,collPos:Long,collLen:Int): Unit =
          if(dataLen>0)    dList=(inst,dataPos,dataLen)::dList
 	  }
+
+    def addOrphan(parentRef: OwnerReference, orphanRef: Reference) = orphanMap.getOrElseUpdate(parentRef, new collection.mutable.ArrayBuffer()).+=(orphanRef)
 	  
 	  for (typ<- serverClassList.keysIterator;handler = ixHandler(typ)){
   	  listener(lix,handler.theClass.name)
@@ -646,12 +615,10 @@ object StorageManager {
 	
 	
 	
-	
-	
 	/** adds a field to each instance of this data Type
 	 *  a reorg must be done after calling that function
 	 */
-	def addField(addClassType:ServerObjectClass,atPos:Int):Unit= {
+  def addField(addClassType: ServerObjectClass, atPos: Int): Unit = fileLock.synchronized {
 	  for(ref<-ixHandler(addClassType.id).getInstancesRefs) {
 	    val data=getInstanceData(ref).addField(atPos)
 	    writeInstance(data,false)
@@ -664,8 +631,8 @@ object StorageManager {
   /** adds an  property field to each Instance of this Data Type
    *  a reorg should be done after calling that function
    *  
-   */	
-	def addPropertyField(addClassType:ServerObjectClass):Unit= {
+   */
+  def addPropertyField(addClassType: ServerObjectClass): Unit = fileLock.synchronized {
 	  //System.out.println("adding PropField to "+addClassType.name)
 	  val handler=ixHandler(addClassType.id)
 	  for(ref<-handler.getInstancesRefs) {
@@ -680,9 +647,9 @@ object StorageManager {
 	  for(succ<-AllClasses.get.getDirectSuccessorsFor(addClassType.id))	
 	    addPropertyField(succ.asInstanceOf[ServerObjectClass])
 	}
-	
-	
-	def restoreDeletedChildren(owner:Reference,propertyField:Int,rollBackLastPropEntry:Boolean)= {
+
+
+  def restoreDeletedChildren(owner: Reference, propertyField: Int, rollBackLastPropEntry: Boolean): Unit = fileLock.synchronized {
 	  if(rollBackLastPropEntry || (getInstanceProperties(owner) match { // check if propfield is empty
 	    case Some(props)=> props.propertyFields(propertyField).propertyList.isEmpty
 	    case None => true

@@ -5,11 +5,11 @@ package management.databrowser
 
 import javax.swing.SwingWorker
 
+import client.dataviewer.ViewConstants
+import server.storage.{TransDetailLogHandler, TransLogHandler}
+
 import scala.swing._
 import scala.swing.event._
-import javax.swing.table.TableRowSorter
-import server.storage.TransLogHandler
-import server.storage.TransDetailLogHandler
 
 
 
@@ -19,7 +19,7 @@ import server.storage.TransDetailLogHandler
 object TransLogPanel extends GridPanel(1,2) {
   
   val leftPanel= new BorderPanel {
-  	add (new Label ("Transaction Log File "),BorderPanel.Position.North)
+    add(ViewConstants.label("Transaction Log File "), BorderPanel.Position.North)
   	
     add( new ScrollPane() {
     	viewportView= new Table() 	{
@@ -29,8 +29,8 @@ object TransLogPanel extends GridPanel(1,2) {
     
     add ( new GridPanel(1,3){
     	val refBut= new Button("Refresh")
-    	val filterBut=new Button("Filter") 
-      val indexLab=new Label("Detail")
+    	val filterBut=new Button("Filter")
+      val indexLab: Label = ViewConstants.label("Detail")
     	contents += refBut+=filterBut+=indexLab
     	listenTo(refBut,filterBut)
     	reactions+= {
@@ -48,7 +48,7 @@ object TransLogPanel extends GridPanel(1,2) {
   }
   
   val rightPanel= new BorderPanel {
-    add (new Label ("Trasaction Details Log File "),BorderPanel.Position.North)
+    add(ViewConstants.label("Trasaction Details Log File "), BorderPanel.Position.North)
     
     add( new ScrollPane() {
       viewportView= new Table()   {
@@ -58,7 +58,7 @@ object TransLogPanel extends GridPanel(1,2) {
     
     add ( new GridPanel(1,3){
       val refBut= new Button("Refresh")
-      val indexLab = new Label(" ")
+      val indexLab: Label = ViewConstants.label(" ")
       contents += refBut+=indexLab
       listenTo(refBut)
       reactions+= {
@@ -73,9 +73,9 @@ object TransLogPanel extends GridPanel(1,2) {
     },BorderPanel.Position.South )
   }
   contents+=leftPanel+=rightPanel
-  
-  
-  def filter()={
+
+
+  def filter(): Unit = {
 	  Dialog.showInput(this, "Welche Instance Filtern (Typ,Inst)","Instance Filtern", Dialog.Message.Question , Swing.EmptyIcon, Nil, "") match{
 	    case Some(text)=>
         val ints=text.trim.split(",").map(_.trim.toInt)

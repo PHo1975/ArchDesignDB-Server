@@ -1,71 +1,48 @@
 package client.calender
 
-import definition.comm.UserInfo
-
-import scala.Array.canBuildFrom
-import scala.collection.JavaConversions.asScalaBuffer
-import scala.collection.JavaConversions.seqAsJavaList
-import client.calender.CalendarHelper.callback
-import client.calender.CalendarHelper.cellDataFactory
-import client.calender.CalendarHelper.handleEvent
-import client.calender.CalendarHelper.onListChanged
-import client.calender.CalendarHelper.uniCallBackLoop
-import client.comm.ClientQueryManager
-import definition.data.InstanceData
-import definition.data.OwnerReference
-import definition.data.Referencable
-import definition.data.Reference
-import definition.expression.DateConstant
-import definition.expression.IntConstant
-import definition.expression.StringConstant
 import javafx.beans.InvalidationListener
 import javafx.beans.property.SimpleObjectProperty
-import javafx.beans.value.ChangeListener
-import javafx.beans.value.ObservableValue
-import javafx.collections.FXCollections
+import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.ListChangeListener.Change
-import javafx.collections.ObservableList
+import javafx.collections.{FXCollections, ObservableList}
 import javafx.event.ActionEvent
-import javafx.geometry.Pos
-import javafx.geometry.Side
+import javafx.geometry.{Pos, Side}
 import javafx.scene.Parent
-import javafx.scene.control.ContextMenu
-import javafx.scene.control.Label
-import javafx.scene.control.ListView
-import javafx.scene.control.MenuItem
-import javafx.scene.control.SelectionMode
-import javafx.scene.control.TableCell
-import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
-import javafx.scene.control.TreeView
-import javafx.scene.input.ClipboardContent
-import javafx.scene.input.TransferMode
-import javafx.scene.layout.GridPane
-import javafx.scene.control.TablePosition
+import javafx.scene.control._
+import javafx.scene.input.{ClipboardContent, TransferMode}
+import javafx.scene.layout.{GridPane, HBox, Priority}
+
+import client.calender.CalendarHelper.handleEvent
+import client.comm.ClientQueryManager
 import com.sun.javafx.scene.control.skin.LabeledText
+import definition.comm.UserInfo
+import definition.data.{InstanceData, OwnerReference, Referencable, Reference}
+import definition.expression.{BoolConstant, DateConstant, IntConstant, StringConstant}
 import util.StrToInt
-import javafx.scene.control.CheckBox
-import definition.expression.BoolConstant
-import javafx.scene.layout.HBox
-import javafx.scene.layout.Priority
-import javafx.scene.control.OverrunStyle
-import javafx.scene.control.Tooltip
-import javafx.scene.input.KeyCode
+
+import scala.Array.canBuildFrom
+import scala.collection.JavaConverters._
+import scala.collection.immutable.IndexedSeq
 
 
 
 @SerialVersionUID(24288L) case class CalendarEvent(ref:Reference,day:DateConstant,time:Int,name:String,userID:Int,projID:Int,place:String,done:Boolean) extends Referencable{
   def this(data:InstanceData,date:DateConstant,nProjID:Int)= this(data.ref,date,
-      data.fieldValue(2).toInt,data.fieldValue(1).toString,data.fieldValue(3).toInt,nProjID,data.fieldValue(4).toString,data.fieldValue(5).toBoolean) 
-  override def toString=if(name=="")"- / -" else name
+      data.fieldValue(2).toInt,data.fieldValue(1).toString,data.fieldValue(3).toInt,nProjID,data.fieldValue(4).toString,data.fieldValue(5).toBoolean)
+
+  override def toString: String = if (name == "") "- / -" else name
 }
 
 class DumbObservable[T](val value:T) extends ObservableValue[T]{
-   def addListener(listener:ChangeListener[_ >: T])={}
-   def removeListener(listener:ChangeListener[_ >: T])={}
-   def addListener(listener:InvalidationListener)={}
-   def removeListener(listener:InvalidationListener)={}
-   def getValue=value
+  def addListener(listener: ChangeListener[_ >: T]): Unit = {}
+
+  def removeListener(listener: ChangeListener[_ >: T]): Unit = {}
+
+  def addListener(listener: InvalidationListener): Unit = {}
+
+  def removeListener(listener: InvalidationListener): Unit = {}
+
+  def getValue: T = value
 }
 
 case class RowData(var hour:Int,var daysInfo:Array[SimpleObjectProperty[Seq[CalendarEvent]]]=
@@ -74,12 +51,13 @@ case class RowData(var hour:Int,var daysInfo:Array[SimpleObjectProperty[Seq[Cale
      case 0=> "Aufgaben"
      case -1=> ""
      case _=>hour.toString+":00"     
-   })   
-   def update(ndaysInfo:Array[SimpleObjectProperty[Seq[CalendarEvent]]])= new RowData(hour,ndaysInfo)
+   })
+
+  def update(ndaysInfo: Array[SimpleObjectProperty[Seq[CalendarEvent]]]) = RowData(hour, ndaysInfo)
 }
 
 class FirstRowCell extends TableCell[RowData,String] {
-  override def updateItem(item:String,empty:Boolean)= {
+  override def updateItem(item: String, empty: Boolean): Unit = {
     super.updateItem(item,empty)
     if(item!=null) {	    
 	    setText(item.toString)
@@ -90,8 +68,8 @@ class FirstRowCell extends TableCell[RowData,String] {
   
 
 class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) extends EditingTableCell[RowData,Seq[CalendarEvent]](r) {
-  
-  def setupLabel(chk:CheckBox,lb:Label,d:CalendarEvent )= {
+
+  def setupLabel(chk: CheckBox, lb: Label, d: CalendarEvent): Unit = {
 	  lb.setText(d.name)
 	  lb.setTooltip(new Tooltip(d.name+" [ "+UserList.getShortName(d.userID)+" ] Proj: "+mod.projectList.findProjektName(d.projID)))
 	  chk.setSelected(d.done)
@@ -101,8 +79,8 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
 	    		"-fx-text-fill:black;-fx-padding:1;")
 	  } 
   }
-  
-  def createGrid(data:Seq[CalendarEvent])= {
+
+  def createGrid(data: Seq[CalendarEvent]): GridPane = {
     if(data.size==1 && data.head.projID== -1) null else {
 	    val grid=new GridPane() 
 	    grid.setHgap(2)
@@ -133,8 +111,8 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
 	    grid
     }
   }
-  
-  override def getString={
+
+  override def getString: String = {
     //println("Get String "+r.startEditChar)
     r.startEditChar match {
 	    case Some(s)=>
@@ -143,10 +121,10 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
       case _=> super.getString
 	  }
   }
-  
-  def convertToEditString(d:Seq[CalendarEvent])=if(d!=null) d.head.name else ""
-  
-  def createItem(st:String)=List(new CalendarEvent(null,DateConstant.NULL_DATE,0,st,ClientQueryManager.getMyUserId,-1,"",false))
+
+  def convertToEditString(d: Seq[CalendarEvent]): String = if (d != null) d.head.name else ""
+
+  def createItem(st: String) = List(CalendarEvent(null, DateConstant.NULL_DATE, 0, st, ClientQueryManager.getMyUserId, -1, "", false))
   
   def createView(data:Seq[CalendarEvent],oldView:Parent):Parent = if (data==null) null else {
     if(oldView!=null && data.size==1){
@@ -163,13 +141,14 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
     }
     createGrid(data)
   }
-  def isEditable(data:Seq[CalendarEvent])= data.size==1
+
+  def isEditable(data: Seq[CalendarEvent]): Boolean = data.size == 1
 }
 
 
 
 class MyTableColumn[T,S](nid:String,val ix:Int) extends TableColumn[T,S] {
-  override def toString="Col "+nid
+  override def toString: String = "Col " + nid
 }
 
 
@@ -177,21 +156,21 @@ class MyTableColumn[T,S](nid:String,val ix:Int) extends TableColumn[T,S] {
 class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarEvent]] {
   import client.calender.CalendarHelper._
   
-  val firstColWidth=66  
-  val calModel=model  
-  val hourList=FXCollections.observableList[RowData](new java.util.ArrayList[RowData])  
-  var view:TableView[RowData]=null   
+  val firstColWidth=66
+  val calModel: CalendarModel = model
+  val hourList: ObservableList[RowData] = FXCollections.observableList[RowData](new java.util.ArrayList[RowData])
+  var view: TableView[RowData] = _
   var currentProjects:List[DataSource]=Nil
   var visibleUsers:Seq[Int]=Nil
   var startDate:Option[Int]=None
-  var endDate:Option[Int]=None  
-  var firstDayOfWeek:DateConstant=null
-  var lastDayOfWeek:DateConstant=null      
+  var endDate:Option[Int]=None
+  var firstDayOfWeek: DateConstant = _
+  var lastDayOfWeek: DateConstant = _
   val firstCol=new MyTableColumn[RowData,String]("Stunde",-1) 
   val jobsList=new Array[List[CalendarEvent]](6)
-  var mouseOverColumn:TableColumn[_,Seq[CalendarEvent]]=null
+  var mouseOverColumn: TableColumn[_, Seq[CalendarEvent]] = _
   var mouseOverRow:Int= -1
-  var currentItem:Seq[CalendarEvent]=null
+  var currentItem: Seq[CalendarEvent] = _
   lazy val eventFromAddressMenuItems=Seq("Termin","Telefonat","")
   var startDateDayReports= new DayReportList(0,Seq.empty)
   var endDateDayReports= new DayReportList(0,Seq.empty)
@@ -207,6 +186,12 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   firstCol.setCellValueFactory(cellDataFactory[RowData,String](p=>p.getValue.hourObserv))  
   firstCol.setCellFactory(callback(t=> new FirstRowCell))
   val weekDays=Array("Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag")
+
+  def setMouseOverColumn(c: TableColumn[_, Seq[CalendarEvent]]): Unit = mouseOverColumn = c
+
+  def setMouseOverRow(r: Int): Unit = mouseOverRow = r
+
+  def setCurrentItem(i: Seq[CalendarEvent]): Unit = currentItem = i
   
   def createEvent(hour:Int,day:DateConstant,eventName:String):Option[Reference]= {
     if(currentProjects.size==1) {            
@@ -215,17 +200,17 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
       //println("parent ref:"+parentRef)
       val inst=ClientQueryManager.createInstance(model.calEventType,Array(new OwnerReference(0,parentRef)))
       val ref=new Reference(model.calEventType,inst)
-      ClientQueryManager.writeInstanceField(ref,0, new IntConstant(day.day))
-      ClientQueryManager.writeInstanceField(ref,1, new StringConstant(eventName))
+      ClientQueryManager.writeInstanceField(ref, 0, IntConstant(day.day))
+      ClientQueryManager.writeInstanceField(ref, 1, StringConstant(eventName))
       if(hour>=7 && hour<20)
-      	ClientQueryManager.writeInstanceField(ref,2,new IntConstant(hour))
-      ClientQueryManager.writeInstanceField(ref,3,new IntConstant(ClientQueryManager.getMyUserId))
+        ClientQueryManager.writeInstanceField(ref, 2, IntConstant(hour))
+      ClientQueryManager.writeInstanceField(ref, 3, IntConstant(ClientQueryManager.getMyUserId))
       Some(ref)
     }
     else None
   }
-  
-  val dayCols=weekDays.indices.map(ix=> {    
+
+  val dayCols: IndexedSeq[MyTableColumn[RowData, Seq[CalendarEvent]]] = weekDays.indices.map(ix => {
     val col=new MyTableColumn[RowData,Seq[CalendarEvent]](weekDays(ix),ix)
     col.setId(ix.toString)
     col.setCellValueFactory(cellDataFactory[RowData,Seq[CalendarEvent]](p=> p.getValue.daysInfo(ix) )) 
@@ -250,7 +235,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
             ClientQueryManager.runInPool{
               createEvent(row.hour,day,e.getNewValue().head.name)
           }
-        case oldData=> ClientQueryManager.writeInstanceField(oldData.head.ref, 1,new StringConstant( e.getNewValue().head.name))
+        case oldData => ClientQueryManager.writeInstanceField(oldData.head.ref, 1, StringConstant(e.getNewValue().head.name))
       }
     }))  
     col
@@ -268,10 +253,9 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }
     else None    
   }
-  
-  
-  
-  def initTable(aview:TableView[RowData])= {
+
+
+  def initTable(aview: TableView[RowData]): Unit = {
     view=aview
     view.getColumns().add(firstCol)
     view.getColumns().addAll(dayCols:_*)
@@ -280,8 +264,8 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     val selMod=view.getSelectionModel()
     selMod.setSelectionMode(SelectionMode.SINGLE)
     selMod.setCellSelectionEnabled(true)
-    hourList.addAll(  for(i<-7 to 19) yield new RowData(i))
-    hourList.add(new RowData(0))
+    hourList.addAll((for (i <- 7 to 19) yield RowData(i)).asJavaCollection)
+    hourList.add(RowData(0))
     view.setItems(hourList)    
     view.autosize()     
     onListChanged(view.getSelectionModel.getSelectedCells(),(e:Change[_<: TablePosition[_,_]])=> if(!e.getList.isEmpty()){      
@@ -294,7 +278,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     
     view.setOnKeyPressed(handleEvent(e=> {            
       if(e.getCode().isLetterKey()||e.getCode().isDigitKey() )
-	      view.getSelectionModel().getSelectedCells().headOption match {
+        view.getSelectionModel().getSelectedCells().asScala.headOption match {
 	        case Some(a)=>
             //println("Start "+e.getCode().getName)
             startEditChar=Some(e.getCode.getName)
@@ -347,7 +331,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
                    event.getTransferMode() match {
 		                 case TransferMode.MOVE=>
                        if(ce.day!=newDay){
-		                     ClientQueryManager.writeInstanceField(ce.ref, 0, new IntConstant(newDay.day))
+                         ClientQueryManager.writeInstanceField(ce.ref, 0, IntConstant(newDay.day))
 		                     if(ce.day.month!=newDay.month||ce.day.year!=newDay.year){ // move to other Monthdata
 		                            ClientQueryManager.moveInstances(Seq(ce.ref),new OwnerReference(0.toByte,oldParentRef),
 		                                  new OwnerReference(0.toByte,project.getMonthParentRef(newDay)), -1)
@@ -356,23 +340,23 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
 		                   }
                        if(mouseOverRow>13) {
 		                     if(ce.time>=7 && ce.time<20) {
-		                       	ClientQueryManager.writeInstanceField(ce.ref, 2, new IntConstant(0)) // change to job
+                           ClientQueryManager.writeInstanceField(ce.ref, 2, IntConstant(0)) // change to job
 		                         success=true
 		                       }
 		                   } else {
 		                     val newTime=mouseOverRow+7
-		                     if(newTime!=ce.time) ClientQueryManager.writeInstanceField(ce.ref,2,new IntConstant(newTime))
+                         if (newTime != ce.time) ClientQueryManager.writeInstanceField(ce.ref, 2, IntConstant(newTime))
 		                     success=true
 		                   }
                      case TransferMode.COPY=>ClientQueryManager.runInPool{
 		                   val inst=ClientQueryManager.createInstance(model.addressType, Array(new OwnerReference(0,project.getMonthParentRef(newDay))))
 		                   val newRef=new Reference(model.addressType,inst)
-		                   ClientQueryManager.writeInstanceField(newRef,0,new IntConstant(newDay.day))
-		                   if(ce.name.length>0) ClientQueryManager.writeInstanceField(newRef,1,new StringConstant(ce.name))
-		                   ClientQueryManager.writeInstanceField(newRef,3,new IntConstant(ce.userID))
-		                   if(ce.place.length>0) ClientQueryManager.writeInstanceField(newRef,4,new StringConstant(ce.place))
+                       ClientQueryManager.writeInstanceField(newRef, 0, IntConstant(newDay.day))
+                       if (ce.name.length > 0) ClientQueryManager.writeInstanceField(newRef, 1, StringConstant(ce.name))
+                       ClientQueryManager.writeInstanceField(newRef, 3, IntConstant(ce.userID))
+                       if (ce.place.length > 0) ClientQueryManager.writeInstanceField(newRef, 4, StringConstant(ce.place))
 		                   if(mouseOverRow<14)
-		                     ClientQueryManager.writeInstanceField(newRef,2,new IntConstant(mouseOverRow+7))
+                         ClientQueryManager.writeInstanceField(newRef, 2, IntConstant(mouseOverRow + 7))
 		                 }
 		                 case _=>
 		               }
@@ -416,8 +400,8 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
      }
    }) 
   }
-  
-  def createAddress()={    
+
+  def createAddress(): Any = {
     (model.window.treeView.getSelectionModel().getSelectedItem() match {
       case p:ProjectTreeItem =>None
       case f:FolderTreeItem =>Some(f.getValue.ref)      
@@ -429,13 +413,13 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
       }) match {
         case Some(folderRef)=>
           val inst=ClientQueryManager.createInstance(calModel.addressType, Array(new OwnerReference(1,folderRef)))
-          ClientQueryManager.writeInstanceField(Reference(calModel.addressType,inst),1,new StringConstant("-leer-"))
+          ClientQueryManager.writeInstanceField(Reference(calModel.addressType, inst), 1, StringConstant("-leer-"))
         case None =>FxMessageBox.showMessage("Zum Anlegen einer Adresse erst Adress-Gruppe auswählen",
             "Adresse anlegen", model.window.primaryStage)
       }
     }
-  
-  def deleteAddress()={
+
+  def deleteAddress(): Unit = {
     (model.window.treeView.getSelectionModel().getSelectedItem() match {
       case p:ProjectTreeItem =>None
       case f:FolderTreeItem =>None      
@@ -454,14 +438,13 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
         case None =>
       }
     }
-  
-  
-  
-  def initProjectListView(aview:ListView[DataSource],treeView:TreeView[AdTreeNode])= {    
+
+
+  def initProjectListView(aview: ListView[DataSource], treeView: TreeView[AdTreeNode]): Unit = {
     onListChanged[DataSource](aview.getSelectionModel().getSelectedItems(),(c)=>{
       c.getList match {
         case od:ObservableList[_]=>
-          setProjects(od.toList)
+          setProjects(od.toArray.toList.asInstanceOf[List[DataSource]])
           treeView.getRoot() match {
             case null =>
             case root:MyTreeItem[_]=> root.shutDown();treeView.setRoot(null)
@@ -512,20 +495,20 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }
   }))
   }
-  
-  def initUserListView(aview:ListView[UserInfo])= {    
+
+  def initUserListView(aview: ListView[UserInfo]): Unit = {
     onListChanged[UserInfo](aview.getSelectionModel().getSelectedItems(),(c)=>{
       c.getList match {
         case od:ObservableList[_]=>
-          visibleUsers=od map (_.id)
+          visibleUsers = od.asScala map (_.id)
           view.setEditable(visibleUsers.contains(ClientQueryManager.getMyUserId))
           loadMonth()
         case _=>
       }      
     })     
   }
-  
-  def initAddressTreeView(treeView:TreeView[AdTreeNode]) = {
+
+  def initAddressTreeView(treeView: TreeView[AdTreeNode]): Unit = {
     treeView.setOnDragDetected(handleEvent(e=>{
       val selectedItem=treeView.getSelectionModel().getSelectedItem() match {
         case tr:MyTreeItem[_]=> tr.getValue match {
@@ -543,26 +526,26 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }))
     
   }
-  
-    
-  def shutDownMonth()= {
+
+
+  def shutDownMonth(): Unit = {
     openAndShowFormEvent=false
     model.projectList.shutDownMonths()
     clearSheet()
   }
-  
-  def shutDown()= {
+
+  def shutDown(): Unit = {
     view.setEditable(false)
     shutDownMonth()
     clearSheet()
   }
-  
-  
-  def setProjects(nproj:List[DataSource])= {    
+
+
+  def setProjects(nproj: List[DataSource]): Unit = {
     shutDown()    
     currentProjects=nproj
     view.setEditable(currentProjects.size==1)
-    if(currentProjects.size==1) model.reportTab.setDisable(!getSelectedDate.isDefined)
+    if (currentProjects.size == 1) model.reportTab.setDisable(getSelectedDate.isEmpty)
     else {
       model.reportTab.setDisable(true)
       model.tabPane.getSelectionModel().select(0)
@@ -571,10 +554,10 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     //println("load project:"+nproj+" ")
     loadMonth()
   }
-  
-  
-  def clearSheet()={ 
-    for(hour<-hourList;days<-hour.daysInfo)
+
+
+  def clearSheet(): Unit = {
+    for (hour <- hourList.iterator().asScala; days <- hour.daysInfo)
       days.setValue(null)
     for(i<-0 until 6) jobsList(i)=Nil
     hourList.remove(14, hourList.size)  
@@ -591,22 +574,22 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   private def isVisibleDate(day:DateConstant)=day.julian>=firstDayOfWeek.julian&&day.julian<=lastDayOfWeek.julian 
   
   def dateFromDB(d:InstanceData,startMonth:Int)= DateConstant(d.fieldValue.head.toInt,startMonth%100,startMonth/100)
-  
-  def addEvent(d:InstanceData,startMonth:Int,projID:Int,forceRedraw:Boolean=false)= {
+
+  def addEvent(d: InstanceData, startMonth: Int, projID: Int, forceRedraw: Boolean = false): Unit = {
     val day=dateFromDB(d,startMonth)   
     if(isVisibleDate(day)){
       val event=new CalendarEvent(d,day,projID)
       if(visibleUsers.contains(event.userID)) {        
         val dayColumn=(day.julian-firstDayOfWeek.julian).toInt
 	      if(event.time>6&&event.time<20) {
-	        val prop=hourList(event.time-7).daysInfo(dayColumn)
+          val prop = hourList.asScala(event.time - 7).daysInfo(dayColumn)
 	        val newValue=if(prop.getValue==null) List(event) else replaceIfSame(prop.getValue.toList,event)
 	        prop.setValue(newValue)
 	      } else {	 // job	        
 	        val newList=if(jobsList(dayColumn).exists(_.ref==d.ref)) replaceIfSame(jobsList(dayColumn),event) else event::jobsList(dayColumn)	        
 	        jobsList(dayColumn)=newList
-	        while(hourList.size<14+newList.size) hourList.add(new RowData(-1))
-	        hourList(newList.size+12).daysInfo(dayColumn).setValue(List(event))
+          while (hourList.size < 14 + newList.size) hourList.add(RowData(-1))
+          hourList.asScala(newList.size + 12).daysInfo(dayColumn).setValue(List(event))
 	      }
         if(forceRedraw){          
           view.setItems(null)
@@ -624,20 +607,18 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     if(model.tabPane.getSelectionModel().getSelectedIndex()!=0) model.tabPane.getSelectionModel().select(0) 
     model.eventForm.loadEvent(event)   
   }
-  
-  def removeEvent(ref:Reference)=for(hour<-hourList;days<-hour.daysInfo;cell=days.getValue
-                                     if cell != null;event<-cell;if event.ref == ref) {
+
+  def removeEvent(ref: Reference): Unit = for (hour <- hourList.asScala; days <- hour.daysInfo; cell = days.getValue
+                                               if cell != null; event <- cell; if event.ref == ref) {
       val newValue=cell.filterNot(_.ref==ref)
       days.setValue(if(newValue.isEmpty)null else newValue)
       //println("Remove event "+event+" "+event.ref+" time:"+event.time+" day:"+event.day+ " " )
       view.setItems(null)
       view.setItems(hourList)   
-  } 
-  
-  
-  
-  
-  def loadMonth()= {    
+  }
+
+
+  def loadMonth(): Unit = {
     shutDownMonth()
     if(currentProjects.nonEmpty)
 	    for(startMonth<-startDate){       
@@ -649,9 +630,9 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
          })
 	    }   
   }
-  
-  
-  def setCurrentWeek(weekDate:DateConstant)= {
+
+
+  def setCurrentWeek(weekDate: DateConstant): Unit = {
     shutDownMonth()       
     firstDayOfWeek=weekDate.addDays(/*if(weekDate.weekDay==1)-6 else*/ -weekDate.weekDay)
     lastDayOfWeek=firstDayOfWeek.addDays(6)
@@ -665,9 +646,9 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }
     if(currentProjects.nonEmpty) loadMonth()
   }
-  
-  
-  def reportHasChanged(day:DateConstant,report:DayReport)= {
+
+
+  def reportHasChanged(day: DateConstant, report: DayReport): Unit = {
     getSelectedDate match {
       case Some(date)=> if(date==day) model.reportForm.loadReport(Some(report))
       case None =>
@@ -680,9 +661,9 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     if(sc.size>0&&firstDayOfWeek!=null) Some(firstDayOfWeek.addDays(sc.get(0).getColumn()-1)) 
     else None
   }
-  
-  
-  def loadDayReport()= if(currentProjects.size==1 ){
+
+
+  def loadDayReport(): Unit = if (currentProjects.size == 1) {
     //println("load day report "+" "+startDateDayReports.month+" "+startDateDayReports.list.mkString(" | ")+" selDate:"+ getSelectedDate)
     getSelectedDate match {
       case Some(date)=>

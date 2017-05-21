@@ -1,24 +1,23 @@
 package management.databrowser
 
-import definition.data.Reference
-import util.StringUtils
-import scala.swing.BoxPanel
-import javax.swing.{JOptionPane, BorderFactory}
-import scala.swing.Button
-import scala.swing.Table
-import scala.swing.ScrollPane
 import javax.swing.border.TitledBorder
-import scala.swing.Orientation
-import client.dataviewer.FieldColumnModel
 import javax.swing.table.AbstractTableModel
+import javax.swing.{BorderFactory, JOptionPane}
+
+import client.dataviewer.FieldColumnModel
+import definition.data.Reference
+import definition.typ.SystemSettings
 import server.comm.{UserInfo, UserList}
-import scala.swing.Swing
+import server.config.ServerSystemSettings
+import util.{StrToInt, StringUtils}
+
 import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, Table}
 
 class UserTableModel extends AbstractTableModel {
   def getColumnCount= 8
 
-  def getRowCount= UserList.userIterator.foldLeft(0) ( (sum,user)=>
+  def getRowCount: Int = UserList.userIterator.foldLeft(0)((sum, user) =>
     sum+user.flattenSize)
 
   def getValueAt(row:Int,col:Int):Object = {
@@ -32,7 +31,7 @@ class UserTableModel extends AbstractTableModel {
       case 6=> userID.startRef.bToString()
       case 7=> userID.roles.mkString(",")
       case _=> if (connectionID==null) "" else {
-        if(col==4) connectionID.getRemoteAndress
+        if (col == 4) connectionID.getRemoteAddress
         else if(col==5)connectionID.getPort
         else null
       }
@@ -44,6 +43,7 @@ class UserTableModel extends AbstractTableModel {
 class UserPanel extends BoxPanel(Orientation.Vertical) {
   lazy val subsPanel=new SubscriptionPanel
   val fieldColMod=new FieldColumnModel{
+    createColumn(0, "ID", 25)
     createColumn(1,"Name",85)
     createColumn(2,"Sh",25)
     createColumn(3,"App",45)
@@ -54,7 +54,7 @@ class UserPanel extends BoxPanel(Orientation.Vertical) {
   }
 
   this.xLayoutAlignment=0.5f
-  val belowTopBorder = BorderFactory.createTitledBorder("User")
+  val belowTopBorder: TitledBorder = BorderFactory.createTitledBorder("User")
   belowTopBorder.setTitlePosition(TitledBorder.BELOW_TOP)
   border = belowTopBorder
   val logOffUserBut=new Button("Log user off")
@@ -77,7 +77,8 @@ class UserPanel extends BoxPanel(Orientation.Vertical) {
 
   val model=new UserTableModel
   table.model=model
-  val receiver= ()=>{MainWindow.runSw{
+  val receiver: () => Unit = () => {
+    MainWindow.runSw {
     //println("Fire user :"+UserList.theMap.size)
     model.fireTableDataChanged()
   }}
@@ -90,7 +91,7 @@ class UserPanel extends BoxPanel(Orientation.Vertical) {
     showSubsBut+=fixBookmarksBut
 
 
-  def changeProperty(prompt:String,checkFunc:(String,UserInfo)=>Option[UserInfo])=table.selection.rows.headOption match {
+  def changeProperty(prompt: String, checkFunc: (String, UserInfo) => Option[UserInfo]): Unit = table.selection.rows.headOption match {
     case Some(ix) => JOptionPane.showInputDialog(table.peer,prompt) match {
       case null | "" =>
       case text => val (oldUser,_)=UserList.findConnection(ix)
@@ -141,5 +142,25 @@ class UserPanel extends BoxPanel(Orientation.Vertical) {
       (text,oldUser)=>Some(oldUser.copy(roles=text.trim.split(',').map(_.trim))))
     case ButtonClicked(`changePasswordBut`)=> changeProperty("neues Passwort:",
       (text,oldUser)=>Some(oldUser.copy(password=StringUtils.obfuscate(text.trim))))
+    case ButtonClicked(`createUserBut`) =>
+      JOptionPane.showInputDialog("ID des neuen Benutzers") match {
+        case null | "" =>
+        case StrToInt(id) => JOptionPane.showInputDialog("Name des neuen Benutzers") match {
+          case null | "" =>
+          case name => JOptionPane.showInputDialog("Kurzzeichen des neuen Benutzers") match {
+            case null | "" =>
+            case sname =>
+              val uname = name.trim
+              SystemSettings() match {
+                case ses: ServerSystemSettings =>
+                  val userFolder = ses.getUserRoot(uname)
+                  UserList.addUser(UserInfo(uname, id.toShort, "", sname, Array("user"), userFolder.ref))
+                  UserList.saveUserList()
+
+                case o => util.Log.e("no systemsettings found " + o)
+              }
+          }
+        }
+      }
   }
 }

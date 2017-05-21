@@ -6,6 +6,7 @@ package client.dialog
 import java.awt.Dimension
 
 import client.comm.{ClientQueryManager, KeyStrokeManager}
+import client.dataviewer.ViewConstants
 import client.graphicsView.{ArcElement, GraphElemConst, LineElement, ViewportState}
 import definition.expression.{ObjectReference, VectorConstant}
 import definition.typ.AnswerDefinition
@@ -20,11 +21,16 @@ trait BracketListener{
 
 trait PointClickListener extends BracketListener {
   def pointClicked(point:VectorConstant): Unit
+
+  def forcePrecision: Boolean
 }
 
 object EmptyPointClickListener extends PointClickListener{
-  def pointClicked(point:VectorConstant)={}
-  def bracketModeStarted()={}
+  def pointClicked(point: VectorConstant): Unit = {}
+
+  def bracketModeStarted(): Unit = {}
+
+  def forcePrecision: Boolean = false
 }
 
 
@@ -33,6 +39,7 @@ object EmptyPointClickListener extends PointClickListener{
  */
 class PointAnswerPanel extends AnswerPanel with PointClickListener {
   val bracketBut=new IconableToggleButton("sumMode","PointPanel","Summenfunktion")
+  val forcePrecBut = new IconableToggleButton("präz", "PointPanel", "Präzise Fangfunktion")
   
 	val globalBut = new IconableButton("global","PointPanel","Globalpunkt eingeben")  
   val dxBut = new IconableButton("dx","PointPanel","Delta X eingeben")  
@@ -40,37 +47,52 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   val dzBut = new IconableButton("dz","PointPanel","Delta z eingeben")
   val midBut =new IconableButton("mid","PointPanel","Mittelpunkt konstruieren")  
   val divBut = new IconableButton("part","PointPanel","Teilungspunkt konstruieren")  
-  val interBut = new IconableButton("intersect","PointPanel","Schnittpunkt konstruieren")   
-  val textLabel=new Label()
+  val interBut = new IconableButton("intersect","PointPanel","Schnittpunkt konstruieren")
+  val textLabel: Label = ViewConstants.label()
   val textEdit=new TextField()
   var active=false
   var editActive=false
+  var forcePrecision = true
+  var defaultPrecision = true
+  forcePrecBut.selected = true
   //var preventCancelOnReset=false
   
   var internPointClickListener:Option[(VectorConstant)=>Unit]=None
-  var internEditListener:Option[(String)=>Unit]=None  
-  val buttons=Seq(globalBut,dxBut,dyBut,dzBut,midBut,divBut,interBut,bracketBut)
+  var internEditListener:Option[(String)=>Unit]=None
+  val buttons = Seq(globalBut, dxBut, dyBut, dzBut, midBut, divBut, interBut, bracketBut, forcePrecBut)
   
   textEdit.maximumSize=new Dimension(Short.MaxValue,30)
   textEdit.preferredSize=new Dimension(100,30)
-  textLabel.xLayoutAlignment=0.5  
-  
-  
+  textLabel.xLayoutAlignment = 0.5
+  textEdit.xLayoutAlignment = 0.5
+  minimumSize = new Dimension(ViewConstants.sidePanelWidth, 140)
+  //preferredSize=minimumSize
+  //opaque=true
+  //background=Color.green
+
+
   contents+=infoLabel += Swing.RigidBox(new Dimension(0,10))+= new BoxPanel(Orientation.Horizontal) {
+    xLayoutAlignment = 0.5
     opaque=false
+    //println("Create panel "+ Thread.currentThread()+" "+ViewConstants.defaultRowHeight)
     contents+= bracketBut  +=  dxBut += dyBut+=dzBut 
     } += new BoxPanel(Orientation.Horizontal) {
-      opaque=false
+    xLayoutAlignment = 0.5
+    //opaque=true
+    //background=Color.blue
       contents+=globalBut+= midBut +=divBut+=interBut
+    minimumSize = new Dimension(ViewConstants.sidePanelWidth, 40)
+  } += new BoxPanel(Orientation.Horizontal) {
+    contents += forcePrecBut
     } += new BoxPanel(Orientation.Vertical) {
+    xLayoutAlignment = 0.5
       opaque=false
       contents +=textLabel+=Swing.RigidBox(new Dimension(8,0))+=textEdit
-    }
+    minimumSize = new Dimension(ViewConstants.sidePanelWidth, 40)
+  } += Swing.VGlue
   listenTo(buttons:_*)  
   listenTo(textEdit)
   removeLastFocusListener(textEdit)
-
-  override def printError(emessage:String)=ClientQueryManager.printErrorMessage(emessage)
 
   def textDialog(caption:String,listener:(String)=>Unit):Unit= this.synchronized{    
     initTextEdit(caption)
@@ -83,9 +105,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
     showTextLabel(caption)
     internPointClickListener=Some(listener)
   }
-  
-  
-  
+
   reactions += {
   	case ButtonClicked(`bracketBut`) =>
 			if(bracketBut.selected) { // start
@@ -141,6 +161,11 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
       })
 
 		case ButtonClicked(`interBut`) =>  intersection()
+
+    case ButtonClicked(`forcePrecBut`) =>
+      //println("force Button "+forcePrecBut.selected)
+      forcePrecision = forcePrecBut.selected;
+      defaultPrecision = forcePrecision
   	
   	
   	case EditDone(`textEdit`) =>
@@ -175,8 +200,8 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   }
   
   def bracketModeStarted():Unit= bracketBut.selected=true
-  
-  def showTextLabel(text:String)= {
+
+  def showTextLabel(text: String): Unit = {
     //println("Show text :"+text)
     textLabel.text=text    
     textLabel.visible=true
@@ -195,23 +220,30 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
     for(b<-buttons)
       KeyStrokeManager.registerReceiver(b)    
   }
-  
-  def getTextEditDouble = parse(textEdit.text).toDouble
-  def getTextEditInt = parse(textEdit.text).toInt
-  
-  override def loadParamAnswer(answerDesc:AnswerDefinition) = {
+
+  def getTextEditDouble: Double = parse(textEdit.text).toDouble
+
+  def getTextEditInt: Int = parse(textEdit.text).toInt
+
+  override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
   	super.loadParamAnswer(answerDesc)
   	//preventCancelOnReset=false;
   	initPanel()
-  	active=true  	
+    active = true
+    answerDesc.constraint match {
+      case AnswerPanelsData.STRICT_HIT => forcePrecision = true
+      case AnswerPanelsData.NOSTRICT_HIT => forcePrecision = false
+      case _ =>
+    }
+    forcePrecBut.selected = forcePrecision
   	if(AnswerPanelsData.currentViewController!=null) {  		
   		if(answerDesc.constraint =="Create")
   			AnswerPanelsData.currentViewController.deselect()
   		AnswerPanelsData.currentViewController.askForPointClick(this) 		
   	}  		
-  } 
-  
-  override def reset()= {
+  }
+
+  override def reset(): Unit = {
     editActive=false
   	//System.out.println("pointpanel reset "+active+" ca"+preventCancelOnReset)
   	super.reset()
@@ -219,46 +251,47 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   	if(internEditListener.isDefined)internEditListener=None
   	if(active) {  		
   		active=false
-  		if(AnswerPanelsData.currentViewController!=null) 
-  		/*if(!preventCancelOnReset)*/AnswerPanelsData.currentViewController.cancelModus()
+  		if(AnswerPanelsData.currentViewController!=null)
+        AnswerPanelsData.currentViewController.cancelModus()
   	}
   }
-  
-  def pointClicked(point:VectorConstant) = {
+
+  def pointClicked(point: VectorConstant): Unit = {
   	//System.out.println("point answer "+point)
+    forcePrecision = defaultPrecision
+    forcePrecBut.selected = defaultPrecision
     internPointClickListener match{
       case Some(listener)=> internPointClickListener=None; listener(point)
       case None=> func(ansParm,point)
     }
   	
   }
-  
-  def setFocus()={revalidate()}
-  
 
-  def intersection()= {
+  override def setFocus(): Boolean = {revalidate(); false}
+
+
+  def intersection(): Unit = {
     val isBracketMode=bracketBut.selected
     showTextLabel("Schnittpunkt von:")
     val viewController=AnswerPanelsData.currentViewController
     viewController.askForObjectSelection(new DefaultObjectSelectListener() {
-      override def objectsSelectedWithPoint(obj:ObjectReference,point:VectorConstant,editable:Boolean)= {
+      override def objectsSelectedWithPoint(obj: ObjectReference, point: VectorConstant, editable: Boolean): Unit = {
         //println("answer 1:"+obj+" "+point)
         viewController.getElementByRef(obj.toObjectReference) match {
           case Some(line1:LineElement)=>
             showTextLabel("Schnittpunkt bis:")
             viewController.askForObjectSelection(new DefaultObjectSelectListener() {
-              override def objectsSelectedWithPoint(obj2:ObjectReference,point:VectorConstant,editable:Boolean)= {
+              override def objectsSelectedWithPoint(obj2: ObjectReference, point: VectorConstant, editable: Boolean): Unit = {
                 //println("answer :"+obj2+" "+point)
                 (viewController.getElementByRef(obj2.toObjectReference) match {
                   case Some(line2:LineElement)=> GraphElemConst.intersectLineLine(line1.toLine3D,line2.toLine3D)
                   case Some(arc:ArcElement)=> GraphElemConst.intersectLineArc(line1,arc,point)
                   case _=> Log.e("Falscher Elementtyp"+obj2.getType);None
                 }) match {
-                  case Some(res)=> {
+                  case Some(res) =>
                     viewController.changeViewportState(ViewportState.AskPoint,false)
                     if(isBracketMode) AnswerPanelsData.currentViewController.startBracketMode()
                     viewController.setCoordinate(res.x, res.y, res.z)
-                  }
                   case _ =>
                 }
 
@@ -267,7 +300,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
           case Some(arc:ArcElement)=>
             showTextLabel("Schnittpunkt bis:")
             viewController.askForObjectSelection(new DefaultObjectSelectListener() {
-              override def objectsSelectedWithPoint(obj2:ObjectReference,point2:VectorConstant,editable:Boolean)= {
+              override def objectsSelectedWithPoint(obj2: ObjectReference, point2: VectorConstant, editable: Boolean): Unit = {
                 //println("answer arc :"+obj2+" "+point)
                 (viewController.getElementByRef(obj2.toObjectReference) match {
                   case Some(line2:LineElement)=> GraphElemConst.intersectLineArc(line2,arc,point)
@@ -291,4 +324,6 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
 
 object AnswerPanelsData {
 	var currentViewController:AbstractViewController[_,_]=_
+  val STRICT_HIT = "strict"
+  val NOSTRICT_HIT = "nostrict"
 }

@@ -5,10 +5,10 @@ package server.comm
 
 import definition.data.Reference
 import server.config.FSPaths
+import transaction.handling.TransactionManager
 import util.Log
 
 import scala.collection.mutable
-import scala.collection.mutable.Map
 
 trait AbstractConnectionEntry{
   def queryHandler:AbstractQueryHandler
@@ -17,19 +17,22 @@ trait AbstractConnectionEntry{
   def tellToQuit():Unit
   def sendUndoLockInfo(undoName:String): Unit
   def releaseUndoLock():Unit
-  def getRemoteAndress:String
+
+  def getRemoteAddress: String
   def getPort:String
   def flushTransactionBuffers():Unit
   def shutDown():Unit
 }
 
 case class ConnectionEntry(app:String, thread:JavaClientSocket, queryHandler:AbstractQueryHandler) extends AbstractConnectionEntry {
-  override def toString = "Connection "+app
+  override def toString: String = "Connection " + app
   def tellToQuit(): Unit =thread.tellToQuit()
   def sendUndoLockInfo(undoName:String): Unit =thread.sendUndoLockInfo(undoName)
   def releaseUndoLock(): Unit =thread.releaseUndoLock()
-  def getRemoteAndress: String =thread.socket.getRemoteSocketAddress+" "+thread.socket.getInetAddress().getCanonicalHostName()
-  def getPort=thread.socket.getPort().toString
+
+  def getRemoteAddress: String = thread.socket.getRemoteSocketAddress + " " + thread.socket.getInetAddress().getCanonicalHostName()
+
+  def getPort: String = thread.socket.getPort().toString
   def shutDown(): Unit ={
     thread.userEntry=null
     thread.wantRun=false
@@ -67,7 +70,7 @@ object UserInfo {
 }
 
 trait ChangeSender {
-  val changeListeners =collection.mutable.HashSet[()=>Unit]()
+  val changeListeners: mutable.HashSet[() => Unit] = collection.mutable.HashSet[() => Unit]()
   def notifyListeners():Unit= for(li<-changeListeners) li()
   def registerListener(listener:()=>Unit): Unit = changeListeners+= listener
 
@@ -76,7 +79,7 @@ trait ChangeSender {
 
 object UserList extends ChangeSender {
 
-  protected var theMap =mutable.Map[Short,UserInfo]()
+  protected var theMap: mutable.Map[Short, UserInfo] = mutable.Map[Short, UserInfo]()
   protected var wantQuit=false
   protected var finalFunc: ()=>Unit=_
 
@@ -123,9 +126,10 @@ object UserList extends ChangeSender {
   }
 
   def removeConnection(userID:Short,connection:AbstractConnectionEntry): Unit = {
-    val entry=theMap.get(userID) match {
+    theMap.get(userID) match {
       case Some(user)=> if(user.connections.contains(connection)){
         user.connections=user.connections.filterNot(_ ==connection)
+        TransactionManager.userLogsOff(userID)
         CommonSubscriptionHandler.userLogsOff(connection)
         //System.out.println("Remove user "+userID+" " +wantQuit)
         connection.shutDown()

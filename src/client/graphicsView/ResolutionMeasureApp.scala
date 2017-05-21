@@ -3,10 +3,13 @@
  */
 package client.graphicsView
 
+import java.awt.geom._
+import java.awt.{BasicStroke, Color, Dimension, Graphics2D, RenderingHints}
+
+import client.dataviewer.ViewConstants
+
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Dimension,Graphics,Graphics2D,Color,RenderingHints,BasicStroke}
-import java.awt.geom._
 
 /**
  * 
@@ -16,17 +19,17 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 	val heightEdit=new TextField("800")
 	val mmWidthEdit=new TextField("")
 	val mmHeightEdit=new TextField("1")
-	val xResLabel=new Label("")
-	val yResLabel=new Label("")
+	val xResLabel: Label = ViewConstants.label()
+	val yResLabel: Label = ViewConstants.label()
 	
 	val editPanel= new GridPanel(6,2) {		
 		preferredSize=new Dimension(400,200)
-		contents+= new Label("box Width x (pix):")+=widthEdit+=
-								new Label("box Height y(pix):")+=heightEdit+=
-								new Label("box Width x (mm):")+=mmWidthEdit+=
-								new Label("box Width y (mm):")+=mmHeightEdit+=
-								new Label("x-resolution(pix/mm):")+=xResLabel+=
-								new Label("y-resolution(pix/mm):")+=yResLabel
+		contents += ViewConstants.label("box Width x (pix):") += widthEdit +=
+			ViewConstants.label("box Height y(pix):") += heightEdit +=
+			ViewConstants.label("box Width x (mm):") += mmWidthEdit +=
+			ViewConstants.label("box Width y (mm):") += mmHeightEdit +=
+			ViewConstants.label("x-resolution(pix/mm):") += xResLabel +=
+			ViewConstants.label("y-resolution(pix/mm):") += yResLabel
 	}
 	
 	val showBox= new BorderPanel {
@@ -34,7 +37,8 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 		  opaque=true
 		  preferredSize=new Dimension(1200,800)
 		  maximumSize=preferredSize
-		  override def paintComponent(g:Graphics2D)= {		  	
+
+		override def paintComponent(g: Graphics2D): Unit = {
 		  	super.paintComponent(g)
         g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
 		  	//g.setRenderingHints(new RenderingHints(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_NORMALIZE ))
@@ -88,8 +92,8 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 		}
 		//contents :+ (editPanel -> )
 	}
-	
-	def textToDouble(text:String,default:Int) = try {
+
+	def textToDouble(text: String, default: Int): Double = try {
 				text.toDouble
 			} catch {
 				case e:Exception => default

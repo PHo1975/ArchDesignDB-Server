@@ -1,20 +1,19 @@
 package management.databrowser
 
 import javax.swing.table.AbstractTableModel
-import server.comm._
+
+import client.dataviewer.{FieldColumnModel, ViewConstants}
 import definition.typ.AllClasses
-import scala.swing.BorderPanel
-import client.dataviewer.FieldColumnModel
-import scala.swing.Button
-import scala.swing.Table
-import scala.swing.{ScrollPane,BoxPanel,Orientation}
+import server.comm._
+
 import scala.swing.event.ButtonClicked
-import scala.swing.Label
+import scala.swing.{BorderPanel, BoxPanel, Button, Label, Orientation, ScrollPane, Table}
 
 class SubscriptionTableModel extends AbstractTableModel {
   var subsList:Seq[SubscriptionInfo]=Nil
   def getColumnCount= 3
-  def getRowCount= subsList.size
+
+  def getRowCount: Int = subsList.size
   
   def getValueAt(row:Int,col:Int):Object = {
     if(row>=getRowCount) return null
@@ -36,7 +35,7 @@ class SubscriptionTableModel extends AbstractTableModel {
 
 
 class SubscriptionPanel extends BorderPanel() {
-  var userID:AbstractConnectionEntry= null
+  var userID: AbstractConnectionEntry = _
   
   val fieldColMod=new FieldColumnModel{
     	createColumn(0,"ID",30)
@@ -45,7 +44,7 @@ class SubscriptionPanel extends BorderPanel() {
   }
   
   val updateBut=new Button("Update")
-  val topLabel=new Label("")
+  val topLabel: Label = ViewConstants.label()
   val table=new Table()
   table.autoResizeMode=Table.AutoResizeMode.Off
 	table.selection.intervalMode=Table.IntervalMode.Single
@@ -70,13 +69,14 @@ class SubscriptionPanel extends BorderPanel() {
       update()
     }
   }
-  
-  def updateForUser(nuserID:AbstractConnectionEntry)={
+
+  def updateForUser(nuserID: AbstractConnectionEntry): Unit = {
     topLabel.text=" Subscriptions for User "+nuserID.userName+" app:"+nuserID.app
     userID=nuserID
     update()
   }
-  def update()= {
+
+  def update(): Unit = {
     model.subsList=CommonSubscriptionHandler.
     subscriptionList.values.filter(_.connectionEntry==userID).toSeq.sortBy(_.id)
     model.fireTableDataChanged()

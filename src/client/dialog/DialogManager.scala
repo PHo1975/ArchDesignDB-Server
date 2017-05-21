@@ -3,10 +3,10 @@
  */
 package client.dialog
 
-import java.awt.{Insets, Color,Dimension}
-import javax.swing.{BorderFactory, KeyStroke, UIDefaults}
+import java.awt.{Color, Dimension}
+import javax.swing.{BorderFactory, KeyStroke}
 
-import client.comm.{ClientQueryManager, ErrorListener, KeyStrokeManager, KeyStrokeReceiver}
+import client.comm.{ClientQueryManager, KeyStrokeManager, KeyStrokeReceiver}
 import client.dataviewer._
 import client.graphicsView.AbstractSelectModel
 import client.print.PrintQuestionHandler
@@ -15,6 +15,8 @@ import definition.data._
 import definition.expression.Constant
 import definition.typ._
 import util.Log
+
+import scala.collection.mutable
 import scala.swing._
 import scala.swing.event._
 import scala.util.control.NonFatal
@@ -28,7 +30,8 @@ case class ResultElement(question:ParamQuestion, answer:AnswerDefinition, result
 
 case class CustomPanelQuestion(override val panel:CustomPanel) extends PanelQuestion{
   def toXML:scala.xml.Node=null
-  def name=panel.name
+
+	def name: String = panel.name
 	def classID=5
 }
 
@@ -43,69 +46,54 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	var selectedInstances:Iterable[SelectGroup[_<:Referencable]] = _
 	var actionGroups:Iterable[SelectGroup[_<:Referencable]] = _	
 	var currentQuestion:Option[ParamQuestion]= None
-	var repeatQuestion:Option[DialogQuestion]= None
-	var customAnswerListener=collection.mutable.Stack[((Seq[ResultElement]) => Unit,Option[ParamQuestion])]()
+	protected var repeatQuestion: Option[DialogQuestion] = None
+	var customAnswerListener: mutable.Stack[((Seq[ResultElement]) => Unit, Option[ParamQuestion])] = collection.mutable.Stack[((Seq[ResultElement]) => Unit, Option[ParamQuestion])]()
 	 // in field paramquestion is the current question stored, when its only a temporary answerlistener that should not be stored
 	 // so that the current question can be restored after the temporary question is answered
 	//
 	var isQuestionRepeating=false
 	var currentAction:Option[ActionTrait]= None
 	var createType:Option[Int]=None
-	var customQuestionHandlerList=collection.mutable.HashMap[String,CustomQuestionHandler]()
+	var customQuestionHandlerList: mutable.HashMap[String, CustomQuestionHandler] = collection.mutable.HashMap[String, CustomQuestionHandler]()
 	var hasDraggerToast:Option[AbstractViewController[_,_]]=None  
   
-  val hoverColor=Color.cyan.darker
-  
-  val leftPanelColor=new Color(242,242,247)
-  val eitherColor=new Color(225, 225, 225)
-	val sidePanelWidth=195
-	val buttonDefaults=new UIDefaults()
-	buttonDefaults.put("Button.contentMargins", new Insets(6,6,6,6))
-  val toggleButtonDefaults=new UIDefaults()
-	toggleButtonDefaults.put("ToggleButton.contentMargins", new Insets(7,7,7,7))
+
   val lock=new Object
 	val selectField=new MultiLineLabel()
-	
-	selectField.background=DialogManager.leftPanelColor
+
+	selectField.background = ViewConstants.leftPanelColor
 	val questionField=new MultiLineLabel()	
 	questionField.border=BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.lightGray),BorderFactory.createEmptyBorder(1,1,1,1))
 
-	
-	val buttonSize=new Dimension(sidePanelWidth-10,30)
-  val minButtonSize=new Dimension(sidePanelWidth-10,40)
-	
-	val selectLabScroller=new ScrollPane{
-	  opaque=false
+
+	lazy val selectLabScroller = new ScrollPane {
+		opaque = true
+		background = Color.yellow
 	  viewportView=selectField
-	  background=leftPanelColor	  	
-	  preferredSize=new Dimension(sidePanelWidth+20,70)
-	  maximumSize=new Dimension(sidePanelWidth+20,70)
+		background = ViewConstants.leftPanelColor
+		preferredSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 70 * ViewConstants.fontScale / 100)
+		maximumSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 70 * ViewConstants.fontScale / 100)
 	  peer.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
 	  border=BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), "  Ausgewählt:")
 	}
 	
-	/*val questionScroller=new ScrollPane{
-	  opaque=false
-	  viewportView=questionField	  
-	  preferredSize=new Dimension(sidePanelWidth,60)
-	  maximumSize=new Dimension(sidePanelWidth,60)		  
-	  peer.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)	  
-	}*/
+
 	val errorField=new MultiLineLabel()
 	
 	val errorScroller=new ScrollPane {
-			viewportView=errorField		
-			errorField.background=leftPanelColor
+			viewportView=errorField
+		errorField.background = ViewConstants.leftPanelColor
 			errorField.foreground=new Color(200,0,0)
 			errorField.font=ViewConstants.errorFont 
 			opaque=false
-			preferredSize=new Dimension(sidePanelWidth+20,80)
-			maximumSize=new Dimension(sidePanelWidth+20,80)	
+		//background=Color.cyan
+		preferredSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 60)
+		maximumSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 80)
 			border=null
 		}
-	val errorListener=new ErrorListener  {
-		def printError(errorText:String)= errorField.text= errorText
-	}
+
+	def printError(errorText: String): Unit =
+		errorField.text = errorText
   
 	val answerArea=new AnswerArea ()
 	val cancelBut=new Button("Aktion abbrechen")	
@@ -123,7 +111,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
     reactions+= {
      case ButtonClicked(`cancelBut`) => reset()
     }
-    maximumSize=new Dimension(sidePanelWidth,Short.MaxValue)
+		maximumSize = new Dimension(ViewConstants.sidePanelWidth, Short.MaxValue)
 
     ClientApp.sock.startupFinishListener+=(()=> {
       KeyStrokeManager.registerReceiver(new KeyStrokeReceiver {
@@ -134,10 +122,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
       })
 	  })
   }  
-	
-  ClientQueryManager.registerErrorListener(errorListener)
-  LogOutputStream.registerListener(errorListener)
+
   cancelBut.visible=false
+	cancelBut.focusable = false
   cancelBut.xLayoutAlignment=0.5
   ClientQueryManager.registerSetupListener(()=> initCustomQuestionHandlers())
   answerArea.registerAnswerCallBack(answerGiven)
@@ -159,8 +146,8 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		ClientApp.fieldEditPan.visible=true
 		dialogPanel.revalidate()
 	}
-	
-	def resetDraggerToast()= for(controller<-hasDraggerToast ){
+
+	def resetDraggerToast(): Unit = for (controller <- hasDraggerToast) {
     controller.resetDraggerToast()
     hasDraggerToast=None    
   } 
@@ -168,7 +155,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		
 	def reset():Unit= lock.synchronized{
 	 //println("\nReset isactive:"+dialogIsActive+" "+answerList.mkString+" is repeating:"+isQuestionRepeating+" hasRep:"+hasRebound)
-   //println(Thread.currentThread().getStackTrace.drop(1).take(15).mkString("\n "))
+		//println(Thread.currentThread().getStackTrace.slice(1, 16).mkString("\n "))
    //println("..... ")
 	  resetDraggerToast()
 		if(dialogIsActive) {
@@ -206,7 +193,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	}
 	
 	// from DataViewController selection listener 
-	def selectionChanged [T <: Referencable](sender:SelectSender,groups:Iterable[SelectGroup[T]],alsoSelected:Iterable[T]=Nil) = {
+	def selectionChanged[T <: Referencable](sender: SelectSender, groups: Iterable[SelectGroup[T]], alsoSelected: Iterable[T] = Nil): Unit = {
 		//println("selectionChanged "+groups.mkString+" dialogIsActive "+dialogIsActive+" "+Thread.currentThread().getName)
     selectedInstances=groups    
 		if(dialogIsActive){
@@ -255,9 +242,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 				case None =>  for(group<-groupList)ClientQueryManager.executeAction(group.parent,group.children,action.name,Seq())
 		  }	
 	}
-	
-	
-	def startCreateActionDialog(action:ActionTrait,elems:SelectGroup[_<:Referencable],ncreateType:Int,npropField:Byte)= lock.synchronized {
+
+
+	def startCreateActionDialog(action: ActionTrait, elems: SelectGroup[_ <: Referencable], ncreateType: Int, npropField: Byte): Unit = lock.synchronized {
 	  if(dialogIsActive&& !hasRebound)reset()
     if(hasRebound)hasRebound=false
 	  action.question match {
@@ -290,9 +277,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
     dialogIsActive=true
 		loadQuestion(question)
 	}
-  
-  
-	def startDraggerToast(controller:AbstractViewController[_,_])={
+
+
+	def startDraggerToast(controller: AbstractViewController[_, _]): Unit = {
 	  resetDraggerToast()
 	  hasDraggerToast=Some(controller)	  
 	}
@@ -307,10 +294,14 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	  sidePanelDialogStart()	  		
 	  dialogIsActive=true	
 	}
-	
-	def increaseNumCreatedElements(amount:Int=1)= createdNewElements+=amount  
-		    
-	
+
+	def increaseNumCreatedElements(amount: Int = 1): Unit = createdNewElements += amount
+
+	def setRepeatQuestion(q: DialogQuestion): Unit = {
+		repeatQuestion = if (q.repeat) Some(q) else None
+		questionField.text = q.name
+		answerArea.loadAnswerDefinitions(q)
+	}
 	
 	private def loadQuestion(question:ParamQuestion) = {    
 	  // println("Load Question "+question)
@@ -350,7 +341,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	
 	def answerGiven(parm:AnswerDefinition,result:Constant):Unit = lock.synchronized{
 		if(dialogIsActive && !hasRebound){
-			//System.out.println("Answer given "+parm+" "+result)
+			//System.out.println("Answer given "+parm+" "+result+"\n customAnswerListener:"+customAnswerListener+" repeatQuestion:"+repeatQuestion)
 		  val answer=ResultElement(currentQuestion.get,parm,result)
 			answerList += answer      
 			parm.followQuestion match {
@@ -370,7 +361,13 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
             val (listener,lastQuestion)=customAnswerListener.head
             //println("Listener "+listener+" lastQuestion:"+lastQuestion)
             repeatQuestion match {
-              case Some(rQuestion) => isQuestionRepeating=true ; listener(answerList)
+							case Some(rQuestion) =>
+								isQuestionRepeating = true
+								rQuestion match {
+									case dq: DialogQuestion => answerArea.loadAnswerDefinitions(dq) // update pointpanel precision
+									case _ =>
+								}
+								listener(answerList)
               case None=>
 								customAnswerListener.pop()
 								lastQuestion match {
@@ -385,8 +382,8 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 			}			
 		} else util.Log.e("answer given on dactive"+dialogIsActive+" reb:"+hasRebound)
 	}
-	
-	def processCustomEnquiry(resultList:Seq[(String,Constant)])= {
+
+	def processCustomEnquiry(resultList: Seq[(String, Constant)]): Unit = {
 		isServerEnquiry=false
 		ClientQueryManager.answerEnquiry(resultList)
 	}
@@ -433,16 +430,16 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		}
 							
 	}
-  
-  protected def repeatAction(ca:ActionTrait,crType:Option[Int],prField:Byte)={
+
+	protected def repeatAction(ca: ActionTrait, crType: Option[Int], prField: Byte): Unit = {
     //println("Repeat "+createType+" "+ca.name+" "+ actionGroups+" dialogIsActive:"+dialogIsActive+" "+Thread.currentThread().getName)
     crType match {
       case Some(ct)=>if(actionGroups.nonEmpty) startCreateActionDialog(ca,actionGroups.head,ct,prField)
       case None =>  startActionDialog(ca,actionGroups)
     }
   }
-	
-	def initCustomQuestionHandlers() = if(SystemSettings()!=null){	
+
+	def initCustomQuestionHandlers(): Unit = if (SystemSettings() != null) {
 		customQuestionHandlerList("client.print.PrintQuestionHandler")=PrintQuestionHandler		
 		customQuestionHandlerList("client.graphicsView.GraphCustomQuestionHandler")=client.graphicsView.GraphCustomQuestionHandler
 		customQuestionHandlerList("client.plotdesign.GraphCustomQuestionHandler")=client.plotdesign.GraphCustomQuestionHandler

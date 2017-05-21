@@ -2,15 +2,9 @@
  * Author: Peter Started:03.11.2010
  */
 package client.comm
-import definition.data._
-import javax.swing._
 import javax.swing.table._
-import java.awt.{Dimension,Font}
-import definition.expression.DateConstant
 
-import scala.swing._
-import scala.swing.event._
-import java.text.DateFormat
+import definition.data._
 import definition.typ._
 
 /** Table model for showing the undo steps 
@@ -22,12 +16,12 @@ class UndoLogTableModel extends AbstractTableModel {
 
 	
 	var stepList:Seq[TransStepData]=Seq.empty
-	
-	def getRowCount= {
+
+  def getRowCount: Int = {
 		stepList.size
 	}
-	
-	def loadStepList(newList:Seq[TransStepData]) = {
+
+  def loadStepList(newList: Seq[TransStepData]): Unit = {
 		stepList=newList
 		fireTableDataChanged()
 	}
@@ -53,8 +47,8 @@ class UndoLogTableModel extends AbstractTableModel {
 		}
 		else null
 	}
-	
-	override def getColumnName(col:Int) = {
+
+  override def getColumnName(col: Int): String = {
 		col match {
 			case 0 => "Schritt"
 			case 1 => "Benutzer"

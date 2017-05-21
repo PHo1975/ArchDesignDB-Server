@@ -1,29 +1,15 @@
 package client.plotdesign
-import scala.swing.Component
-import java.awt.{Color,Dimension}
-import javax.swing.JComponent
-import java.awt.Rectangle
-import java.awt.Graphics2D
-import java.awt.RenderingHints
+
+import java.awt._
 import java.awt.geom.Rectangle2D
-import java.awt.BasicStroke
-import java.awt.Point
-import client.graphicsView.MatchingScreenPoints
-import scala.swing.event.MousePressed
-import java.awt.Cursor
-import scala.swing.event.MouseEntered
-import scala.swing.event.MouseDragged
-import scala.swing.event.Key
-import client.graphicsView.ViewportState
-import scala.swing.event.MouseReleased
-import scala.swing.event.MouseMoved
-import scala.swing.event.MouseExited
-import scala.swing.event.KeyPressed
-import scala.swing.event.FocusLost
-import scala.swing.event.FocusGained
+
+import client.dataviewer.ViewConstants
+import client.graphicsView.{GraphElemConst, MatchingScreenPoints, ViewportState}
 import definition.expression.VectorConstant
+
+import scala.swing.Component
+import scala.swing.event._
 import scala.util.control.NonFatal
-import client.graphicsView.GraphElemConst
 
 
 
@@ -31,19 +17,19 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
   val defaultStroke=new BasicStroke()
   val paperRect=new Rectangle2D.Float
   val clipRect=new Rectangle2D.Float
-  var dragStartPoint:Point=null
-	var dragToPoint:Point=null
-	var currentMousePos:Point=null	
-	var pointHitPos:MatchingScreenPoints=null	
+	var dragStartPoint: Point = _
+	var dragToPoint: Point = _
+	var currentMousePos: Point = _
+	var pointHitPos: MatchingScreenPoints = _
 	
 	val selectColor=new Color(255,50,50)	
 	val multiSelectColor=new Color(180,50,50)
 	 // how much pixels can you drag the mouse before it is handled as drag
 	var lockedColor=new Color(0,90,70)
-	val lineToColor=selectColor
+	val lineToColor: Color = selectColor
 	var inside=true
-	var drawCrossHairInPaint=false		
-	val dotCurs=toolkit.createCustomCursor(toolkit.getImage("dot_clear.gif"), new Point(0,0), "Zero")
+	var drawCrossHairInPaint=false
+	val dotCurs: Cursor = toolkit.createCustomCursor(toolkit.getImage("dot_clear.gif"), new Point(0, 0), "Zero")
   val backgroundColor=new Color(210,210,210)
   
   opaque=true
@@ -70,7 +56,7 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 			val middleButton= (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON2_DOWN_MASK) > 0
 			val rightButton= (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON3_DOWN_MASK) > 0
 			val control=(e.modifiers & Key.Modifier.Control)>0
-			if(dragStartPoint!=null&& !inDistance(dragStartPoint,e.point,controller.dragTreshold)&&
+			if (dragStartPoint != null && !inDistance(dragStartPoint, e.point, ViewConstants.dragTreshold) &&
 				middleButton&&control&&(!controller.isZoomingIn)){
 				controller.isZoomingIn=true
 			}
@@ -84,7 +70,7 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 			val shift=(e.modifiers & Key.Modifier.Shift)>0
 			val middleButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON2
 			val rightButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON3
-			if(dragToPoint!=null&& !inDistance(dragStartPoint,dragToPoint,controller.dragTreshold))
+			if (dragToPoint != null && !inDistance(dragStartPoint, dragToPoint, ViewConstants.dragTreshold))
 			{ // it was dragged
 				controller.dragCompleted(dragStartPoint,dragToPoint,control,shift,rightButton,middleButton)
 				dragStartPoint=null
@@ -128,9 +114,9 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 	
 	private def inDistance(a:Point,b:Point,distance:Int) = 
 		math.abs(a.x-b.x)<distance && math.abs(a.y-b.y)<distance
-	
-	
-	def drawCrossHair(g:Graphics2D=peer.getGraphics.asInstanceOf[Graphics2D]) = 
+
+
+	def drawCrossHair(g: Graphics2D = peer.getGraphics.asInstanceOf[Graphics2D]): Unit =
 	if(currentMousePos!=null){		
 		var currBounds=bounds 
 		g.setXORMode(Color.white)
@@ -162,9 +148,9 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 		case other:Throwable =>println(other);System.exit(0);null}
 		g.setPaintMode()
 	}
-  
-  
-  override def paintComponent(g:Graphics2D)= {
+
+
+	override def paintComponent(g: Graphics2D): Unit = {
   	super.paintComponent(g) 
   	g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
 		//val currBounds=if(g.getClipBounds==null)bounds else g.getClipBounds
@@ -188,8 +174,8 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
   	g.draw(clipRect)
   	//g.setColor(Color.black)  	
   	//g.drawString(" "+controller.headerPanel.designNameLabel.text,paperRect.x+paperRect.width/2,paperRect.y+paperRect.height/2)
-  	
-  	for (lay <-controller.layerRefList.list;if(! controller.selectModel.selGroup.children.exists(_== lay))) {
+
+		for (lay <- controller.layerRefList.list; if !controller.selectModel.selGroup.children.exists(_ == lay)) {
   	  g.setColor(Color.black)
   	  g.setStroke(defaultStroke)
   	  lay.draw(g)
@@ -246,9 +232,9 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
     val ox=math.min(x1,x2)
     val oy=math.min(y1,y2)
     outRect.setRect(ox,oy,math.max(x1,x2)-ox,math.max(y1,y2)-oy)
-  } 
-    
-  def drawDragGraphics(g:Graphics2D=peer.getGraphics.asInstanceOf[Graphics2D]) = {
+  }
+
+	def drawDragGraphics(g: Graphics2D = peer.getGraphics.asInstanceOf[Graphics2D]): Unit = {
 		if(dragToPoint!=null)
 		controller.viewportState match {
 			case ViewportState.SelectState =>
@@ -259,8 +245,8 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 			case ViewportState.ChoseObject =>
 		}
 	}
-	
-	def drawDragRect(g:Graphics2D)= {
+
+	def drawDragRect(g: Graphics2D): Unit = {
 		g.setXORMode(Color.white)
 		g.setPaint(Color.gray)
 		val sx=scala.math.min(dragStartPoint.x,dragToPoint.x)

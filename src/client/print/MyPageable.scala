@@ -3,25 +3,16 @@
  */
 package client.print
 
-import java.awt.print.{Pageable,PageFormat,Printable}
-import java.awt.{Graphics,Graphics2D,Font,BasicStroke}
-import definition.data._
-import java.awt.geom.Rectangle2D
-import java.awt.RenderingHints
-import definition.expression.Polygon
-import java.awt.Color
-import client.graphicsView.{HatchHandler,DimLineStyleHandler,GraphElemConst}
-import java.awt.geom.Line2D
-import definition.expression.VectorConstant
-import client.graphicsView.ScaleModel
 import java.awt.font.TextLayout
-import definition.expression.Line3D
+import java.awt.geom.{Line2D, Rectangle2D}
+import java.awt.print.{PageFormat, Pageable, Printable}
+import java.awt.{BasicStroke, Color, Graphics, Graphics2D}
+
+import client.graphicsView.symbol.{StampPool, SymbolOrient}
+import client.graphicsView._
+import definition.data._
+import definition.expression.{Polygon, VectorConstant}
 import util.StringUtils
-import client.graphicsView.symbol.StampPool
-import client.graphicsView.LineElement
-import client.graphicsView.symbol.SymbolOrient
-import client.graphicsView.GraphElem
-import client.graphicsView.LineStyleHandler
 
 /**
  * 
@@ -32,14 +23,21 @@ class APrintScaler(ctx:RenderContext) extends ScaleModel {
     var myScale:Double=1d
     var xoff:Double=0d
     var yoff:Double=0d
-    override def xToScreen(x:Double)=  ctx.toUnit(x*myScale+xoff)
-    override def yToScreen(y:Double)=  ctx.toUnit(-y*myScale+yoff)    
-    def xToPaper(x:Double)=  ctx.toUnit(x*myScale+xoff)
-    def yToPaper(y:Double)=  ctx.toUnit(-y*myScale+yoff)     
+
+	override def xToScreen(x: Double): Float = ctx.toUnit(x * myScale + xoff)
+
+	override def yToScreen(y: Double): Float = ctx.toUnit(-y * myScale + yoff)
+
+	def xToPaper(x: Double): Float = ctx.toUnit(x * myScale + xoff)
+
+	def yToPaper(y: Double): Float = ctx.toUnit(-y * myScale + yoff)
     val myStroke=new BasicStroke(0.3f)
-    override def getStroke(thick:Float,style:Int)=ctx.getStroke(ctx.toUnit(thick/100f),style)    
-    override def thicknessScale=1f/10f
-    override val scale=ctx.toUnit(10000).toDouble/1000d
+
+	override def getStroke(thick: Float, style: Int): BasicStroke = ctx.getStroke(ctx.toUnit(thick / 100f), style)
+
+	override def thicknessScale: Double = 1f / 10f
+
+	override val scale: Double = ctx.toUnit(10000).toDouble / 1000d
     override def isPrintScaler=true
     val intLine=new Line2D.Float
  }
@@ -54,7 +52,7 @@ trait AbstractContext extends RenderContext {
 	val emptyRect=new Rectangle2D.Float(0,0,0,0)
 	def lineStyleHandler=client.graphicsView.LineStyleHandler
 
-	def pageFormatChanged()= {
+	def pageFormatChanged(): Unit = {
 		strokeMap.clear() // clear old strokes for new print resolution
 	}
 
@@ -147,21 +145,21 @@ trait AbstractContext extends RenderContext {
 	      val fontHeight=toUnit(font.getSize2D()*PrintScaler.myScale.toFloat*textScale/10f)*25.4f/72.0f
 	      val oldTrans=g.getTransform()
 	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-	      val textWidth=layout.getBounds().getWidth      
-	      var moveitX=0.5f
-	      var moveitY=0.1f
+	      val textWidth=layout.getBounds().getWidth
+				val moveitX = 0.5f
+				val moveitY = 0.1f
 	      val withHtext= text.size>1&&text(1)!="0"
-	      val worldTextWidth= if (withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth + 4
+				// val worldTextWidth= if (withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth + 4
 	     
 	      val xpos=toUnit(il._2.x-textDistance.y)
 	      val ypos=toUnit(il._2.y-textDistance.x)-moveitY*fontHeight
 	      g.rotate(-radAngle+Math.PI/2,xpos,ypos)
-	      StringUtils.fillTextLayout(g, layout, xpos+moveitX*fontHeight, ypos)
+				StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, false)
 	      g.setPaint(dimLine.ncolor) 
 	      layout.draw(g,xpos+moveitX*fontHeight,ypos)
 	      if(withHtext) { 
 	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-	        StringUtils.fillTextLayout(g, hlayout, xpos-moveitX*fontHeight+textWidth.toFloat+1f, ypos-fontHeight*0.45f)
+					StringUtils.fillTextLayout(g, hlayout, xpos - moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
 	        g.setPaint(dimLine.ncolor)
 	        hlayout.draw(g,xpos+moveitX*fontHeight+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
 	      }
@@ -194,21 +192,21 @@ trait AbstractContext extends RenderContext {
 			val xpos=toUnit(midPoint.x-textDistance.x)-((textWidth/2f)*moveitX).toFloat
 			val ypos=toUnit(midPoint.y-textDistance.y)-moveitY*fontHeight
 			if(radAngle!=0d) g.rotate(-radAngle,xpos+(textWidth/2f*moveitX).toFloat,ypos+moveitY*fontHeight)
-			StringUtils.fillTextLayout(g, layout, xpos, ypos)
+			StringUtils.fillTextLayout(g, layout, xpos, ypos, false)
 			g.setPaint(dimLine.ncolor)
 			layout.draw(g,xpos,ypos)	
 			if(withHtext) {        
 	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-	        StringUtils.fillTextLayout(g, hlayout, xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)
+				StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
 	        g.setPaint(dimLine.ncolor)
 	        hlayout.draw(g,xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
       }
 			g.setTransform(oldTrans)
 		}  
 	}
-  
-  
-  def drawSymbol(g:Graphics2D,s:SymbolPrintElement)= {
+
+
+	def drawSymbol(g: Graphics2D, s: SymbolPrintElement): Unit = {
     
     PrintScaler.myScale=s.bounds.width    
     StampPool.getStamp(s.symbolData) match {
@@ -224,9 +222,9 @@ trait AbstractContext extends RenderContext {
     for (el<-elems)
       el.draw(g, PrintScaler)
   }
-          
-  
-  def drawSymbolFiller(g:Graphics2D,s:SymbolFillerPrintElement)= {
+
+
+	def drawSymbolFiller(g: Graphics2D, s: SymbolFillerPrintElement): Unit = {
     PrintScaler.myScale=s.bounds.width
     val delta=s.endPoint-s.startPoint
     StampPool.getStamp(s.symbolData) match {
@@ -274,7 +272,7 @@ abstract class APageable extends Pageable with Printable {
 	def clipRect()=new Rectangle2D.Float(context.toUnit(leftBorder),context.toUnit( topBorder),context.toUnit(pageWidth-leftBorder-rightBorder), 
 			context.toUnit(pageHeight-topBorder-bottomBorder))
 
-	def print(g:Graphics,pf: PageFormat,pageIndex:Int) = {	 
+	def print(g: Graphics, pf: PageFormat, pageIndex: Int): Int = {
 		
     if(pageIndex<pagesList.size) {
       val g2=g.asInstanceOf[Graphics2D]
@@ -305,7 +303,7 @@ abstract class APageable extends Pageable with Printable {
     } else Printable.NO_SUCH_PAGE
   }
 
-  def printSorted(g:Graphics2D,elems:Iterable[PrintElement])=if(elems.nonEmpty){
+	def printSorted(g: Graphics2D, elems: Iterable[PrintElement]): Unit = if (elems.nonEmpty) {
 		for(el<-elems) if(el.getElementType==PrintElType.GraphBitmap) el.print(g,context)
     for(el<-elems) if(el.getElementType==PrintElType.Poly) el.print(g,context)
     for(el<-elems) el match {
@@ -334,9 +332,9 @@ class MyPageable extends APageable {
 	def rightBorder:Float= if(form==null)0f else form.right
 	def bottomBorder:Float= if(form==null)0f else form.bottom
 	def pageWidth:Float=if(form==null)0f else FormDescription.toMM(pageFormat .getWidth)
-	def pageHeight:Float=if(form==null)0f else FormDescription.toMM(pageFormat .getHeight)	
+	def pageHeight:Float=if(form==null)0f else FormDescription.toMM(pageFormat .getHeight)
 
-	def setData(pf:PageFormat,pl:Seq[PageData])= {	 
+	def setData(pf: PageFormat, pl: Seq[PageData]): Unit = {
 		pageFormat=pf
 		pagesList=pl
 	  //println("set data "+this+" pl:"+pl+" pf.pageHeight:"+pf.getHeight()+" self pageheight:"+pageHeight)

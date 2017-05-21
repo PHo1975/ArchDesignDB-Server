@@ -3,27 +3,19 @@
  */
 package client.print
 
+import java.awt.Toolkit
+import java.awt.event.{MouseAdapter, MouseWheelEvent}
+import javax.print.attribute.standard.PageRanges
+import javax.swing.BorderFactory
+
+import client.dataviewer.ViewConstants
+import client.dialog.DialogManager
+import client.ui.ClientApp
+import definition.data.{FontStyleList, Reference, RenderContext}
 import util.MyListView
 
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Toolkit,Color}
-import definition.data.PageData
-import javax.swing.BorderFactory
-import javax.swing.border.BevelBorder
-import definition.data.RenderContext
-import definition.data.FontStyleList
-import definition.data.FormDescription
-import client.ui.ClientApp
-import definition.data.Reference
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseWheelEvent
-import javax.print.attribute.standard.PageRanges
-import client.dialog.DialogManager
-import javax.swing.JOptionPane
-import definition.expression.DateConstant
-import java.util.Date
-import definition.expression.StringConstant
 import scala.util.control.NonFatal
 
 trait PrintReceiver {
@@ -68,20 +60,24 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
    val pageEdit=new TextField()
    pageEdit.preferredSize=new Dimension(50,40)
    val numPageLab=new Label("/ 0")
+  numPageLab.font = ViewConstants.labelFont
    pageEdit.maximumSize=new Dimension(50,30)
    
    val previewContext=new  AbstractContext {
 	   var masterContext:RenderContext= MyContext
 	   var scale:Float=1  	 
-		 var changedFontStyleList:FontStyleList= _	  	 
-		 def setMasterContext(nm:RenderContext)=  masterContext=nm		   
+		 var changedFontStyleList:FontStyleList= _
+
+     def setMasterContext(nm: RenderContext): Unit = masterContext = nm
 		 def getScale:Double=scale
-	   def setScale(ns:Double)= {
+
+     def setScale(ns: Double): Unit = {
 	  		 scale =ns.toFloat  		 
 	  		 val fontScale=(scale*25.4f/72.0f/dotPitch).toFloat
 	  		 changedFontStyleList=new FontStyleList(masterContext.fontStyleList.list .map(a=> a.changeSize(fontScale) ))  		 
-	   }  	 	  	 
-	   def fontStyleList=changedFontStyleList	  	 
+	   }
+
+     def fontStyleList: FontStyleList = changedFontStyleList
 	   override def toUnit(mm:Double):Float=(mm*scale/dotPitch).toFloat	  
    } 
    
@@ -103,6 +99,7 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
    
    class GroupPanel(labelText:String,elements:Component*) extends BorderPanel {
   	 val topLab=new Label(labelText)
+     topLab.font = ViewConstants.labelFont
   	 topLab.horizontalAlignment=Alignment.Center
   	 topLab.peer.putClientProperty("JComponent.sizeVariant", "small")
      topLab.peer.updateUI()
@@ -114,9 +111,11 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
 	   border=BorderFactory.createEtchedBorder()//createBevelBorder(BevelBorder.RAISED)
 	   maximumSize=new Dimension(80,100)
    }
-   
-   val chosePagePan=new GroupPanel("Seite(n) anzeigen",firstPageBut,prevPageBut,pageEdit,numPageLab,nextPageBut,lastPageBut)   
-   val zoomPanel=new GroupPanel("Vergrößerung",pageHeightBut,pageWidthBut,twoPagesBut,Swing.HStrut(10),zoomInBut,zoomOutBut,zoomEdit,new Label("%"))
+
+  val chosePagePan = new GroupPanel("Seite(n) anzeigen", firstPageBut, prevPageBut, pageEdit, numPageLab, nextPageBut, lastPageBut)
+  val prozLab = new Label("%")
+  prozLab.font = ViewConstants.labelFont
+  val zoomPanel = new GroupPanel("Vergrößerung", pageHeightBut, pageWidthBut, twoPagesBut, Swing.HStrut(10), zoomInBut, zoomOutBut, zoomEdit, prozLab)
    val outputPanel=new GroupPanel("Ausgabe",/*dateBut,*/formSettingsBut,pageSettingsBut,/*dateBut,*/printBut,closeBut)
    
    val topPane=new BoxPanel(Orientation.Horizontal ) {
@@ -138,7 +137,7 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
          }
      }
      renderer=new MyListView.AbstractRenderer[ArchivePageable,ArchiveRenderer](new ArchiveRenderer){
-       def configure(list: MyListView[ArchivePageable], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int)= {
+       def configure(list: MyListView[ArchivePageable], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int): Unit = {
          component.config(list,isSelected,focused,a,index)
        }
      }
@@ -158,9 +157,10 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
    
    listenTo(closeBut,pageHeightBut,pageWidthBut,twoPagesBut,zoomInBut,zoomOutBut,zoomEdit,pageSettingsBut,printBut,
   	 nextPageBut,prevPageBut,firstPageBut,lastPageBut,pageEdit,formSettingsBut/*,dateBut*/)
-   
-   def decPage()=if(currentPage>1)setCurrentPage(currentPage-1)
-   def incPage()=if(currentPage<thePageable.pagesList.size)setCurrentPage(currentPage+1)
+
+  def decPage(): Unit = if (currentPage > 1) setCurrentPage(currentPage - 1)
+
+  def incPage(): Unit = if (currentPage < thePageable.pagesList.size) setCurrentPage(currentPage + 1)
   	 
    reactions += {
   	 case ButtonClicked(`closeBut`)=> close();DialogManager.reset()
@@ -195,24 +195,24 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   	 case ButtonClicked(`pageWidthBut`)=>  setToPageWidth()
    
    }
-   
-   protected def setToPageHeight()= {
+
+  protected def setToPageHeight(): Unit = {
   		 val vAmount= if (pageScroller.peer.getHorizontalScrollBar.isVisible) pageScroller.peer.getHorizontalScrollBar.
          getSize().height + 3
        else 10
   		 val siz=pageScroller.peer.getViewport.getSize()
   		 setScale((siz.height-vAmount).toFloat*dotPitch/thePageable.pageHeight)
   	 }
-   
-   protected def setToPageWidth() = {
+
+  protected def setToPageWidth(): Unit = {
   		 val hAmount= if (pageScroller.peer.getVerticalScrollBar.isVisible) pageScroller.peer.getVerticalScrollBar.
          getSize().width + 10
        else 16
   		 val siz=pageScroller.peer.getViewport.getSize()
   		 setScale((siz.width-hAmount).toFloat*dotPitch/thePageable.pageWidth)
   	 }
-   
-   def printToOutput()={
+
+  def printToOutput(): Unit = {
   	 //thePageable.context =MyContext
      for(r<-currentPrintReceiver) {
        val (pagesList,copies,receiverList)= PrintOutDialog.dialog.showPrintOutDialog(mainPanel,thePageable,currentPage,r.printerName,r.mediaName)
@@ -226,14 +226,14 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
 
    
    contents=mainPanel
-   
-   protected def setScale(nscale:Double)= {
+
+  protected def setScale(nscale: Double): Unit = {
   	 previewContext.setScale(nscale)
   	 zoomEdit.text=f"${nscale * 100}%,.2f"
   	 pageViewer.updateSize()
    }
-   
-   def showPreview(ntitle:String,nPageable:APageable,receiver:PrintReceiver)= {
+
+  def showPreview(ntitle: String, nPageable: APageable, receiver: PrintReceiver): Unit = {
   	 archiveScroller.visible=false
   	 currentPrintReceiver=Some(receiver)
   	 archiveListModel.clear()
@@ -243,12 +243,12 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   	 visible=true
   	 
    }
-   
-   protected def showAll() = {
+
+  protected def showAll(): Unit = {
   	 if (thePageable.pageWidth<thePageable.pageHeight) setToPageHeight() else setToPageWidth()
    }
-   
-   def showArchive(ntitle:String,outRef:Reference,receiver:PrintReceiver)= {
+
+  def showArchive(ntitle: String, outRef: Reference, receiver: PrintReceiver): Unit = {
   	 archiveListModel.load(outRef)
   	 currentPrintReceiver=Some(receiver)
   	 archiveScroller.visible=true  	 
@@ -272,8 +272,8 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   	 setScale(1)
   	 showAll()
    }
-   
-   protected def maximize()={
+
+  protected def maximize(): Unit = {
   	 val config = ClientApp.top.peer.getGraphicsConfiguration()
      val insets =Toolkit.getDefaultToolkit().getScreenInsets(config)
   	 val screenSize = Toolkit.getDefaultToolkit().getScreenSize()
@@ -283,15 +283,15 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   	 preferredSize=new Dimension(w,h)
   	 peer.setBounds(insets.left+w/2,insets.top,w,h)  	 
    }
-   
-   protected def setCurrentPage(nr:Int)= {
+
+  protected def setCurrentPage(nr: Int): Unit = {
   	 currentPage=nr
   	 pageEdit.text=nr.toString
   	 pageViewer.pageNr =nr
   	 pageViewer.repaint()
-   } 
-   
-   override def closeOperation()= {
+   }
+
+  override def closeOperation(): Unit = {
      DialogManager.reset()
    }
    

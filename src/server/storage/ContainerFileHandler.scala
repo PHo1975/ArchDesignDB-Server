@@ -3,17 +3,9 @@
  */
 package server.storage
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.DataInput
-import java.io.DataInputStream
-import java.io.DataOutput
-import java.io.DataOutputStream
-import java.io.File
-import java.io.RandomAccessFile
+import java.io._
 
-import definition.data.Referencable
-import definition.data.Reference
+import definition.data.{Referencable, Reference}
 import server.config.FSPaths
 import util.UnsyncBAInputStream
 
@@ -25,8 +17,8 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 	var theFile= new RandomAccessFile(compFileName,"rwd")	
 	val bufferStream= new MyByteStream(256)
 	val outStream=new DataOutputStream(bufferStream)
-	
-	var readBuffer= Array.ofDim[Byte](256)
+
+  var readBuffer: Array[Byte] = Array.ofDim[Byte](256)
 	var inBufferStream=new UnsyncBAInputStream(readBuffer)
 	var dataInStream=new DataInputStream(inBufferStream)
 	
@@ -71,8 +63,8 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 		internReadInBuffer(pos,size)
 		dataInStream
 	}
-	
-	protected def internReadInBuffer(pos:Long, size:Int) = {
+
+  protected def internReadInBuffer(pos: Long, size: Int): Unit = {
 	  if(pos<0) throw new IllegalArgumentException(" cant read Buffer at Pos :"+pos)
 		if(size>readBuffer.length) {
 			readBuffer=Array.ofDim[Byte](size+128)
@@ -87,14 +79,14 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 		inBufferStream.reset()
 		lastReadPos=pos
 		lastReadSize=size		
-	}	
-	
-		
-	def shutDown()=	{
+	}
+
+
+  def shutDown(): Unit = {
 		theFile.close()
 	}
-	
-	def takeOverReorgFile(reorgFile:File)={
+
+  def takeOverReorgFile(reorgFile: File): Unit = {
 	  theFile.close()
 	  val backupFile=new File(compFileName.toString()+".bak")
 	  if(backupFile.exists()) backupFile.delete
@@ -111,8 +103,9 @@ class BoolContFileHandler [T <: Referencable] (override val fileName:String,with
 		def readWithBool(ref:Reference,pos:Long,size:Int,boolValue:Boolean):T = {
 			internReadInBuffer(pos,size)
 			withBoolFactory(ref,dataInStream,boolValue)
-		}		
-		def pushData(pos:Long,size:Int,out:DataOutput) = {		  
+		}
+
+    def pushData(pos: Long, size: Int, out: DataOutput): Unit = {
 			internReadInBuffer(pos,size)
 			//System.out.println("pushData "+fileName)
 			out.write(readBuffer,0,size)			
@@ -121,9 +114,9 @@ class BoolContFileHandler [T <: Referencable] (override val fileName:String,with
 
 
 class MyByteStream(nsize:Int) extends ByteArrayOutputStream(nsize) {
-	def buffer=buf
+  def buffer: Array[Byte] = buf
 
-	override def write(b: Array[Byte], off: Int, len: Int) ={
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
 		if ((off < 0) || (off > b.length) || (len < 0) || ((off + len) - b.length > 0)) {
 			throw new IndexOutOfBoundsException
 		}
@@ -132,29 +125,29 @@ class MyByteStream(nsize:Int) extends ByteArrayOutputStream(nsize) {
 		count += len
 	}
 
-	override def write (b: Int)= {
+  override def write(b: Int): Unit = {
 		ensureCapacity(count + 1)
 		buf(count) = b.toByte
 		count += 1
 	}
 
-	override def reset()= {
+  override def reset(): Unit = {
 		count = 0
 	}
 
-	protected def ensureCapacity (minCapacity: Int)=
+  protected def ensureCapacity(minCapacity: Int): Unit =
 		if (minCapacity - buf.length > 0) grow(minCapacity)
 
 
-	protected def  grow(minCapacity:Int)= {
+  protected def grow(minCapacity: Int): Unit = {
 		if (minCapacity < 0) // overflow
-			throw new OutOfMemoryError();
-		val oldCapacity = buf.length;
+      throw new OutOfMemoryError()
+    val oldCapacity = buf.length
 		val newCapacity= {
 			val nc=oldCapacity << 1
 			if(nc-minCapacity < 0) minCapacity
 			else nc
 		}
-		buf = java.util.Arrays.copyOf(buf, newCapacity);
+    buf = java.util.Arrays.copyOf(buf, newCapacity)
 	}
 }

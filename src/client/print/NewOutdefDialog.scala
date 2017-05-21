@@ -3,56 +3,23 @@
  */
 package client.print
 
-import java.awt.Color
-import java.awt.Dimension
-import java.awt.Font
-import java.awt.event.WindowAdapter
-import java.awt.event.WindowEvent
-
-import scala.IndexedSeq
-import scala.collection.JavaConversions.asScalaBuffer
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.Button
-import scala.swing.ButtonGroup
-import scala.swing.CheckBox
-import scala.swing.Component
-import scala.swing.Dialog
-import scala.swing.Label
-import scala.swing.Orientation
-import scala.swing.RadioButton
-import scala.swing.ScrollPane
-import scala.swing.Swing
-import scala.swing.Table
-import scala.swing.Window
-import scala.swing.event.ButtonClicked
-import scala.swing.event.ListSelectionChanged
-import scala.swing.event.SelectionChanged
-
-import client.comm.ClientQueryManager
-import client.dataviewer.FieldColumnModel
-import client.dataviewer.MultilineEditor
-import client.dialog.DialogManager
-import definition.data.FormDescription
-import definition.data.OutputDefinition
-import definition.expression.BoolConstant
-import definition.expression.Constant
-import definition.expression.EMPTY_EX
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import javax.print.attribute.standard.Media
-import javax.print.attribute.standard.MediaSizeName
-import javax.print.attribute.standard.MediaTray
-import javax.print.attribute.standard.OrientationRequested
-import javax.swing.BorderFactory
-import javax.swing.DefaultCellEditor
-import javax.swing.JCheckBox
-import javax.swing.JTable
-import javax.swing.UIManager
+import java.awt
+import java.awt.event.{WindowAdapter, WindowEvent}
+import java.awt.{Color, Dimension}
+import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, OrientationRequested}
+import javax.swing._
 import javax.swing.border.TitledBorder
 import javax.swing.table.TableCellEditor
-import util.MyComboBox
-import util.MyListView
+
+import client.comm.ClientQueryManager
+import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
+import client.dialog.DialogManager
+import definition.data.{FormDescription, OutputDefinition}
+import definition.expression._
+import util.{MyComboBox, MyListView}
+
+import scala.swing.event.{ButtonClicked, ListSelectionChanged, SelectionChanged}
+import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, CheckBox, Component, Dialog, Label, Orientation, RadioButton, ScrollPane, Swing, Table, Window}
 
 /**
  * 
@@ -60,9 +27,11 @@ import util.MyListView
 
 class BoolRenderer extends CheckBox {
   opaque=true
-  val bcolor=Color.white//UIManager.getColor("Table.background") match{case null => Color.WHITE;case col=>col}  
-  val acolor=UIManager.getColor("Table.alternateRowColor")match{case null => Color.WHITE;case col=>col}
-  def prepare(checked:Boolean,row:Int)= {
+	val bcolor: Color = Color.white
+	//UIManager.getColor("Table.background") match{case null => Color.WHITE;case col=>col}
+	val acolor: Color = UIManager.getColor("Table.alternateRowColor") match {case null => Color.WHITE; case col => col}
+
+	def prepare(checked: Boolean, row: Int): Unit = {
     this.selected=checked
     background=if(row%2 != 0) acolor else bcolor
   }
@@ -79,9 +48,9 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 	val cancelBut=new Button("Abbruch")
 	val nextBut=new Button("Weiter ->")
 	val portraitBut=new RadioButton("Hoch")
-	val landscapeBut=new RadioButton("Quer")	
-	
-	val mediaCombo:MyComboBox[MediaSizeWrapper]=new MyComboBox(List(new MediaSizeWrapper(MediaSizeName.ISO_A4))){
+	val landscapeBut=new RadioButton("Quer")
+
+	val mediaCombo: MyComboBox[MediaSizeWrapper] = new MyComboBox(List(MediaSizeWrapper(MediaSizeName.ISO_A4))) {
 		peer.setModel(PrintModel.mediaModel)
 		listenTo(this.selection)
 		reactions+= {
@@ -99,8 +68,8 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		}
 	}
 	
-	peer.addWindowListener (new WindowAdapter(){		
-		override def windowClosing(e:WindowEvent)= {			
+	peer.addWindowListener (new WindowAdapter(){
+		override def windowClosing(e: WindowEvent): Unit = {
 			if(resetOnClose)DialogManager.reset()
 		}
 	})			
@@ -131,16 +100,16 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 	}	
 	
 	val tcr = new Table.AbstractRenderer[BoolConstant, BoolRenderer](new BoolRenderer) {
-	  def configure(t: Table, sel: Boolean, foc: Boolean, o: BoolConstant, row: Int, col: Int) = 
+		def configure(t: Table, sel: Boolean, foc: Boolean, o: BoolConstant, row: Int, col: Int): Unit =
 	    component.prepare(o.toBoolean,row)	  
 	}
 		
 	val paramTable=new Table {
 		val stringEditor=new MultilineEditor(peer)	{
-			def setEditorValue(value:Object) = if(value==null) "" else value.toString
+			def setEditorValue(value: Object): String = if (value == null) "" else value.toString
 		}
-		rowHeight=24
-		font=new Font("Arial",0,14)
+		rowHeight = ViewConstants.defaultRowHeight
+		font = ViewConstants.tableFont
 		model=PrintModel.paramTabMod
 		peer.setAutoCreateColumnsFromModel(false)
     peer.setColumnModel(fieldColMod)
@@ -148,7 +117,7 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		selection.elementMode=Table.ElementMode.None  
 		autoResizeMode=Table.AutoResizeMode.Off
 		val boolEditor=new DefaultCellEditor(new JCheckBox){
-		  override def getTableCellEditorComponent(table:JTable,value: Object, isSelected:Boolean,row:Int, column:Int) ={
+			override def getTableCellEditorComponent(table: JTable, value: Object, isSelected: Boolean, row: Int, column: Int): awt.Component = {
 		    super.getTableCellEditorComponent(table, value match {
 		      case b:BoolConstant=> if(b.toBoolean) java.lang.Boolean.TRUE else java.lang.Boolean.FALSE
 		      case _=> java.lang.Boolean.FALSE
@@ -187,17 +156,23 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		add(new BoxPanel(Orientation.Vertical ) {
 			contents+=Swing.VStrut(10)+= formListView+=Swing.VStrut(10)+=paramScroller+=Swing.VStrut(10)+=
 				new BoxPanel(Orientation.Horizontal) {
-				contents+=new Label("Drucker:")+=printerCombo
+					val drLab = new Label("Drucker:")
+					drLab.font = ViewConstants.labelFont
+					contents += drLab += printerCombo
 				listenTo(printerCombo.selection)
 				reactions+= {
 					case SelectionChanged(e)=> setPrinterName( printerCombo.selection.item)
 				}
 			}+=Swing.VStrut(10)+=
 			new BoxPanel(Orientation.Horizontal) {
-				contents+=new Label("Papierformat: ")+=mediaCombo+=Swing.HStrut(20)+=portraitBut+=landscapeBut+=Swing.HStrut(20)
+				val pfLab = new Label("Papierformat: ")
+				pfLab.font = ViewConstants.labelFont
+				contents += pfLab += mediaCombo += Swing.HStrut(20) += portraitBut += landscapeBut += Swing.HStrut(20)
 			}+=Swing.VStrut(10)+=
 			new BoxPanel(Orientation.Horizontal) {
-				contents+=new Label("Ausgabe-Schacht: ")+=trayCombo
+				val shLab = new Label("Ausgabe-Schacht: ")
+				shLab.font = ViewConstants.labelFont
+				contents += shLab += trayCombo
 			}+=Swing.VStrut(20)				
 			
 		},BorderPanel.Position.Center)
@@ -229,11 +204,10 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 			}			
 		}
 	}	
-	contents=mainPanel	
-	
-	
-	
-	def storePrintData()= {
+	contents=mainPanel
+
+
+	def storePrintData(): Unit = {
 	  close()
 	  val paperSettings=PrintModel.lastSelectedMedia.mn.toString+(if(PrintModel.trayModel.getSize>0)"|"+trayCombo.selection.item.mt.toString else "")
 	  DialogManager.processCustomEnquiry(IndexedSeq(("StorePrintData",
@@ -242,9 +216,9 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
   		("Portrait",BoolConstant(portraitBut.selected)),("PageWidth",IntConstant(PrintModel.lastSelectedMedia.width.toInt)),
   		("PageHeight",IntConstant(PrintModel.lastSelectedMedia.height.toInt)) ) ++ PrintModel.paramTabMod.getParams)
 	}
-	
-	
-	def setPrinterName(newName:String)= {
+
+
+	def setPrinterName(newName: String): Unit = {
 	  combosAdjusting=true
 	  val (theService,defaultTrayIx)=PrintModel.setPrinterName(newName)		
 		if(PrintModel.lastSelectedMedia!=null && theService.isAttributeValueSupported(PrintModel.lastSelectedMedia.mn, null, PrintModel.emptyAttributeSet))
@@ -261,28 +235,28 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 			PrintModel.pras.add(PrintModel.trayModel.getElementAt(defaultTrayIx).altValue)
 		}			
 		combosAdjusting=false		
-	}	
-	
-	def getCurrentForm =formListView.selection.items.head	
-	
-	def showDialog (newTitle:String,noutputDefinedFunc:(Int,String,String,Boolean,Int,Int,Seq[(String,Constant)])=>Unit,nresetOnClose:Boolean) = {
+	}
+
+	def getCurrentForm: FormDescription = formListView.selection.items.get(0)
+
+	def showDialog(newTitle: String, noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[(String, Constant)]) => Unit, nresetOnClose: Boolean): Unit = {
 		title=newTitle
 		outputDefinedFunc=noutputDefinedFunc		
 		resetOnClose=nresetOnClose
 		visible=true
 	}
-	
-	def showEditDialog(noutputDefinedFunc:(Int,String,String,Boolean,Int,Int,Seq[(String,Constant)])=>Unit,odef:OutputDefinition) = {
+
+	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[(String, Constant)]) => Unit, odef: OutputDefinition): Unit = {
 		loadOutDefSettings(odef)		
 		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,true)
 	}
-	
-	def loadForms(newList:Seq[FormDescription])= {		
+
+	def loadForms(newList: Seq[FormDescription]): Unit = {
 		formListView.listData=newList
 		formListView.selection.indices+=0
 	}
-	
-	def loadOutDefSettings(odef:OutputDefinition) = {		
+
+	def loadOutDefSettings(odef: OutputDefinition): Unit = {
 		val sIx=PrintModel.printerList.indexOf(odef.printer)
 		if(sIx<0) ClientQueryManager.printErrorMessage("cant find printer '"+odef.printer+"'")
 		else printerCombo.selection.index=sIx			

@@ -1,15 +1,12 @@
 package client.spreadsheet
-import definition.data.InstanceData
-import definition.data.Reference
+
+import java.io.{DataInput, DataOutput}
+
 import client.comm.ClientQueryManager
-import definition.expression.EMPTY_EX
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import definition.expression.DoubleConstant
-import definition.expression.Expression
-import definition.expression.BlobConstant
-import java.io.DataOutput
-import java.io.DataInput
+import definition.data.{InstanceData, Reference}
+import definition.expression._
+
+import scala.collection.immutable
 import scala.util.control.NonFatal
 
 object HorAlign extends Enumeration {
@@ -38,7 +35,8 @@ object CellFormat extends Enumeration {
 
 case class BorderInfo(width:Float,color:Int,style:Int) {
   def this(in:DataInput)=this(in.readFloat,in.readInt,in.readInt)
-  def write(out:DataOutput)= {
+
+  def write(out: DataOutput): Unit = {
     out.writeFloat(width)
     out.writeInt(color)
     out.writeInt(style)
@@ -89,28 +87,28 @@ case class SpreadSheetFormat(
           formatSet(16).flatMap(_.rightBorder),
           formatSet(17).flatMap(_.bottomBorder)         
           /*,None,None*/)
-    }  
-    
-    
-    def isFormatSet(formatNr:Int)= formatNr match{
+    }
+
+
+  def isFormatSet(formatNr: Int): Boolean = formatNr match {
       case 0=> horAlign!=HorAlign.UNDEFINED
       case 1=> vertAlign!=VertAlign.UNDEFINED
       case 2=> cellFormat!=CellFormat.UNDEFINED
-      case 3=> numberFormat !=None
-      case 4=> font!=None
-      case 5=> fontSize!=None
-      case 6=> bold!=None
-      case 7=> italic!=None
-      case 8=> underline!=None
-      case 9=> fontColor!=None
-      case 10=>backgroundColor!=None
-      case 11=> lineBreak!=None
-      case 12=> visible!=None
-      case 13=> showFormula!=None
-      case n if n>13=> getBorder(n-14)!=None      
+      case 3 => numberFormat.isDefined
+      case 4 => font.isDefined
+      case 5 => fontSize.isDefined
+      case 6 => bold.isDefined
+      case 7 => italic.isDefined
+      case 8 => underline.isDefined
+      case 9 => fontColor.isDefined
+      case 10 => backgroundColor.isDefined
+      case 11 => lineBreak.isDefined
+      case 12 => visible.isDefined
+      case 13 => showFormula.isDefined
+      case n if n > 13 => getBorder(n - 14).isDefined
     }
-    
-    def formatEquals(other:SpreadSheetFormat,formatNr:Int)= formatNr match {
+
+  def formatEquals(other: SpreadSheetFormat, formatNr: Int): Boolean = formatNr match {
       case 0=> horAlign==other.horAlign
       case 1=> vertAlign==other.vertAlign
       case 2=> cellFormat==other.cellFormat
@@ -127,41 +125,41 @@ case class SpreadSheetFormat(
       case 13=> showFormula==other.showFormula
       case n if n>13=> getBorder(n-14)== other.getBorder(n-14)           
     }
-    
-    def numFieldsSet=(0 until SpreadSheetFormat.getFormatCount).foldLeft(0)((s,v)=>s+(if(isFormatSet(v))1 else 0))
+
+  def numFieldsSet: Int = (0 until SpreadSheetFormat.getFormatCount).foldLeft(0)((s, v) => s + (if (isFormatSet(v)) 1 else 0))
     
     def boolToBits(boolValue:Option[Boolean],bitPos:Int):Int= 
       (boolValue match {case Some(bool)=> if(bool)3 else 1;case None=>0})<<bitPos
-    
-    def getFormatCode= horAlign.id+(vertAlign.id<<2)+(cellFormat.id<<4)+boolToBits(bold,8)+
+
+  def getFormatCode: Int = horAlign.id + (vertAlign.id << 2) + (cellFormat.id << 4) + boolToBits(bold, 8) +
        boolToBits(italic,10)+boolToBits(underline,12)+boolToBits(lineBreak,14)+
-       boolToBits(visible,16)+boolToBits(showFormula,18)    
-    
-    
-    def setDefinedFormats(formatSet:IndexedSeq[Option[SpreadSheetFormat]]) = 
+       boolToBits(visible,16)+boolToBits(showFormula,18)
+
+
+  def setDefinedFormats(formatSet: IndexedSeq[Option[SpreadSheetFormat]]): immutable.IndexedSeq[Option[SpreadSheetFormat]] =
       formatSet.indices.map(i=>if(isFormatSet(i)) Some(this) else formatSet(i) )
-      
-    def clearDefinedFormats(formatSet:IndexedSeq[Option[SpreadSheetFormat]]) =
+
+  def clearDefinedFormats(formatSet: IndexedSeq[Option[SpreadSheetFormat]]): immutable.IndexedSeq[Option[SpreadSheetFormat]] =
       for(i<-formatSet.indices;otherVal=formatSet(i))
         yield if(otherVal.isDefined && isFormatSet(i)&& !formatEquals(otherVal.get,i)) None else otherVal
-    
-    def getBorder(borderNr:Int)=borderNr match {
+
+  def getBorder(borderNr: Int): Option[BorderInfo] = borderNr match {
           case 0=> leftBorder
           case 1=> topBorder
           case 2=> rightBorder
           case 3=> bottomBorder      
           case _=> None
-        }       
-        
-    def writeBorders=  BlobConstant.fillData(out=> {
+        }
+
+  def writeBorders: BlobConstant = BlobConstant.fillData(out => {
       out.writeInt(SpreadSheetFormat.borderNumbers.foldLeft(0)((v,n)=>v + (if(getBorder(n).isDefined) 1 << n else 0)))
       for (i<-0 until 4) getBorder(i) match {
         case Some(border)=>border.write(out)
         case None =>
       }
-    }) 
-    
-    def isBorderDefined = SpreadSheetFormat.borderNumbers.exists {number=>getBorder(number).isDefined}
+    })
+
+  def isBorderDefined: Boolean = SpreadSheetFormat.borderNumbers.exists { number => getBorder(number).isDefined }
 }
 
 object UndefinedFormat extends SpreadSheetFormat(HorAlign.UNDEFINED,VertAlign.UNDEFINED,CellFormat.UNDEFINED,None,None,None,None,None,None,None,None,None,
@@ -174,7 +172,8 @@ class SpreadSheetFormatRange(val ref:Reference,val range:SpreadSheetRange,val fo
     this(data.ref,SpreadSheetRange(data.fieldValue.head.toInt,data.fieldValue(2).toInt,data.fieldValue(1).toInt,data.fieldValue(3).toInt),
         SpreadSheetFormat(data))
   }
-  override def toString= "FormRange( "+ref.sToString+" range:"+range+" format:"+format+" )"
+
+  override def toString: String = "FormRange( " + ref.sToString + " range:" + range + " format:" + format + " )"
   
   def clearField(fieldNr:Int):Unit= {
     if(format.isFormatSet(fieldNr)) { // delete empty sets
@@ -266,19 +265,21 @@ class SpreadSheetFormatRange(val ref:Reference,val range:SpreadSheetRange,val fo
 object SpreadSheetFormat {
   final val emptyBorderList:IndexedSeq[Option[BorderInfo]]=IndexedSeq(None,None,None,None)
   final val  emptyFormatSet:IndexedSeq[Option[SpreadSheetFormat]]=IndexedSeq.empty.padTo(SpreadSheetFormat.getFormatCount,None)
-  final val borderNumbers= 0 until 4
+  final val borderNumbers: Range = 0 until 4
   def getFormatCount:Int=18
-  
-  def boolFromBits(bits:Int)= if((bits&1)>0) Some((bits&2)>0) else None
-  
-  def boolStToConst(boolSt:Option[String])= boolSt match {
+
+  def boolFromBits(bits: Int): Option[Boolean] = if ((bits & 1) > 0) Some((bits & 2) > 0) else None
+
+  def boolStToConst(boolSt: Option[String]): Constant = boolSt match {
           case Some(nf)=>StringConstant(nf);case None => EMPTY_EX}
-  def boolIntToConst(boolSt:Option[Int])= boolSt match {
+
+  def boolIntToConst(boolSt: Option[Int]): Constant = boolSt match {
           case Some(nf)=>IntConstant(nf);case None => EMPTY_EX}
-  def boolFloatToConst(boolSt:Option[Float])= boolSt match {
+
+  def boolFloatToConst(boolSt: Option[Float]): Constant = boolSt match {
           case Some(nf)=>DoubleConstant(nf);case None => EMPTY_EX}
-  
-  def apply(data:InstanceData)= {    
+
+  def apply(data: InstanceData): SpreadSheetFormat = {
     val formatCode=data.fieldValue(4).toInt
     val horAlign=HorAlign(formatCode & 3)
     val vertAlign=VertAlign((formatCode>>2) & 3)
@@ -296,13 +297,14 @@ object SpreadSheetFormat {
     val showFormula=boolFromBits(formatCode >> 18)
     val borders=data.fieldValue(11)match {
       case b:BlobConstant=> if(b.data.length==0) emptyBorderList else b.read(readBorders)
+      case EMPTY_EX => emptyBorderList
       case o=> throw new IllegalArgumentException("wrong Border data type "+o.getType)
     }
     new SpreadSheetFormat(horAlign,vertAlign,cellFormat,numberFormat,font,fontSize,bold,italic,underline,
         fontColor,backgroundColor,lineBreak,visible,showFormula,borders.head,borders(1),borders(2),borders(3)/*,None,None*/)
   }
-  
-  def readBorders(in:DataInput)= try {
+
+  def readBorders(in: DataInput): IndexedSeq[Option[BorderInfo]] = try {
     val activeBorders=in.readInt
     //println("Read Borders" +activeBorders)
     for(i<-0 until 4) yield {
@@ -311,14 +313,15 @@ object SpreadSheetFormat {
     }
   } catch { case NonFatal(e) => util.Log.e(e);emptyBorderList
   case other:Throwable =>println(other);System.exit(0);null}
-  
-  def boolFromFormats(formatList:List[SpreadSheetFormatRange],filtFunc:SpreadSheetFormat=>Option[Boolean])=
-    formatList.find(el=>filtFunc(el.format).isDefined).flatMap(el=>filtFunc(el.format)).getOrElse(false)    
-  def valueFromFormatList[T](formatList:Seq[SpreadSheetFormatRange],filtFunc:SpreadSheetFormat=>Option[T])=
+
+  def boolFromFormats(formatList: List[SpreadSheetFormatRange], filtFunc: SpreadSheetFormat => Option[Boolean]): Boolean =
+    formatList.find(el=>filtFunc(el.format).isDefined).flatMap(el=>filtFunc(el.format)).getOrElse(false)
+
+  def valueFromFormatList[T](formatList: Seq[SpreadSheetFormatRange], filtFunc: SpreadSheetFormat => Option[T]): Option[T] =
     formatList.view.map(el=>filtFunc(el.format)).find(_.isDefined).flatten
-    
-  
-  def createFormat(range:SpreadSheetRange,format:SpreadSheetFormat,controller:SpreadSheetController)= {
+
+
+  def createFormat(range: SpreadSheetRange, format: SpreadSheetFormat, controller: SpreadSheetController): Unit = {
     ClientQueryManager.createInstances(controller.formatOwnerRefArray,Seq((SpreadSheet.spreadSheetFormatSetType,
         range.toConstants ++Array(IntConstant(format.getFormatCode),
             boolStToConst(format.numberFormat),boolStToConst(format.font),boolFloatToConst(format.fontSize),

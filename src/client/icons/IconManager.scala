@@ -1,12 +1,17 @@
 package client.icons
+
+import java.awt.Image
+import java.awt.image.ImageObserver
 import java.io.File
 import java.net.{URL, URLDecoder}
 import java.util.jar.JarFile
 import javax.swing.ImageIcon
 
+import client.dataviewer.ViewConstants
+
 import scala.collection.JavaConverters._
 
-object IconManager {
+object IconManager extends ImageObserver {
   val startPath="client/icons/"
   val cl: ClassLoader =this.getClass.getClassLoader()
   val iconResource: URL =cl.getResource(startPath)
@@ -37,16 +42,20 @@ object IconManager {
     //if(!iconMap.contains(key)) System.err.println("Cant find Icon:"+key)
     iconMap.get(key)    
   }
-  
-  
+
+
   def  createImageIcon(path:String):ImageIcon = {
 		val imgURL:URL   = this.getClass.getResource(path)
-		if (imgURL != null) {			
-			new ImageIcon(imgURL)
+		if (imgURL != null) {
+      val icon = new ImageIcon(imgURL).getImage
+      val w = icon.getWidth(this)
+      val h = icon.getHeight(this)
+      new ImageIcon(icon.getScaledInstance(w * ViewConstants.fontScale / 100, h * ViewConstants.fontScale / 100, Image.SCALE_SMOOTH))
     } else {
       util.Log.e("Couldn't find file: " + path)
       null
     }
 	}
 
+  override def imageUpdate(img: Image, infoflags: Int, x: Int, y: Int, width: Int, height: Int): Boolean = false
 }

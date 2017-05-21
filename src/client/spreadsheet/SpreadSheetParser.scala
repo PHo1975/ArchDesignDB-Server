@@ -1,25 +1,17 @@
 package client.spreadsheet
-import definition.expression.StringParser
-import definition.expression.Expression
-import definition.expression.Variable
-import definition.expression.DoubleConstant
-import definition.expression.IntConstant
-import definition.typ.DataType
-import definition.expression.EMPTY_EX
 import java.io.DataOutput
-import definition.expression.Constant
+
 import definition.data.InstanceData
-import definition.expression.CollectingFuncCall
-import definition.expression.StringConstant
+import definition.expression._
+import definition.typ.DataType
 
 class SpreadSheetParser extends StringParser {
   
   def spreadSheetVariableName:Parser[String]="""[a-zA-Z]{1,2}\d{1,4}""".r
+
+  def spreadSheetVariable: Parser[Expression] = spreadSheetVariableName ^^ (name => SSVariable(name, EMPTY_EX))
   
-  def spreadSheetVariable:Parser[Expression]=spreadSheetVariableName ^^ {case name => SSVariable(name,EMPTY_EX)}
-  
-  def spreadSheetCollFunc:Parser[Expression]=( (ident <~ "(") ~ (spreadSheetVariableName<~":")~(spreadSheetVariableName <~")")) ^^ 
-  {case name ~ start~ end => new SSCollProxy(name,new RangeSelection(SpreadSheetUtil.lettersToCoords(start),SpreadSheetUtil.lettersToCoords(end))) } 
+  def spreadSheetCollFunc:Parser[Expression]=( (ident <~ "(") ~ (spreadSheetVariableName<~":")~(spreadSheetVariableName <~")")) ^^ { case name ~ start ~ end => SSCollProxy(name, new RangeSelection(SpreadSheetUtil.lettersToCoords(start), SpreadSheetUtil.lettersToCoords(end))) }
   
   override  def elem : Parser[Expression] =( currValue||| unitNumber)|
        groupedNumber ^^ {y => val doubleVal=y.replace(".","").replace(',','.').toDouble
@@ -53,7 +45,7 @@ case class SSCollProxy(name:String,range:SpreadSheetRange) extends Expression {
 
   def getValue = EMPTY_EX
 
-  def createCopy(): Expression = new SSCollProxy(name,range)
+  //def createCopy(): Expression = new SSCollProxy(name,range)
 
   def getChildCount: Int =  0 
 
@@ -64,16 +56,16 @@ case class SSCollProxy(name:String,range:SpreadSheetRange) extends Expression {
     SpreadSheetUtil.columnIdToLetter(rs.cols.end)+(rs.rows.end+1)
   case _=> range.toString})+")"
 
-  def isConstant: Boolean =  false 
+  def isConstant: Boolean =  false
 
-  def write(file:DataOutput)= { 
+  def write(file: DataOutput): Unit = {
   	file.writeByte(DataType.VariableTyp.id) 	
   	file.writeUTF(name)  	  	
   }
   
   def encode: String = "$Y"+getTerm+";"
-  
-  def delta(deltaX:Int,deltaY:Int)=new SSCollProxy(name,SpreadSheetRange.delta(range,deltaX,deltaY))
+
+  def delta(deltaX: Int, deltaY: Int) = SSCollProxy(name, SpreadSheetRange.delta(range, deltaX, deltaY))
   
   def equalsData(data:InstanceData):Boolean= {
     if(data.fieldData.size!=6) false
@@ -96,9 +88,9 @@ case class SSCollProxy(name:String,range:SpreadSheetRange) extends Expression {
 case class SSVariable(name:String,getValue:Constant) extends Expression {
 
   def getType =  DataType.VariableTyp
-   
 
-  def createCopy(): Expression = new SSVariable(name,getValue)
+
+  //def createCopy(): Expression = new SSVariable(name,getValue)
 
   def getChildCount: Int =  0 
 
@@ -106,9 +98,9 @@ case class SSVariable(name:String,getValue:Constant) extends Expression {
 
   def getTerm: String =  name 
 
-  def isConstant: Boolean =  false 
+  def isConstant: Boolean =  false
 
-  def write(file:DataOutput)= { 
+  def write(file: DataOutput): Unit = {
   	file.writeByte(DataType.VariableTyp.id)  	
   	file.writeUTF(SpreadSheet.spreadSheetModulName)
   	file.writeUTF(name)  	  	

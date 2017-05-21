@@ -36,8 +36,8 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	type CommandHandlerFunc= (DataInputStream)=>Unit
 	
 	var classesReadListener:()=>Unit = _
-	
-	val startupFinishListener=ArrayBuffer[()=>Unit] ()
+
+	val startupFinishListener: ArrayBuffer[() => Unit] = ArrayBuffer[() => Unit]()
   
   var connectionBrokenListener:()=>Unit = _
 	
@@ -95,16 +95,18 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
         }			
         case b:SocketException=> if(wantRun){
 					Log.e("handle commands",b)
+					println(b)
           connectionBroken()
         } 
 				case NonFatal(e) => Log.e("handle commands",e)
-				case other:Throwable =>println(other);System.exit(0);null
+				case other: Throwable => Log.e("handle commands", other); wantRun = false
 			}
 	}
   
   private def connectionBroken()={    
     if(connectionBrokenListener!=null)connectionBrokenListener()
-    System.exit(0)
+		wantRun = false
+		//System.exit(0)
   }
 	
 	private def readSystemSettings(in:DataInputStream):Unit= {
@@ -128,7 +130,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		inf.inflate(fullBuffer)
 		inf.end()
     val cc=new ClientClasses(xml.XML.loadString(new String(fullBuffer,"UTF-8")))
-		AllClasses.set(cc)
+		AllClasses.set(cc, resolve = false)
 		//println(" Classes read "+(System.currentTimeMillis()-start)+" uncompressedsize:"+uncompressedSize+" size:"+numBytes)
 		sendData(ClientCommands.getUserSettings  ){out:DataOutputStream =>{}}
 	}
@@ -151,14 +153,14 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	
 	
 	// ************************************ COMMANDS ***************************************
-	
-	def registerCommandHandler(command:ServerCommands.Value)(func: (DataInputStream)=>Unit) = {
+
+	def registerCommandHandler(command: ServerCommands.Value)(func: (DataInputStream) => Unit): Unit = {
 		commandHandlerMap.put(command,func)
 	}
 	
 	//def registerGenDataHandler(gType:GeneratorType.Value,handler:GenDataReceiver)= genDataHandlerMap(gType)=handler	
-	
-	def quitApplication() = 	{
+
+	def quitApplication(): Unit = {
 		// Shutdown all data
 		// save changes in user settings
 		ClientQueryManager.notifyStoreSettingsListeners()		
@@ -175,8 +177,8 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		sendData(ClientCommands.logOut ) {out =>}
 		System.exit(0)
 	}
-		
-	def sendData(command:ClientCommands.Value)(func:(DataOutputStream) => Unit) = 	{
+
+	def sendData(command: ClientCommands.Value)(func: (DataOutputStream) => Unit): Unit = {
 		try {
 			outStreamLock.synchronized {
 				out.writeByte(command.id.toByte)

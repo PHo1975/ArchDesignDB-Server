@@ -2,13 +2,12 @@
  */
 package management.databrowser
 
-import java.awt.{SystemTray, Toolkit, TrayIcon}
 import java.awt.event.{MouseAdapter, WindowAdapter}
-import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
-import javax.swing.border.TitledBorder
+import java.awt.{Image, SystemTray, Toolkit, TrayIcon}
 import javax.swing.table.{DefaultTableModel, TableRowSorter}
+import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 
-import client.dialog.LogOutputStream
+import client.dataviewer.ViewConstants
 import com.sun.jna.{Native, NativeLong, WString}
 import definition.typ.AllClasses
 import management.databrowser.stat.StatPanel
@@ -18,9 +17,10 @@ import transaction.handling.SessionManager
 import util.Log
 
 import scala.Array.fallbackCanBuildFrom
-import scala.collection.JavaConversions.seqAsJavaList
-import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dimension, GridPanel, Label, MainFrame, Orientation, Rectangle, ScrollPane, SimpleSwingApplication, Swing, Table}
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dimension, GridPanel, MainFrame, Orientation, Rectangle, ScrollPane, SimpleSwingApplication, Swing, Table}
 import scala.util.control.NonFatal
 
 //import java.swing.JTable
@@ -33,36 +33,39 @@ trait ClassListListener {
 }
 
 object MainWindow extends SimpleSwingApplication {
+  println("MainWindow start")
   var trayIcon: TrayIcon = _
   var hidden: Boolean = false
   var firstopen = true
-  var theModel: DefaultTableModel = null
+  var theModel: DefaultTableModel = _
   var dataList: Array[Array[java.lang.Object]] = Array()
   var shortClassList: Seq[(Int, String)] = Seq.empty
-  val usedIDs = collection.mutable.HashSet[Int]()
-  val classListListener = collection.mutable.HashSet[ClassListListener]()
-  var newClass: ServerObjectClass = null
+  val usedIDs: mutable.HashSet[Int] = collection.mutable.HashSet[Int]()
+  val classListListener: mutable.HashSet[ClassListListener] = collection.mutable.HashSet[ClassListListener]()
+  var newClass: ServerObjectClass = _
   var showWindowMinimized=false
-  
-  val reorgPanel= new ReorgPanel
+  var webSocketSSL = false
+
+  lazy val reorgPanel = new ReorgPanel
   val manButSize=new Dimension(160,35)
   val buttonSize=new Dimension(Short.MaxValue,30)
   lazy val backupDialog=new BackupDialog(top)
   var debug=false
   lazy val consolePanel = new ConsolePanel(debug)
+  lazy val borderPanel = new BorderPanel
+  lazy val certPanel = new CertPanel
   
   val accordion=new AccordionComponent
   val statPanel=new StatPanel
-  
   @native def SetCurrentProcessExplicitAppUserModelID(appID:WString):NativeLong
   if(System.getProperty("os.name").contains("Windows")) {
     val versID=System.getProperty("os.version").toFloat
-    if(versID>=6.1) {
+    if (versID >= 6.1f) {
 	    val appID="DBServer"
 		  Native.register("shell32")	  
 		  if (SetCurrentProcessExplicitAppUserModelID(new WString(appID)).longValue() != 0)
-		      throw new RuntimeException("unable to set current process explicit AppUserModelID to: " + appID)    
-    } else println("Windows version "+versID)
+		      throw new RuntimeException("unable to set current process explicit AppUserModelID to: " + appID)
+    } else Log.w("Windows version " + versID)
   } 
   
   val classTable = new Table {
@@ -70,13 +73,12 @@ object MainWindow extends SimpleSwingApplication {
     peer.setAutoResizeMode(Table.AutoResizeMode.LastColumn.id)
     peer.setSelectionMode(Table.IntervalMode.Single.id)
   }
-  
 
-  def dataInit() =
-    {    	
-      generateDataList
+
+  def dataInit(): Unit = {
+    generateDataList()
       theModel = new DefaultTableModel(dataList, Array[Object]("ID", "Name", "Description")) {
-        override def getColumnClass(col: Int) = {
+        override def getColumnClass(col: Int): Class[_] = {
           col match {
             case 0 => classOf[java.lang.Integer]
             case _ => classOf[String]
@@ -84,8 +86,7 @@ object MainWindow extends SimpleSwingApplication {
         }
       }
       val sorter = new TableRowSorter[DefaultTableModel](theModel)
-      val sortKeys = List(new RowSorter.SortKey(0, SortOrder.ASCENDING))
-      sorter.setSortKeys(sortKeys)
+    sorter.setSortKeys(List(new RowSorter.SortKey(0, SortOrder.ASCENDING)).asJava)
       classTable.peer.setModel(theModel)
       classTable.peer.setRowSorter(sorter)
       val col = classTable.peer.getColumnModel.getColumn(0)
@@ -95,7 +96,7 @@ object MainWindow extends SimpleSwingApplication {
       usedIDs ++= dataList.map(_(0).asInstanceOf[java.lang.Integer].intValue)
     }
 
-  def generateDataList() = {
+  def generateDataList(): Unit = {
     def classListIterator = AllClasses.get.getClassList.valuesIterator
     dataList = classListIterator.map(
       x => Array[Object](new java.lang.Integer(x.id), x.name, x.description)).toSeq.
@@ -112,22 +113,23 @@ object MainWindow extends SimpleSwingApplication {
     }
   }
   
-  val rightPanel = new MyBorderPanel 
-  
-  
-  def addRightPanelComponent(c:Component)= rightPanel.addIt(c,BorderPanel.Position.Center)
+  val rightPanel = new MyBorderPanel
 
-  override def startup(args: Array[String]) = {
+
+  def addRightPanelComponent(c: Component): Unit = rightPanel.addIt(c, BorderPanel.Position.Center)
+
+  override def startup(args: Array[String]): Unit = {
     Log.w("startup "+args.toSeq.mkString(","))
     if(args.length>0){
       if(args(0).equalsIgnoreCase("debug")) debug=true
       if(args(0).equalsIgnoreCase("noBulk")) MainServerSocket.noBulkAction=true
       if (args.exists(_.equalsIgnoreCase("minimized")))showWindowMinimized=true
+      if (args.exists(_.equalsIgnoreCase("ssl"))) webSocketSSL = true
     }
     super.startup(args)
   }
-  
-  def createBut(name:String)= {
+
+  def createBut(name: String): Button = {
     val newBut=new Button(name)
     newBut.maximumSize=manButSize
     newBut.preferredSize=manButSize
@@ -137,82 +139,73 @@ object MainWindow extends SimpleSwingApplication {
 
   val managementPanel:BoxPanel = new BoxPanel(Orientation.Vertical) {
     val manButPanel=new BoxPanel(Orientation.Vertical) {
-      val belowTopBorder = BorderFactory.createTitledBorder("Management")
-      belowTopBorder.setTitlePosition(TitledBorder.BELOW_TOP)
-      border = belowTopBorder
-      this.xLayoutAlignment=0.5f		
-      val backupBut=createBut("Backup")
-      val shutDownBut=createBut("ShutDown")
-      val showTransBut = createBut("TransLog")
-      val showCachesBut = createBut("Caches")
-      val showConsoleBut = createBut("Console")
-      val reorgBut = createBut("Reorganize")
-      val refreshBut= createBut("Refresh Undo")
-      
-      contents +=backupBut+=shutDownBut+= showTransBut += showCachesBut += showConsoleBut+= reorgBut+=refreshBut
-      listenTo(backupBut,shutDownBut,showTransBut, showCachesBut, showConsoleBut,reorgBut,refreshBut)
+      this.xLayoutAlignment=0.5f
+      val backupBut: Button = createBut("Backup")
+      val shutDownBut: Button = createBut("ShutDown")
+      val showTransBut: Button = createBut("TransLog")
+      val showConsoleBut: Button = createBut("Console")
+      val reorgBut: Button = createBut("Reorganize")
+      val refreshBut: Button = createBut("Refresh Undo")
+      val createCertBut: Button = createBut("Create Certificate")
+
+      contents += backupBut += shutDownBut += showTransBut += showConsoleBut += reorgBut += refreshBut += createCertBut
+      listenTo(backupBut, shutDownBut, showTransBut, showConsoleBut, reorgBut, refreshBut, createCertBut)
       reactions += {
         case ButtonClicked(`backupBut`)   => showBackupDialog()
       	case ButtonClicked(`showTransBut`)   => showTransData()
-      	case ButtonClicked(`showCachesBut`)  => StorageManager.printCacheReport
       	case ButtonClicked(`showConsoleBut`) => showConsole()
       	case ButtonClicked(`refreshBut`)=>
           server.comm.CommonSubscriptionHandler.refreshAfterUndo()
-          println("refresh done")
+          Log.w("refresh done")
         case ButtonClicked(`reorgBut`) => reorg()
+        case ButtonClicked(`createCertBut`) => createCert()
       }
     }
-    
-    val userPanel=new UserPanel
-    contents+=manButPanel+=Swing.VStrut(20)+=userPanel
+    contents += manButPanel
   }
 
   val classPanel = new BorderPanel() {
-    add(new Label("Class-List"), BorderPanel.Position.North)
-
+    add(ViewConstants.label("Class-List"), BorderPanel.Position.North)
     add(new ScrollPane() {
       viewportView = classTable
       preferredSize = new Dimension(380, 200)
     }, BorderPanel.Position.Center)
-
     add(new GridPanel(1, 3) {
       val newClassBut = new Button("Create Class")
       val changeClassBut = new Button("Change Class")
       val showDataBut = new Button("Show Data")
 
       contents += newClassBut += changeClassBut += showDataBut
-
       listenTo(newClassBut, changeClassBut, showDataBut)
       reactions += {
-        case ButtonClicked(`newClassBut`)    => createClass
-        case ButtonClicked(`changeClassBut`) => editClassDef
-        case ButtonClicked(`showDataBut`)    => showData
+        case ButtonClicked(`newClassBut`) => createClass()
+        case ButtonClicked(`changeClassBut`) => editClassDef()
+        case ButtonClicked(`showDataBut`) => showData()
       }
     }, BorderPanel.Position.South)
   }
-  
-  val basicSettingsPanel=new BasicSettingsPanel
-  lazy val theIconImage=Toolkit.getDefaultToolkit().getImage(getClass.getResource("Server128.png"))
 
-  val mainPanel = new BorderPanel() // main panel
-  {
+  val basicSettingsPanel = new BasicSettingsPanel()
+  val userPanel = new UserPanel()
+  lazy val theIconImage: Image = Toolkit.getDefaultToolkit().getImage(getClass.getResource("Server128.png"))
+
+  val mainPanel = new BorderPanel() { // main panel
     add(accordion,BorderPanel.Position.West)
     accordion.preferredSize=new Dimension(380,10)
     accordion.addPanel("DB Management",managementPanel)
+    accordion.addPanel("User Management", userPanel)
     accordion.addPanel("Class Management",classPanel)
-    accordion.addPanel("Basic Settings",basicSettingsPanel) 
+    accordion.addPanel("Setup", basicSettingsPanel)
     accordion.addPanel("Statistics",statPanel)
     accordion.activatePanel(0)
     accordion.border=BorderFactory.createEtchedBorder()
-
-    add(rightPanel, BorderPanel.Position.Center) // Center	
-
+    add(rightPanel, BorderPanel.Position.Center) // Center
   } // main Panel
 
   lazy val top: MainFrame = new MainFrame {
     SessionManager.init(consolePanel)
     SessionManager.registerSetupListener(() => {
-      dataInit
+      dataInit()
     }) 
     
     title = "Datenbank Management"
@@ -236,16 +229,17 @@ object MainWindow extends SimpleSwingApplication {
         }
     })
 
-    initTray
+    initTray()
     if(!debug) Swing.onEDT{
-      LogOutputStream.registerListener(consolePanel)
-      showConsole
+      //LogOutputStream.registerListener(consolePanel)
+
     }
+    showConsole()
     //java.lang.System.setOut(LogOutputStream.ps)
 
   }
 
-  def getSelectedType = {
+  def getSelectedType: Int = {
     val ix: Int = classTable.peer.convertRowIndexToModel(classTable.selection.rows.head)
     dataList(ix)(0).asInstanceOf[java.lang.Integer].intValue
   }
@@ -305,14 +299,14 @@ object MainWindow extends SimpleSwingApplication {
     backupDialog.setLocationRelativeTo(managementPanel)
     backupDialog.showDialog()
   }
-  
 
-  def registerClassListListener(li: ClassListListener) = {
+
+  def registerClassListListener(li: ClassListListener): Unit = {
     classListListener += li
     if (shortClassList.nonEmpty) li.classListChanged(shortClassList)
   }
 
-  def updateSeq[T](seq: Seq[T], index: Int, newValue: T) =
+  def updateSeq[T](seq: Seq[T], index: Int, newValue: T): Seq[T] =
     if (index >= seq.size) seq
     else seq.indices.map(i => if (i == index) newValue else seq(i))
 
@@ -334,7 +328,7 @@ object MainWindow extends SimpleSwingApplication {
     }
   }
 
-  def addTray() = {
+  def addTray(): Unit = {
     val tray = SystemTray.getSystemTray()
     try {
       tray.add(trayIcon)
@@ -344,37 +338,45 @@ object MainWindow extends SimpleSwingApplication {
     }
   }
 
-  def hideFenster() = {
+  def hideFenster(): Unit = {
     //System.out.println("hide")
     top.visible = false
     addTray()
     hidden = true
   }
 
-  def showFenster() = {
+  def showFenster(): Unit = {
     top.visible = true
     top.peer.setExtendedState(java.awt.Frame.NORMAL)
     removeTray()
     hidden = false
   }
 
-  def removeTray() = {
+  def removeTray(): Unit = {
     SystemTray.getSystemTray().remove(trayIcon)
   }
-  
-  def reorg() = {
+
+  def reorg(): Unit = {
     rightPanel.addIt(reorgPanel, BorderPanel.Position.Center)
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
-    rightPanel.repaint
+    rightPanel.repaint()
     
   }
-  
-  def runSw (func: =>Unit) = 
+
+  def createCert(): Unit = Swing.onEDT {
+    rightPanel.addIt(certPanel, BorderPanel.Position.Center)
+    certPanel.peer.invalidate()
+    rightPanel.peer.invalidate()
+    rightPanel.peer.revalidate()
+    rightPanel.repaint()
+  }
+
+  def runSw(func: => Unit): Unit =
 		Swing.onEDT{ func }
-	
-	def runAsThread( a: => Unit) = {
-		val tr= new Thread {override def run() = a}
+
+  def runAsThread(a: => Unit): Unit = {
+    val tr = new Thread {override def run(): Unit = a}
 		tr.start()
 	}
 

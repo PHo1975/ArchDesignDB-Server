@@ -1,50 +1,45 @@
 package client.graphicsView
 
 import java.awt.Dimension
-import scala.swing.Component
-import client.dialog.AbstractViewController
 import javafx.application.Platform
-import javafx.beans.value.ChangeListener
-import javafx.beans.value.ObservableValue
+import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.embed.swing.JFXPanel
-import javafx.event.ActionEvent
-import javafx.event.EventHandler
+import javafx.event.{ActionEvent, EventHandler}
 import javafx.geometry.Pos
-import javafx.scene.Group
-import javafx.scene.Scene
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyEvent
-import javafx.scene.input.MouseEvent
+import javafx.scene.{Group, Scene}
+import javafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import javafx.scene.layout.Pane
+
+import client.dialog.AbstractViewController
+
+import scala.swing.Component
 
 class InplaceEditPanel(controller:AbstractViewController[_,_]) extends Component {
   
-  lazy val panel=new JFXPanel with SuperMixin {}  
-  override lazy val peer=panel  
+  lazy val panel=new JFXPanel with SuperMixin {}
+  override lazy val peer: JFXPanel with SuperMixin = panel
   var currentTextEl:Option[TextElement]=None
-  var currentScaler:Scaler=null
+  var currentScaler: Scaler = _
   val  tf=new javafx.scene.control.TextField("ABCDE")
   val vb=new Pane    
-  var wantCancel=false  
-  
-  def getEditText=tf.getText
-  
-  def setPaneSize(ns:Dimension)= vb.setPrefSize(ns.width,ns.height)
-  
-  
-  def runLater(func: =>Unit)= Platform.runLater(new Runnable() {
-    	override def run(): Unit = {
-    		func
-    	}
-    })
+  var wantCancel=false
+
+  def getEditText: String = tf.getText
+
+  def setPaneSize(ns: Dimension): Unit = vb.setPrefSize(ns.width, ns.height)
+
+
+  def runLater(func: => Unit): Unit = Platform.runLater(() => {
+    func
+  })
   
   
   def handleEvent[T<:javafx.event.Event](func:(T)=>Unit)= new EventHandler[T]() {
-      def handle(e:T)= func(e)
+    def handle(e: T): Unit = func(e)
     }
-  
-  
-  def setup()=runLater{
+
+
+  def setup(): Unit = runLater {
     createScene()
   } 
   
@@ -54,13 +49,15 @@ class InplaceEditPanel(controller:AbstractViewController[_,_]) extends Component
     	val sc=new Scene(g,200,100)    	    	
     	tf.setAlignment(Pos.CENTER_LEFT)    	
     	tf.relocate(50,100)
-    	tf.setPrefSize(170,50)    	
+    //tf.setPrefSize(170,50)
     	g.getChildren().add(vb)
-    	vb.getChildren().add(tf)      
+    vb.getChildren().add(tf)
+    vb.setStyle("-fx-border-color:green;-fx-border-width:1px;")
+    tf.setStyle("-fx-border-color:blue;-fx-border-width:1px;")
     	panel.setOpaque(false)      
     	sc.setFill(new javafx.scene.paint.Color(0,0,1,0))    	
-    	panel.setScene(sc)      
-    	vb.addEventHandler(MouseEvent.MOUSE_PRESSED,handleEvent[MouseEvent](mouseEvent=> controller.stopIPEMode() ))      
+    	panel.setScene(sc)
+    vb.addEventHandler(MouseEvent.MOUSE_PRESSED, handleEvent[MouseEvent](_ => controller.stopIPEMode()))
       tf.focusedProperty.addListener(new ChangeListener[java.lang.Boolean]{
         def changed(observable:ObservableValue[_ <: java.lang.Boolean] , oldValue:java.lang.Boolean,newValue:java.lang.Boolean): Unit = {
           if(oldValue==true && newValue==false) {
@@ -73,7 +70,7 @@ class InplaceEditPanel(controller:AbstractViewController[_,_]) extends Component
         } 
       })
       tf.setOnAction(handleEvent[ActionEvent](event=> controller.stopIPEMode()))
-      tf.setOnKeyTyped(handleEvent[KeyEvent](event=> updateSize() ))
+    tf.setOnKeyTyped(handleEvent[KeyEvent](event => updateSize(event.getCharacter)))
       tf.setOnKeyPressed(handleEvent[KeyEvent](event=> 
         event.getCode() match {
           case KeyCode.ESCAPE =>
@@ -82,9 +79,9 @@ class InplaceEditPanel(controller:AbstractViewController[_,_]) extends Component
           case _ =>
         }             
       ))
-  }     
-  
-  def setValues(textEl:TextElement,sc:Scaler) = {
+  }
+
+  def setValues(textEl: TextElement, sc: Scaler): Boolean = {
     //println("IPE set Values:"+textEl+ " size:"+panel.getSize())
     wantCancel=false      
     currentTextEl=Some(textEl)
@@ -99,28 +96,29 @@ class InplaceEditPanel(controller:AbstractViewController[_,_]) extends Component
     //println("xpos:"+xpos+" ypos:"+ypos)
 		val width=GraphElemConst.toMM(textEl.textBounds.width+textEl.textBounds.x)*rscale/10000d*sc.scale
 		val height=GraphElemConst.toMM(textEl.textHeight)*rscale/1000d*sc.scale
+    //println("IPE width:"+width+" height:"+height+" textBounds:"+textEl.textBounds)
 		runLater{
       tf.setText(textEl.text)
       tf.setStyle("-fx-background-insets: 0, 0, 0, 0;-fx-text-fill: black;-fx-font-size: "+fontHeight+";-fx-font-family: '"+textEl.fontName+"';"+
           (if(GraphElemConst.styleIsBold(textEl.style))"-fx-font-weight:bold;"else "")+(if(GraphElemConst.styleIsItalic(textEl.style))"-fx-font-style:italic;"else " "))
   		tf.relocate(xpos-width*0.01,ypos-height*1.05)
-  		tf.getTransforms().setAll(new javafx.scene.transform.Rotate(-textEl.textAngle,width*0.01,height*1.05))		
-  		tf.setPrefSize(width+height,height*1.5)
+  		tf.getTransforms().setAll(new javafx.scene.transform.Rotate(-textEl.textAngle,width*0.01,height*1.05))
+      tf.setPrefSize(width + height + 10, height * 1.5 + 5)
     }
 		panel.requestFocusInWindow()    		
-  } 
-  
-  def updateSize()= currentTextEl match {
+  }
+
+  def updateSize(key: String): Unit = currentTextEl match {
     case Some(tel) =>
       val rscale=currentScaler.relScaleFactor
-      val rect=tel.getInplaceBounds(rscale,tf.getText+"i")
-      println("Update:"+rect)
+      val rect = tel.getInplaceBounds(rscale, tf.getText + key + "i")
+      //println("Updatesize inplaceBounds:"+rect+" "+tel.textBounds+" text:"+tf.getText)
       val width=GraphElemConst.toMM(rect.width)*rscale/1000d*currentScaler.scale
       val height=GraphElemConst.toMM(rect.height)*rscale/1000d*currentScaler.scale
+      //println("update width:"+width+" height:"+height)
       runLater{
         tf.relocate(currentScaler.xToScreen(rect.x)-width*0.01,currentScaler.yToScreen(rect.y)-height*1.05)
-        tf.setPrefSize(width+height,height*1.5)
-        println("set pref size "+(width+height))
+        tf.setPrefSize(width + height + 10, height * 1.5 + 5)
       }
     case _ => println("no textel when update size")
   }

@@ -4,48 +4,30 @@
 package client.model
 
 import java.awt.Color
-import definition.comm.{PropertyGroup, ListValue}
+import java.awt.event.{ActionEvent, KeyEvent}
+import javax.swing._
 
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.Button
-import scala.swing.Dimension
-import scala.swing.Insets
-import scala.swing.Label
-import util.MyListView
-import scala.swing.Orientation
-import scala.swing.Swing
-import scala.swing.event.ButtonClicked
 import client.dataviewer.DataViewController
-import client.dialog.NewButtonsList
-import client.dialog.SelectEventDispatcher
-import client.layout.Viewbox
-import client.layout.ViewboxContent
+import client.dialog.{NewButtonsList, SelectEventDispatcher}
+import client.layout.{Viewbox, ViewboxContent}
 import client.ui.ClientApp
-import definition.data.InstanceData
-import definition.data.Reference
-import javax.swing.BorderFactory
-import javax.swing.border.EtchedBorder
-import scala.swing.ScrollPane
-import scala.swing.Component
-import scala.swing.Container
-import javax.swing.JScrollPane
-import scala.swing.Panel
-import scala.swing.SequentialContainer
-import javax.swing.JComponent
-import javax.swing.AbstractAction
-import javax.swing.KeyStroke
-import java.awt.event.ActionEvent
-import java.awt.event.KeyEvent
-import java.awt.event.InputEvent
+import definition.comm.{ListValue, PropertyGroup}
+import definition.data.{InstanceData, Reference}
+import definition.typ.SelectGroup
+import util.MyListView
+
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Component, Container, Dimension, Insets, Orientation, Panel, SequentialContainer, Swing}
 import scala.util.control.NonFatal
 
 
 class AdaptedScroller(aView:Component) extends Component with Container {
    override lazy val peer: JScrollPane = new JScrollPane with SuperMixin {
-      override def getMaximumSize()=new Dimension(Short.MaxValue,aView.peer.getPreferredSize.height+1)
-      override def getPreferredSize()=aView.peer.getPreferredSize
-      override def getMinimumSize()=new Dimension(20,aView.peer.getPreferredSize.height+1)       
+		 override def getMaximumSize(): Dimension = new Dimension(Short.MaxValue, aView.peer.getPreferredSize.height + 1)
+
+		 override def getPreferredSize(): Dimension = aView.peer.getPreferredSize
+
+		 override def getMinimumSize(): Dimension = new Dimension(20, aView.peer.getPreferredSize.height + 1)
     }    
     //yLayoutAlignment=1d     
     peer.setViewportView(aView.peer)
@@ -53,10 +35,16 @@ class AdaptedScroller(aView:Component) extends Component with Container {
     border=null
 }
 
+trait AbstractTableViewbox extends ViewboxContent {
+	def pathController: PathController
+
+	def goUp(): Unit
+}
+
 /**
  * 
  */
-class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
+class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableViewbox {
 	//println("new view box "+Thread.currentThread().getName())
 	val dataviewController=new DataViewController(this)
 	
@@ -64,11 +52,10 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
 	val pathView=new MyListView[InstanceData]()		
 	pathView.xLayoutAlignment=0d
 	pathView.yLayoutAlignment=1d
-	var viewbox:Viewbox=null	
+	var viewbox: Viewbox = _
 	
 	val pathController:PathController=new PathController(pathMod,pathView,dataviewController)
-	//pathController.registerSizeChangeListener(pathView.callback)
-	pathController.registerSizeChangeListener((a) => {viewbox.setTitle(pathMod.getTitleText);/*dataviewController.updateHeight*/})
+	pathController.registerSizeChangeListener((a) => {viewbox.setTitle(pathMod.getTitleText)})
 	var pathBoxOpen=true
 	val bookmarkDialog=new BookmarkDialog(ClientApp.top)
 	preferredSize=new Dimension(200,200)
@@ -94,9 +81,9 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
 	val scr=new AdaptedScroller(pathView)
 	
 	val pathBox=new Panel with SequentialContainer.Wrapper{
-		  override lazy val peer = {
+		override lazy val peer: javax.swing.JPanel = {
 	    val p = new javax.swing.JPanel with SuperMixin {
-	      override def getPreferredSize()=new Dimension(100,pathView.peer.getPreferredSize.height+1)
+				override def getPreferredSize: Dimension = new Dimension(100, pathView.peer.getPreferredSize.height + 1)
 	    }
 	    val l = new javax.swing.BoxLayout(p, Orientation.Horizontal.id)
 	    p.setLayout(l)
@@ -115,10 +102,10 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
 	val goUpActionString="Go Up"	
 	peer.getInputMap( JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,0 ), goUpActionString)
 	peer.getActionMap().put(goUpActionString,new AbstractAction{
-	  def actionPerformed(e:ActionEvent) =goUp()	  
+		def actionPerformed(e: ActionEvent): Unit = goUp()
 	})
-  
-  def goUp()= if(pathMod.getSize>0)
+
+	def goUp(): Unit = if (pathMod.getSize > 0)
 	     pathController.selectionChanged(pathMod.getSize-1)	
   
   /** opens a new box */
@@ -128,8 +115,8 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
   } 	    
 
   def close(): Unit =  shutDown()
-  
-  def storeSettings(pgroup:PropertyGroup) = {
+
+	def storeSettings(pgroup: PropertyGroup): Unit = {
   	if(pathMod.dataList.nonEmpty)
   	//PathFactory.releasePathEntry(pathFactoryIndex, pathController.model.dataList.get.map(_.ref))
   	pgroup.addProperty(new ListValue[Reference]("path",pathMod.dataList.map(a=>a.ref)))
@@ -138,17 +125,19 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
   def restoreSettings(pgroup:PropertyGroup,listener:()=>Unit): Unit = {
     val pathList=if(pgroup.containsProperty("path")) pgroup.getListProperty[Reference]("path") else BookmarkFactory.standardPath    
     try {
-      pathController.loadPath(pathList,listener)   
-    }catch {case NonFatal(e)=> util.Log.e(e.toString);listener()
-		case other:Throwable =>println(other);System.exit(0)}
-  }  
-  
-  def shutDown() = {
+      pathController.loadPath(pathList,listener)
+		} catch {
+			case NonFatal(e) => util.Log.e("restore", e); listener()
+			case other: Throwable => util.Log.e("Error restore Settings", other); listener()
+		}
+  }
+
+	def shutDown(): Unit = {
   	pathMod.shutDown()
   	dataviewController.shutDown()
   }
-    
-  def setViewbox(newbox:Viewbox)= viewbox=newbox  
+
+	def setViewbox(newbox: Viewbox): Unit = viewbox = newbox
   
   def switchPathBox():Unit = {
   	if(pathBoxOpen) { // close
@@ -185,6 +174,6 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with ViewboxContent  {
     	
   }
 
-	def selectedItems=dataviewController.selGroupList
+	def selectedItems: List[SelectGroup[InstanceData]] = dataviewController.selGroupList
 }
 

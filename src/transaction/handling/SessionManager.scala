@@ -12,65 +12,62 @@ import javax.swing.JOptionPane
 import definition.expression.DateConstant
 import definition.typ.{AllClasses, SystemSettings}
 import management.databrowser.ConsolePanel
+import org.eclipse.jetty.http.HttpVersion
+import org.eclipse.jetty.server._
+import org.eclipse.jetty.util.ssl.SslContextFactory
 import server.comm.{MainServerSocket, UserList}
 import server.config.{FSPaths, ServerSystemSettings}
-import server.storage.{ActionNameMap, ServerClassList, StorageManager, TransLogHandler, UsageStatFileHandler}
+import server.storage._
 import server.webserver.WebServer
 
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
 import scala.util.control.NonFatal
-;
+
 
 /** the main class for server
  * 
  */
 object SessionManager {
-  var scl:ServerClassList=null  
-  var isSetup=false  
-  val setupListeners=collection.mutable.ArrayBuffer[()=>Unit]()  
+  System.setProperty("jdk.tls.ephemeralDHKeySize", "2048")
+  var scl: ServerClassList = _
+  var isSetup=false
+  val setupListeners: ArrayBuffer[() => Unit] = collection.mutable.ArrayBuffer[() => Unit]()
   val backupTimer=new Timer(true)
   val backupTask=new BackupTask
   val backupFormatter=new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss")
   //def main(args: Array[String]): Unit = 	init()
-  
-  def registerSetupListener(func:()=>Unit) =  	
+
+  def registerSetupListener(func: () => Unit): Unit =
   	if(isSetup) func() // if the classes List is ready, call the func  	
   	else setupListeners +=func // else wait for getting set up
   
   //def registerBackupDoneListener(func:()=>Unit)= backupTask.backupDoneListener=Some(func)
-  
-  def init(logConsole:ConsolePanel) = {
+
+  def init(logConsole: ConsolePanel): Unit = {
     try {
+      println("Session init")
       MainServerSocket.setup()
-      print("Sessionmanager init ..")
       val configFile = new File(FSPaths.configDir + "types.xml")
       if (!configFile.exists) inputMissingData()
-      println("configfile exists")
       val xmlData = xml.XML.loadFile(FSPaths.configDir + "types.xml")
-
       scl = new ServerClassList(xmlData)
-
       AllClasses.set(scl)
-
       UserList.fromXML(xml.XML.loadFile(FSPaths.configDir + "users.xml"))
-
       StorageManager.init(scl.classList)
-
       ActionNameMap.read()
-      //System.out.println("ActionNames read")
       SystemSettings.settings = new ServerSystemSettings(FSPaths.settingsObjectRef)
       for (li <- setupListeners)
         li() // call listeners
       isSetup = true
       Runtime.getRuntime.addShutdownHook(new Thread {
-        override def run() = {
+        override def run(): Unit = {
           shutDown()
           backupTimer.cancel()
         }
       })
 
       MainServerSocket.start()
-
       val now = new Date()
       val thisDate =DateConstant()
       val gc = new GregorianCalendar
@@ -84,19 +81,56 @@ object SessionManager {
       if (isBackupDue(thisDate)) backupTask.run()
       backupTimer.scheduleAtFixedRate(backupTask, gc.getTime(), 1000 * 60 * 60 * 24)
       //UsageStatFileHandler.updateStatistics()
-
-      println("webserver "+WebServer)
-      WebServer.setLogConsole(logConsole)
-
-      WebServer.setup()
-
-      WebServer.start()
       util.Log.w("Max Trans:" + TransLogHandler.getTransID)
-      util.Log.w("Init done")
+      WebServer.setLogConsole(logConsole)
+      if (management.databrowser.MainWindow.webSocketSSL) {
+        try {
+          //println("Start SSL")
+          val http_config = new HttpConfiguration()
+          http_config.setSecureScheme("https")
+          http_config.setSecurePort(443)
+          http_config.setSendServerVersion(false)
+          http_config.addCustomizer(new SecureRequestCustomizer())
+
+          val https_config = new HttpConfiguration(http_config)
+          https_config.addCustomizer(new SecureRequestCustomizer(true, 31536000l, true))
+
+          val sslContextFactory = new SslContextFactory()
+          if (!FSPaths.keyStoreFile.exists) util.Log.e("keystore " + FSPaths.keyStoreFile + " existiert nicht")
+          sslContextFactory.setKeyStorePath(FSPaths.keyStoreFile.toString)
+          sslContextFactory.setKeyStorePassword("Pitpass1#")
+          sslContextFactory.setCertAlias("1")
+          sslContextFactory.setRenegotiationAllowed(false)
+          util.Log.w("exclude:" + sslContextFactory.getExcludeCipherSuites.mkString(" | "))
+          util.Log.w("Include:" + sslContextFactory.getIncludeCipherSuites.mkString(" | "))
+          sslContextFactory.addExcludeCipherSuites("TLS_DHE.*", "TLS_EDH.*")
+          sslContextFactory.setIncludeCipherSuites("TLS_ECDHE.*")
+
+          val httpConnector = new ServerConnector(WebServer, new HttpConnectionFactory(http_config))
+          httpConnector.setPort(80)
+          val sslConnector = new ServerConnector(WebServer, new SslConnectionFactory(sslContextFactory,
+            HttpVersion.HTTP_1_1.asString), new HttpConnectionFactory(https_config))
+          sslConnector.setPort(443)
+          WebServer.setConnectors(Array(httpConnector, sslConnector))
+          WebServer.setup()
+          WebServer.start()
+        } catch {
+          case NonFatal(e) => util.Log.e("fehler:" + e.getMessage, e)
+        }
+
+      } else {
+        val connector = new ServerConnector(WebServer)
+        connector.setPort(FSPaths.webServerPort)
+        WebServer.setConnectors(Array(connector))
+
+        WebServer.setup()
+        WebServer.start()
+      }
+      util.Log.w("Init done !")
     }  catch { case NonFatal(e)=> util.Log.e("init",e)}
   }
-  
-  def inputMissingData()= Swing.onEDT{
+
+  def inputMissingData(): Unit = Swing.onEDT {
     val newDirName=JOptionPane.showInputDialog(null,"Cant find config file \"Types.xml\". Enter config directory that contains it, leave empty to break: ", 
     "c:\\database\\config")	  
 	  if(newDirName.trim.length==0) System.exit(0)
@@ -109,10 +143,10 @@ object SessionManager {
 	  if(so.trim.length>0) FSPaths.setupNode.put("SettingsObject",so)
     util.Log.e("starting Database now ")
   }
-  
-  protected def shutDown() = MainServerSocket.synchronized{
-    MainServerSocket.isRunning=false    
-    MainServerSocket.listener.close()
+
+  protected def shutDown(): Unit = MainServerSocket.synchronized {
+    MainServerSocket.isRunning=false
+    for (l <- MainServerSocket.listener) l.close()
     util.Log.w("Shutting Down Server")
   	UserList.shutDown(() => {
   	 StorageManager.shutDown()	
@@ -120,12 +154,12 @@ object SessionManager {
   	Thread.sleep(500)
     util.Log.w("finish")
     WebServer.stop()
-  }  
-  
-  
-  def getLastBackupTime=DateConstant.from1970Millis(FSPaths.lastBackup)
-  	
-  def isBackupDue(thisTime:DateConstant)= getLastBackupTime!=thisTime
+  }
+
+
+  def getLastBackupTime: DateConstant = DateConstant.from1970Millis(FSPaths.lastBackup)
+
+  def isBackupDue(thisTime: DateConstant): Boolean = getLastBackupTime != thisTime
   
   
   

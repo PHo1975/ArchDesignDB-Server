@@ -3,14 +3,13 @@
  */
 package client.dialog.form
 
-import definition.typ.form._
-import scala.swing.BoxPanel
-import scala.xml.Node
-import scala.swing.Orientation
-import scala.swing.Component
 import definition.data.InstanceData
 import definition.typ.AbstractObjectClass
+import definition.typ.form._
 import util.XMLUtils._
+
+import scala.swing.{BoxPanel, Component, Orientation}
+import scala.xml.Node
 
 /** trait for accessing the addBox of the Designer
  * 
@@ -28,7 +27,7 @@ case class FormBox(minWidth:Int, maxWidth:Int, minHeight:Int, maxHeight:Int,
 	background=FormElement.formColor
 	setupComponent(this)
 
-	def horizontalOrient=orient == Orientation.Horizontal
+  def horizontalOrient: Boolean = orient == Orientation.Horizontal
 
 	elements.foreach {
 		case e: Component => contents += e
@@ -55,16 +54,16 @@ case class FormBox(minWidth:Int, maxWidth:Int, minHeight:Int, maxHeight:Int,
 			nb
 		case _=> util.Log.e("unknown type "+newElement); this
   }
-  
-  def setSpecialComp(s:AbstractSpecialComponent)= s match {
+
+  def setSpecialComp(s: AbstractSpecialComponent): Unit = s match {
 		case sp:SpecialComponent =>
 			specialComp=Some(sp)
 			sp._formBox=this
 			contents+=sp
 		case _=> util.Log.w("wrong special Comp "+s)
   }
-  
-  def makeCopy ={   	
+
+  def makeCopy: FormBox = {
   	new FormBox(minWidth,maxWidth,minHeight,maxHeight,orient,elements.map(_.makeCopy))
   }
   
@@ -107,8 +106,8 @@ case class FormBox(minWidth:Int, maxWidth:Int, minHeight:Int, maxHeight:Int,
   	}
   	(this,false)
   }
-  
-  override def toString() = "(FormBox "+orient+" Elems:"+elements.mkString(" , ")+" )"
+
+  override def toString(): String = "(FormBox " + orient + " Elems:" + elements.mkString(" , ") + " )"
   
   
   def foreach(s:(AbstractFormElement)=>Unit):Unit= {

@@ -1,31 +1,15 @@
 package client.importer
-import scala.swing.Dialog
-import scala.swing.Window
+
+import java.awt.{Dimension, Point, Rectangle}
 import java.io.File
-import java.awt.Point
-import java.awt.Rectangle
-import scala.swing.{BorderPanel,Orientation,Swing}
-import scala.swing.BoxPanel
-import scala.swing.Button
-import scala.swing.ListView
-import scala.swing.Label
-import scala.swing.ScrollPane
-import java.awt.Dimension
-import scala.swing.ComboBox
+
+import client.dataviewer.ViewConstants
+import client.graphicsView._
 import definition.typ.SystemSettings
-import scala.swing.CheckBox
-import client.graphicsView.LineStyleHandler
-import scala.swing.TabbedPane
-import scala.swing.event.ButtonClicked
-import scala.swing.event.SelectionChanged
-import client.graphicsView.ScalePanel
-import client.graphicsView.HatchStyle
-import client.graphicsView.HatchHandler
-import client.graphicsView.FontHandler
-import scala.swing.TextField
-import scala.swing.event.EditDone
-import definition.data.StyleService
 import util.StrToDouble
+
+import scala.swing.event.{ButtonClicked, EditDone, SelectionChanged}
+import scala.swing.{BorderPanel, BoxPanel, Button, CheckBox, ComboBox, Dialog, Label, ListView, Orientation, ScrollPane, Swing, TabbedPane, TextField, Window}
 
 class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dialog(w) {
   modal=true
@@ -34,7 +18,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
     val cpos=FileImportManager.correctScreenPos(pos,850,650)    
     bounds=new Rectangle(cpos.x,cpos.y,870,670)
     layerView.listData=settings.layers
-    layerView.peer.setSelectedIndices((0 until settings.layers.size).toArray)
+    layerView.peer.setSelectedIndices(settings.layers.indices.toArray)
     visible=true    
     settings.selectedLayers=layerView.selection.indices.toSeq
     okResult
@@ -50,14 +34,14 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   var okResult:Boolean=false
   
   val filesListView=new ListView(files)
-  val filesLab=new Label("Dateien:")
-  val scaleLab=new Label("Masstab:")
-  val scaleValues=SystemSettings().enums("DrawingScales").enumValues
-  val scales=scaleValues.map(_._1).toSeq
+  val filesLab: Label = ViewConstants.label("Dateien:")
+  val scaleLab: Label = ViewConstants.label("Masstab:")
+  val scaleValues: collection.Map[String, Int] = SystemSettings().enums("DrawingScales").enumValues
+  val scales: Seq[String] = scaleValues.keys.toSeq
   val scaleCombo=new ComboBox(scales)
   scaleCombo.maximumSize=new Dimension(100,30)
-  val dxLab=new Label("dx:")
-  val dyLab=new Label("dy:")
+  val dxLab: Label = ViewConstants.label("dx:")
+  val dyLab: Label = ViewConstants.label("dy:")
   val dxEdit= new TextField("0")
   val dyEdit=new TextField("0")
   
@@ -111,7 +95,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   }
   
   val elementsPane=new BoxPanel(Orientation.Vertical){
-    contents+=new Label("Elemente")
+    contents += ViewConstants.label("Elemente")
     contents+=colorPenCouplingBox+=lineCheckBox+=arcCheckBox+=ellCheckBox+=textCheckBox
   }
   
@@ -124,20 +108,20 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   val lineStylesView=new ListView(LineStyleHandler.stylesList)
   unknownLineStylesView.selection.intervalMode=ListView.IntervalMode.Single
   lineStylesView.selection.intervalMode=ListView.IntervalMode.Single
-  //val lineInfoLab=new Label("")
+  //val lineInfoLab=ViewConstants.label("")
   
   
   val lineStylePane=new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
-      add(new Label("Unbekannte Linienstile in Datei"),BorderPanel.Position.North)
+      add(ViewConstants.label("Unbekannte Linienstile in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
         viewportView=unknownLineStylesView
       },BorderPanel.Position.Center)
-     add(new Label("<html><br> nicht zugeordnete Linienstile <Br>werden in der Datenbank neu angelegt</html>"),BorderPanel.Position.South)
+      add(ViewConstants.label("<html><br> nicht zugeordnete Linienstile <Br>werden in der Datenbank neu angelegt</html>"), BorderPanel.Position.South)
     } 
     contents+=assignLineStyleBut
     contents+=new BorderPanel() {
-      add(new Label("Linienstile in Datenbank"),BorderPanel.Position.North)
+      add(ViewConstants.label("Linienstile in Datenbank"), BorderPanel.Position.North)
       add(new ScrollPane{
       	viewportView=lineStylesView
       },BorderPanel.Position.Center)
@@ -156,21 +140,21 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   fontScaleEdit.maximumSize=new Dimension(100,50)
   val fontAdjustYEdit=new TextField("0")
   fontAdjustYEdit.maximumSize=new Dimension(100,50)
-  
-  //val infoLab=new Label("")
+
+  //val infoLab=ViewConstants.label("")
   
   
   val hatchStylePane=new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
-      add(new Label("Unbekannte Schraffuren in Datei"),BorderPanel.Position.North)
+      add(ViewConstants.label("Unbekannte Schraffuren in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
         viewportView=unknownHatchStylesView
       },BorderPanel.Position.Center)
-     add(new Label("<html><br> nicht zugeordnete Schraffuren <Br>werden in der Datenbank neu angelegt</html>"),BorderPanel.Position.South)
+      add(ViewConstants.label("<html><br> nicht zugeordnete Schraffuren <Br>werden in der Datenbank neu angelegt</html>"), BorderPanel.Position.South)
     } 
     contents+=assignHatchStyleBut
     contents+=new BorderPanel() {
-      add(new Label("Schraffuren in Datenbank"),BorderPanel.Position.North)
+      add(ViewConstants.label("Schraffuren in Datenbank"), BorderPanel.Position.North)
       add(new ScrollPane{
       	viewportView=hatchStylesView
       },BorderPanel.Position.Center)
@@ -179,14 +163,14 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   
   val fontStylePane=new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
-      add(new Label("Unbekannte Schriften in Datei"),BorderPanel.Position.North)
+      add(ViewConstants.label("Unbekannte Schriften in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
         viewportView=unknownFontsView
       },BorderPanel.Position.Center)      
     }
     contents+=assignFontStyleBut
     contents+= new BorderPanel() {
-      add(new Label("Schriften in Datenbank"),BorderPanel.Position.North)
+      add(ViewConstants.label("Schriften in Datenbank"), BorderPanel.Position.North)
       add(new ScrollPane{
         viewportView=fontsView
       },BorderPanel.Position.Center)
@@ -196,11 +180,11 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
      contents+= allTextBlackBut
      contents+=Swing.VStrut(50)
      contents+= new BoxPanel(Orientation.Horizontal) {
-       contents+=new Label("Font-Skalierung:")
+       contents += ViewConstants.label("Font-Skalierung:")
        contents+=fontScaleEdit       
      }
      contents+= new BoxPanel(Orientation.Horizontal) {
-       contents+=new Label("Höhenanpassung:")
+       contents += ViewConstants.label("Höhenanpassung:")
        contents+=fontAdjustYEdit       
      }
     }
@@ -234,7 +218,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
       settings.drawingScale=scale._2/scale._1
       settings.drawingScaleID=scaleValues(scaleCombo.selection.item)
       settings.analyzeFile(files.head)
-      unknownLineStylesView.listData=settings.unknownLineStyles.toSeq
+      unknownLineStylesView.listData = settings.unknownLineStyles
       unknownHatchStylesView.listData=settings.unknownHatchStyles
       unknownFontsView.listData=settings.unknownFonts
     case ButtonClicked(`assignFontStyleBut`)=>

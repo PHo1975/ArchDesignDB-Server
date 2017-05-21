@@ -1,20 +1,16 @@
 package client.dialog
 
-import scala.swing.event.ButtonClicked
-import client.comm.KeyStrokeReceiver
-import java.awt.event.HierarchyEvent
-import client.comm.KeyStrokeManager
-import javax.swing.KeyStroke
-import definition.typ.ActionTrait
-import client.icons.IconManager
-import scala.swing.AbstractButton
-import scala.swing.ToggleButton
-import scala.swing.Button
-import client.dataviewer.ViewConstants
-import definition.typ._
-import scala.swing.MenuItem
-import javax.swing.BorderFactory
 import java.awt.Color
+import java.awt.event.HierarchyEvent
+import javax.swing.{BorderFactory, KeyStroke}
+
+import client.comm.{KeyStrokeManager, KeyStrokeReceiver}
+import client.dataviewer.ViewConstants
+import client.icons.IconManager
+import definition.typ.{ActionTrait, _}
+
+import scala.swing.{AbstractButton, Button, MenuItem, ToggleButton}
+import scala.swing.event.ButtonClicked
 
 trait StrokableButton extends AbstractButton with KeyStrokeReceiver {   
     focusable=false
@@ -22,25 +18,26 @@ trait StrokableButton extends AbstractButton with KeyStrokeReceiver {
     margin= ActionPanel.emptyInsets
     horizontalAlignment=scala.swing.Alignment.Left
     for(sicon<-IconManager.getIcon(groupName,commandName)) icon=sicon
-    
-    def strokeHit()=publish(new ButtonClicked(this))
-    def setStroke(stroke:KeyStroke)= tooltip="( "+KeyStrokeManager.keyStrokeToString(stroke)+" )"
-    def initListener()= peer.addHierarchyListener(new java.awt.event.HierarchyListener{
-      def hierarchyChanged(e:HierarchyEvent) = {        
-        if((e.getChangeFlags & HierarchyEvent.SHOWING_CHANGED)>0) {
-         // println("show change "+StrokableButton.this.commandName+" "+StrokableButton.this.peer.isShowing()+" ch:"+e.getChanged().getClass.toString)
-          if(!StrokableButton.this.peer.isShowing())          
-            KeyStrokeManager.unregisterReceiver(StrokableButton.this)
-        }
-      }
-    })
-    
-    initListener()
+  font = ViewConstants.tableFont
+
+  def strokeHit(): Unit = publish(ButtonClicked(this))
+
+  def setStroke(stroke: KeyStroke): Unit = tooltip = "( " + KeyStrokeManager.keyStrokeToString(stroke) + " )"
+
+  def initListener(): Unit = peer.addHierarchyListener { e => {
+    if ((e.getChangeFlags & HierarchyEvent.SHOWING_CHANGED) > 0) {
+      // println("show change "+StrokableButton.this.commandName+" "+StrokableButton.this.peer.isShowing()+" ch:"+e.getChanged().getClass.toString)
+      if (!StrokableButton.this.peer.isShowing())
+        KeyStrokeManager.unregisterReceiver(StrokableButton.this)
+    }
+  }
+  }
+
+  initListener()
 } 
 
 
 trait AbstractPanelButton extends StrokableButton {
-    font= ViewConstants.smallFont
     margin=ActionPanel.miniInsets
     focusable=false
     ActionPanel.minimizeButton(this)    
@@ -49,9 +46,9 @@ trait AbstractPanelButton extends StrokableButton {
 
 
 class IconableButton(val commandName:String,val groupName:String,ntooltipText:String) extends Button with AbstractPanelButton  {
-  
-   this.tooltip=ntooltipText   
-   peer.putClientProperty("Nimbus.Overrides", DialogManager.buttonDefaults)   
+   this.tooltip=ntooltipText
+  peer.putClientProperty("Nimbus.Overrides", ViewConstants.buttonDefaults)
+  peer.updateUI()
 }
 
 class IconableToggleButton(val commandName:String,val groupName:String,ntooltipText:String) extends ToggleButton with AbstractPanelButton  {
@@ -59,31 +56,33 @@ class IconableToggleButton(val commandName:String,val groupName:String,ntooltipT
      case Some(aicon)=> icon=aicon
      case _=> text=commandName
    }
-   tooltip=ntooltipText   
-   peer.putClientProperty("Nimbus.Overrides", DialogManager.toggleButtonDefaults)   
+   tooltip=ntooltipText
+  peer.putClientProperty("Nimbus.Overrides", ViewConstants.toggleButtonDefaults)
+  peer.updateUI()
 }
   
 
 class ActionStrokeButton(val groupName:String,val theAction:ActionTrait) extends Button(theAction.name) with StrokableButton{
-    def commandName=theAction.name
-    maximumSize=DialogManager.buttonSize
+  def commandName: String = theAction.name
+
+  maximumSize = ViewConstants.buttonSize
 } 
 
 class CustomStrokeButton(val groupName:String,val commandName:String,val callBack:()=>Unit,val buttonID:Int) extends Button(commandName) with StrokableButton{
-  maximumSize=DialogManager.buttonSize
+  maximumSize = ViewConstants.buttonSize
 }
 
 
 class CreateActionMenuButton(val  groupName:String,val propField:Byte,val ccd:AbstractCCD) extends MenuItem(ccd.getName) with StrokableButton {
-  def commandName=ccd.getName
+  def commandName: String = ccd.getName
   //maximumSize=DialogManager.buttonSize
   // minimumSize=DialogManager.minButtonSize
-  override def initListener()={} // dont unregister when hide
+  override def initListener(): Unit = {} // dont unregister when hide
 }
 
 
 class CreateMenuButton(val  groupName:String,val propField:Byte,val ccd:AbstractCCD) extends MenuItem(ccd.childName) with StrokableButton{
-  def commandName=ccd.childName
+  def commandName: String = ccd.childName
   border=BorderFactory.createLineBorder(Color.gray)
   //preferredSize=DialogManager.minButtonSize
   //maximumSize=DialogManager.buttonSize

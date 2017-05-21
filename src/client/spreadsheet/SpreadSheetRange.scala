@@ -1,7 +1,6 @@
 package client.spreadsheet
-import definition.expression.Constant
-import definition.expression.IntConstant
-import definition.expression.EMPTY_EX
+
+import definition.expression.{Constant, EMPTY_EX, IntConstant}
 
 sealed trait SpreadSheetRange {
    def getSelectedCells(mod:SpreadSheetTableModel):Iterable[SpreadSheetCell]
@@ -12,7 +11,7 @@ sealed trait SpreadSheetRange {
 }
 
 case object NO_SELECTION extends SpreadSheetRange {
-  def getSelectedCells(mod:SpreadSheetTableModel)=Seq.empty
+  def getSelectedCells(mod: SpreadSheetTableModel): Seq[Nothing] = Seq.empty
   def isDefinedAt(col:Int,row:Int):Boolean=false
   def touchesRange(other:SpreadSheetRange):Boolean=false
   def fillsRange(other:SpreadSheetRange):Boolean=false
@@ -20,7 +19,7 @@ case object NO_SELECTION extends SpreadSheetRange {
 }
 
 case object All_SELECTION extends SpreadSheetRange {
-  def getSelectedCells(mod:SpreadSheetTableModel)= mod.colCellList.values.flatMap(_.cellMap.values)
+  def getSelectedCells(mod: SpreadSheetTableModel): Iterable[SpreadSheetCell] = mod.colCellList.values.flatMap(_.cellMap.values)
   def isDefinedAt(col:Int,row:Int):Boolean=true
   def touchesRange(other:SpreadSheetRange):Boolean=true
   def fillsRange(other:SpreadSheetRange):Boolean=true
@@ -29,7 +28,7 @@ case object All_SELECTION extends SpreadSheetRange {
 
 
 case class RowsSelection(rows:Range) extends SpreadSheetRange {
-  def getSelectedCells(mod:SpreadSheetTableModel)=mod.colCellList.values.flatMap(_.cellMap.filter(rows contains _._1).map(_._2))
+  def getSelectedCells(mod: SpreadSheetTableModel): Iterable[SpreadSheetCell] = mod.colCellList.values.flatMap(_.cellMap.filter(rows contains _._1).values)
   def isDefinedAt(col:Int,row:Int):Boolean=rows.contains(row)
   
   def touchesRange(other:SpreadSheetRange):Boolean= other match {
@@ -53,7 +52,7 @@ case class RowsSelection(rows:Range) extends SpreadSheetRange {
 
 
 case class ColsSelection(cols:Range) extends SpreadSheetRange {
-  def getSelectedCells(mod:SpreadSheetTableModel)=mod.colCellList.filter(cols contains _._1).values.flatMap(_.cellMap.values)
+  def getSelectedCells(mod: SpreadSheetTableModel): Iterable[SpreadSheetCell] = mod.colCellList.filter(cols contains _._1).values.flatMap(_.cellMap.values)
   def isDefinedAt(col:Int,row:Int):Boolean=cols.contains(col)
   
   def touchesRange(other:SpreadSheetRange):Boolean= other match {
@@ -76,7 +75,7 @@ case class ColsSelection(cols:Range) extends SpreadSheetRange {
 }
 
 case class SingleCellSelection(col:Int, row:Int) extends SpreadSheetRange {
-  def getSelectedCells(mod:SpreadSheetTableModel)={
+  def getSelectedCells(mod: SpreadSheetTableModel): Seq[SpreadSheetCell] = {
     //println("col:"+mod.colCellList.get(col))
     
     val res=mod.colCellList.get(col).flatMap(_.cellMap.get(row))
@@ -100,7 +99,8 @@ case class SingleCellSelection(col:Int, row:Int) extends SpreadSheetRange {
     case s:SingleCellSelection=>s.col==col&&s.row==row
     case o:RangeSelection=>col==o.cols.start&&col==o.cols.end&&row==o.rows.start&&row==o.rows.end
   }
-  def toConstants={
+
+  def toConstants: Array[Constant] = {
    val cc=IntConstant(col)
    val rc=IntConstant(row)
    Array(cc,rc,cc,rc) 
@@ -112,8 +112,9 @@ case class RangeSelection(cols:Range, rows:Range) extends SpreadSheetRange {
   def this(col1:Int,row1:Int,col2:Int,row2:Int)= this(math.min(col1,col2) to math.max(col1,col2),
       math.min(row1,row2) to math.max(row1,row2))
   def this(v1:(Int,Int),v2:(Int,Int))=this(v1._1,v1._2,v2._1,v2._2)
-  def getSelectedCells(mod:SpreadSheetTableModel)=mod.colCellList.filter(cols contains _._1).values .flatMap(
-  _.cellMap.filter(rows contains _._1).map(_._2))
+
+  def getSelectedCells(mod: SpreadSheetTableModel): Iterable[SpreadSheetCell] = mod.colCellList.filter(cols contains _._1).values.flatMap(
+    _.cellMap.filter(rows contains _._1).values)
   
   def isDefinedAt(col:Int,row:Int):Boolean=cols.contains(col)&&rows.contains(row)
   
@@ -141,22 +142,22 @@ case class RangeSelection(cols:Range, rows:Range) extends SpreadSheetRange {
 
 
 object SpreadSheetRange {
-  val minusOne=new IntConstant(-1)
-  
-  def apply(startX:Int,endX:Int,startY:Int,endY:Int)= if(startX== -1) {
+  val minusOne = IntConstant(-1)
+
+  def apply(startX: Int, endX: Int, startY: Int, endY: Int): SpreadSheetRange = if (startX == -1) {
     if(startY== -1 ) All_SELECTION
-    else new RowsSelection(math.min(startY,endY) to math.max(startY, endY))
+    else RowsSelection(math.min(startY, endY) to math.max(startY, endY))
   }else {
-    if(startY== -1) new ColsSelection(math.min(startX,endX) to math.max(startX,endX))
-    else if(startX==endX && startY==endY) new SingleCellSelection(startX,startY)
-    else new RangeSelection(startX to endX,startY to endY)
+    if (startY == -1) ColsSelection(math.min(startX, endX) to math.max(startX, endX))
+    else if (startX == endX && startY == endY) SingleCellSelection(startX, startY)
+    else RangeSelection(startX to endX, startY to endY)
   }
-  
-  def delta(oldRange:SpreadSheetRange,deltaX:Int,deltaY:Int)= oldRange match {
-    case ColsSelection(cols)=> new ColsSelection((cols.start+deltaX)to(cols.end+deltaX))
-    case RowsSelection(rows)=> new RowsSelection((rows.start+deltaY)to(rows.end+deltaY))
-    case RangeSelection(cols,rows)=> new RangeSelection((cols.start+deltaX) to (cols.end+deltaX),(rows.start+deltaY) to (rows.end+deltaY))
-    case SingleCellSelection(col,row)=> new SingleCellSelection(col+deltaX,row+deltaY)
+
+  def delta(oldRange: SpreadSheetRange, deltaX: Int, deltaY: Int): SpreadSheetRange = oldRange match {
+    case ColsSelection(cols) => ColsSelection((cols.start + deltaX) to (cols.end + deltaX))
+    case RowsSelection(rows) => RowsSelection((rows.start + deltaY) to (rows.end + deltaY))
+    case RangeSelection(cols, rows) => RangeSelection((cols.start + deltaX) to (cols.end + deltaX), (rows.start + deltaY) to (rows.end + deltaY))
+    case SingleCellSelection(col, row) => SingleCellSelection(col + deltaX, row + deltaY)
     case o => o
   }
 }

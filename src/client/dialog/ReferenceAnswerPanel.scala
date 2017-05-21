@@ -2,15 +2,11 @@
  * Author: Peter Started:28.05.2011
  */
 package client.dialog
-import definition.data.Reference
-import scala.swing._
-import definition.typ.AnswerDefinition
-import definition.expression.ObjectReference
-import definition.expression.VectorConstant
-import definition.typ.{DialogQuestion,DataType}
 import client.graphicsView.GraphElem
-import definition.expression.{IntConstant,BlobConstant}
-import definition.expression.BoolConstant
+import definition.expression.{BoolConstant, IntConstant, ObjectReference, VectorConstant}
+import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
+
+import scala.swing._
 /**
  * 
  */
@@ -23,10 +19,13 @@ trait ObjectSelectListener{
 }
 
 trait DefaultObjectSelectListener extends ObjectSelectListener{
-  def objectsSelected(obj:ObjectReference,editable:Boolean)={}
-  def objectsSelectedWithPoint(obj:ObjectReference,point:VectorConstant,editable:Boolean)= {}
-	def segmentPartSelected(obj:ObjectReference,point1:VectorConstant,point2:VectorConstant)= {}
-	def tempObjectSelected(el:Int)	= {}
+  def objectsSelected(obj: ObjectReference, editable: Boolean): Unit = {}
+
+  def objectsSelectedWithPoint(obj: ObjectReference, point: VectorConstant, editable: Boolean): Unit = {}
+
+  def segmentPartSelected(obj: ObjectReference, point1: VectorConstant, point2: VectorConstant): Unit = {}
+
+  def tempObjectSelected(el: Int): Unit = {}
 }
 
 class TempChooseAnswerDef(nname:String,val elements:Seq[GraphElem])
@@ -36,7 +35,6 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   val filterBut=new Button("Elemente filtern")  
   val cuttedBut=new ToggleButton("Geschnittene Elemente")
   val onlyFullBut=new ToggleButton("Nur ganze Elemente")
-  //val textLabel=new Label()
   var active=false
   
   filterBut.focusable=false
@@ -50,8 +48,8 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   contents+=infoLabel += Swing.RigidBox(new Dimension(0,10))+=filterBut+=cuttedBut+=onlyFullBut
   
   listenTo(filterBut,cuttedBut,onlyFullBut)
-  
-  override def loadParamAnswer(answerDesc:AnswerDefinition) = {
+
+  override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
   	super.loadParamAnswer(answerDesc)
   	active=true
   	//System.out.println("set Active "+answerDesc.name)
@@ -66,10 +64,9 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   		  		
   	}  		
   }
-  
- 
-  
-  override def reset()= {
+
+
+  override def reset(): Unit = {
   	//System.out.println("Refpanel reset "+active)
   	super.reset()
   	if(active) {  		
@@ -78,9 +75,9 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   			AnswerPanelsData.currentViewController.cancelModus()
   	}
   }
-  
-  
-  def objectsSelected(objs:ObjectReference,editable:Boolean) = {
+
+
+  def objectsSelected(objs: ObjectReference, editable: Boolean): Unit = {
     //System.out.println("Objects selected "+objs)
     func(ansParm,objs)
     AnswerPanelsData.currentViewController match {      
@@ -90,9 +87,9 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
       case _=>      
     }   
   }
-  
-  
-  def objectsSelectedWithPoint(obj:ObjectReference,point:VectorConstant,editable:Boolean) = {
+
+
+  def objectsSelectedWithPoint(obj: ObjectReference, point: VectorConstant, editable: Boolean): Unit = {
     println("objectSelectedWithPoint "+obj+" p: "+point+" follow:"+ansParm.followQuestion)
     func(ansParm,obj)
     func(ansParm,point)
@@ -104,9 +101,9 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
     }
     //reset()
   }
-  
-  
-  def segmentPartSelected(obj:ObjectReference,p1:VectorConstant,p2:VectorConstant)= {
+
+
+  def segmentPartSelected(obj: ObjectReference, p1: VectorConstant, p2: VectorConstant): Unit = {
   	func(ansParm,obj)
   	for(q<-ansParm.followQuestion){
   		val ansParm1=q.asInstanceOf[DialogQuestion].possibleAnswers.head
@@ -117,17 +114,9 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   		}
   	}
   }
-  
-  def tempObjectSelected(el:Int) = {
-    func(ansParm,new IntConstant(el))
-  }
-  
-  
-  
-  def setFocus()={}
-  
-  
-  
 
+  def tempObjectSelected(el: Int): Unit = {
+    func(ansParm, IntConstant(el))
+  }
 }
 

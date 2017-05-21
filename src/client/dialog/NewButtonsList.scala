@@ -3,17 +3,12 @@
  */
 package client.dialog
 
+import client.comm.{ClientObjectClass, ClientQueryManager, KeyStrokeManager}
+import definition.data.{EMPTY_OWNERREF, Referencable, Reference}
+import definition.typ.{AllClasses, SelectGroup}
+
 import scala.swing.Reactor
 import scala.swing.event.ButtonClicked
-
-import client.comm.ClientObjectClass
-import client.comm.ClientQueryManager
-import client.comm.KeyStrokeManager
-import definition.data.EMPTY_OWNERREF
-import definition.data.Referencable
-import definition.data.Reference
-import definition.typ.AllClasses
-import definition.typ.SelectGroup
 
 /** area where "New panels" are placed
  * 
@@ -50,6 +45,7 @@ object NewButtonsList extends Reactor with ContainerFocusListener {
     val newContRef=container.containerRef.map(_.ref)
   	if(!(cont==lastContainer&&newContRef==lastSuperInstRef&&propField==lastPropField)) {
       //println("ContainerFocus the same ")
+      //println("container Focused newCont:"+container+" last:"+lastContainer+"\nnewContRef:"+newContRef+" last:"+lastSuperInstRef+"\npropField:"+propField+" last:"+lastPropField)
       if (DialogManager.dialogIsActive) DialogManager.reset()
       shutDown()
       container.containerRef match {
@@ -72,17 +68,17 @@ object NewButtonsList extends Reactor with ContainerFocusListener {
     }
   }
 
-  def listenToButtons(buttons:Seq[StrokableButton])=listenTo(buttons:_*)
+  def listenToButtons(buttons: Seq[StrokableButton]): Unit = listenTo(buttons: _*)
 
-  def deafToButtons(buttons:Seq[StrokableButton])=deafTo(buttons:_*)
+  def deafToButtons(buttons: Seq[StrokableButton]): Unit = deafTo(buttons: _*)
     
   def focusLastContainer():Unit= for(cl<-lastContainer) cl.requestFocus()
-  
-  def unregisterActionButtons()=for(b<-actionButtons) KeyStrokeManager.unregisterReceiver(b)    
-  
-  def registerActionButtons()= for(b<-actionButtons) KeyStrokeManager.registerReceiver(b)
-  
-  def shutDown()= {    
+
+  def unregisterActionButtons(): Unit = for (b <- actionButtons) KeyStrokeManager.unregisterReceiver(b)
+
+  def registerActionButtons(): Unit = for (b <- actionButtons) KeyStrokeManager.registerReceiver(b)
+
+  def shutDown(): Unit = {
     deafTo(actionButtons:_*)
     unregisterActionButtons()
     actionButtons=Nil

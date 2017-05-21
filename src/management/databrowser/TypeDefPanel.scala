@@ -7,9 +7,9 @@ import java.awt.event.MouseWheelListener
 import java.awt.{Color, Dimension}
 import javax.swing.border._
 import javax.swing.table._
-import javax.swing.{BorderFactory, DefaultCellEditor, DefaultComboBoxModel, JComboBox, JLabel, JOptionPane, JTable}
+import javax.swing._
 
-import client.dataviewer.{FieldColumnModel, MultilineEditor}
+import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
 import client.dialog.{ComboBoxEditor, ReactiveTextField}
 import definition.typ._
 import server.config.FSPaths
@@ -17,8 +17,8 @@ import server.storage._
 import transaction.handling.{SessionManager, TransactionManager}
 
 import scala.collection.JavaConverters._
-import scala.swing.{Color, _}
 import scala.swing.event._
+import scala.swing.{Color, _}
 import scala.util.control.NonFatal
 
 
@@ -26,7 +26,8 @@ class FormatLine(labelWidth:Int,labelText:String,getter:()=> String,setter: (Str
 		BoxPanel(Orientation.Horizontal)
 	{
 	  xLayoutAlignment=0
-		val label=new Label(labelText+":")
+		val label: Label = ViewConstants.label(labelText + ":")
+		label.font = ViewConstants.labelFont
 		label.preferredSize=new Dimension(labelWidth,0)
 		val edit=new TextField(getter())
 		contents+=label+=edit
@@ -105,8 +106,8 @@ object TypeDefPanel extends BorderPanel {
 	inheritedPropTable.background=Color.lightGray
 	val ownPropTable=new FieldTable(ownPropMod,propFieldColMod)
 	val classNameRenderer=new ClassNameRenderer
-	inheritedPropTable.peer.setDefaultRenderer(classOf[Integer],classNameRenderer)
-	ownPropTable.peer.setDefaultRenderer(classOf[Integer],classNameRenderer)	
+	inheritedPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
+	ownPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
 	val childDefMod=new ChildDefTableModel	
 	val childDefColMod=new FieldColumnModel{
     	createColumn(0,"EditorName",100)
@@ -114,13 +115,13 @@ object TypeDefPanel extends BorderPanel {
     	createColumn(2,"ActionName",110)    	
     }
 	val childDefTable=new FieldTable(childDefMod,childDefColMod)
-	childDefTable.peer.setDefaultRenderer(classOf[Integer],classNameRenderer)
+	childDefTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
 	val childDefColor: Color =childDefTable.background
 	val disableModels=List(inheritedFieldMod,ownFieldMod,inheritedPropMod,ownPropMod,childDefMod)
 	
 	val classEditor=new ClassNameEditor(new JComboBox)
-	ownPropTable.peer.setDefaultEditor(classOf[Integer],classEditor)
-	childDefTable.peer.setDefaultEditor(classOf[Integer],classEditor)
+	ownPropTable.peer.setDefaultEditor(classOf[java.lang.Integer], classEditor)
+	childDefTable.peer.setDefaultEditor(classOf[java.lang.Integer], classEditor)
 	
 	
 	
@@ -138,11 +139,11 @@ object TypeDefPanel extends BorderPanel {
 	val basicsPan = new BoxPanel(Orientation.Vertical) {
 	  contents +=new BoxPanel(Orientation.Horizontal ) {						
 			idEdit.inputVerifier=checkID
-			contents+=new Label("id:")+=idEdit+=Swing.HStrut(10)+=new Label("Name:")+=nameEdit+=Swing.HStrut(10)+=
-				new Label("Description:")+=descriptionEdit
+			contents += ViewConstants.label("id:") += idEdit += Swing.HStrut(10) += ViewConstants.label("Name:") += nameEdit += Swing.HStrut(10) +=
+				ViewConstants.label("Description:") += descriptionEdit
 			maximumSize=new Dimension(Short.MaxValue,50)
 		} += new BoxPanel(Orientation.Horizontal) {
-		  contents+=new Label("Comment:")+=commentEdit
+			contents += ViewConstants.label("Comment:") += commentEdit
 		}
 	} 
 	
@@ -289,7 +290,7 @@ object TypeDefPanel extends BorderPanel {
 	  updateClassInfo()
 	  theClass.ownFields=theClass.ownFields:+ new FieldDefinition(fieldName,fieldType)
 	  SessionManager.scl .classList=SessionManager.scl.classList+(theClass.id -> theClass)
-	  scala.xml.XML.save(FSPaths.configDir+"types.xml",SessionManager.scl.saveToXML,"UTF-8",true,null)
+		scala.xml.XML.save(FSPaths.configDir + "types.xml", SessionManager.scl.saveToXML(), "UTF-8", true, null)
 	  println("ClassInfo stored")
 	  StorageManager.addField(theClass,theClass.fields.size)
 	  println("Field added to all existing Instances, starting Reorg")
@@ -312,7 +313,7 @@ object TypeDefPanel extends BorderPanel {
 	def showAddFieldDialog(): Unit = {
 	  addFieldDialog.setLocationRelativeTo(formatStringPan)
 		addFieldDialog.title="Add field to "+theClass.name
-		addFieldDialog.showDialog(theClass,typeVect.asScala.toSeq)
+		addFieldDialog.showDialog(theClass, typeVect.asScala)
 	}
 	
 	def showAddPropFieldDialog(): Unit = {
@@ -431,7 +432,7 @@ class ClassNameRenderer extends JLabel with TableCellRenderer {
   	override def invalidate(): Unit = {}
   	override def revalidate(): Unit = {}
   	def getTableCellRendererComponent(table:JTable, a:Object, isSelected: Boolean, focused: Boolean,  row: Int,col:Int):java.awt.Component = {
-  	  val theText=	if(a==null || !a.isInstanceOf[java.lang.Integer])""
+			val theText = if ((a == null) || (!a.isInstanceOf[java.lang.Integer])) ""
   		else {
   			val aValue=a.asInstanceOf[java.lang.Integer].intValue
 			  if(aValue<0) "None" 

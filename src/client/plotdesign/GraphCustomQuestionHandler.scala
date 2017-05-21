@@ -1,18 +1,18 @@
 package client.plotdesign
 
-import client.dialog.CustomQuestionHandler
-import client.dialog.FocusContainer
-import client.dialog.DialogManager
-import definition.expression.VectorConstant
 import java.awt.Graphics2D
-import definition.typ.{ParamQuestion, CommandQuestion, DialogQuestion}
-import definition.expression.DoubleConstant
+
+import client.dialog.{CustomQuestionHandler, DialogManager, FocusContainer}
 import client.graphicsView.GraphElemConst
+import definition.expression.{DoubleConstant, VectorConstant}
+import definition.typ.{CommandQuestion, DialogQuestion, ParamQuestion}
+
+import scala.collection.immutable.HashMap
 
 object GraphCustomQuestionHandler extends CustomQuestionHandler {
   
   private var graphController:Option[PlotDesignController]=None
-  lazy val funcMap =collection.immutable.HashMap[String,(PlotDesignController) => Unit]("Zuschneiden"->setCutRect,
+  lazy val funcMap: HashMap[String, (PlotDesignController) => Unit] = collection.immutable.HashMap[String, (PlotDesignController) => Unit]("Zuschneiden" -> setCutRect,
       "Move"->move)
   
   def load(question:ParamQuestion,container:FocusContainer):Unit ={
@@ -26,10 +26,10 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
         }
       case _=> graphController=None;util.Log.e("Unknown controller:"+container)
     }          
-  } 
-  
-  lazy val rectStartQuestion=singlePointQuestion("Rechteck Zuschnitt","von Punkt")
-  lazy val rectEndQuestion=singlePointQuestion("Rechteck Zuschnitt","bis Punkt")
+  }
+
+  lazy val rectStartQuestion: DialogQuestion = singlePointQuestion("Rechteck Zuschnitt", "von Punkt", Some(false))
+  lazy val rectEndQuestion: DialogQuestion = singlePointQuestion("Rechteck Zuschnitt", "bis Punkt", Some(false))
   
   def setCutRect(gc:PlotDesignController):Unit={     
      DialogManager.startInterQuestion(rectStartQuestion,(answerList)=> {
@@ -54,8 +54,8 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   }
   
   def move(gc:PlotDesignController):Unit={
-    DialogManager.startInterQuestion(new DialogQuestion("Verschieben<br>Distanz angeben",
-		moveStartAnswers) ,(answerList)=>{
+    DialogManager.startInterQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
+      moveStartAnswers), (answerList) => {
       answerList.head.result match{
         case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
             (answerList)=>{DialogManager.processResults()})
@@ -68,7 +68,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
                lay.drawFrame(g,delta)
              }
         	 })
-          DialogManager.startInterQuestion(singlePointQuestion("Verschieben","'Nach Punkt' angeben"),
+          DialogManager.startInterQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", Some(false)),
             (answerList)=>DialogManager.processResults() )
       }
 		})  

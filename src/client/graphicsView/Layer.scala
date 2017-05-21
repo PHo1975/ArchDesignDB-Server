@@ -3,15 +3,15 @@
  */
 package client.graphicsView
 
-import definition.data.{InstanceData,Reference,Referencable,OwnerReference}
-import client.comm.ClientQueryManager
-import definition.typ.AllClasses
-import definition.comm.NotificationType
 import java.awt.geom.Rectangle2D
-import definition.expression.VectorConstant
-import definition.data.EMPTY_REFERENCE
+
+import client.comm.ClientQueryManager
+import definition.comm.NotificationType
+import definition.data._
+import definition.expression.{IntConstant, VectorConstant}
+import definition.typ.AllClasses
+
 import scala.swing.Swing
-import definition.expression.IntConstant
 
 
 abstract class AbstractLayer(val controller:GraphViewController,override val ref:Reference,
@@ -19,9 +19,12 @@ abstract class AbstractLayer(val controller:GraphViewController,override val ref
   def name:String 
   def id:String
   def scale:Int
-  val bounds=new Rectangle2D.Double(0,0,0,0)
-  
-  val selfSubsID =if(ref==EMPTY_REFERENCE) -1 else ClientQueryManager.createSubscription(ref,-1) {
+
+  def path: Array[String] = Array.empty
+
+  protected val bounds = new Rectangle2D.Double(0, 0, 0, 0)
+
+  val selfSubsID: Int = if (ref == EMPTY_REFERENCE) -1 else ClientQueryManager.createSubscription(ref, -1) {
     (ntype:NotificationType.Value,data:IndexedSeq[InstanceData]) => Swing.onEDT{
       ntype match {
         case NotificationType.sendData| NotificationType.fieldChanged| NotificationType.updateUndo=>
@@ -34,19 +37,24 @@ abstract class AbstractLayer(val controller:GraphViewController,override val ref
 			}
     }
   }
-  def setLayerScale(newRelativeScaleID:Int)= {
-    ClientQueryManager.writeInstanceField(ref,2.toByte,new IntConstant(newRelativeScaleID))
+
+  def setLayerScale(newRelativeScaleID: Int): Unit = {
+    ClientQueryManager.writeInstanceField(ref, 2.toByte, IntConstant(newRelativeScaleID))
   }
-  override def toString="L "+name+" "+ref
+
+  override def toString: String = "L " + name + " " + ref
   
   def load(listener:Option[()=>Unit],alwaysNotify:Boolean):Unit
-  def hide()=internalHide()
-  protected def internalHide()= {
+
+  def hide(): Unit = internalHide()
+
+  protected def internalHide(): Unit = {
 		visible=false		
 		controller.selectModel.deselectLayer(this)		
 		controller.layerChanged(this,false)		
 	}
-  def lock() = {
+
+  def lock(): Unit = {
 		edible=false
 		controller.selectModel.deselectLayer(this)		
 		controller.layerChanged(this,false)
@@ -57,22 +65,20 @@ abstract class AbstractLayer(val controller:GraphViewController,override val ref
     controller.layerChanged(this,false)
     if(selfSubsID> -1) ClientQueryManager.removeSubscription(selfSubsID)
   }
-  
-  def setupSelfFromInstance(data:InstanceData)={}  
-  
-  def getBounds:Rectangle2D.Double=bounds
-  
-  def calcBounds()={
+
+  def setupSelfFromInstance(data: InstanceData): Unit = {}
+
+  //def getBounds:Rectangle2D.Double=bounds
+
+  def calcBounds(): Rectangle2D.Double = {
 		bounds.x=Double.MaxValue
 		bounds.y=Double.MaxValue
 		bounds.width=Double.MinValue
 		bounds.height=Double.MinValue
 		for(elem<-elemList) 
 			controller.checkElemBounds(elem,bounds)
-		//println("Layer "+name+" minmaxValue: "+bounds)	
 		bounds.width-=bounds.x
 		bounds.height-=bounds.y
-		//println("Layer "+name+" bounds: "+bounds)
 		bounds
 	}
   def ownerRef:OwnerReference
@@ -106,10 +112,10 @@ abstract class AbstractLayer(val controller:GraphViewController,override val ref
 				that.ref.equals(ref)			
 				case _ => false
 		}
-	 
-	 override def hashCode() = ref.hashCode
-	
-	 def getElementByRef(ref:Reference)= elemList.find(_.ref==ref)
+
+  override def hashCode(): Int = ref.hashCode
+
+  def getElementByRef(ref: Reference): Option[GraphElem] = elemList.find(_.ref == ref)
   
 }
 
@@ -118,16 +124,17 @@ abstract class AbstractLayer(val controller:GraphViewController,override val ref
 /**
  * 
  */
-class Layer(ncontroller:GraphViewController,nref:Reference,
-    nvisible:Boolean,nedible:Boolean)
+class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[String],
+            nvisible:Boolean, nedible:Boolean)
   extends AbstractLayer(ncontroller,nref,nvisible,nedible) {
   
   var name:String=""
   var id:String=""
   var scale:Int=0
-  //println("Load LAyer:"+nref)
-    
-  override def setupSelfFromInstance(data:InstanceData)={
+
+  override def path: Array[String] = npath
+
+  override def setupSelfFromInstance(data: InstanceData): Unit = {
     name= data.fieldValue(1).toString
 	  id=data.fieldValue.head.toString
 	  scale=data.fieldValue(2).toInt
@@ -157,7 +164,7 @@ class Layer(ncontroller:GraphViewController,nref:Reference,
 							//println("Layer "+name+" elems loaded")
 							calcBounds()
 							//println("Layer "+name+" elems calcBounds")
-							if(visible)controller.graphElementsChanged(this,elemList,true)
+              if (visible) controller.graphElementsChanged(this, elemList)
 							//println("load layer firstLoad:"+firstLoad+" listener:"+listenerVar+" alwaysNotify:"+alwaysNotifyVar)
 							if(ntype==NotificationType.sendData&&listenerVar.isDefined && (alwaysNotifyVar || firstLoad) ) {
                 listenerVar.get()
@@ -187,18 +194,19 @@ class Layer(ncontroller:GraphViewController,nref:Reference,
 			}
 		}
 	}
-	def elemList=if(controller.layerModel.viewFilter.isDefined)_elemList.view.filter(controller.layerModel.viewFilter.get.elementMatch)
+
+  def elemList: Seq[GraphElem] = if (controller.layerModel.viewFilter.isDefined) _elemList.view.filter(controller.layerModel.viewFilter.get.elementMatch)
 	 else _elemList
-	
-		
-	override def hide() = {
+
+
+  override def hide(): Unit = {
 		super.hide()
 		
 		ClientQueryManager.pauseSubscription(subsID)		
 		_elemList=IndexedSeq.empty				
 	}
-	
-	override def shutDown() = {
+
+  override def shutDown(): Unit = {
 	  if(subsID> -1){
 	    ClientQueryManager.removeSubscription(subsID)
 	    subsID= -1
@@ -206,8 +214,8 @@ class Layer(ncontroller:GraphViewController,nref:Reference,
 		_elemList=IndexedSeq.empty
 		super.shutDown()
 	}
-	
-	def scaleRatio=scale.toDouble
+
+  def scaleRatio: Double = scale.toDouble
 }
 
 
@@ -220,10 +228,10 @@ object Layer {
 	  //println("AllowedDisplayListTypes "+allowedDisplayListClasses.map(AllClasses.get.getClassIDByName(_)))
 		allowedDisplayListTypes=allowedDisplayListClasses.map(AllClasses.get.getClassIDByName)
 	})
-	
-	def createLayer(controller:GraphViewController,nref:Reference,visible:Boolean,edible:Boolean):AbstractLayer = {
+
+  def createLayer(controller: GraphViewController, nref: Reference, visible: Boolean, edible: Boolean, path: Array[String]): AbstractLayer = {
 		if(nref.typ==allowedDisplayListTypes.head)
-		  new Layer(controller,nref,visible,edible)
+      new Layer(controller, nref, path, visible, edible)
 		else { 
 		  val data=ClientQueryManager.queryInstance(nref,-1).head
 		  if(nref.typ==allowedDisplayListTypes(1))
@@ -231,7 +239,7 @@ object Layer {
 		else if(nref.typ==allowedDisplayListTypes(2))
 		  new SectionPlaneLayer(controller,data.ref,data.fieldValue.head.toString,visible,edible)
 		else if(nref.typ==allowedDisplayListTypes(3))
-		  new MeasureLayer(controller,data.ref,visible,edible)
+        new MeasureLayer(controller, data.ref, path, visible, edible)
 		else throw new IllegalArgumentException("Create Layer not possible for typ "+data.ref)
 		}
 	}  

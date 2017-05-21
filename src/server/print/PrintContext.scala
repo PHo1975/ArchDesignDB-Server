@@ -3,16 +3,12 @@
  */
 package server.print
 
-import definition.expression.{Constant,EMPTY_EX}
-import definition.typ.{AbstractObjectClass,AllClasses}
-import definition.data.InstanceData
-import definition.expression.IntConstant
-import definition.expression.DateConstant
-import definition.data.PlaceHolderElement
-import definition.expression.StringConstant
+import definition.data.{InstanceData, PlaceHolderElement}
+import definition.expression.{Constant, EMPTY_EX, IntConstant, StringConstant}
+import definition.typ.{AbstractObjectClass, AllClasses, DataType, SystemSettings}
 import server.storage.StorageManager
-import definition.typ.SystemSettings
-import definition.typ.DataType
+
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 
@@ -36,35 +32,35 @@ class PrintContext extends Context{
 	var currentClass:AbstractObjectClass= _
 	var currentInstance:InstanceData = _
 	var parentInstance:Option[InstanceData] = None
-	var sectionInstance:Option[InstanceData]=None	
-	val placeHolders=collection.mutable.Map[String,PlaceHolderValue]()	
-	val customResolverMap=collection.mutable.HashMap[String,CustomPrintvarResolver]()	
-	val printVariables=collection.mutable.HashMap[String,Constant]()
+	var sectionInstance:Option[InstanceData]=None
+	val placeHolders: mutable.Map[String, PlaceHolderValue] = collection.mutable.Map[String, PlaceHolderValue]()
+	val customResolverMap: mutable.HashMap[String, CustomPrintvarResolver] = collection.mutable.HashMap[String, CustomPrintvarResolver]()
+	val printVariables: mutable.HashMap[String, Constant] = collection.mutable.HashMap[String, Constant]()
 	var formParams:Map[String,Constant]=Map.empty
 	var ignoreItersWithOption:Seq[String]=Seq.empty
-	
-	def initPrintSession()= placeHolders.clear
-	
-	
-	def setCurrInstance(data:InstanceData)= {
+
+	def initPrintSession(): Unit = placeHolders.clear
+
+
+	def setCurrInstance(data: InstanceData): Unit = {
 		if(currentClass==null || currentClass.id!=data.ref .typ)
 			currentClass=AllClasses.get.getClassByID(data.ref .typ)
 		currentInstance=data
 	}
-	
-	def setPageNr(value:Int )=printVariables("pageNr")=new IntConstant(value)	
+
+	def setPageNr(value: Int): Unit = printVariables("pageNr") = IntConstant(value)
 	
 	private def clearProjectVars()= printVariables.keySet.foreach(varName=>
 	  if(varName.length>7&&varName.substring(0,7).equals("project")) printVariables.remove(varName) )
-	
-	def setPrintDate(value:Constant) =printVariables("date")=value
-	
-	def setFormParams(params:Map[String,Constant])= {	  
+
+	def setPrintDate(value: Constant): Unit = printVariables("date") = value
+
+	def setFormParams(params: Map[String, Constant]): Unit = {
 	  formParams=params	  
 	  ignoreItersWithOption=params.filter( tuple=>tuple._2.getType==DataType.BoolTyp&& !tuple._2.toBoolean).keys.toSeq
 	}
-	
-	def updateProjectInfo(parentInst:InstanceData)= {
+
+	def updateProjectInfo(parentInst: InstanceData): Unit = {
 	  clearProjectVars()
 	  StorageManager.getNextParentOfType(parentInst.ref,PrintEngine.projectType) match {
 	    case Some(projectRef)=>
@@ -75,17 +71,17 @@ class PrintContext extends Context{
               case Some(gprops)=>
 								gprops.propertyFields(0).propertyList.headOption foreach (prAdressRef =>{
                   val prData=StorageManager.getInstanceData(prAdressRef)
-                  printVariables("projectDescription")=new StringConstant(prData.fieldValue.head.toString+" "+prData.fieldValue(1).toString)
-                  printVariables("projectStreet")=new StringConstant(prData.fieldValue(2).toString)
-                  printVariables("projectZip")=new StringConstant(prData.fieldValue(3).toString)
-                  printVariables("projectCity")=new StringConstant(prData.fieldValue(4).toString)
+									printVariables("projectDescription") = StringConstant(prData.fieldValue.head.toString + " " + prData.fieldValue(1).toString)
+									printVariables("projectStreet") = StringConstant(prData.fieldValue(2).toString)
+									printVariables("projectZip") = StringConstant(prData.fieldValue(3).toString)
+									printVariables("projectCity") = StringConstant(prData.fieldValue(4).toString)
                 })
 								gprops.propertyFields(1).propertyList.headOption foreach (prAdressRef =>{
                   val prData=StorageManager.getInstanceData(prAdressRef)
-                  printVariables("projectClientName")=new StringConstant(prData.fieldValue.head.toString+" "+prData.fieldValue(1).toString)
-                  printVariables("projectClientStreet")=new StringConstant(prData.fieldValue(2).toString)
-                  printVariables("projectClientZip")=new StringConstant(prData.fieldValue(3).toString)
-                  printVariables("projectClientCity")=new StringConstant(prData.fieldValue(4).toString)
+									printVariables("projectClientName") = StringConstant(prData.fieldValue.head.toString + " " + prData.fieldValue(1).toString)
+									printVariables("projectClientStreet") = StringConstant(prData.fieldValue(2).toString)
+									printVariables("projectClientZip") = StringConstant(prData.fieldValue(3).toString)
+									printVariables("projectClientCity") = StringConstant(prData.fieldValue(4).toString)
                 })
 							case _ =>
             }
@@ -95,13 +91,13 @@ class PrintContext extends Context{
 			case _ =>
 	  }
 	  SystemSettings().getCustomSettings("officeAddress").headOption foreach (prData =>{
-	     printVariables("officeName")=new StringConstant(prData.fieldValue.head.toString+" "+prData.fieldValue(1).toString)
-	     printVariables("officeStreet")=new StringConstant(prData.fieldValue(2).toString)
-	     printVariables("officeZip")=new StringConstant(prData.fieldValue(3).toString)
-	     printVariables("officeCity")=new StringConstant(prData.fieldValue(4).toString)
-	     printVariables("officeTel")=new StringConstant(prData.fieldValue(5).toString)
-	     printVariables("officeFax")=new StringConstant(prData.fieldValue(6).toString)
-	     printVariables("officeEmail")=new StringConstant(prData.fieldValue(7).toString)
+			printVariables("officeName") = StringConstant(prData.fieldValue.head.toString + " " + prData.fieldValue(1).toString)
+			printVariables("officeStreet") = StringConstant(prData.fieldValue(2).toString)
+			printVariables("officeZip") = StringConstant(prData.fieldValue(3).toString)
+			printVariables("officeCity") = StringConstant(prData.fieldValue(4).toString)
+			printVariables("officeTel") = StringConstant(prData.fieldValue(5).toString)
+			printVariables("officeFax") = StringConstant(prData.fieldValue(6).toString)
+			printVariables("officeEmail") = StringConstant(prData.fieldValue(7).toString)
 	  })
 	  
 	}
@@ -120,19 +116,20 @@ class PrintContext extends Context{
             case ""=> return StringConstant(currentInstance.fieldData(i).getValue.toString)
             case formst=> return StringConstant(formst.format(currentInstance.fieldData(i).getValue.toDouble))
           }
-					return currentInstance.fieldData(i).getValue
+					currentInstance.fieldData(i).getValue
 				case None=> StringConstant("unknown fieldName "+fieldName+" curr:"+currentClass.name)
 	    }
 	    case PrintEngine.ParentFieldMatcher(fieldName)=>try {
-				parentInstance match {
-					  case Some(pi)=>
-						val parentClass=AllClasses.get.getClassByID(pi.ref.typ)
-						parentClass.fields.indices.find(i=>fieldName.equalsIgnoreCase(parentClass.fields(i).name)) match {
-							  case Some(i)=> pi.fieldData(i).getValue
-								case None=> StringConstant("no parentfield "+fieldName)
-						}
-						case None => StringConstant("no parent, f:"+fieldName)
+				val pi = parentInstance match {
+					case Some(p) => p
+					case None => StorageManager.getInstanceData(currentInstance.owners.head.ownerRef)
 				}
+				val parentClass = AllClasses.get.getClassByID(pi.ref.typ)
+				parentClass.fields.indices.find(i => fieldName.equalsIgnoreCase(parentClass.fields(i).name)) match {
+					case Some(i) => pi.fieldData(i).getValue
+					case None => StringConstant("no parentfield " + fieldName + " pi:" + pi.ref)
+				}
+
 	      /*val owner=currentInstance.owners(0).ownerRef
 	      val parentClass=AllClasses.get.getClassByID(owner.typ)
 	      parentClass.fields.indices.find(i=> fieldName.equalsIgnoreCase(parentClass.fields(i).name)) match {
@@ -146,12 +143,12 @@ class PrintContext extends Context{
 	      case Some(i)=>currentInstance.fieldData(i).getValue
 	      case None=> StringConstant("unknown fieldName "+fieldName+" curr:"+currentClass.name)
 	    }	    
-	    case PrintEngine.FormParamMatcher(paramName)=>  
-	      formParams.getOrElse(paramName,new StringConstant("Unknown Form Param '"+paramName+"'"))
+	    case PrintEngine.FormParamMatcher(paramName)=>
+				formParams.getOrElse(paramName, StringConstant("Unknown Form Param '" + paramName + "'"))
 	    case PrintEngine.CustomMatcher(customVarName,classString)=>
 				val className=classString.replace('_','.')
 				//System.out.println("CustomResover "+className+" varName:"+customVarName)
-				return customResolverMap.getOrElseUpdate(className,
+				customResolverMap.getOrElseUpdate(className,
             Class.forName(className).newInstance.asInstanceOf[CustomPrintvarResolver]).
               resolve(customVarName, currentInstance)
 			case _ => EMPTY_EX
@@ -167,20 +164,20 @@ class PrintContext extends Context{
 			vel.value
 		}
 		else {
-			placeHolders(name)=new PlaceHolderValue( List(el))
+			placeHolders(name) = PlaceHolderValue(List(el))
 			None
 		}
   }
-  
-	def setPlaceHolderValue(name:String,newValue:String)= {
+
+	def setPlaceHolderValue(name: String, newValue: String): Unit = {
 		//System.out.println("set placeHolder "+name+" '"+newValue+"'")
 		if(placeHolders.contains(name)){
 			val vel=placeHolders(name)
 			vel.holderList.foreach(_.value =newValue)
 			vel.value =Some(newValue)
 		}
-		else{ 
-		  placeHolders(name)=new PlaceHolderValue(Nil,Some(newValue))
+		else{
+			placeHolders(name) = PlaceHolderValue(Nil, Some(newValue))
 		  util.Log.e("set placeholder, unknown name:"+name+" ->" +newValue)
 		} 
 	}

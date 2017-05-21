@@ -1,36 +1,32 @@
 package client.graphicsView
 
 
-import scala.swing.ComboBox
-import javax.swing.DefaultCellEditor
-import javax.swing.JTable
-import definition.expression.{Expression,Constant}
-import scala.swing.Table
-import util.MyListView
-import scala.swing.BorderPanel
-import scala.swing.Label
-import java.awt.Dimension
-import client.dataviewer.InstanceRenderer
-import java.awt.Color
+import java.awt.{Color, Dimension}
+import javax.swing.{DefaultCellEditor, JComboBox, JTable}
+
+import client.dataviewer.{InstanceRenderer, ViewConstants}
 import client.dialog.InplaceFieldEditor
-import util.MyComboBox
+import definition.expression.{Constant, Expression}
+import util.{MyComboBox, MyListView}
+
+import scala.swing.{BorderPanel, Label, Table}
 
 
 class MaterialInplaceEditor() extends InplaceFieldEditor{
   
   
   val styleCombo=new MyComboBox(MaterialHandler.materialList)
-  
-  val editor = new DefaultCellEditor(styleCombo.peer) {  	
-  	override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ) = {  		
+
+  val editor: DefaultCellEditor = new DefaultCellEditor(styleCombo.peer) {
+    override def getTableCellEditorComponent(table: JTable, value: Object, isSelected: Boolean, row: Int, column: Int): JComboBox[MaterialDef] = {
   		styleCombo.selection.index=value match {
   		  case c:Constant => MaterialHandler.materialList.indexWhere(_.ix==c.toInt) 		    
   		  case _ => -1
   		}
   		styleCombo.peer
   	}
-  	override def getCellEditorValue():java.lang.Object =
-  	{
+
+    override def getCellEditorValue(): java.lang.Object = {
   		styleCombo.peer.getSelectedItem() match {
   		  case ls:MaterialDef=>ls.ix.asInstanceOf[AnyRef]
   		  case _=> 0.asInstanceOf[AnyRef]
@@ -39,9 +35,9 @@ class MaterialInplaceEditor() extends InplaceFieldEditor{
   }
   
   val previewPrototype=new HatchLabelPreview
-  
-  
-  def getEditor=editor  
+
+
+  def getEditor: DefaultCellEditor = editor
   
   def createRenderer=new Table.AbstractRenderer[Expression,HatchLabelPreview](new HatchLabelPreview){
     def configure(table: Table, isSelected: Boolean, hasFocus: Boolean, a: Expression, row: Int, column: Int): Unit = {
@@ -67,13 +63,13 @@ class MaterialInplaceEditor() extends InplaceFieldEditor{
 
 class HatchLabelPreview extends BorderPanel{
    val hatchPreview=new HatchPreview
-   val label=new Label
+  val label: Label = ViewConstants.label()
    var currentMaterial:MaterialDef=MaterialHandler.undefinedMaterial
    preferredSize=new Dimension(100,33)
    add(hatchPreview,BorderPanel.Position.West)
-   add(label,BorderPanel.Position.Center)   
-   
-   def setValue(nhatch:Int,ltext:String) = {
+   add(label,BorderPanel.Position.Center)
+
+  def setValue(nhatch: Int, ltext: String): Unit = {
      hatchPreview.setHatch(HatchHandler.quickGetHatch(nhatch),true,true)
      label.text=" "+ltext     
      label.background=background

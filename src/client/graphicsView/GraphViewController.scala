@@ -5,8 +5,8 @@ package client.graphicsView
 
 import java.awt.MouseInfo
 import java.awt.event.{ComponentAdapter, ComponentEvent}
-import java.awt.geom.Rectangle2D
-import javax.swing.JLayeredPane
+import java.awt.geom.Rectangle2D.{Double => Rect2DDouble}
+import javax.swing.{JComponent, JLayeredPane}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.TitlePopupMenu
@@ -15,7 +15,7 @@ import client.spreadsheet.{CellTuple, SpreadSheetTransferable}
 import client.ui.ClientApp
 import definition.data._
 import definition.expression._
-import definition.typ.{DataType, AnswerDefinition, DialogQuestion}
+import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.swing._
@@ -30,8 +30,8 @@ import scala.util.control.NonFatal
 case class MatchingScreenPoints(hitBoth:Option[Point],hitX:Option[Point],hitY:Option[Point],hitWorld:Option[VectorConstant])
 
 class LPane extends Component {
-    lazy val panel=new JLayeredPane 
-    override lazy val peer=panel
+    lazy val panel=new JLayeredPane
+  override lazy val peer: JLayeredPane = panel
   }
 
 class GraphViewController extends AbstractViewController[(AbstractLayer, Iterable[GraphElem]),GraphElem] {
@@ -39,7 +39,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   val selectModel=new ViewSelectModel(this)
   val layerModel=new LayerTableModel(this)
 	val canvas=new GraphViewCanvas(this)
-  val theCanvas=canvas.peer
+  val theCanvas: JComponent = canvas.peer
   val ddListener=new GraphViewDDListener(this)
   val transferHandler=new CommonTransferHandler(ddListener)
   theCanvas.setTransferHandler(transferHandler)
@@ -53,14 +53,12 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   	refreshCanvas()
   })
   
-  val layerPane=new LPane  
-  private var ipePane:InplaceEditPanel=null
+  val layerPane=new LPane
+  private var ipePane: InplaceEditPanel = _
   
   layerPane.panel.add(canvas.peer,new java.lang.Integer(1))  
   
   ClientQueryManager.runInPool{
-   {
-     
      ipePane=new InplaceEditPanel(this)
      Swing.onEDT{
        ipePane.setup()       
@@ -71,8 +69,6 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
        ipePane.peer.setSize(layerPane.size)
        ipePane.setPaneSize(layerPane.size)
      }
-     
-   } 
   }  
 	
 	val canvasPanel=new BorderPanel {
@@ -81,7 +77,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	} 
 	
 	layerPane.peer.addComponentListener(new ComponentAdapter(){
-	  override def componentResized(e:ComponentEvent) = {
+    override def componentResized(e: ComponentEvent): Unit = {
 	    //System.out.println("Resized: canvas:" +canvas.size+" pane:"+layerPane.size+" ipe:"+ipePane)
 	    val si=layerPane.size
 	    canvas.peer.setSize(si)
@@ -91,17 +87,17 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
       }
 			scaleModel.viewSize=canvas.size		
 	  } 
-	})	  
-  
-	
-	def layerChanged(lay:AbstractLayer,updateZoom:Boolean) =  if(!shuttingDown){
+	})
+
+
+  def layerChanged(lay: AbstractLayer, updateZoom: Boolean): Unit = if (!shuttingDown) {
 	  if(updateZoom) zoomAll()
 	  else refreshCanvas()
 	  selectModel.deselect(true)
 	  //layerModel.fireTableDataChanged()
 	}
-	
-	def graphElemAdded(lay:AbstractLayer,elem:GraphElem) = {
+
+  def graphElemAdded(lay: AbstractLayer, elem: GraphElem): Unit = {
 	  //println("graphElem added:"+elem+" numcr:"+numCreatedElements+" cas:"+hasCreateActionStarted)
 	  if(hasCreateActionStarted) {
 	    numCreatedElements-= 1
@@ -113,22 +109,23 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  }	    
 		refreshCanvas()
 	}
-	
-	def graphElemRemoved(lay:AbstractLayer,elem:GraphElem) = {
+
+  def graphElemRemoved(lay: AbstractLayer, elem: GraphElem): Unit = {
     //println("graphElem removed :"+elem)
 		selectModel.elemRemoved((lay,Seq(elem)))
 		if(lastHittedElements.exists(entry=> entry._2.exists(el=>el.ref==elem.ref) ))
 		{  
 		  lastHittedElements=lastHittedElements.map(entry=> if(entry._2.exists(el=>el.ref==elem.ref)){
 		    (entry._1,entry._2.filter(_.ref!=elem.ref))
-		  } else entry).filter(_._2.size>0)
+      } else entry).filter(_._2.nonEmpty)
 		}    
 		//lastHittedElements=Nil
 		refreshCanvas()
-	}	
-	
-	
-	def graphElementsChanged(lay:AbstractLayer,newStates:Iterable[GraphElem],repaint:Boolean=true) = {
+	}
+
+
+  def graphElementsChanged(lay: AbstractLayer, newStates: Iterable[GraphElem], repaint: Boolean = true): Unit = {
+    //println("graphElemsChanged "+lay.ref+" newStates:"+newStates.mkString(","))
 		selectModel.elementChanged((lay,newStates))
 		if(lastHittedElements.exists(entry=>  entry._2.exists(el=> newStates.exists(nse=>nse.ref==el.ref)))){
 		  lastHittedElements=lastHittedElements.map(entry=>if(entry._2.exists(el=>newStates.exists(nse=>nse.ref==el.ref)) ) {
@@ -140,7 +137,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	}
 	
 	// will be called when the DataViewController has another selection	
-	def getAllBounds=	layerModel.calcAllLayerBounds()
+  def getAllBounds: Rect2DDouble = layerModel.calcAllLayerBounds()
 	
 	
 	/*private def pointsInRect(points:TraversableOnce[VectorConstant],minX:Double,minY:Double,maxX:Double,maxY:Double):Boolean=
@@ -161,7 +158,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  		eb.x>=minX && eb.width<=maxX && eb.y>=minY && eb.height<=maxY
 	  	})
 	  	else {
-	  	  val rect=new Rectangle2D.Double(minX,minY,maxX-minX,maxY-minY)
+        val rect = new Rect2DDouble(minX, minY, maxX - minX, maxY - minY)
 	  	  layerModel.filterLayersSelection(true,_.intersectsRect(this, rect))
 	  	}	
 	  //System.out.println("check selection result="+elemList)
@@ -198,8 +195,9 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	        (if(objSelectMode==ObjectSelectMode.SingleObjectNotSelected) !selectModel.selectionList.contains(a) else true))
 	  } 
 	}
-	
-	def filterSelection(clickPosX:Double,clickPosY:Double,lcd:Double)= layerModel.filterLayersSelection(true,(el)=>el.hits(this,clickPosX,clickPosY,lcd) )
+
+  def filterSelection(clickPosX: Double, clickPosY: Double, lcd: Double): Iterable[(AbstractLayer, Iterable[GraphElem])] =
+    layerModel.filterLayersSelection(true, (el) => el.hits(this, clickPosX, clickPosY, lcd))
 	
 	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit = {
 	  //println("processElementClick "+hittedElements.mkString(", "))
@@ -258,10 +256,10 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  }
 	}
 
-	override def getElementByRef(ref:Reference)= layerModel.getElementByRef(ref)
+  override def getElementByRef(ref: Reference): Option[GraphElem] = layerModel.getElementByRef(ref)
 
-	
-	def deselectZoomInBut()= {
+
+  def deselectZoomInBut(): Unit = {
 	  scalePanel.zoomInBut.selected=false	
 	}
 	
@@ -309,15 +307,15 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 			}// System.out.println(o)
 		}		
 	}
-	
-	def showCreatePopup()= {
+
+  def showCreatePopup(): Unit = {
     val mousePos = MouseInfo.getPointerInfo().getLocation()
     val canvasPos = theCanvas.getLocationOnScreen()
 		requestFocus()
     //println("Show Create "+NewButtonsList.actionButtons.map(_.commandName).mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     val buttons = layerModel.getActiveLayer match {
-      case Some(m: MeasureLayer) => NewButtonsList.actionButtons.takeRight(1)
-      case _ => NewButtonsList.actionButtons.dropRight(1)
+      case Some(m: MeasureLayer) => NewButtonsList.actionButtons.takeRight(3)
+      case _ => NewButtonsList.actionButtons.dropRight(3)
     }
     if (buttons.size == 1) {
       buttons.head.strokeHit()
@@ -349,31 +347,32 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	 
 	 // FocusContainer
 	 def containerName="Graph2DEdit"
-	 def containerRef=layerModel.getActiveLayer	 
+
+  def containerRef: Option[AbstractLayer] = layerModel.getActiveLayer
 	  
 	 /** Format Field Values to give to a new created Object
    * @param forType class type of the object to create
    * @return list of (formatfieldNr,FieldValue) 
    */
-  
-  
-  def shutDown() = {
+
+
+  def shutDown(): Unit = {
     shuttingDown=true
     layerModel.removeAllLayers(true)
   }
-	 
-	 def clearNewElements()= {
-    layerModel.newElemLayer.shutDown
+
+  def clearNewElements(): Unit = {
+    layerModel.newElemLayer.shutDown()
     showTempElements=false   
   }
-	 
-	 def setRelativeScale(scaleID:Int )= scaleModel.setRelativeScaleID(scaleID)
+
+  def setRelativeScale(scaleID: Int): Unit = scaleModel.setRelativeScaleID(scaleID)
 	 
 	 def scaleRatio:Double= scaleModel.relativeScaleValue
-	 
-	 def setActiveLayerScale(newRelativeScaleID:Int)= layerModel.setActiveLayerScale(newRelativeScaleID)
-	 
-	 def editSelectedElemIPE()= {	   
+
+  def setActiveLayerScale(newRelativeScaleID: Int): Unit = layerModel.setActiveLayerScale(newRelativeScaleID)
+
+  def editSelectedElemIPE(): Unit = {
 	   if (lastHittedElements.size==1&& _viewportState==ViewportState.SelectState) {
 	     val lastGroup=lastHittedElements.head._2
 	     if(lastGroup.size==1)
@@ -382,8 +381,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	     }
 	   }
 	 }
-	 
-	 def startIPEMode(el:GraphElem,listener:Option[(String)=>Unit]) = if(ipePane!=null){
+
+  def startIPEMode(el: GraphElem, listener: Option[(String) => Unit]): Unit = if (ipePane != null) {
 	   //println("start IPE Mode:"+el+" listener:"+listener)
 	   if(_viewportState==ViewportState.InPlaceEdit) stopIPEMode()
 	   else  el match {
@@ -398,8 +397,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 				 inplaceEditFinishListener=None
 		 }
 	 }
-	 
-	 override def stopIPEMode() = if(_viewportState==ViewportState.InPlaceEdit){	   
+
+  override def stopIPEMode(): Unit = if (_viewportState == ViewportState.InPlaceEdit) {
 	   val text=if(ipePane==null)"" else ipePane.getEditText
 	   //println("Stop IPE Mode "+ Thread.currentThread().getStackTrace().take(4).mkString("\n"))
 	   inplaceEditFinishListener match {
@@ -415,35 +414,35 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 						if(te.ref==null) { // new element
               util.Log.e("ERROR: change empty text element")
             }
-            else ClientQueryManager.writeInstanceField(te.ref,1.toByte,new StringConstant(text))
+            else ClientQueryManager.writeInstanceField(te.ref, 1.toByte, StringConstant(text))
 					case _ =>
         }
 		 }
 	   
 	 }
-	 
-	 override def cleanUpIPEMode() = {
+
+  override def cleanUpIPEMode(): Unit = {
 	   //println("Cleanup IPE")
 	   ipePane.visible=false
 	   inplaceTextElement=None
 	   inplaceEditFinishListener=None
 	   super.cleanUpIPEMode()	   
 	 }
-	 
-	 override def focusGained()= {
+
+  override def focusGained(): Unit = {
 	   ColorFieldEditor.showEditor= !scaleModel.colorsFixed
 	   super.focusGained()
 	   scalePanel.activateKeyStrokes()
 	 }
-	 
-	 def setupColorsFixed(newValue:Boolean)= {
+
+  def setupColorsFixed(newValue: Boolean): Unit = {
 	  scaleModel.colorsFixed=newValue
 	  scalePanel.colorsFixedBut.selected=newValue
 	 }
 	 
 	 /** opens the Filter Dialog	  
 	  */
-	 def filterButClicked(filterBut:ToggleButton)= {
+   def filterButClicked(filterBut: ToggleButton): Unit = {
 	   	if(filterBut.selected){
 	   	  openFilterDialog()	   	  
 	   	} else {
@@ -451,14 +450,14 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	   	  canvas.repaint()
 	   	}  
 	 }
-	 
-	 def openFilterDialog()={
+
+  def openFilterDialog(): Unit = {
 	   val dialog=new SelectionFilterDialog(ClientApp.top,this)
 	   dialog.setLocationRelativeTo(scalePanel.filterBut)
 	   dialog.visible=true
-	 }	
-	 
-	 def setSelectionFilter(info:SelectionFilterInfo)= {
+	 }
+
+  def setSelectionFilter(info: SelectionFilterInfo): Unit = {
 		 println("Filter: "+info)
 	   if(selectModel.hasSelection){
 	   	 selectModel.filter(info.elementMatch)
@@ -470,15 +469,15 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	   	 selectModel.notifyListeners()
 	   }
 	 }
-	 
-	 def cancelSelectionFilter()={
+
+  def cancelSelectionFilter(): Unit = {
 	   if(layerModel.viewFilter.isDefined)layerModel.viewFilter=None
 	   scalePanel.filterBut.selected=false
 	   canvas.repaint()
 	 }
-	 
-	 def checkElemBounds(elem:GraphElem,bounds:Rectangle2D.Double):Unit = {
-		val eb=elem.getBounds(this)		
+
+  def checkElemBounds(elem: GraphElem, bounds: Rect2DDouble): Unit = {
+    val eb = elem.getBounds(this)
 	  if (eb.x<bounds.x)bounds.x=eb.x
 		if (eb.y<bounds.y)bounds.y=eb.y
 		// use the width fields as maxX and height as maxY
@@ -491,7 +490,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
     var success=false
     for(elRef <-instData.selection;if Layer.allowedDisplayListTypes.contains(elRef.typ) &&
       !layerModel.containsRef(elRef)){
-	    val newLayer=Layer.createLayer(this,elRef,true,true)
+      val newLayer = Layer.createLayer(this, elRef, true, true, instData.pathFromRoot)
 	    newLayer.load(Some(()=>Swing.onEDT{
 	      layerModel.addLayer( newLayer)
 	      layerModel.setActiveLayerIx(layerModel.getRowCount-1) 
@@ -507,10 +506,10 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 			case None=> 0d
 	}
 
-	def importSpreadSheetData(spreadData:SpreadSheetTransferable)= {
+  def importSpreadSheetData(spreadData: SpreadSheetTransferable): Unit = {
 		 for (layer<-layerModel.getActiveLayer) {
 			 val ownerRefArray=Array(layer.ownerRef)
-			 DialogManager.startInterQuestion(new DialogQuestion("Projektion",List(new AnswerDefinition("Projektion",DataType.EnumTyp,None,"Draufsicht,Ansicht X,Ansicht Y"))),
+       DialogManager.startInterQuestion(DialogQuestion("Projektion", List(new AnswerDefinition("Projektion", DataType.EnumTyp, None, "Draufsicht,Ansicht X,Ansicht Y"))),
 				 (resList)=>{
 					 val proj=resList.head.result.toString match {
 						 case "Draufsicht" => 0

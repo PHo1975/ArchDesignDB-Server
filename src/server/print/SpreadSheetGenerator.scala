@@ -3,30 +3,15 @@ package server.print
 import java.awt.Color
 import java.awt.geom.Rectangle2D
 
-import scala.Option.option2Iterable
-import client.spreadsheet.HorAlign
-import client.spreadsheet.SpreadSheet
-import client.spreadsheet.SpreadSheetFormat
-import client.spreadsheet.VertAlign
-import definition.data.GraphTextElement
-import definition.data.InstanceData
-import definition.data.LinePrintElement
-import definition.data.PrintElement
-import definition.expression.CurrencyConstant
-import definition.expression.Expression
-import definition.typ.DataType.BoolTyp
-import definition.typ.DataType.CurrencyTyp
-import definition.typ.DataType.DoubleTyp
-import definition.typ.DataType.IntTyp
-import definition.typ.DataType.LongTyp
-import definition.typ.DataType.StringTyp
-import definition.typ.DataType.VectorTyp
+import client.spreadsheet._
+import definition.data._
+import definition.expression.{CurrencyConstant, Expression}
+import definition.typ.DataType._
 import runtime.function.SpreadSheetProxy
 import server.storage.StorageManager
-import definition.data.FillPrintElement
-import definition.data.PageBreakMarker
 import util.Log
 
+import scala.Option.option2Iterable
 import scala.util.control.NonFatal
 
 
@@ -35,12 +20,12 @@ class SpreadSheetGenerator extends CustomGenerator {
    val dotPitch=0.25f
    
    class InfoSet(dataParent:InstanceData,dataEater:DataEater){
-     val form=dataEater.form  
-     val showGrid=dataEater.paramValues.find(_._1.equalsIgnoreCase("ShowGrid")) match {
+     val form: FormDescription = dataEater.form
+     val showGrid: Boolean = dataEater.paramValues.find(_._1.equalsIgnoreCase("ShowGrid")) match {
        case Some((_,value))=>value.toBoolean
        case None=>false
-     } 
-     val headerMargin=dataEater.paramValues.find(_._1.equalsIgnoreCase("HeaderMargin")) match {
+     }
+     val headerMargin: Float = dataEater.paramValues.find(_._1.equalsIgnoreCase("HeaderMargin")) match {
        case Some((_,value))=>value.toDouble.toFloat
        case None=>0f
      }  
@@ -49,36 +34,36 @@ class SpreadSheetGenerator extends CustomGenerator {
        case Some((_,value)) if value.toFloat > 0 =>value.toFloat
        case _ =>1f
      }
-     val rowHeight=SpreadSheet.defaultRowHeight.toFloat*zoom*dotPitch
-     val defaultColWidth=SpreadSheet.defaultColumnWidth*zoom*dotPitch
-     val dataWidth= (dataEater.pageWidth-form.left-form.right)
-		 val dataHeight= (dataEater.pageHeight-form.top-form.bottom-headerMargin)
+     val rowHeight: Float = SpreadSheet.defaultRowHeight.toFloat * zoom * dotPitch
+     val defaultColWidth: Float = SpreadSheet.defaultColumnWidth * zoom * dotPitch
+     val dataWidth: Float = dataEater.pageWidth - form.left - form.right
+     val dataHeight: Float = dataEater.pageHeight - form.top - form.bottom - headerMargin
 		 val proxy=new SpreadSheetProxy(dataParent.ref)
-     val columns=(for(list<-proxy.colDataRefs) yield list.map(ref=> {
+     val columns: Map[Int, InstanceData] = (for (list <- proxy.colDataRefs) yield list.map(ref => {
 	       val inst=StorageManager.getInstanceData(ref) 
 	       (inst.fieldValue.head.toInt,inst)
        })).toSeq.flatten.toMap
-     val cells=(for (list<-proxy.cellRefs) yield list.map(ref=>{
+     val cells: Map[(Int, Int), Expression] = (for (list <- proxy.cellRefs) yield list.map(ref => {
 	       val inst=StorageManager.getInstanceData(ref)
 			 ((inst.fieldValue.head.toInt,inst.fieldValue(1).toInt),inst.fieldData(2))
        } )).toSeq.flatten.toMap
-     val formats=proxy.formats     
-     val numCols=math.max(columns.keys.max,if(cells.size==0)0 else cells.keys.maxBy(_._1)._1)     
-     val maxWidth= (0 until numCols).foldLeft(0f)((sum, curr) =>
+     val formats: IndexedSeq[SpreadSheetFormatRange] = proxy.formats
+     val numCols: Int = math.max(columns.keys.max, if (cells.isEmpty) 0 else cells.keys.maxBy(_._1)._1)
+     val maxWidth: Float = (0 until numCols).foldLeft(0f)((sum, curr) =>
 			 sum + (if (columns.contains(curr)) {
 				 val columnWidth = columns(curr).fieldValue(2).toFloat
 				 if (columnWidth == 0f) defaultColWidth else columnWidth * zoom * dotPitch
 			 } else defaultColWidth))
-     val numRows=if(cells.size==0)0 else cells.keys.maxBy(_._2)._2
-     val maxHeight=numRows*SpreadSheet.defaultRowHeight*zoom*dotPitch
-     
-     def getFormatAt(col:Int,row:Int)= {
+     val numRows: Int = if (cells.isEmpty) 0 else cells.keys.maxBy(_._2)._2
+     val maxHeight: Float = numRows * SpreadSheet.defaultRowHeight * zoom * dotPitch
+
+     def getFormatAt(col: Int, row: Int): IndexedSeq[Option[SpreadSheetFormat]] = {
        var formatSet=SpreadSheetFormat.emptyFormatSet
        for(form<-formats) if (form.range.isDefinedAt(col,row)) formatSet=form.format.setDefinedFormats(formatSet)
        formatSet
      }
-     
-     def printCell(formatSet:IndexedSeq[Option[SpreadSheetFormat]],col:Int,row:Int,cXPos:Float,cYPos:Float,colWidth:Float,expression:Expression)= {	      
+
+     def printCell(formatSet: IndexedSeq[Option[SpreadSheetFormat]], col: Int, row: Int, cXPos: Float, cYPos: Float, colWidth: Float, expression: Expression): GraphTextElement = {
 		    var style=0
 		    var dx=1f
 		    var dy= 0f
@@ -132,8 +117,8 @@ class SpreadSheetGenerator extends CustomGenerator {
 	  			}).replaceAll("\n"," | ")
 	      }
 	      //println(" cell col:"+col+" row:"+row+" "+ text)
-	      new GraphTextElement(new Rectangle2D.Float((form.left+cXPos+dx),form.top.toFloat+headerMargin+cYPos+dy,/*if((style&16)>0)*/0 /*else colWidth*2*/,fontSize),
-								text,font,style,0f,0f,Color.black,0)	            
+       GraphTextElement(new Rectangle2D.Float(form.left + cXPos + dx, form.top.toFloat + headerMargin + cYPos + dy, /*if((style&16)>0)*/ 0 /*else colWidth*2*/ , fontSize),
+         text, font, style, 0f, 0f, Color.black, 0)
      }
      
      def printBorders(col:Int,row:Int,cXPos:Float,cYPos:Float,colWidth:Float):List[PrintElement]= {       
@@ -142,30 +127,30 @@ class SpreadSheetGenerator extends CustomGenerator {
        
        for (f<-formatSet(14)) { // left border	        
 	          val borderInf=f.leftBorder.get
-	          result=  new LinePrintElement(new Rectangle2D.Float((form.left+cXPos),form.top.toFloat+headerMargin+cYPos,0,rowHeight), borderInf.width /20f,borderInf.style.toByte,
-	              new Color(borderInf.color)) :: result	        
+         result = LinePrintElement(new Rectangle2D.Float(form.left + cXPos, form.top.toFloat + headerMargin + cYPos, 0, rowHeight), borderInf.width / 20f, borderInf.style.toByte,
+           new Color(borderInf.color)) :: result
 	      }
 	      for (f<-formatSet(15)) { // top border	        
 	          val borderInf=f.topBorder.get
-	          result = new LinePrintElement(new Rectangle2D.Float((form.left+cXPos),form.top.toFloat+headerMargin+cYPos,colWidth,0), borderInf.width /20f,borderInf.style.toByte,
-	              new Color(borderInf.color)) :: result	        
+          result = LinePrintElement(new Rectangle2D.Float(form.left + cXPos, form.top.toFloat + headerMargin + cYPos, colWidth, 0), borderInf.width / 20f, borderInf.style.toByte,
+            new Color(borderInf.color)) :: result
 	      }
 	      for (f<-formatSet(16)) { // right border	        
 	          val borderInf=f.rightBorder.get
-	          result = new LinePrintElement(new Rectangle2D.Float((form.left+cXPos+colWidth),form.top.toFloat+headerMargin+cYPos,0,rowHeight), borderInf.width /20f,borderInf.style.toByte,
-	              new Color(borderInf.color)) :: result	        
+          result = LinePrintElement(new Rectangle2D.Float(form.left + cXPos + colWidth, form.top.toFloat + headerMargin + cYPos, 0, rowHeight), borderInf.width / 20f, borderInf.style.toByte,
+            new Color(borderInf.color)) :: result
 	      }
 	      for (f<-formatSet(17)) { // bottom border	        
 	          val borderInf=f.bottomBorder.get
-	          result = new LinePrintElement(new Rectangle2D.Float((form.left+cXPos),form.top.toFloat+headerMargin+cYPos+rowHeight,colWidth,0), borderInf.width /20f,borderInf.style.toByte,
-	              new Color(borderInf.color)) :: result	        
+          result = LinePrintElement(new Rectangle2D.Float(form.left + cXPos, form.top.toFloat + headerMargin + cYPos + rowHeight, colWidth, 0), borderInf.width / 20f, borderInf.style.toByte,
+            new Color(borderInf.color)) :: result
 	      }
 	      result
      }
-     
-     def getColWidth(colIx:Int)= columns.get(colIx) match {
+
+     def getColWidth(colIx: Int): Float = columns.get(colIx) match {
 	           case Some(col)=>
-							 val cwidth=col.fieldValue(2).toInt;
+               val cwidth = col.fieldValue(2).toInt
 							 if(cwidth==0 ) defaultColWidth
                else cwidth*zoom*dotPitch
 						 case _=>defaultColWidth
@@ -192,10 +177,10 @@ class SpreadSheetGenerator extends CustomGenerator {
          do {           
 	         val currColWidth=infoSet.getColWidth(startColumn+colOffset) 
 	         if(infoSet.showGrid){
-		         dataEater.addPrintElements(List(new LinePrintElement(new Rectangle2D.Float(infoSet.form.left.toFloat+currXPos,infoSet.form.top.toFloat+infoSet.headerMargin,
-		             0,infoSet.dataHeight),1,0,Color.black) ))
+             dataEater.addPrintElements(List(LinePrintElement(new Rectangle2D.Float(infoSet.form.left.toFloat + currXPos, infoSet.form.top.toFloat + infoSet.headerMargin,
+               0, infoSet.dataHeight), 1, 0, Color.black)))
 		         dataEater.addPrintElements((0 until rowsPerPage) map (rowOffset => {
-							 new LinePrintElement(new Rectangle2D.Float(infoSet.form.left.toFloat + currXPos, infoSet.form.top.toFloat + infoSet.headerMargin + rowOffset * infoSet.rowHeight,
+               LinePrintElement(new Rectangle2D.Float(infoSet.form.left.toFloat + currXPos, infoSet.form.top.toFloat + infoSet.headerMargin + rowOffset * infoSet.rowHeight,
 								 currColWidth, 0), 1, 0, Color.black)
 						 }))}
 	         for(row<- 0 until rowsPerPage) {	           
@@ -204,9 +189,9 @@ class SpreadSheetGenerator extends CustomGenerator {
 				       val backgroundColor = formatSet(10) match {
 				         case Some(f)=> new Color(f.backgroundColor.get)
 				         case _=> Color.white
-				       } 
-	             dataEater.addPrintElement(new FillPrintElement(new Rectangle2D.Float(infoSet.form.left + currXPos + 1f,infoSet.form.top.toFloat+
-	                 infoSet.headerMargin+row*infoSet.rowHeight+.5f,currColWidth-1f,infoSet.rowHeight-1f),Color.white,0,backgroundColor))
+				       }
+               dataEater.addPrintElement(FillPrintElement(new Rectangle2D.Float(infoSet.form.left + currXPos + 1f, infoSet.form.top.toFloat +
+                 infoSet.headerMargin + row * infoSet.rowHeight + .5f, currColWidth - 1f, infoSet.rowHeight - 1f), Color.white, 0, backgroundColor))
 	             dataEater.addPrintElement(infoSet.printCell(formatSet,startColumn+colOffset,startRow+row,currXPos,row*infoSet.rowHeight,currColWidth,expression))
 	           }  
 	           dataEater.addPrintElements(infoSet.printBorders(startColumn+colOffset,startRow+row,currXPos,row*infoSet.rowHeight,currColWidth))
@@ -248,9 +233,9 @@ class SpreadSheetGenerator extends CustomGenerator {
 			       val backgroundColor = formatSet(10) match {
 			         case Some(f)=> new Color(f.backgroundColor.get)
 			         case _=> Color.white
-			       } 
-             if(backgroundColor!=Color.white) retList=new FillPrintElement(new Rectangle2D.Float(infoSet.form.left + xp + .5f,yp+
-                 row*infoSet.rowHeight+.5f,colWidth-1f,infoSet.rowHeight-1f),Color.white,0,backgroundColor)::retList
+			       }
+           if (backgroundColor != Color.white) retList = FillPrintElement(new Rectangle2D.Float(infoSet.form.left + xp + .5f, yp +
+             row * infoSet.rowHeight + .5f, colWidth - 1f, infoSet.rowHeight - 1f), Color.white, 0, backgroundColor) :: retList
              retList=infoSet.printCell(formatSet,col,row,xp,yp,colWidth,expression)::retList
            }  
            retList=infoSet.printBorders(col,row,xp,yp,colWidth):::retList   	 

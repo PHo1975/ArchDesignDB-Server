@@ -1,20 +1,13 @@
 package client.dialog.symbolbrowser
 
-import client.graphicsView.GraphViewController
-import client.dialog.CustomPanelQuestion
-import client.dialog.DialogManager
-import client.graphicsView.GraphSettingsHandler
-import client.model.PathControllable
-import java.awt.Dimension
-import client.dialog.CustomQuestionHandler
-import client.graphicsView.GraphCustomQuestionHandler
-import definition.typ.AnswerDefinition
-import definition.typ.DataType
-import java.awt.BasicStroke
-import client.graphicsView.ColorMap
+import java.awt.{BasicStroke, Dimension}
+
+import client.dataviewer.ViewConstants
+import client.dialog.{AnswerPanelsData, CustomPanelQuestion, DialogManager}
+import client.graphicsView.{ColorMap, GraphCustomQuestionHandler, GraphSettingsHandler, GraphViewController}
+import definition.data.InstanceData
 import definition.expression.VectorConstant
-import util.GraphUtils
-import definition.expression.NULLVECTOR
+import definition.typ.{AnswerDefinition, DataType}
 
 object SymbolBrowserController {
   val folderType=110
@@ -22,16 +15,16 @@ object SymbolBrowserController {
   val previewSize=new Dimension(160,175)
   val thumbSize=new Dimension(159,159)
   val answer=new AnswerDefinition("symbol",DataType.ObjectRefTyp,None)
-  val pointAnswer=new AnswerDefinition("Absetzpunkt angeben",DataType.VariableTyp,None)
-  val maximumSize=new Dimension(DialogManager.sidePanelWidth,Short.MaxValue)
+  val pointAnswer = new AnswerDefinition("Absetzpunkt angeben", DataType.VariableTyp, None, AnswerPanelsData.NOSTRICT_HIT)
+  val maximumSize = new Dimension(ViewConstants.sidePanelWidth, Short.MaxValue)
   val refCrossStroke=new BasicStroke
-  private var graphController:Option[GraphViewController]=None
+  //private var graphController:Option[GraphViewController]=None
   
-  lazy val panel=new SymbolBrowserPanel  
-  lazy val chooseSymbolQuestion=new CustomPanelQuestion(panel)  
-  lazy val symbolRootFolder=GraphSettingsHandler.getMainFolder("Symbole")
+  lazy val panel=new SymbolBrowserPanel
+  lazy val chooseSymbolQuestion = CustomPanelQuestion(panel)
+  lazy val symbolRootFolder: Option[InstanceData] = GraphSettingsHandler.getMainFolder("Symbole")
   lazy val placeSymbolPanel=new SymbolPlacementPanel
-  lazy val placeSymbolQuestion=new CustomPanelQuestion(placeSymbolPanel)
+  lazy val placeSymbolQuestion = CustomPanelQuestion(placeSymbolPanel)
   
   def createSymbol(gc:GraphViewController):Unit= {
     panel.createStampMode=false
@@ -42,7 +35,7 @@ object SymbolBrowserController {
         gc.setCustomDragger((pos,g)=>{
           val sm=gc.scaleModel
           val angle=placeSymbolPanel.angle
-          val scale=placeSymbolPanel.scale
+          //val scale=placeSymbolPanel.scale
           val radAngle=angle*Math.PI/180d
           val sina=Math.sin(radAngle)
           val cosa=Math.cos(radAngle)
@@ -54,13 +47,12 @@ object SymbolBrowserController {
           DialogManager.processResults() 
         })         
       }
-      
     })
   }
   
   def createSymbolStamp(gc:GraphViewController):Unit= {
     panel.createStampMode=true
-    DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Symbol erstellen","Bezugspunkt wählen"),(answerList)=>{
+    DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Symbol erstellen", "Bezugspunkt wählen", None), (answerList) => {
       DialogManager.startInterQuestion(GraphCustomQuestionHandler.singleTextQuestion("Symbol erstellen","Name des neuen Symbols:"),(answerList)=>{
         DialogManager.startInterQuestion(chooseSymbolQuestion,(answerList)=>  {
           util.Log.e("should not happen "+answerList.mkString)
@@ -95,7 +87,7 @@ object SymbolBrowserController {
             el.drawRotated(g, sm, ColorMap.selectColor,angle, rotator)
         })
         DialogManager.startInterQuestion(placeSymbolQuestion,(answerList)=>{
-          DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("SymbolFüller erstellen","Bereich bis Punkt"),(answerList)=>{
+          DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("SymbolFüller erstellen", "Bereich bis Punkt", None), (answerList) => {
             DialogManager.startInterQuestion(GraphCustomQuestionHandler.singleIntQuestion("SymbolFüller erstellen", "Anzahl Teilungen"),(answerList)=>{            
               DialogManager.processResults()  
             })  
@@ -105,5 +97,4 @@ object SymbolBrowserController {
       
     })
   }
-  
 }

@@ -3,14 +3,16 @@
  */
 package client.layout
 
-import definition.comm.{StringValue, IntValue, PropertyGroup}
-
-import scala.collection.mutable
-import scala.swing._
-import scala.swing.event._
 import java.awt.Color
 import javax.swing.BorderFactory
+
+import client.dataviewer.ViewConstants
 import client.model.TableViewbox
+import definition.comm.{IntValue, PropertyGroup, StringValue}
+
+import scala.collection.mutable
+import scala.swing.event._
+import scala.swing.{BorderPanel, _}
 import scala.util.control.NonFatal
 
 /**
@@ -24,23 +26,23 @@ trait ViewboxHolder {
 
 class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:ViewboxHolder) extends BorderPanel{
 	//val start=System.currentTimeMillis()
-	val rightEdge =new BoxEdge(this,new ExpandStripe(false,this))
-	val bottomEdge = new BoxEdge(this,new ExpandStripe(true,this))	
-	var content: ViewboxContent/*#CompType*/ =null
+	val rightEdge = BoxEdge(this, new ExpandStripe(false, this))
+	val bottomEdge = BoxEdge(this, new ExpandStripe(true, this))
+	var content: ViewboxContent /*#CompType*/ = _
   val header = new ViewboxHeader(this)
 	val scaleFactor=1000000
-	var minimizeHeaderCallBack:()=>Unit =null	
+	var minimizeHeaderCallBack: () => Unit = _
 	var rightFirstExpanded=false
 	
   border=BorderFactory.createEmptyBorder(2,2,2,2)//createEtchedBorder(EtchedBorder.LOWERED);
 
 	add(header,BorderPanel.Position.North)
-	mainbox.add(this)	
-	
-	
-	override def add(comp:Component,con:Constraints)= { super.add(comp,con)}
-	
-	def addContent(newContent:ViewboxContent/*#CompType*/)= {
+	mainbox.add(this)
+
+
+	override def add(comp: Component, con: Constraints): Unit = super.add(comp, con)
+
+	def addContent(newContent: ViewboxContent /*#CompType*/): Unit = {
 		if(content!=null) content.close()
 		add(newContent,BorderPanel.Position.Center)		
 		content=newContent		
@@ -60,7 +62,6 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 		var h=prefS.height
 		var rightSize:Dimension=null
 		var botSize:Dimension=null
-		//System.out.println ("getFullPrefSize "+header.label.text+" rightFirst:"+rightFirstExpanded+" w:"+w+" h:"+h)
 		if(rightEdge.isExpanded){
 			rightSize=rightEdge.connectorStripe.get.connectedBox.getFullPrefSize
 			if(!rightFirstExpanded && rightSize.height>h) h=rightSize.height			
@@ -120,10 +121,9 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 			}
 		  
 		} else if(!holder.deleteMe(this)) return
-		//content.storeSettings()
+
 		if(content!=null)
-		content.close()		
-		//add(null,BorderPanel.Position.Center)
+			content.close()
 		content=null
 		mainbox.remove(this)
 		mainbox.revalidate()
@@ -140,30 +140,29 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 	
 	def storeSettings(pgroup:PropertyGroup ):Unit = {
 	  if(rightEdge.isExpanded)
-	    pgroup.addProperty(new IntValue("W",(rightEdge.connectorStripe.get.scaleValue*scaleFactor).toInt))
+			pgroup.addProperty(IntValue("W", (rightEdge.connectorStripe.get.scaleValue * scaleFactor).toInt))
 	  if(bottomEdge.isExpanded)
-	    pgroup.addProperty(new IntValue("H",(bottomEdge.connectorStripe.get.scaleValue*scaleFactor).toInt))	  
-	  pgroup.addProperty(new IntValue("B",getBoxCode))	  
-	  pgroup.addProperty(new StringValue("T",if(content!=null)content.typeID else ""))
+			pgroup.addProperty(IntValue("H", (bottomEdge.connectorStripe.get.scaleValue * scaleFactor).toInt))
+		pgroup.addProperty(IntValue("B", getBoxCode))
+		pgroup.addProperty(StringValue("T", if (content != null) content.typeID else ""))
 	  if(content!=null)
 		content.storeSettings(pgroup)
-	}	
-	
-	def createStandardBox()={
-	  new TableViewbox
-	  
 	}
-	
-	
-	def restoreSettings(groupStack:mutable.Stack[PropertyGroup],readyListener:()=>Unit):Unit =  {
-	  try {	
-			if(groupStack.isEmpty) {				  
-				  //println("groupstack is empty ")
-				  val content= createStandardBox()
-				  addContent(content)
-				  content.open(()=>{readyListener()},Seq.empty)
+
+	def createStandardBox(): TableViewbox = new TableViewbox
+
+
+	def restoreSettings(groupStack: mutable.Stack[PropertyGroup], readyListener: () => Unit): Unit =
+		try {
+			if(groupStack.isEmpty) {
+				println("groupstack is empty, holder:" + content)
+				Thread.dumpStack()
+				val ncontent = createStandardBox()
+				addContent(ncontent)
+				ncontent.open(() => {readyListener()}, Seq.empty)
 				  revalidate()
 			} else {
+				//println("groupstack "+groupStack.mkString("|"))
 				val pGroup=groupStack.pop()
 				val ctype=pGroup.getStringProperty("T")
 				if(ctype=="") {
@@ -207,29 +206,31 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 
 				ViewboxContentTypeList.getType(ctype) match {
 					case Some(cnt) =>
-						//println("before content "+(System.currentTimeMillis()-start))
+						//println("set viewboxContent "+cnt+" "+ctype)
 						addContent( cnt.factory()/*,false*/)
 						//println("after content "+(System.currentTimeMillis()-start)+" c:"+content)
 						try {
 						content.restoreSettings(pGroup,contentRestored _)
 						} catch {case NonFatal(e)=> util.Log.e("Content restore: ",e)
-						case other:Throwable =>println(other);System.exit(0)}
+						case other: Throwable => util.Log.e("restore", other)
+						}
 					case None => util.Log.e("Content type '"+ctype +"' not found\nproperties:"+pGroup.properties.mkString(" | "));contentRestored()
 				}
 		  }
 		} catch {case NonFatal(e) => util.Log.e("Error at Viewbox:restoreSettings",e );readyListener()
-		case other:Throwable =>println(other);System.exit(0)}
-	} 
-	
-	def getBoxCode = if(rightEdge.isExpanded) {
+		case other: Throwable => util.Log.e(other); readyListener()
+		}
+
+
+	def getBoxCode: Int = if (rightEdge.isExpanded) {
 	  if(bottomEdge.isExpanded) 4 else 2
 	 } else if(bottomEdge.isExpanded) 1 else 0
-	
-	def isDoubleConnected=rightEdge.isExpanded&&bottomEdge.isExpanded
-	
-	def setTitle(title:String)= header.setTitle(title)
-	
-	def minimizeHeaderPanel(callBack:()=>Unit) = {
+
+	def isDoubleConnected: Boolean = rightEdge.isExpanded && bottomEdge.isExpanded
+
+	def setTitle(title: String): Unit = header.setTitle(title)
+
+	def minimizeHeaderPanel(callBack: () => Unit): Unit = {
 		minimizeHeaderCallBack=callBack
 		header.openContentHeaderBut.visible=true
 	}
@@ -261,13 +262,17 @@ class ViewboxHeader(viewbox:Viewbox) extends BoxPanel(Orientation.Horizontal) {
 	background=Color.gray
 	preferredSize=new Dimension(80,30)
 	val label=new Label
+	label.font = ViewConstants.tableFont
 	label.foreground=Color.white
 	label.minimumSize=new Dimension(10,25)
 	val openContentHeaderBut=new Button("\u02c5")
+	openContentHeaderBut.font = ViewConstants.smallFont
 	openContentHeaderBut.tooltip="Liste aufklappen"
 	val maximizeBut=new Button("<->")
+	maximizeBut.font = ViewConstants.smallFont
 	maximizeBut.tooltip="Fenster maximieren"
 	val closeBut=new Button("X")
+	closeBut.font = ViewConstants.smallFont
 	closeBut.margin=new Insets(0,0,0,0)
 	closeBut.focusable=false
 	closeBut.tooltip="Fenster schließen"
@@ -288,24 +293,23 @@ class ViewboxHeader(viewbox:Viewbox) extends BoxPanel(Orientation.Horizontal) {
 			case ButtonClicked(`maximizeBut`) =>
 				viewbox.mainbox.maximizeBox(viewbox)
 	}
-	
-	def setTitle(newTitle:String)= label.text=newTitle	
+
+	def setTitle(newTitle: String): Unit = label.text = newTitle
 }
 
 
-
-class BoxEdge(val sourceBox:Viewbox,val expandStripe:ExpandStripe) extends ViewboxHolder   {
+case class BoxEdge(sourceBox: Viewbox, expandStripe: ExpandStripe) extends ViewboxHolder {
 	var connectorStripe:Option[ConnectorStripe]=None
 	private var expanded:Boolean=false
 	//var currentStripe:Stripe.StripeType=expandStripe
 	sourceBox.add(expandStripe,getEdgePos)
-	
-	def isExpanded=expanded
+
+	def isExpanded: Boolean = expanded
 	
 	/** builds a new connection
 	 * 
 	 */
-	def connectTo(settings:Option[PropertyGroup],content:ViewboxContent) = {
+	def connectTo(settings: Option[PropertyGroup], content: ViewboxContent): Unit = {
 		val newBox=new Viewbox(sourceBox.mainbox,true,this)
 		newBox.addContent(content)
 		settings match {
@@ -315,12 +319,12 @@ class BoxEdge(val sourceBox:Viewbox,val expandStripe:ExpandStripe) extends Viewb
 		connectBox(newBox)
 	}
 
-	def getCurrentComponent=connectorStripe match {
+	def getCurrentComponent: BoxPanel with Stripe = connectorStripe match {
 		case Some(cs)=>cs
 		case None=>expandStripe
 	}
-	
-	def connectBox(newBox:Viewbox,revalidate:Boolean=true)= {
+
+	def connectBox(newBox: Viewbox, revalidate: Boolean = true): Unit = {
 		val conn=new ConnectorStripe(isHorizontal,sourceBox,newBox)		
 		if(!expanded && !conn.isHorizontal && !sourceBox.bottomEdge .expanded) sourceBox.rightFirstExpanded=true
 		connectorStripe=Some(conn)
@@ -328,27 +332,28 @@ class BoxEdge(val sourceBox:Viewbox,val expandStripe:ExpandStripe) extends Viewb
 		expanded=true
 		if(revalidate) sourceBox.mainbox.revalidate()
 	}
-	
-	def disconnect() = if(expanded) {		
+
+	def disconnect(): Unit = if (expanded) {
 		if(!expandStripe.isHorizontal) sourceBox.rightFirstExpanded=false
 		connectorStripe=None
 	  sourceBox.add(expandStripe,getEdgePos)	
 		expanded=false
 	}
-	
-	def isHorizontal=expandStripe.isHorizontal
-	def getEdgePos=if(isHorizontal)
+
+	def isHorizontal: Boolean = expandStripe.isHorizontal
+
+	def getEdgePos: BorderPanel.Position.Value = if (isHorizontal)
 		BorderPanel.Position.South else BorderPanel.Position.East
-	
-	def getConnectedBox= connectorStripe.get.connectedBox 	
-		
-	def replaceBox(oldBox:Viewbox,newBox:Viewbox) = {
+
+	def getConnectedBox: Viewbox = connectorStripe.get.connectedBox
+
+	def replaceBox(oldBox: Viewbox, newBox: Viewbox): Unit = {
 			if(isExpanded){
 				connectorStripe.get.connectedBox=newBox
 			}
 		}
-	
-	def deleteMe(oldBox:Viewbox) = {
+
+	def deleteMe(oldBox: Viewbox): Boolean = {
 	    if(isExpanded){
 	    	disconnect()
 	    	true

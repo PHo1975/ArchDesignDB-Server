@@ -1,29 +1,24 @@
 package management.databrowser
 
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import scala.swing.Label
-import scala.swing.TextField
 import java.awt.Dimension
-import scala.swing.event.EditDone
-import scala.swing.Button
-import scala.swing.Swing
-import server.config.FSPaths
-import scala.swing.event.ButtonClicked
-import javax.swing.JFileChooser
 import java.io.File
-import java.awt.Color
-import definition.data.Reference
 import java.text.SimpleDateFormat
 import java.util.Date
+import javax.swing.JFileChooser
+
+import client.dataviewer.ViewConstants
+import definition.data.Reference
+import server.config.FSPaths
 import transaction.handling.SessionManager
+
+import scala.swing.event.{ButtonClicked, EditDone}
+import scala.swing.{BoxPanel, Button, Label, Orientation, Swing, TextField}
 
 class PathEditBox(labelText:String,getter:()=> String,setter: (String)=>Unit) extends 
 		BoxPanel(Orientation.Vertical)	{
     import management.databrowser.PathEditBox._
-    xLayoutAlignment=0    
-		val label=new Label(labelText+":")
+    xLayoutAlignment=0
+  val label: Label = ViewConstants.label(labelText + ":")
     label.xLayoutAlignment=0    
 		val edit=new TextField(getter())    
     edit.xLayoutAlignment=0      
@@ -36,7 +31,8 @@ class PathEditBox(labelText:String,getter:()=> String,setter: (String)=>Unit) ex
       maximumSize=new Dimension(Short.MaxValue,30)      
 		}
     revalidate
-		def update() = edit.text=getter()
+
+  def update(): Unit = edit.text = getter()
 		
 		listenTo(edit)
 		reactions+= {
@@ -64,10 +60,10 @@ object PathEditBox {
 }
 
 class BasicSettingsPanel extends BoxPanel(Orientation.Vertical) {
-  val backupDateLabel=new Label()
+  val backupDateLabel: Label = ViewConstants.label()
   val dateFormat=new SimpleDateFormat("dd.MM.yyyy HH:mm")
-  
-  def updateBackupDateLabel()= {
+
+  def updateBackupDateLabel(): Unit = {
     backupDateLabel.text=dateFormat.format(new Date(FSPaths.lastBackup))
   }
   
@@ -85,6 +81,7 @@ class BasicSettingsPanel extends BoxPanel(Orientation.Vertical) {
     FSPaths.setDeployDir(newDir)
   })  +=
     new FormatLine(100,"Server Port",()=>FSPaths.serverPort.toString,(newPort)=>FSPaths.setServerPort(newPort.toInt))+=
+    new FormatLine(100, "WebServer Port", () => FSPaths.webServerPort.toString, (newPort) => FSPaths.setWebServerPort(newPort.toInt)) +=
     //new FormatLine(100,"Backup Hour",()=>FSPaths.backupHour.toString,(newHour)=>FSPaths.setBackupHour(newHour.toInt))+=
     new FormatLine(100,"Settings Object",()=>FSPaths.settingsObjectRef.sToString,(newString)=>{
         val ref=Reference(newString)

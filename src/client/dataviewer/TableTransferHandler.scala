@@ -32,7 +32,7 @@ class TableTransferHandler(tableMod:TypeTableModel) extends TransferHandler {
    override def createTransferable(c:JComponent ):InstanceSelection =      
   	  new InstanceSelection(Array(tableMod.getParentRef),tableMod.getPropField,tableMod.selectedInstances,
   		 tableMod.selectedInstances .map (_.toString()).toArray,tableMod.table.peer.getSelectedColumn(),
-  		 tableMod.table .peer.getSelectedRows())  	   
+        tableMod.table.peer.getSelectedRows(), tableMod.propMod.mainController.viewBox.pathController.model.dataList.map(_.toString).toArray)
    
    
    /*override def exportDone(source:JComponent,data: Transferable,action:Int):Unit = {
@@ -205,8 +205,8 @@ util.Log.e(" cant link to same field "+thatRef+" "+tabLoc.getColumn)
 class InstanceSelection extends Transferable with Serializable {
 	//private val serialVersionUID = 4275L
 	
-	def this(parents:Array[Referencable],npropField:Int,selChildren:Seq[Referencable],texts:Array[String],
-	         ncolumn:Int,nrow:Array[Int]) = {
+	def this(parents:Array[Referencable], npropField:Int, selChildren:Seq[Referencable], texts:Array[String],
+           ncolumn: Int, nrow: Array[Int], npathFromRoot: Array[String]) = {
 		this()
 		parentRefs=parents.map(_.ref/*.serialized*/)
 		selection=selChildren.map(_.ref/*.serialized*/).toArray
@@ -214,6 +214,7 @@ class InstanceSelection extends Transferable with Serializable {
 		dragColumn=ncolumn
 		propField=npropField
 		dragRows=nrow
+    pathFromRoot = npathFromRoot
 		//System.out.println(" create Sel :"+dragRows.mkString(","))
 	}
 	
@@ -225,6 +226,7 @@ class InstanceSelection extends Transferable with Serializable {
 	var textArray:Array[String]=Array()
   var onMoveHandlerID:Int=0
   var fileList:java.util.ArrayList[File]=_
+  var pathFromRoot: Array[String] = Array()
   
 	lazy val ownerRef=new OwnerReference(propField.toByte,parentRefs.head)
 	

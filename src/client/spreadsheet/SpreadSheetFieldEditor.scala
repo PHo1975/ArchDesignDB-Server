@@ -1,35 +1,16 @@
 package client.spreadsheet
 
-import scala.collection.Iterable
-import scala.swing.Panel
-import definition.typ.AllClasses
-import client.graphicsView.SidePanelFontBox
-import scala.swing.ComboBox
-import client.graphicsView.FontHandler
-import scala.swing.{TextField,BoxPanel,Orientation}
-import java.awt.Dimension
+import java.awt.{Color, Dimension}
+
+import client.dataviewer.ViewConstants
+import client.dialog.{ActionPanel, CustomStrokeButton, _}
+import client.graphicsView._
 import definition.data.Referencable
-import definition.typ.SelectGroup
-import client.graphicsView.FontPreviewPan
-import client.graphicsView.FontInfo
-import definition.data.StyleService
-import scala.swing.ToggleButton
-import scala.swing.GridPanel
+import definition.typ.{AllClasses, SelectGroup}
+
+import scala.collection.Iterable
 import scala.swing.event.ButtonClicked
-import java.awt.Color
-import scala.swing.RadioButton
-import scala.swing.ButtonGroup
-import scala.swing.Swing
-import scala.swing.CheckBox
-import scala.swing.Alignment
-import client.dialog.CustomStrokeButton
-import client.dialog.ActionPanel
-import scala.swing.AbstractButton
-import scala.swing.Label
-import scala.swing.BorderPanel
-import client.graphicsView.LineStyleHandler
-import client.graphicsView.StylePreviewPan
-import client.dialog._
+import scala.swing.{AbstractButton, Alignment, BorderPanel, BoxPanel, ButtonGroup, CheckBox, GridPanel, Label, Orientation, Panel, RadioButton, Swing, ToggleButton}
 
 class SpreadSheetFieldEditor extends FieldEditor {
   
@@ -50,12 +31,12 @@ class SpreadSheetFieldEditor extends FieldEditor {
   lazy val addColsBut=new CustomStrokeButton(spreadSheetGroupName,"Spalten einfügen",()=>{spreadSheetSG.foreach(_.controller.addCols())},11)
   lazy val removeColsBut=new CustomStrokeButton(spreadSheetGroupName,"Spalten löschen",()=>{spreadSheetSG.foreach(_.controller.removeCols())},12)
   lazy val copyClipBut=new CustomStrokeButton(spreadSheetGroupName,"Kopieren",()=>{spreadSheetSG.foreach(_.controller.copyToClipBoard())},13)
-  
-  
-  lazy val stringCellName=AllClasses.get.getClassByID(SpreadSheet.spreadSheetStringCellType).name
-  lazy val doubleCellName=AllClasses.get.getClassByID(SpreadSheet.spreadSheetDoubleCellType).name
-  lazy val formatName=  AllClasses.get.getClassByID(SpreadSheet.spreadSheetFormatSetType).name
-  lazy val colDataName=  AllClasses.get.getClassByID(SpreadSheet.spreadSheetColumnType).name
+
+
+  lazy val stringCellName: String = AllClasses.get.getClassByID(SpreadSheet.spreadSheetStringCellType).name
+  lazy val doubleCellName: String = AllClasses.get.getClassByID(SpreadSheet.spreadSheetDoubleCellType).name
+  lazy val formatName: String = AllClasses.get.getClassByID(SpreadSheet.spreadSheetFormatSetType).name
+  lazy val colDataName: String = AllClasses.get.getClassByID(SpreadSheet.spreadSheetColumnType).name
   
   lazy val allowedClassNames: Iterable[String] = Seq(stringCellName,doubleCellName,colDataName)
   
@@ -63,13 +44,13 @@ class SpreadSheetFieldEditor extends FieldEditor {
   
   
   lazy val fontCombo=new ActiveComboBox(FontHandler.fontList,new FontPreviewPan){
-    def elemClicked(item:FontInfo)= {
+    def elemClicked(item: FontInfo): Unit = {
       //println("Change Font :"+item)
       writeFieldValue(4,new SpreadSheetFormat(font=Some(item.name)))      
     }
   }
   lazy val fontSizeEditor=new ActiveNumberSpinner(1,40,1) {
-    def fieldChanged(n:Number)= {
+    def fieldChanged(n: Number): Unit = {
       val newSize=n.floatValue
       if(newSize>0) writeFieldValue(5,new SpreadSheetFormat(fontSize=Some(newSize)))      
     }
@@ -90,7 +71,7 @@ class SpreadSheetFieldEditor extends FieldEditor {
   }
   
   lazy val cellFormCombo=new ActiveComboBox(CellFormat.values.toSeq,cellFormatRenderer) {
-    def elemClicked(item:CellFormat.Value)= {
+    def elemClicked(item: CellFormat.Value): Unit = {
       //println("cellFormCobo clicked "+item)
       writeFieldValue(2,new SpreadSheetFormat(cellFormat=item))
       applyFormatPanel(item)
@@ -116,11 +97,11 @@ class SpreadSheetFieldEditor extends FieldEditor {
   val alVBox=new BoxPanel(Orientation.Horizontal)
   alVBox.opaque=false
   alVBox.contents++=alVGroup.buttons
-  val showFormulaCheck=createCheckBox("Zeige Formeln")
-  val visibleCheck=createCheckBox("Inhalt sichtbar")
-  val lineBreakCheck=createCheckBox("Zeilenumbruch")
-  
-  val fieldComponents=Seq.empty
+  val showFormulaCheck: CheckBox = createCheckBox("Zeige Formeln")
+  val visibleCheck: CheckBox = createCheckBox("Inhalt sichtbar")
+  val lineBreakCheck: CheckBox = createCheckBox("Zeilenumbruch")
+
+  val fieldComponents: Seq[SidePanelComponent[_]] = Seq.empty
   
   val formatContainer=new BoxPanel(Orientation.Vertical) {
     opaque=false
@@ -158,10 +139,12 @@ class SpreadSheetFieldEditor extends FieldEditor {
     horizontalAlignment=Alignment.Left
     def setStyle(a:Float):Unit= text=f"$a%2.1f"
     def setEmpty():Unit=text=""
+
+    font = ViewConstants.labelFont
   }
   
   lazy val borderWidthCombo=new ActiveComboBox(widthList,borderWidthRenderer) {
-    def elemClicked(item:Float)= {
+    def elemClicked(item: Float): Unit = {
       //println("BorderWidthCobo clicked "+item) 
       someBorderRadio.selected=true
       borderRadios.selected match {
@@ -172,12 +155,12 @@ class SpreadSheetFieldEditor extends FieldEditor {
         case None =>
       }
     }
-  }  
-  
-  lazy val lineStyles=LineStyleHandler.styles.map(_.ix)
+  }
+
+  lazy val lineStyles: Seq[Int] = LineStyleHandler.styles.map(_.ix)
   
   lazy val borderStyleCombo:ActiveComboBox[Int,StylePreviewPan]=new ActiveComboBox(lineStyles,new StylePreviewPan) {
-    def elemClicked(item:Int)= {
+    def elemClicked(item: Int): Unit = {
       //println("BorderStyleCobo clicked "+item) 
       someBorderRadio.selected=true
       borderRadios.selected match {
@@ -236,8 +219,8 @@ class SpreadSheetFieldEditor extends FieldEditor {
       case None =>
     }
   }
-  
-  def writeBorder(ix:Int,value:Option[BorderInfo])= {
+
+  def writeBorder(ix: Int, value: Option[BorderInfo]): Unit = {
     writeFieldValue(14+ix,ix match {
       case 0=> SpreadSheetFormat(leftBorder=value)
       case 1=> SpreadSheetFormat(topBorder=value)
@@ -247,15 +230,20 @@ class SpreadSheetFieldEditor extends FieldEditor {
   } 
   
   val borderLabel=new Label("Umrandung:")
+  borderLabel.font = ViewConstants.labelFont
   borderLabel.xLayoutAlignment=0
   
   lazy val panel=new BoxPanel(Orientation.Vertical) {
     xLayoutAlignment=0.5d
     opaque=false
+    val haLab = new Label("Horizontale Ausrichtung")
+    haLab.font = ViewConstants.labelFont
+    val vaLab = new Label("Vertikale Ausrichtung")
+    vaLab.font = ViewConstants.labelFont
     contents += getPanelPart("Schrift:",fontCombo) += getPanelPart("Größe:",fontSizeEditor)+=
       getPanelPart("Stil:",new GridPanel(1,3){contents+=boldBut+=italicBut+=underlineBut;opaque=false})+=Swing.VStrut(5)+=
-        new Label("Horizontale Ausrichtung")+=getPanelPart(" ",alHBox)+=
-          new Label("Vertikale Ausrichtung")+=getPanelPart(" ",alVBox)+=Swing.VStrut(5) +=
+      haLab += getPanelPart(" ", alHBox) +=
+      vaLab += getPanelPart(" ", alVBox) += Swing.VStrut(5) +=
           getPanelPart("",showFormulaCheck)+=getPanelPart("",visibleCheck)+=getPanelPart("",lineBreakCheck)+=Swing.VStrut(5)+=            
           getPanelPart("Inhalt:",cellFormCombo)+=formatContainer+=Swing.VStrut(5)+=borderLabel+=borderDefPanel+=Swing.VStrut(15)
 		//preferredSize=new Dimension(70,470)
@@ -279,12 +267,12 @@ class SpreadSheetFieldEditor extends FieldEditor {
 			case ButtonClicked(`visibleCheck`)=>writeFieldValue(12,SpreadSheetFormat(visible=Some(visibleCheck.selected)))
 			case ButtonClicked(`lineBreakCheck`)=>writeFieldValue(11,SpreadSheetFormat(lineBreak=Some(lineBreakCheck.selected)))			
 			case ButtonClicked(`noBorderRadio`)=>borderRadios.selected match {
-			  case Some(selected)=> writeBorder(getBorderIx(selected),Some(new BorderInfo(0f,0,0)))
+        case Some(selected) => writeBorder(getBorderIx(selected), Some(BorderInfo(0f, 0, 0)))
 			  case None =>
 			}
 			case ButtonClicked(`someBorderRadio`)=> borderRadios.selected match {
-			  case Some(selected)=>borderWidthCombo.selection.item match {			     
-			    case (item)=>writeBorder(getBorderIx(selected),Some(new BorderInfo(item,0,0))) 
+			  case Some(selected)=>borderWidthCombo.selection.item match {
+          case (item) => writeBorder(getBorderIx(selected), Some(BorderInfo(item, 0, 0)))
 			  }
 			  case None =>
 			}
@@ -302,7 +290,7 @@ class SpreadSheetFieldEditor extends FieldEditor {
   override def setData(data:Iterable[SelectGroup[_<:Referencable]]): Unit = {
     spreadSheetSG=None   
     //rintln("Set Data :"+data.mkString(","))
-    if(data.size>0)data.head match {
+    if (data.nonEmpty) data.head match {
       case fsg:SpreadSheetSelectGroup=>
         spreadSheetSG=Some(fsg)
         val format=fsg.commonFormat
@@ -365,8 +353,8 @@ class SpreadSheetFieldEditor extends FieldEditor {
   		panel.revalidate()
   		panel.repaint()
   }
-    
-  
-  def writeFieldValue(field:Int,newValue:SpreadSheetFormat)= 
+
+
+  def writeFieldValue(field: Int, newValue: SpreadSheetFormat): Unit =
     spreadSheetSG.foreach(value=>value.controller.formatList.setFormatValue(value.range,field,newValue))
 }

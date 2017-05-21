@@ -1,22 +1,16 @@
 package client.importer
 
-import scala.swing.Dialog
-import scala.swing.Window
-import java.awt.Dimension
-import scala.swing.BorderPanel
-import scala.swing.Button
-import scala.swing.BoxPanel
-import scala.swing.Swing
-import scala.swing.Label
-import scala.swing.ProgressBar
+import java.awt.{Point, Rectangle}
+
+import client.dataviewer.ViewConstants
+
 import scala.swing.event.ButtonClicked
-import java.awt.Point
-import java.awt.Rectangle
+import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, Label, ProgressBar, Swing, Window}
 
 class ProcessDialog(w:Window,cancelCallBack:()=>Unit) extends Dialog(w) {
   val cancelBut=new Button("Abbrechen")
-  val filesLabel=new Label("Datei")
-  val currFileLabel=new Label("Akt")
+  val filesLabel: Label = ViewConstants.label("Datei")
+  val currFileLabel: Label = ViewConstants.label("Akt")
   val filesBar=new ProgressBar
   val currFileBar=new ProgressBar
   
@@ -40,13 +34,13 @@ class ProcessDialog(w:Window,cancelCallBack:()=>Unit) extends Dialog(w) {
     
   //modal=true    
   contents=mainPanel
- 
-  def cancelImport() = {
+
+  def cancelImport(): Unit = {
     cancelCallBack()
     close()
   }
-  
-  def showDialog(importName:String,pos:Point,numFiles:Int)= {
+
+  def showDialog(importName: String, pos: Point, numFiles: Int): Unit = {
     filesBar.max=numFiles
     filesBar.min=1
     filesBar.value=1
@@ -56,8 +50,8 @@ class ProcessDialog(w:Window,cancelCallBack:()=>Unit) extends Dialog(w) {
     bounds=new Rectangle(cpos.x,cpos.y,600,350)
     visible=true
   }
-  
-  def setCurrFile(procData:ProcData)= {
+
+  def setCurrFile(procData: ProcData): Unit = {
     //println("Set curr File "+procData.file)
     filesBar.value=procData.fileNr+1
     filesLabel.text="Datei "+procData.fileNr+" von "+ filesBar.max+" Größe:"+(procData.file.length()/1024)+" kB"
@@ -65,8 +59,8 @@ class ProcessDialog(w:Window,cancelCallBack:()=>Unit) extends Dialog(w) {
     currFileBar.max=100
     currFileLabel.text="Importiere "+procData.file.getName+ "..."
   }
-  
-  def setCurrentFileState(state:Int) = {
+
+  def setCurrentFileState(state: Int): Unit = {
     currFileBar.value=state
     currFileBar.repaint()
   }

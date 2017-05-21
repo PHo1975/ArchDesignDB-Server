@@ -1,37 +1,30 @@
 package client.dialog.symbolbrowser
 
-import definition.typ.CustomPanel
-
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import client.dialog._
-import util.StrToDouble
-
-import scala.swing.GridPanel
-import scala.swing.Button
-import scala.swing.Swing
-import definition.expression.{DoubleConstant, Expression, ParserError, StringParser}
 import java.awt.Dimension
 
 import client.comm.ClientQueryManager
+import client.dialog._
+import definition.expression.{DoubleConstant, Expression, ParserError, StringParser}
+import definition.typ.CustomPanel
 
+import scala.swing.{BoxPanel, Button, GridPanel, Orientation, Swing}
 import scala.swing.event.ButtonClicked
 
 class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPanel {
   @volatile var angle:Double=0d
   @volatile var scale:Double=1d
 
-  def parse(text:String)=StringParser.parse(text) match {
+  def parse(text: String): Double = StringParser.parse(text) match {
     case e:ParserError=> ClientQueryManager.printErrorMessage(e.message);0d
     case ex:Expression=>ex.getValue.toDouble
   }
 
   val angleEdit=new ActiveTextField{
-    def fieldChanged(st:String)= angle=parse(st)
+    def fieldChanged(st: String): Unit = angle = parse(st)
   }
   
   val scaleEdit=new ActiveTextField{
-    def fieldChanged(st:String)= scale=parse(st)
+    def fieldChanged(st: String): Unit = scale = parse(st)
   }
   
   val noRotateBut=new Button("/\\")

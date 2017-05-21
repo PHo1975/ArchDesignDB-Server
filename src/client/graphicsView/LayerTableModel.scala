@@ -5,15 +5,17 @@ package client.graphicsView
 
 
 import java.awt.geom.Rectangle2D
+import java.lang
 import javax.swing.table._
 
 import client.comm.ClientQueryManager
-import definition.comm.{IntValue, PropertyGroup, StringValue}
+import definition.comm.{IntValue, ListValue, PropertyGroup, StringValue}
 import definition.data._
 import definition.expression.{StringConstant, VectorConstant}
-import util.{Log, StringUtils}
+import util.StringUtils
 
 import scala.collection.SortedMap
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
 
 /**
@@ -29,20 +31,20 @@ trait AbstractLayerModel {
 class LoadHandler{
   var completed=false
   var job:Option[()=>Unit]=None
-  
-  def complete()= {   
+
+  def complete(): Unit = {
     //println("complete, job:"+job)
     completed=true
     for(j<-job) j()
   }
-  
-  def registerJob(njob:()=>Unit)= {
+
+  def registerJob(njob: () => Unit): Unit = {
     //println("register job completed "+completed)
     if(completed) njob()
     else job=Some(njob)
 }
-  
-  def reset()={    
+
+  def reset(): Unit = {
     completed=false
     job=None
   }
@@ -50,38 +52,37 @@ class LoadHandler{
 }
 
 class LayerTableModel(controller:GraphViewController) extends AbstractTableModel with AbstractLayerModel {
-  val layerList=collection.mutable.ArrayBuffer[AbstractLayer]()
+  val layerList: ArrayBuffer[AbstractLayer] = collection.mutable.ArrayBuffer[AbstractLayer]()
   var viewFilter:Option[SelectionFilterInfo]=None
   val listLock=new Object()
   val loadHandler=new LoadHandler
   private var activeLayer:Int=0
   //val javaTrue=new java.lang.Boolean(true)
   //val javaFalse=new java.lang.Boolean(false)
-  val newElemLayer=new NewElemLayer(controller)  
+  val newElemLayer: NewElemLayer = new NewElemLayer(controller)
   var sizeChangeListener:Option[(Int) => Unit] = None
-  
-  
-  def addLayer(newLayer:AbstractLayer) = listLock.synchronized{
+
+
+  def addLayer(newLayer: AbstractLayer): Unit = listLock.synchronized {
     //println("add Layer:"+newLayer+" \n"+Thread.currentThread().getStackTrace().take(15).mkString("\n"))
   	layerList +=newLayer
   	val newSize=layerList.size
   	fireTableRowsInserted(newSize,newSize)
   	notifySizeChanged()
   }
-  
-  def isEmpty=layerList .isEmpty
-  
-  def removeLayer(ix:Int) = listLock.synchronized{
+
+  def isEmpty: Boolean = layerList.isEmpty
+
+  def removeLayer(ix: Int): Unit = listLock.synchronized {
     //layerList(ix).shutDown
   	layerList.remove(ix)  	
   	if(ix==activeLayer) {
   	  val next=getNextActiveLayer
   	  if(next>=0)  setActiveLayerIx(next)
-  	  else if(layerList.size>0) {
+      else if (layerList.nonEmpty) {
   	    activeLayer=0
-  	    toggleEdible(0)  	      	    
-  	  }
-  	  else activeLayer= -1
+  	    toggleEdible(0)
+      } else activeLayer = -1
   	  if(activeLayer > -1){
   	  	controller.setRelativeScale(layerList(activeLayer).scale)
   	  	controller.notifyContainerListeners(0)
@@ -92,32 +93,31 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	notifySizeChanged()
   	System.gc()
   }
-  
-  def removeAllLayers(shuttingDown:Boolean) = listLock.synchronized {
+
+  def removeAllLayers(shuttingDown: Boolean): Unit = listLock.synchronized {
   	layerList.foreach (_.shutDown())
   	layerList.clear()
   	if(!shuttingDown)notifySizeChanged()
   }
-  
-  def changeLayerState(pos:Int,newState:AbstractLayer) = listLock.synchronized{
+
+  def changeLayerState(pos: Int, newState: AbstractLayer): Unit = listLock.synchronized {
   	layerList(pos)=newState
   	fireTableRowsUpdated(pos,pos)  	
   }
-  
-  def layerChanged(lay:AbstractLayer) = {
+
+  def layerChanged(lay: AbstractLayer): Unit = {
     lay match {
       case l:Layer =>
 				val ix=layerList.indexWhere(_.ref==l.ref)
 				if(ix> -1) {
           if(ix==activeLayer) controller.setRelativeScale(l.scale)
           fireTableDataChanged()
-
         }
 			case _=>
     }
   }
-  
-  def layerRemoved(lay:AbstractLayer) = {
+
+  def layerRemoved(lay: AbstractLayer): Unit = {
     val ix=layerList.indexWhere(_.ref==lay.ref)
     if(ix> -1) removeLayer(ix)
   }
@@ -125,13 +125,13 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   /** checks if there are visible Layers
    * 
    */
-  def hasVisibleLayers= 
+  def hasVisibleLayers: Boolean =
   	layerList.exists(_.visible)
   
   def setActiveLayerIx(layerNum:Int,exclusive:Boolean=false):Unit= {
   	activeLayer=layerNum
   	if(activeLayer>=layerList.size || activeLayer<0) {
-  	  if(layerList.size>0) {
+      if (layerList.nonEmpty) {
   	  	activeLayer=0
   	  	toggleVisibility(0)
   	  }
@@ -142,10 +142,16 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	  }
   	} 
   	if(exclusive){
-  	  for(aLayIX<-layerList.indices;if aLayIX != activeLayer;layer=layerList(aLayIX)) {
+      for (aLayIX <- layerList.indices; layer = layerList(aLayIX)) if (aLayIX != activeLayer) {
   	    layer.edible=false
   	    if(layer.visible) layer.hide()
-  	  }
+      } else {
+        if (!layer.visible) {
+          loadHandler.reset()
+          layer.load(Some(loadHandler.complete _), true)
+        }
+        if (!layer.edible) layer.edible = true
+      }
   	  loadHandler.registerJob(()=>{controller.zoomAll()})
   	}    
   	controller.setRelativeScale(layerList(activeLayer).scale)
@@ -153,8 +159,8 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	controller.canvas.requestFocusInWindow()
   	fireTableDataChanged()
   }
-  
-  def setActiveLayerScale(newRelativeScaleID:Int)= if(layerList.nonEmpty){
+
+  def setActiveLayerScale(newRelativeScaleID: Int): Unit = if (layerList.nonEmpty) {
     layerList(activeLayer) match {
       case lay:Layer => lay.setLayerScale(newRelativeScaleID)
       case _ =>
@@ -165,21 +171,21 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	if(layerList.isEmpty|| activeLayer== -1) None
   	else  Some(layerList(activeLayer))
   }
-  
-  def getLabelText = getActiveLayer match {
+
+  def getLabelText: String = getActiveLayer match {
   	  case Some(al)=> al.name+" | "+ layerList.filter( el => el.ref!=al.ref && el.edible).map( _.name).mkString(", ") + " | " +
   	 layerList.filter(el => el.ref!=al.ref && !el.edible&&el.visible).map(_.name).mkString(", ") 
   	  case None => "Empty | "+layerList.filter(_.edible).map(_.name).mkString(", ")+" | "+
   		layerList.filter(el => !el.edible&&el.visible).map(_.name).mkString(", ") 
-  	}  	   	
-  
-  
-  def registerSizeChangeListener(newList:(Int) => Unit) =  {
+  	}
+
+
+  def registerSizeChangeListener(newList: (Int) => Unit): Unit = {
   	sizeChangeListener=Some(newList)
   	notifySizeChanged()
   }
-  
-  def notifySizeChanged() = for(scl<- sizeChangeListener) scl(layerList.size)
+
+  def notifySizeChanged(): Unit = for (scl <- sizeChangeListener) scl(layerList.size)
   
   def toggleVisibility(ix:Int):Unit = listLock.synchronized{    
   	val layer=layerList(ix)  	
@@ -232,18 +238,18 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   
   
   def getNextActiveLayer:Int= layerList.indexWhere(alay=>alay.visible && alay.edible)
-  
-  
-  def containsRef(ref:Reference) = layerList.exists(_.ref ==ref)
 
-  def getRowCount= listLock.synchronized{		
+
+  def containsRef(ref: Reference): Boolean = layerList.exists(_.ref == ref)
+
+  def getRowCount: Int = listLock.synchronized {
     if(layerList.isEmpty) 1
     else layerList.size		
 	}
   
 	def getColumnCount= 6
-	
-	def boolToJava(value:Boolean) = if(value)java.lang.Boolean.TRUE else java.lang.Boolean.FALSE
+
+  def boolToJava(value: Boolean): lang.Boolean = if (value) java.lang.Boolean.TRUE else java.lang.Boolean.FALSE
 
 	def getValueAt(row:Int,col:Int):Object = listLock.synchronized{
 		if( row<layerList.size) {
@@ -253,20 +259,20 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 				case 1 => layer.edible.asInstanceOf[AnyRef]
 				case 2 => (row==activeLayer).asInstanceOf[AnyRef]
 				case 3 => layer.id
-				case 4 => layer.name
+        case 4 => (layer.name, layer.path)
 				case 5 => " X "
 				case _ => ""
 			}
 		}		
 		else null
 	}
-	
-	override def setValueAt(value:Object,row:Int,col:Int)= if(col>2&&col<5&&row<layerList.size) {
+
+  override def setValueAt(value: Object, row: Int, col: Int): Unit = if (col > 2 && col < 5 && row < layerList.size) {
 	  val layer=layerList(row)
-	  ClientQueryManager.writeInstanceField(layer.ref,(col-3).toByte, new StringConstant(value.toString))
+    ClientQueryManager.writeInstanceField(layer.ref, (col - 3).toByte, StringConstant(value.toString))
 	}
-	
-	override def getColumnName(col:Int) =  {
+
+  override def getColumnName(col: Int): String = {
 		col match {
 			case 0 =>"Sich"
 			case 1 =>"Änd"
@@ -278,23 +284,23 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 			//case 6 =>"El.Kop"
 		}
 	}
-	
-	override def getColumnClass(col:Int) = col match {		
+
+  override def getColumnClass(col: Int): Class[_] = col match {
 		case 0 => classOf[Boolean]
 		case 1 => classOf[Boolean]
 		case 2 => classOf[java.lang.Boolean]
 		case 3 => classOf[String]
-		case 4 => classOf[String]
+    case 4 => classOf[(String, Array[String])]
 		case 5 => classOf[javax.swing.JButton]
 		//case 5 => classOf[String]
 		//case 6 => classOf[java.lang.Boolean]
 	}
-	
-	override def isCellEditable(rowIndex:Int,columnIndex:Int)= {
+
+  override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean =
 	  columnIndex>2&&columnIndex<5
-  }
-	
-	def calcAllLayerBounds()= {
+
+
+  def calcAllLayerBounds(): Rectangle2D.Double = {
 	  //println("CalcAllBounds")
 		val bounds=new Rectangle2D.Double
 		bounds.x=Double.MaxValue
@@ -303,8 +309,10 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 		bounds.height=Double.MinValue
 		for(lay <-layerList; if lay.visible)
 			doLayerCheck(lay,bounds)
-	  if(newElemLayer.elemList.nonEmpty)
-	  	doLayerCheck(newElemLayer,bounds)
+    if (newElemLayer.elemList.nonEmpty) {
+      doLayerCheck(newElemLayer, bounds)
+      //Log.w("calcAllBounds newElems:"+newElemLayer.elemList.size)
+    }
 		bounds.width-=bounds.x
 		bounds.height-=bounds.y
 		bounds
@@ -348,18 +356,19 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 		else
 			ret1:+((newElemLayer,nList))		
 	}
-	
-	def storeSettings(pgroup:PropertyGroup)= {
-	  pgroup.addProperty(new IntValue("NumLay",layerList.size))
+
+  def storeSettings(pgroup: PropertyGroup): Unit = {
+    pgroup.addProperty(IntValue("NumLay", layerList.size))
   	for(layerIx <-layerList.indices;layer=layerList(layerIx)) {
-  	  pgroup.addProperty(new StringValue("L"+layerIx.toString,layer.ref.sToString()))
+      pgroup.addProperty(StringValue("L" + layerIx.toString, layer.ref.sToString()))
   	  val state=(if(layer.edible)2 else 0)+(if(layer.visible)1 else 0)
-  	  pgroup.addProperty(new IntValue("LS"+layerIx.toString,state))
+      pgroup.addProperty(IntValue("LS" + layerIx.toString, state))
+      if (!layer.path.isEmpty) pgroup.addProperty(ListValue("LP" + layerIx.toString, layer.path.toIndexedSeq))
   	}
-	  pgroup.addProperty(new IntValue("AS",activeLayer))
+    pgroup.addProperty(IntValue("AS", activeLayer))
 	}
-	
-	def restoreSettings(pgroup:PropertyGroup,doneListener:Option[()=>Unit])= {
+
+  def restoreSettings(pgroup: PropertyGroup, doneListener: Option[() => Unit]): Unit = {
 	  //System.out.println("LayerModel restore settings ")
 	  layerList.clear()
 	  val numLayer=pgroup.getIntProperty("NumLay")
@@ -368,8 +377,11 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 		for(i<- 0 until numLayer) {
 			val layRef=Reference(pgroup.getStringProperty("L"+i.toString))
 			val state=pgroup.getIntProperty("LS"+i.toString)
+      val pathGroup = "LP" + i.toString
+      val path: Iterable[String] = if (pgroup.containsProperty(pathGroup)) pgroup.getListProperty[String](pathGroup)
+      else Seq.empty[String]
 			if(ClientQueryManager.queryInstance(layRef, -1.toByte).size==1) {
-				val newLayer =Layer.createLayer(controller,layRef,(state&1)==1,(state&2)==2)
+        val newLayer = Layer.createLayer(controller, layRef, (state & 1) == 1, (state & 2) == 2, path.toArray)
 				layerList +=newLayer
 			}
 		}
@@ -397,11 +409,11 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 
 
-	def openLayers(openLayerList:Seq[Referencable],doneListener:Option[()=>Unit])= {
+  def openLayers(openLayerList: Seq[Referencable], doneListener: Option[() => Unit], path: Array[String]): Unit = {
 		layerList.clear()
 		var firstLay=true
 		for(l<-openLayerList) {
-			layerList+= Layer.createLayer(controller,l.ref,firstLay,firstLay)
+      layerList += Layer.createLayer(controller, l.ref, firstLay, firstLay, path)
 			if(firstLay) firstLay=false
 		}
 		notifySizeChanged()

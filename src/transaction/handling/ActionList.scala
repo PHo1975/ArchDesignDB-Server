@@ -3,7 +3,7 @@
  */
 package transaction.handling
 
-import definition.data.{DataRetriever, InstanceData, InstanceProperties, Reference, ReferencingLinks}
+import definition.data._
 import server.comm.{CommonSubscriptionHandler, UserList}
 import server.storage.{CollFuncResultSet, StorageManager}
 
@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
 
 
 object ActionList extends DataRetriever {
-	var theList=collection.mutable.LinkedHashMap[Reference,TransactionData]()
+  var theList: mutable.LinkedHashMap[Reference, TransactionData] = collection.mutable.LinkedHashMap[Reference, TransactionData]()
 	protected var _bufferUpdates=false
   
 	val copiedInstances: mutable.HashMap[Reference, Reference] =collection.mutable.HashMap[Reference,Reference]()
@@ -55,7 +55,7 @@ object ActionList extends DataRetriever {
 
 
   def commitAllData(): Unit = {
-    //System.out.println(theList.mkString("|"))
+    //System.out.println("commit:"+theList.mkString("|"))
     var hasMoveOrCopy:Boolean=false
     _bufferUpdates=true
     try {

@@ -6,35 +6,45 @@ package runtime.function
 import java.io.{ByteArrayInputStream, DataInputStream}
 
 import definition.data.{InstanceData, OwnerReference, Reference}
-import definition.expression.{BlobConstant, Constant, DoubleConstant, EMPTY_EX, Edge, Expression, Line3D, ObjectReference, PointList, Polygon, PolygonDivider, StringConstant, VectorConstant}
-import definition.typ.{AnswerDefinition, CommandQuestion, DataType, DialogQuestion}
-import server.comm.{AbstractUserSocket, JavaClientSocket}
+import definition.expression._
+import definition.typ._
+import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, CreateActionImpl, StorageManager}
 import transaction.handling.{ActionList, TransactionManager}
 import util.{GraphUtils, Log, StringUtils}
+
+import scala.collection.mutable
 
 /**
  * 
  */
 
 class Circle (val data:InstanceData) extends AnyVal {
-  def centerPoint=data.fieldValue(3).toVector
-	def diameter=data.fieldValue(4).toDouble
-	def startAngle=data.fieldValue(5).toDouble
-	def endAngle=data.fieldValue(6).toDouble
-	override def toString="Circle center"+centerPoint+" diameter:"+diameter+" startAngle:"+startAngle+" endAngle:"+endAngle
+  def centerPoint: VectorConstant = data.fieldValue(3).toVector
+
+  def diameter: Double = data.fieldValue(4).toDouble
+
+  def startAngle: Double = data.fieldValue(5).toDouble
+
+  def endAngle: Double = data.fieldValue(6).toDouble
+
+  override def toString: String = "Circle center" + centerPoint + " diameter:" + diameter + " startAngle:" + startAngle + " endAngle:" + endAngle
 }
 
 
 class Line(val data:InstanceData) extends AnyVal {
-  def p1= data.fieldValue(3).toVector
-	def p2= data.fieldValue(4).toVector
-	def delta=p2-p1
-	def length={
+  def p1: VectorConstant = data.fieldValue(3).toVector
+
+  def p2: VectorConstant = data.fieldValue(4).toVector
+
+  def delta: VectorConstant = p2 - p1
+
+  def length: Double = {
 		val d=delta
 		math.sqrt(d.x*d.x+d.y*d.y)
 	}
-	override def toString="Line p1:"+p1+" p2:"+p2
+
+  override def toString: String = "Line p1:" + p1 + " p2:" + p2
 }
 
 
@@ -49,8 +59,8 @@ trait GraphActionModule {
 	def scale(elem:InstanceData,refPoint:VectorConstant,sx:Double,sy:Double):Unit= {}
 	
 	var theTypeID:Int= -1
-	
-	def setObjectType(typeID:Int) = {
+
+  def setObjectType(typeID: Int): Unit = {
 		//System.out.println("set object type ":+typeID+" "+this)
 		theTypeID=typeID
 		TypeInfos.moduleMap(theTypeID)=this
@@ -60,13 +70,13 @@ trait GraphActionModule {
 	  for(p <-params)
 	  TransactionManager.tryWriteInstanceField(ref,p._1.toByte,p._2)
 	}
-	
-	def scalePoint(oPoint:VectorConstant,refPoint:VectorConstant,sx:Double,sy:Double)={
+
+  def scalePoint(oPoint: VectorConstant, refPoint: VectorConstant, sx: Double, sy: Double): VectorConstant = {
 	  //println("scalePoint "+oPoint+" sx:"+sx+" sy:"+sy)
 	  new VectorConstant(refPoint.x+(oPoint.x-refPoint.x)*sx,refPoint.y+(oPoint.y-refPoint.y)*sy,0)
 	}
-  
-  protected def pointModField(fieldNr:Int,elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = {
+
+  protected def pointModField(fieldNr: Int, elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): AnyVal = {
     val p1=elem.fieldValue(fieldNr).toVector    
     if (chPoints.contains(p1)) TransactionManager.tryWriteInstanceField(elem.ref,fieldNr.toByte,p1+delta)    
   }
@@ -75,20 +85,21 @@ trait GraphActionModule {
 object GraphElemModule{  
   val wrongExtendTreshold=10000d
   val nearNullTreshold=0.00001d
-  def singlePointQuestion(qname:String,pname:String)=Some(new DialogQuestion(qname,Seq(new AnswerDefinition(pname,DataType.VectorTyp,None))))
-  
-  def mvQuestion(aName:String)=Some(new DialogQuestion(aName+"<br>Distanz angeben",
-		Seq(new AnswerDefinition("'von Punkt' angeben",DataType.VectorTyp,
-		    Some(new DialogQuestion(aName+"<br>Distanz",
-		    		Seq(new AnswerDefinition("'nach Punkt' angeben",DataType.VectorTyp,None)))) ),
-			  new AnswerDefinition("Delta X eingeben:",DataType.DoubleTyp,dyQuestion)
-			)))
-  
-  
-	lazy val dyQuestion= Some(new DialogQuestion("Eingabe Distanzwert",
-		Seq(new AnswerDefinition("delta Y eingeben:",DataType.DoubleTyp,None))))
-		
-	def checkAngle(angle:Double)= if(angle==360) 360d else  angle % 360d
+
+  def singlePointQuestion(qname: String, pname: String) = Some(DialogQuestion(qname, Seq(new AnswerDefinition(pname, DataType.VectorTyp, None))))
+
+  def mvQuestion(aName: String) = Some(DialogQuestion(aName + "<br>Distanz angeben",
+    Seq(new AnswerDefinition("'von Punkt' angeben", DataType.VectorTyp,
+      Some(DialogQuestion(aName + "<br>Distanz",
+        Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None))))),
+      new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion)
+    )))
+
+
+  lazy val dyQuestion = Some(DialogQuestion("Eingabe Distanzwert",
+    Seq(new AnswerDefinition("delta Y eingeben:", DataType.DoubleTyp, None))))
+
+  def checkAngle(angle: Double): Double = if (angle == 360) 360d else angle % 360d
 	
 	def rotateAngleField(elem:InstanceData,fieldNr:Byte,angle:Double):Double= {
     val newAngle=checkAngle(elem.fieldValue(fieldNr).toDouble+angle*180d/math.Pi)
@@ -104,47 +115,119 @@ object GraphElemModule{
 	    if(v<0) v+360d else v
 	  }
 
-	def cutPointQuestion=Some(new DialogQuestion("Point1",Seq(new AnswerDefinition("hitpoint1",DataType.VectorTyp,
-		Some(new DialogQuestion("Point2",Seq(	new AnswerDefinition("hitpoint2",DataType.VectorTyp,None)),false)))),false))
+  def cutPointQuestion = Some(DialogQuestion("Point1", Seq(new AnswerDefinition("hitpoint1", DataType.VectorTyp,
+    Some(DialogQuestion("Point2", Seq(new AnswerDefinition("hitpoint2", DataType.VectorTyp, None)), false)))), false))
+
+  def polygonFromParams(inst: Reference, params: Seq[(String, Constant)]): Polygon = {
+    if (params.size < 2) throw new IllegalArgumentException("Create Polygon wrong number of params:" + params.size + " " + params.mkString(","))
+    val paramIterator = params.iterator
+    val startPoint: VectorConstant = paramIterator.next()._2.toVector
+
+    val plist: Seq[VectorConstant] = paramIterator.scanLeft(startPoint) { case (lastPoint, (name, const)) => const match {
+      case v: VectorConstant => v
+      case d: DoubleConstant => if (name == "dx") lastPoint + new VectorConstant(d.toDouble, 0d, 0d)
+      else lastPoint + new VectorConstant(0d, d.toDouble, 0d)
+      case o => throw new IllegalArgumentException("Wrong answer:" + o)
+    }
+    }.toSeq
+
+    val pointList = if (plist.size == 2) {
+      val p1 = plist.head
+      val p2 = plist(1)
+      List(p1, new VectorConstant(p1.x, p2.y, p1.z), p2, new VectorConstant(p2.x, p1.y, p2.z))
+    } else plist
+    new Polygon(Seq(inst), Seq(PointList(pointList).clockWise))
+  }
+
+  def groupByOrdered[A, K](t: Traversable[A], f: A => K): mutable.Map[K, List[A]] = {
+    val map = mutable.LinkedHashMap[K, List[A]]().withDefault(_ => List[A]())
+    for (i <- t) {
+      val key = f(i)
+      map(key) = i :: map(key)
+    }
+    map
+  }
+
+  def getUmfang(poly: Polygon, addStartPoint: Boolean): Expression = {
+
+
+    val lengths: Seq[Double] = (poly.pathList.headOption match {
+      case Some(pl) if pl.points.size > 1 => {
+        val lastPointIterator = new Iterator[Double] {
+          var open = true
+
+          def hasNext: Boolean = addStartPoint && open
+
+          def next: Double = {open = false; PolygonDivider.roundValue((pl.points.head - pl.points.last).toDouble)}
+        }
+        pl.points.indices.iterator.drop(1).map(i =>
+          PolygonDivider.roundValue((pl.points(i) - pl.points(i - 1)).toDouble)) ++ lastPointIterator
+      }
+      case _ => Iterator.empty
+    }).toSeq
+
+    val r: Iterable[Expression] = if (lengths.size == 1) Seq(UnitNumber(lengths.head, PolygonDivider.meterFraction)) else
+      groupByOrdered[Double, Double](lengths, identity).map((k) => {
+        //println("f len key:"+k._1+" list:"+k._2.mkString)
+        val num = k._2.size
+        val theLength = k._1
+        if (num == 1) new UnitNumber(theLength, PolygonDivider.meterFraction)
+        else BinaryOperation(UnitNumber(theLength, PolygonDivider.meterFraction), BinOperator.getOp('*'), DoubleConstant(num))
+      })
+    //println("r:"+r.mkString(" | "))
+    if (r.nonEmpty) r.reduceLeft((a, b) => {
+      def combine = BinaryOperation(a, BinOperator.getOp('+'), b)
+
+      a match {
+        case (a1@BinaryOperation(_, _, DoubleConstant(num1))) => b match {
+          case (b1@BinaryOperation(_, _, DoubleConstant(num2))) if num1 == num2 =>
+            BinaryOperation(BinaryOperation(a1.left, BinOperator.getOp('+'), b1.left), BinOperator.getOp('*'), a1.right)
+          case _ => combine
+        }
+        case _ => combine
+      }
+    }) else EMPTY_EX
+  }
+
 }
 
 class GraphElemModule extends ActionModule {
   import runtime.function.GraphElemModule._
-  var graphTypeID:Int= -1  
-  
-	def setObjectType(typeID:Int) =graphTypeID=typeID 
-  
-	
-	val moveAction=new ActionIterator("Verschieben",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	    "Move")),doMove)
-	
-	val copyAction=new ActionIterator("Kopieren",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",	
-	    "Copy")),doCopy,true)	
-	
-	val rotateAction=new ActionIterator("Drehen",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",	
-	    "Rotate")),doRotate)
+  var graphTypeID:Int= -1
 
-  val rotateMultAction=new ActionIterator("Mehrfach Drehen",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def setObjectType(typeID: Int): Unit = graphTypeID = typeID
+
+
+  val moveAction = new ActionIterator("Verschieben", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Move")), doMove)
+
+  val copyAction = new ActionIterator("Kopieren", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Copy")), doCopy, true)
+
+  val rotateAction = new ActionIterator("Drehen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Rotate")), doRotate)
+
+  val rotateMultAction = new ActionIterator("Mehrfach Drehen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
     "RotateMulti")),doRotateMulti)
 
-  val pointModAction=new ActionIterator("Punkt-Mod",Some(new DialogQuestion("Punkt-Mod",Seq(new AnswerDefinition("Punkte wählen",DataType.BlobTyp,mvQuestion("Punkt-Mod"),"SelectPoints")))),
+  val pointModAction = new ActionIterator("Punkt-Mod", Some(DialogQuestion("Punkt-Mod", Seq(new AnswerDefinition("Punkte wählen", DataType.BlobTyp, mvQuestion("Punkt-Mod"), "SelectPoints")))),
       doPointMod)
- 
-  val scaleAction=new ActionIterator("Verzerren",Some(new DialogQuestion("Bezugspunkt",Seq(new AnswerDefinition("Bezugspunkt eingeben",DataType.VectorTyp ,
-      	Some(new DialogQuestion("Faktor X",Seq(new AnswerDefinition("Faktor X eingeben",DataType.DoubleTyp ,
-      	Some(new DialogQuestion("Faktor Y",Seq(new AnswerDefinition("Faktor Y eingeben",DataType.DoubleTyp ,None)))))))))))),
+
+  val scaleAction = new ActionIterator("Verzerren", Some(DialogQuestion("Bezugspunkt", Seq(new AnswerDefinition("Bezugspunkt eingeben", DataType.VectorTyp,
+    Some(DialogQuestion("Faktor X", Seq(new AnswerDefinition("Faktor X eingeben", DataType.DoubleTyp,
+      Some(DialogQuestion("Faktor Y", Seq(new AnswerDefinition("Faktor Y eingeben", DataType.DoubleTyp, None)))))))))))),
       doScale)
-  
-  val createSymbolAction=new ActionIterator("Symbol erzeugen",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-        "CreateSymbolStamp")),doCreateSymbol,false,900)
-  
-  val mirrorAction=new ActionIterator("Spiegeln",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-      "Mirror")),doMirror)
+
+  val createSymbolAction = new ActionIterator("Symbol erzeugen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "CreateSymbolStamp")), doCreateSymbol, false, 900)
+
+  val mirrorAction = new ActionIterator("Spiegeln", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Mirror")), doMirror)
 	
 	lazy val actions=List(moveAction,copyAction,rotateAction,rotateMultAction,mirrorAction,pointModAction,scaleAction,createSymbolAction)
-	
-	
-	def doMove(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {		
+
+
+  def doMove(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 		if(param.size==2) {
 			val delta = param.head._2 match {
 			  case startPoint:VectorConstant=>
@@ -155,15 +238,14 @@ class GraphElemModule extends ActionModule {
 			  case _=> throw new IllegalArgumentException("Falscher Parametertyp verschieben "+param.head._2)
 			}				
 			//System.out.println("move delta:"+delta)
-			for(d <-data) {
-				TypeInfos.moduleMap(d.ref.typ).moveElement(d, delta)					
-			}			  
+      for (d <- data)
+        TypeInfos.moduleMap(d.ref.typ).moveElement(d, delta)
 			true	
 		}
 		else false
 	}
-	
-	def doCopy(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {		
+
+  def doCopy(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 		if(param.size==3||param.size==2) {
 		  val (offset,numCopy)=if(param.head._2.getType==DataType.IntTyp)(1,param.head._2.toInt) else (0,1)
 			val delta = if(param(0+offset)._2.getType==DataType.VectorTyp )	{
@@ -183,10 +265,10 @@ class GraphElemModule extends ActionModule {
 			true	
 		}
 		else false
-	}	
-	
-	
-	def doRotate(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+	}
+
+
+  def doRotate(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  //println("Rotate params:\n"+param.mkString(" | " ))
 	  val center=param.head._2.toVector
 	  val angle=param(1)._2 match {
@@ -200,16 +282,15 @@ class GraphElemModule extends ActionModule {
 				val angle=getLineAngle(param(2)._2.toObjectReference) - getLineAngle(r1.toObjectReference)
 				if(angle>math.Pi) angle-math.Pi else if(angle<math.Pi) angle+math.Pi else angle
 		}
-	  val cosa=math.cos(angle)
-	  val sina=math.sin(angle)
+    // val cosa=math.cos(angle)
+    //val sina=math.sin(angle)
 	  val rotator=GraphUtils.createRotator(center,angle)
-	  for(d<-data) {
+    for (d <- data)
 	    TypeInfos.moduleMap(d.ref.typ).rotateElement(d,angle,rotator)
-	  }
 	  true
 	}
 
-  def doRotateMulti(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+  def doRotateMulti(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
     val num=param.head._2.toInt
     val center=param(1)._2.toVector
     val angle=param(2)._2 match {
@@ -225,20 +306,20 @@ class GraphElemModule extends ActionModule {
 		}
     for(i<-1 to num){
       val rAngle=i.toDouble*angle
-      val cosa=math.cos(rAngle)
-      val sina=math.sin(rAngle)
+      //val cosa=math.cos(rAngle)
+      //val sina=math.sin(rAngle)
       val rotator=GraphUtils.createRotator(center,rAngle)
       for(d<-data) {
         val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,false)
-        var newInst=d.clone(createInst.ref,d.owners,Seq.empty)
+        val newInst = d.clone(createInst.ref, d.owners, Seq.empty)
         TransactionManager.tryWriteInstanceData(newInst)
         TypeInfos.moduleMap(d.ref.typ).rotateElement(newInst, rAngle, rotator)
       }
     }
     true
   }
-	
-	def doMirror(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {	
+
+  def doMirror(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  val withCopies=param.head._2.getType==DataType.StringTyp          
 	  val (p1,p2)=param(if(withCopies)1 else 0)._2 match {
 	    case oref:ObjectReference =>
@@ -246,7 +327,7 @@ class GraphElemModule extends ActionModule {
 				(lineInst.fieldValue(3).toVector,lineInst.fieldValue(4).toVector)
 			case p1:VectorConstant=> (p1,param(if(withCopies)2 else 1)._2.toVector)
 	  }
-	  val mirrorLine=new Line3D(p1,p2-p1)	 	  
+    val mirrorLine = Line3D(p1, p2 - p1)
 	  for(d<-data){
 	    val inst=if(withCopies) {
 	      val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,false)
@@ -265,8 +346,8 @@ class GraphElemModule extends ActionModule {
 	  val p2=lineInst.fieldValue(4).toVector
 	  math.atan2(p2.y-p1.y,p2.x-p1.x)
 	}
-	
-	def doPointMod(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+
+  def doPointMod(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	   val delta = if(param(1)._2.getType==DataType.VectorTyp ){
 					val startPoint=param(1)._2.toVector
 					val endPoint=param(2)._2.toVector					
@@ -285,9 +366,9 @@ class GraphElemModule extends ActionModule {
 			case _ =>
 	  }
 	  true
-	}	
-	
-	def doScale(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)])= {
+	}
+
+  def doScale(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  val refPoint= param.head._2.toVector
 	  val sx=param(1)._2.toDouble
 	  val sy=param(2)._2.toDouble
@@ -296,8 +377,8 @@ class GraphElemModule extends ActionModule {
 	      	 TypeInfos.moduleMap(d.ref.typ).scale(d,refPoint,sx,sy)
 	  true
 	}
-  
-  def doCreateSymbol(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+
+  def doCreateSymbol(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
     val parentFolder=param(2)._2.toObjectReference
     println("parentFolder "+parentFolder)
     val owner=Array(new OwnerReference(1,parentFolder))
@@ -314,7 +395,7 @@ class GraphElemModule extends ActionModule {
         TransactionManager.tryWriteInstanceData(newInst)
       }         
       true
-    }
+  }
 }
 
 
@@ -322,26 +403,30 @@ class GraphElemModule extends ActionModule {
 class TextModule extends ActionModule with GraphActionModule {
 	val horizontalText="Horizontal"
   override val createActions=List(createTextAction)
-  val actions=List(replaceAction,alignHor,alignVert,distributeAction)
+  val actions = List(editTextAction, replaceAction, alignHor, alignVert, distributeAction)
   
   def alignHor=new ActionIterator("Vert.ausrichten",None,doAlignHor)
   def alignVert=new ActionIterator("Hor.ausrichten",None,doAlignVert)
-	def distributeAction=new ActionIterator("Verteilen",Some(new DialogQuestion("Verteilen",Seq(new AnswerDefinition("Ausrichtung",DataType.EnumTyp,None,horizontalText+",Vertikal")))),
+
+  def distributeAction = new ActionIterator("Verteilen", Some(DialogQuestion("Verteilen", Seq(new AnswerDefinition("Ausrichtung", DataType.EnumTyp, None, horizontalText + ",Vertikal")))),
 		doDistribute)
-	
-	def moveElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def editTextAction = new ActionIterator("Text ändern", Some(DialogQuestion("Text(e) ändern", Seq(new AnswerDefinition("Neuer Text", DataType.StringTyp, None)))), doEditText)
+
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,2,elem.fieldValue(2).toVector+delta)		
 	}
-	def copyElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData = {
 		elem.setField(2,elem.fieldValue(2).toVector+delta)
 	}
 	def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= {
 	   TransactionManager.tryWriteInstanceField(elem.ref,2,rotator(elem.fieldValue(2).toVector))
 	  TransactionManager.tryWriteInstanceField(elem.ref,7,new DoubleConstant(elem.fieldValue(7).toDouble+angle*180d/math.Pi))	  
 	}
-	
-	def createTextAction=new CreateActionImpl("Text", Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"CreateText")),doCreateText)
+
+  def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "CreateText")), doCreateText)
 	
 	def doCreateText(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
     if(parents.size>1) {Log.e("Multiple parents !");return false}
@@ -359,13 +444,13 @@ class TextModule extends ActionModule with GraphActionModule {
 	override def mirrorElement(elem:InstanceData,mirror:(VectorConstant)=>VectorConstant):InstanceData= {
 	  elem.setField(2,mirror(elem.fieldValue(2).toVector))
 	}
-	
-	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = pointModField(2,elem,delta,chPoints)
-  
-	
-	def replaceAction=new ActionIterator("Text ersetzen",Some(new DialogQuestion("Text ersetzen",
-		Seq(new AnswerDefinition("Suche nach",DataType.StringTyp,
-		    Some(new DialogQuestion("Text ersetzen",Seq(new AnswerDefinition("Ersetzen mit",DataType.StringTyp,None))))) ))),doReplace)
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = pointModField(2, elem, delta, chPoints)
+
+
+  def replaceAction = new ActionIterator("Text ersetzen", Some(DialogQuestion("Text ersetzen",
+    Seq(new AnswerDefinition("Suche nach", DataType.StringTyp,
+      Some(DialogQuestion("Text ersetzen", Seq(new AnswerDefinition("Ersetzen mit", DataType.StringTyp, None)))))))), doReplace)
 	
 	def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
 	  if(param.size!=2) {println("Ersetzen falsche parameter:"+param.mkString(","));return false}
@@ -379,50 +464,61 @@ class TextModule extends ActionModule with GraphActionModule {
 	  }
 	  true
 	}
-	
-	def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
-    var xValue=0d
-    for(d<-data) 
-      xValue+=d.fieldValue(2).toVector.x    
-    val newValue=xValue/data.size.toDouble
-    for(d<-data)
-      TransactionManager.tryWriteInstanceField(d.ref,2.toByte,new VectorConstant(newValue,d.fieldValue(2).toVector.y,0))
-    true
-	} else false
-	
-	def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
-    var yValue=0d
-    for(d<-data) 
-      yValue+=d.fieldValue(2).toVector.y    
-    val newValue=yValue/data.size.toDouble
-    for(d<-data)
-      TransactionManager.tryWriteInstanceField(d.ref,2.toByte,new VectorConstant(d.fieldValue(2).toVector.x,newValue,0))
-    true
-	} else false
 
-	def doDistribute (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>2){
-		//println("Verteilen "+param.mkString("|"))
-		val horizontal= param.head._2.toString==horizontalText
+  def doAlignHor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+    if (data.size > 1) {
+      var xValue = 0d
+      for (d <- data)
+        xValue += d.fieldValue(2).toVector.x
+      val newValue = xValue / data.size.toDouble
+      for (d <- data)
+        TransactionManager.tryWriteInstanceField(d.ref, 2.toByte, new VectorConstant(newValue, d.fieldValue(2).toVector.y, 0))
+      true
+    } else false
 
-		def getValue(d:InstanceData):Double={
-			val vector=d.fieldValue(2).toVector
-			if(horizontal) vector.x else vector.y
-		}
+  def doAlignVert(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+    if (data.size > 1) {
+      var yValue = 0d
+      for (d <- data)
+        yValue += d.fieldValue(2).toVector.y
+      val newValue = yValue / data.size.toDouble
+      for (d <- data)
+        TransactionManager.tryWriteInstanceField(d.ref, 2.toByte, new VectorConstant(d.fieldValue(2).toVector.x, newValue, 0))
+      true
+    } else false
 
-		val sortedList=data.sortBy(getValue)		
-		val min:Double=getValue(sortedList.head)
-		val max:Double=getValue(sortedList.last)
-		val step=(max-min)/(data.size-1)
-    var current=min+step
-    for(i<-1 until data.size-1;d=sortedList(i)){
-			val vector=d.fieldValue(2).toVector
-			val nv=new VectorConstant(if(horizontal)current else vector.x,if(horizontal)vector.y else current,vector.z)
-			TransactionManager.tryWriteInstanceField(d.ref,2,nv)
-			current+=step
-		}
+  def doDistribute(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+    if (data.size > 2) {
+      //println("Verteilen "+param.mkString("|"))
+      val horizontal = param.head._2.toString == horizontalText
 
-		true
-	} else false
+      def getValue(d: InstanceData): Double = {
+        val vector = d.fieldValue(2).toVector
+        if (horizontal) vector.x else vector.y
+      }
+
+      val sortedList = data.sortBy(getValue)
+      val min: Double = getValue(sortedList.head)
+      val max: Double = getValue(sortedList.last)
+      val step = (max - min) / (data.size - 1)
+      var current = min + step
+      for (i <- 1 until data.size - 1; d = sortedList(i)) {
+        val vector = d.fieldValue(2).toVector
+        val nv = new VectorConstant(if (horizontal) current else vector.x, if (horizontal) vector.y else current, vector.z)
+        TransactionManager.tryWriteInstanceField(d.ref, 2, nv)
+        current += step
+      }
+
+      true
+    } else false
+
+  def doEditText(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+    if (param.size == 1) {
+      val text = StringConstant(param.head._2.toString)
+      for (d <- data)
+        TransactionManager.tryWriteInstanceField(d.ref, 1, text)
+      true
+    } else false
 }
 
 
@@ -431,10 +527,11 @@ class BitmapModule extends ActionModule with GraphActionModule {
 	override val createActions=List(createBitmapAction)
 	val actions = Nil
 
-	def moveElement(elem:InstanceData,delta:VectorConstant) = {
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,6,elem.fieldValue(6).toVector+delta)
 	}
-	def copyElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData = {
 		elem.setField(6,elem.fieldValue(6).toVector+delta)
 	}
 	def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= {
@@ -446,13 +543,13 @@ class BitmapModule extends ActionModule with GraphActionModule {
 		elem.setField(6,mirror(elem.fieldValue(6).toVector))
 	}
 
-	def createBitmapAction=new CreateActionImpl("Bitmap", Some(new DialogQuestion("Bitmap erzeugen",
-		Seq(new AnswerDefinition("Dateipfad",DataType.StringTyp,Some(
-			new DialogQuestion("Bitmap erzeugen",Seq(new AnswerDefinition("Absetzposition",DataType.VectorTyp,None)))))))),doCreateBitmap)
+  def createBitmapAction = new CreateActionImpl("Bitmap", Some(DialogQuestion("Bitmap erzeugen",
+    Seq(new AnswerDefinition("Dateipfad", DataType.StringTyp, Some(
+      DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))))))), doCreateBitmap)
 
 	def doCreateBitmap(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		if(parents.size>1) {Log.e("Multiple parents !");return false}
-		val path=param(0)._2
+    val path = param.head._2
 		val pos=param(1)._2
 		if(path.toString.length>0) {
 			val inst=TransactionManager.tryCreateInstance(theTypeID,Array(new OwnerReference(0.toByte,parents.head.ref)),false)
@@ -468,13 +565,14 @@ class BitmapModule extends ActionModule with GraphActionModule {
 
 class LineModule extends ActionModule with GraphActionModule {
 	override val createActions=List(createLineAction,createRectAction,/*createCutLineAction,*/createOrthoLineAction,createTangentAction,createParPolyAction)
-	val actions=List(extendAction,cutPartAction,parallelAction,cutElemsAction)	
-	
-	def moveElement(elem:InstanceData,delta:VectorConstant) = {
+	val actions=List(extendAction,cutPartAction,parallelAction,cutElemsAction)
+
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toVector+delta)
 		TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toVector+delta)
 	}
-	def copyElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData = {
 		elem.setField(3,elem.fieldValue(3).toVector+delta).setField(4,
 		elem.fieldValue(4).toVector+delta)
 	}
@@ -485,8 +583,8 @@ class LineModule extends ActionModule with GraphActionModule {
 	override def mirrorElement(elem:InstanceData,mirror:(VectorConstant)=>VectorConstant):InstanceData= {
 	  elem.setField(3,mirror(elem.fieldValue(3).toVector)).setField(4,mirror(elem.fieldValue(4).toVector))
 	}
-	
-	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = {
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = {
     pointModField(3,elem,delta,chPoints)
     pointModField(4,elem,delta,chPoints)	  
 	}
@@ -497,10 +595,10 @@ class LineModule extends ActionModule with GraphActionModule {
 	  TransactionManager.tryWriteInstanceField(elem.ref,3,scalePoint(p1,refPoint,sx,sy))
 	  TransactionManager.tryWriteInstanceField(elem.ref,4,scalePoint(p2,refPoint,sx,sy))
 	}
-	
-		
-	def createLineAction=new CreateActionImpl("Linie",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"LineTo")),doCreateLine)
+
+
+  def createLineAction = new CreateActionImpl("Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "LineTo")), doCreateLine)
 	
 	def doCreateLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {		
   	//System.out.println("create line "+param.mkString)
@@ -511,17 +609,29 @@ class LineModule extends ActionModule with GraphActionModule {
 	
 	private def makeLinesFromParams(nparents:Seq[InstanceData],param:Seq[(String,Constant)],formFields:Seq[(Int,Constant)])= {
 	  var lastPoint=param.head._2.toVector
-	  var parents=Array(new OwnerReference(0.toByte,nparents.head.ref))
-	  for(i<- 1 until param.size) {
+    val parents = Array(new OwnerReference(0.toByte, nparents.head.ref))
+    var i = 1
+    while (i < param.size) {
 	    val np=param(i)
 	    val nextPoint=np match {
 	      case (_,v:VectorConstant)=> v
 	      case ("dx",d:DoubleConstant) =>  lastPoint + new VectorConstant(d.toDouble,0d,0d)
 	      case ("dy",d:DoubleConstant) =>	 lastPoint + new VectorConstant(0d,d.toDouble,0d)
+        case ("Winkel", d: DoubleConstant) =>
+          i += 1
+          param(i)._2 match {
+            case d: DoubleConstant =>
+              lastPoint + VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d) * d.toDouble
+            case v: VectorConstant =>
+              val delta = v - lastPoint
+              lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
+          }
+
 	      case o => throw new IllegalArgumentException("Wrong parameter "+o)
 	    }
 	    makeLine(parents,lastPoint,nextPoint,formFields)
 	    lastPoint=nextPoint
+      i += 1
 	  }
 	}
 	
@@ -535,10 +645,10 @@ class LineModule extends ActionModule with GraphActionModule {
 	  writeFormatParams(inst.ref,formFields)
 	  inst
 	}
-	
-	
-	def createTangentAction=new CreateActionImpl("Tangente",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"Tangent")),doCreateTangent)
+
+
+  def createTangentAction = new CreateActionImpl("Tangente", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Tangent")), doCreateTangent)
 	
 	def doCreateTangent(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	 // System.out.println("create Tangent "+param.mkString)
@@ -557,11 +667,11 @@ class LineModule extends ActionModule with GraphActionModule {
          makeLine(parents,point,tp,formFields)              
     }
 	}
-	
-	def extendAction=new ActionIterator("Verschneiden",Some(new DialogQuestion("Linie(n) verschneiden",
-		Seq(new AnswerDefinition("mit Linie",DataType.ObjectRefTyp,
-		    Some(new DialogQuestion("isEdible",Seq(new AnswerDefinition("edible",DataType.BoolTyp,None)))),
-		        "M"+TypeInfos.lineElemType.toString+","+TypeInfos.arcElemType.toString)))),doExtend)
+
+  def extendAction = new ActionIterator("Verschneiden", Some(DialogQuestion("Linie(n) verschneiden",
+    Seq(new AnswerDefinition("mit Linie", DataType.ObjectRefTyp,
+      Some(DialogQuestion("isEdible", Seq(new AnswerDefinition("edible", DataType.BoolTyp, None)))),
+      "M" + TypeInfos.lineElemType.toString + "," + TypeInfos.arcElemType.toString)))), doExtend)
 
 
 	def intersectLineArc(line:Line,arc:Circle,hitPoint:VectorConstant):Option[VectorConstant]= {
@@ -620,10 +730,11 @@ class LineModule extends ActionModule with GraphActionModule {
 			    }     	
 			  }
 			  if(param(2)._2.toBoolean){ // is editable
-				  val (firstPoint,lastPoint)= if(odx==0) // extend line is vertical
+          val odxIsNull = Math.abs(odx) < GraphElemModule.nearNullTreshold
+          val (firstPoint, lastPoint) = if (odxIsNull) //extend line is vertical
 				    (hitPoints.minBy(_.y),hitPoints.maxBy(_.y))	// find min/max vertical hitpoints		    
 				   else  (hitPoints.minBy(_.x),hitPoints.maxBy(_.x)) // find min/max horizontal hitpoints
-				  if((odx==0 && op1.y<op2.y)||(odx!=0 && op1.x<op2.x)) { // p1 < p2 ?
+          if ((odxIsNull && op1.y < op2.y) || (!odxIsNull && op1.x < op2.x)) { // p1 < p2 ?
 					  if(op1!=firstPoint) TransactionManager.tryWriteInstanceField(otherRef,3,firstPoint)
 					  if(op2!=lastPoint) TransactionManager.tryWriteInstanceField(otherRef,4,lastPoint)
 				  } else { // p2>=p1
@@ -647,26 +758,16 @@ class LineModule extends ActionModule with GraphActionModule {
 		} else throw new IllegalArgumentException("Falsche Parameter "+param.mkString(","))
 		true
 	}
-	
 
-	
-	def cutPartAction=new ActionIterator("Teillinie löschen",Some(new DialogQuestion("Teillinie löschen",
-		Seq(new AnswerDefinition("Teillinie auswählen",DataType.ObjectRefTyp,GraphElemModule.cutPointQuestion,"S"+TypeInfos.lineElemType.toString)))),doCutPart,true)
-	
-	def doCutPart(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+
+  def cutPartAction = new ActionIterator("Teillinie löschen", Some(DialogQuestion("Teillinie löschen",
+    Seq(new AnswerDefinition("Teillinie auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.lineElemType.toString)))), doCutPart, true)
+
+  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  cutLine(param)
 	  true
 	}
-	
-	/*def createCutLineAction=new CreateActionImpl("TeilLinie löschen",Some(new DialogQuestion("Teillinie löschen",
-		Seq(new AnswerDefinition("Teillinie auswählen",DataType.ObjectRefTyp,GraphElemModule.cutPointQuestion,"S"+TypeInfos.lineElemType.toString)))),doCreateCutLine,true)
-	
-	def doCreateCutLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
-	  //System.out.println("Do Cut Part:"+param.mkString(" | "))
-	  cutLine(param)
-	  true
-	}*/
-	
+
 	def cutLine(param:Seq[(String,Constant)]):Unit= if(param.size==3){
 	  val lineRef=param.head._2.toObjectReference
 	  val p1=param(1)._2.toVector
@@ -689,19 +790,18 @@ class LineModule extends ActionModule with GraphActionModule {
 	    }
 	  } else Log.e("Line Ref not lineType :"+lineRef)
 	}
-	
-			        
-	        
-	def parallelAction=new ActionIterator("Parallele Linie",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",	
-	    "ParLine")),doParallel,true)
-	
-	def doParallel(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {	
+
+
+  def parallelAction = new ActionIterator("Parallele Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ParLine")), doParallel, true)
+
+  def doParallel(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  val (offset,numCopy)=if(param.head._2.getType==DataType.IntTyp)(1,param.head._2.toInt) else (0,1)
 	  if(data.size==1) {
 	    val oldInst=data.head
 	    val p1=oldInst.fieldValue(3).toVector
 	    val p2=oldInst.fieldValue(4).toVector
-	    val line=new Line3D(p1,p2-p1)
+      val line = Line3D(p1, p2 - p1)
 	    val dist= param(0+offset)._2 match {
 	      case v:VectorConstant => line.orthogonalThrough(v) // parallel through point
 	      case d:DoubleConstant => line.orthogonalThrough(param(1+offset)._2.toVector).unit*d.toDouble
@@ -721,7 +821,7 @@ class LineModule extends ActionModule with GraphActionModule {
 		Seq(new AnswerDefinition("Lot zu Linie",DataType.ObjectRefTyp,
 		    Some(new DialogQuestion("Lot durch Punkt",Seq(	new AnswerDefinition("Zielpunkt wählen",DataType.VectorTyp,None)),false)),TypeInfos.lineElemType.toString)))),doCreateOrthoLine)*/
 
-  def createOrthoLineAction=new CreateActionImpl("Lot-Linie",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createOrthoLineAction = new CreateActionImpl("Lot-Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
     "OrthoLine")),doCreateOrthoLine,false)
 	
 	def doCreateOrthoLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {	  
@@ -730,15 +830,15 @@ class LineModule extends ActionModule with GraphActionModule {
 	    val p1=lineInst.fieldValue(3).toVector
 	    val p2=lineInst.fieldValue(4).toVector
 	    val hitPoint=param(1)._2.toVector
-	    val startPoint=new Line3D(p1,p2-p1).orthProjection(hitPoint)
+      val startPoint = Line3D(p1, p2 - p1).orthProjection(hitPoint)
 	    makeLine(parents,startPoint,hitPoint,formFields)	    
 	  }
 	  
 	  true
-	}	
-	
-	def createRectAction=new CreateActionImpl("Rechteck",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"Rectangle")),doCreateRect)
+	}
+
+  def createRectAction = new CreateActionImpl("Rechteck", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "Rectangle")), doCreateRect)
 	
 	def doCreateRect(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  val oparents=Array(new OwnerReference(0.toByte,parents.head.ref))
@@ -757,14 +857,14 @@ class LineModule extends ActionModule with GraphActionModule {
 				case StringConstant("über Achse") =>
 					val endPoint=param(2)._2.toVector
 					val deltaV= param(3)._2 match {
-            case defPoint:VectorConstant => defPoint-new Line3D(startPoint,endPoint-startPoint).orthProjection(defPoint)
+            case defPoint: VectorConstant => defPoint - Line3D(startPoint, endPoint - startPoint).orthProjection(defPoint)
             case DoubleConstant(width)=> (endPoint-startPoint).unit.transposeXY * width
           }
 					makeRectangle(oparents,Seq(startPoint+deltaV,endPoint+deltaV,endPoint-deltaV,startPoint-deltaV),formFields)
 				case StringConstant("über Randkante")=>
 					val endPoint=param(2)._2.toVector
 					val deltaV= param(3)._2 match {
-            case defPoint:VectorConstant => defPoint-new Line3D(startPoint,endPoint-startPoint).orthProjection(defPoint)
+            case defPoint: VectorConstant => defPoint - Line3D(startPoint, endPoint - startPoint).orthProjection(defPoint)
             case DoubleConstant(width)=> (endPoint-startPoint).unit.transposeXY * width
           }
 					makeRectangle(oparents,Seq(startPoint,endPoint,endPoint+deltaV,startPoint+deltaV),formFields)
@@ -781,9 +881,9 @@ class LineModule extends ActionModule with GraphActionModule {
 	  makeLine(parentRefs,points(2),points(3),formFields)
 	  makeLine(parentRefs,points(3),points.head,formFields)
 	}
-	
-	def createParPolyAction=new CreateActionImpl("Paralleler Polygonzug",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"ParPoly")),doCreateParPoly)
+
+  def createParPolyAction = new CreateActionImpl("Paralleler Polygonzug", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ParPoly")), doCreateParPoly)
 	
 	 
     
@@ -810,7 +910,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	    val result= for(i<-distances.indices;nv1=startNV(i);nv2=endNV(i)) 
 	      yield {
 	      val vvl=points(points.size-2)
-	      new Line3D(points.head+nv1,points(1)-points.head).intersectionWith(new Line3D(vvl+nv2,points.last-vvl))
+          Line3D(points.head + nv1, points(1) - points.head).intersectionWith(Line3D(vvl + nv2, points.last - vvl))
 	    	} 
 	    (result,result)    
 	  } else 
@@ -822,8 +922,8 @@ class LineModule extends ActionModule with GraphActionModule {
 	    val np=points(i+1)
 	    val normVectors1=getNormVectors(lp,tp)
 	    val normVectors2=getNormVectors(tp,np)
-	    for(i<-distances.indices;nv1=normVectors1(i);nv2=normVectors2(i)) 
-	      yield new Line3D(lp+nv1,tp-lp).intersectionWith(new Line3D(tp+nv2,np-tp))	    
+	    for(i<-distances.indices;nv1=normVectors1(i);nv2=normVectors2(i))
+        yield Line3D(lp + nv1, tp - lp).intersectionWith(Line3D(tp + nv2, np - tp))
 	  }
 	  val allPoints=firstPoints+:nextPoints:+lastPoints
 	    
@@ -834,8 +934,8 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 	
 	def cutElemsAction=new ActionIterator("Elemente schneiden",None,doCutElems,false)
-	
-	def doCutElems(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {	
+
+  def doCutElems(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  //println("Do Cut Part:"+data.mkString(" | ")+"\nparam:"+param.mkString(" | "))
 	  for(lineData<-data) {	  
 	  	val p1=lineData.fieldValue(3).toVector
@@ -850,8 +950,8 @@ class LineModule extends ActionModule with GraphActionModule {
 	  }
 	  true
 	}
-	
-	override def cutElementByLine(elData:InstanceData,cutLine:Edge)= {	  
+
+  override def cutElementByLine(elData: InstanceData, cutLine: Edge): Unit = {
 	  val p1=elData.fieldValue(3).toVector
 	  val p2=elData.fieldValue(4).toVector
 	  cutLine.getCutIntersectionWith(p1,p2) match {
@@ -871,8 +971,8 @@ class LineModule extends ActionModule with GraphActionModule {
 }
 
 class EllipseModule extends ActionModule with GraphActionModule {  
-  override val createActions=List(createEllipseCenterAction)  
-	val actions=  Seq.empty
+  override val createActions=List(createEllipseCenterAction)
+  val actions: Iterable[ActionTrait] = Seq.empty
   
   def moveElement(elem:InstanceData,delta:VectorConstant):Unit= {
     TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toVector+delta)
@@ -900,8 +1000,6 @@ class EllipseModule extends ActionModule with GraphActionModule {
 	def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit = {
 	  TransactionManager.tryWriteInstanceField(elem.ref,3,rotator(elem.fieldValue(3).toVector))	  
 	  GraphElemModule.rotateAngleField(elem,6,angle)
-	 // GraphElemModule.rotateAngleField(elem,7,angle)
-	  //GraphElemModule.rotateAngleField(elem,8,angle)
 	}
   
   override def scale(elem:InstanceData,refPoint:VectorConstant,sx:Double,sy:Double):Unit= {
@@ -912,11 +1010,11 @@ class EllipseModule extends ActionModule with GraphActionModule {
     TransactionManager.tryWriteInstanceField(elem.ref,4,new DoubleConstant(axis1*sx))
     TransactionManager.tryWriteInstanceField(elem.ref,5,new DoubleConstant(axis2*sx))
   }
-	
-	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = pointModField(3,elem,delta,chPoints)
-	
-	def createEllipseCenterAction=new CreateActionImpl("Ellipse",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"EllipseCenter")),doCreateEllipseCenter)
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = pointModField(3, elem, delta, chPoints)
+
+  def createEllipseCenterAction = new CreateActionImpl("Ellipse", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "EllipseCenter")), doCreateEllipseCenter)
 	
 	def doCreateEllipseCenter(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  //println("Create Ellipse param:" + param.mkString("  | ")+"\n Formfields:"+formFields.mkString(" | "))
@@ -990,14 +1088,15 @@ class EllipseModule extends ActionModule with GraphActionModule {
 
 class ArcModule extends ActionModule with GraphActionModule {
   import runtime.function.GraphElemModule._
-  lazy val parDistQuestion= Some(new DialogQuestion("Abstand",
-		Seq(new AnswerDefinition("Abstand eingeben:",DataType.DoubleTyp,None))))
+
+  lazy val parDistQuestion = Some(DialogQuestion("Abstand",
+    Seq(new AnswerDefinition("Abstand eingeben:", DataType.DoubleTyp, None))))
   
 	override val createActions=List(createArcCenterAction,createArcGeneralAction)	
 	val actions =  Seq(makeParallelArc,cutPartAction)
-	
-	def createArcCenterAction=new CreateActionImpl("Mittelpunktkreis",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"ArcCenter")),doCreateArcCenter)
+
+  def createArcCenterAction = new CreateActionImpl("Mittelpunktkreis", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ArcCenter")), doCreateArcCenter)
 	
 	
 	
@@ -1034,19 +1133,19 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  writeFormatParams(inst.ref,formFields)	  
 	  true
 	}
-	
-	def createArcGeneralAction=new CreateActionImpl("Allgemeiner Kreis",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"ArcGeneral")),doCreateArcGeneral)
+
+  def createArcGeneralAction = new CreateActionImpl("Allgemeiner Kreis", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ArcGeneral")), doCreateArcGeneral)
 	
 	def doCreateArcGeneral(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  false
 	}
-	
-	def moveElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toVector+delta)
 	}
-	
-	def copyElement(elem:InstanceData,delta:VectorConstant) = {
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData = {
 		elem.setField(3,elem.fieldValue(3).toVector+delta)
 	}	
 	
@@ -1062,9 +1161,9 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  val (newA,newB)=fixAngles(getAngle(p2,newCenter),getAngle(p1,newCenter))
 	  result.setField(5,new DoubleConstant(newA)).setField(6,new DoubleConstant(newB))    
 	}
-	
-	def fixAngles(sa:Double,ea:Double)= {
-	  val newA=if(sa<360d) sa+360d else if(sa>360d) sa-360d else sa
+
+  def fixAngles(sa: Double, ea: Double): (Double, Double) = {
+    val newA = if (sa < 360d && sa != 0) sa + 360d else if (sa > 360d) sa - 360d else sa
 	  val newB=if(ea<360d) ea+360d else if(ea>360d) ea-360d else ea
 	  (newA,if(newB<newA)newB+360d else newB)
 	}
@@ -1084,8 +1183,8 @@ class ArcModule extends ActionModule with GraphActionModule {
     TransactionManager.tryWriteInstanceField(elem.ref,3,scalePoint(p1,refPoint,sx,sy))
     TransactionManager.tryWriteInstanceField(elem.ref,4,new DoubleConstant(radius*sx))
   }
-	
-	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = pointModField(3,elem,delta,chPoints)
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = pointModField(3, elem, delta, chPoints)
 	
 	def makeParallelArc=new ActionIterator("Paralleler Kreis",parDistQuestion,doMakeParallelArc) 
 	
@@ -1102,10 +1201,10 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  true
 	}
 
-	def cutPartAction=new ActionIterator("Teilkreis löschen",Some(new DialogQuestion("Teilkreis löschen",
-		Seq(new AnswerDefinition("Teilkreis auswählen",DataType.ObjectRefTyp,GraphElemModule.cutPointQuestion,"S"+TypeInfos.arcElemType.toString)))),doCutPart,true)
+  def cutPartAction = new ActionIterator("Teilkreis löschen", Some(DialogQuestion("Teilkreis löschen",
+    Seq(new AnswerDefinition("Teilkreis auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.arcElemType.toString)))), doCutPart, true)
 
-	def doCutPart(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  {
+  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 		val arcRef=param.head._2.toObjectReference
 		val a1=param(1)._2.toVector.x
 		val a2=param(2)._2.toVector.x
@@ -1137,165 +1236,249 @@ class ArcModule extends ActionModule with GraphActionModule {
 class PolygonModule extends ActionModule with GraphActionModule {
 
   override val createActions=List(createPolyAction)
-  val actions=List(intersectAction,cutAction,addAction,setStartPointAction)
-  
-	def moveElement(elem:InstanceData,delta:VectorConstant) = 
+  val actions = List(intersectAction, cutAction, addAction(), setStartPointAction())
+
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
   	TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toPolygon.translate(delta))
-  
-  def copyElement(elem:InstanceData,delta:VectorConstant) = 
-    elem.setField(3,elem.fieldValue(3).toPolygon.translate(delta)) 
-    
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData =
+    elem.setField(3, elem.fieldValue(3).toPolygon.translate(delta))
+
   def mirrorElement(elem:InstanceData,mirror:(VectorConstant)=>VectorConstant):InstanceData= {
 	  elem.setField(3,elem.fieldValue(3).toPolygon.transform(mirror))
-	}  
-  
-  def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= 
-    TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toPolygon.transform(rotator))  
-  
-  override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = 
-	  TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toPolygon.translatePoints(chPoints,delta))  
-	
-	def createPolyAction=new CreateActionImpl("Füllfläche",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"PolyTo")),doCreatePoly)
-	
-  
-  protected def polygonFromParams(inst:Reference,params:Seq[(String,Constant)])= {
-    var lastPoint=params.head._2.toVector
-    val plist=params.map{case(name,const)=> const match {
-		    case v:VectorConstant=>lastPoint=v;v
-		    case d:DoubleConstant=>lastPoint=if(name=="dx") lastPoint+new VectorConstant(d.toDouble,0d,0d)
-		    	else lastPoint + new VectorConstant(0d,d.toDouble,0d);lastPoint
-		    case o => throw new IllegalArgumentException("Wrong answer:"+o)
-		  }
-    }
-    val pointList=if(plist.size==2){
-      val p1=plist.head
-      val p2=plist(1)
-      List(p1,new VectorConstant(p1.x,p2.y,p1.z),p2,new VectorConstant(p2.x,p1.y,p2.z))
-    } 
-     else plist
-   new Polygon(Seq(inst),Seq(  new PointList(pointList).clockWise))
   }
-  
-  
+
+  def rotateElement(elem: InstanceData, angle: Double, rotator: (VectorConstant) => VectorConstant): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.transform(rotator))
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
+
+  def createPolyAction = new CreateActionImpl("Füllfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "PolyTo")), doCreatePoly)
+
+
+
+
 	def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-  	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,true)  	  	
-		TransactionManager.tryWriteInstanceField(inst.ref,3,polygonFromParams(inst.ref,param))  
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
+    TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParams(inst.ref, param))
 		writeFormatParams(inst.ref,formFields)
 		true
 	}
-  
-  def intersectQuestion=new DialogQuestion("Schnittfläche mit Polygon",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.polyElemType.toString)) )
-  
+
+  def intersectQuestion = DialogQuestion("Schnittfläche mit Polygon", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.polyElemType.toString)))
+
   def intersectAction=new ActionIterator("Schnittfläche",Some(intersectQuestion),doTrans(_.intersect(_)))
-  
-  def cutQuestion=new DialogQuestion("Polygonfläche abschneiden",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.polyElemType.toString)) )
-  
+
+  def cutQuestion = DialogQuestion("Polygonfläche abschneiden", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.polyElemType.toString)))
+
   def cutAction=new ActionIterator("Abschneiden",Some(cutQuestion),doTrans(_.subtract(_)))
-  
-  def addQuestion=new DialogQuestion("Polygonfläche hinzufügen",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.polyElemType.toString)) )
-  
-  def addAction=new ActionIterator("Hinzufügen",Some(addQuestion),doTrans(_.add(_)))
-  
-  def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {   
+
+  def addQuestion(): DialogQuestion = DialogQuestion("Polygonfläche hinzufügen", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.polyElemType.toString)))
+
+  def addAction(): ActionIterator = new ActionIterator("Hinzufügen", Some(addQuestion()), doTrans(_.add(_)))
+
+  def doTrans(func: (Polygon, Polygon) => Polygon)(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
     val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
-      val newPoly=func(oldPoly,otherPoly)            
-      TransactionManager.tryWriteInstanceField(inst.ref,3,newPoly)     
+      val newPoly = func(oldPoly, otherPoly)
+      TransactionManager.tryWriteInstanceField(inst.ref, 3, newPoly)
     }
     true
   }
-  
-  def setStartPointQuestion()=new DialogQuestion("Ausgangspunkt Schraffur",
-		Seq(new AnswerDefinition("Punkt wählen",DataType.VectorTyp,None)))
-	
-  def setStartPointAction=new ActionIterator("Ausgangspunkt",Some(setStartPointQuestion),doSetStartPoint)
-  
+
+  def setStartPointQuestion(): DialogQuestion = DialogQuestion("Ausgangspunkt Schraffur",
+    Seq(new AnswerDefinition("Punkt wählen", DataType.VectorTyp, None)))
+
+  def setStartPointAction(): ActionIterator = new ActionIterator("Ausgangspunkt", Some(setStartPointQuestion()), doSetStartPoint)
+
   def doSetStartPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {
   	if(param.size==1 && param.head._2.getType==DataType.VectorTyp ) {
   		val startPoint=param.head._2.toVector
-  		for(d <-data) 
-  			TransactionManager.tryWriteInstanceField(d.ref,6,startPoint)						  
-  			true	
+      for (d <- data)
+        TransactionManager.tryWriteInstanceField(d.ref, 6, startPoint)
+      true
   	}
   	else false
   }
 }
 
+
+class PolygonLineModule extends ActionModule with GraphActionModule {
+  override val createActions = List(createPolyLineAction)
+  val actions = Nil
+
+  def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translate(delta))
+
+  def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData =
+    elem.setField(3, elem.fieldValue(3).toPolygon.translate(delta))
+
+  def mirrorElement(elem: InstanceData, mirror: (VectorConstant) => VectorConstant): InstanceData = {
+    elem.setField(3, elem.fieldValue(3).toPolygon.transform(mirror))
+  }
+
+  def rotateElement(elem: InstanceData, angle: Double, rotator: (VectorConstant) => VectorConstant): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.transform(rotator))
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
+
+  def createPolyLineAction = new CreateActionImpl("PolyLinie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "PolyLineTo")), doCreatePolyLine)
+
+
+  def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
+    val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
+    TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParams(inst.ref, param))
+    writeFormatParams(inst.ref, formFields)
+    true
+  }
+}
+
+
+class MeasureLineModule extends PolygonLineModule {
+  override def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 4, elem.fieldValue(4).toPolygon.translate(delta))
+
+  override def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData =
+    elem.setField(4, elem.fieldValue(4).toPolygon.translate(delta))
+
+  override def rotateElement(elem: InstanceData, angle: Double, rotator: (VectorConstant) => VectorConstant): Unit =
+    TransactionManager.tryWriteInstanceField(elem.ref, 4, elem.fieldValue(4).toPolygon.transform(rotator))
+
+  def removeDoublePoints(pl: PointList): PointList = {
+    val doublePoints = (1 until pl.points.size).filter(i => VectorConstant.similar(pl.points(i - 1), pl.points(i)))
+    //println("doublepoints:"+doublePoints.mkString(","))
+    if (doublePoints.isEmpty) pl
+    else PointList(pl.points.zipWithIndex.filterNot { case (_, pix) => doublePoints.contains(pix) }.map(_._1))
+  }
+
+  def updateLengthValue(instRef: Reference, p: Polygon): Unit = {
+    val poly = new Polygon(Seq(instRef), p.pathList.map(list => {
+      val res = removeDoublePoints(list)
+      if (res.points.size < 3) res else res.removeStraightEdges()
+    }))
+
+    TransactionManager.tryWriteInstanceField(instRef, 11, GraphElemModule.getUmfang(poly, false))
+    TransactionManager.tryWriteInstanceField(instRef, 4, poly)
+  }
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
+    updateLengthValue(elem.ref, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
+
+  override def createPolyLineAction = new CreateActionImpl("MessLinie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "PolyLineTo")), doCreatePolyLine)
+
+  override def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
+    val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
+    updateLengthValue(inst.ref, GraphElemModule.polygonFromParams(inst.ref, param))
+    writeFormatParams(inst.ref, formFields)
+    true
+  }
+}
+
+
 /** Measure of Area
- * 
- */
-class AreaPolygonModule extends PolygonModule {  
-  override def moveElement(elem:InstanceData,delta:VectorConstant) = 
+*
+*/
+class AreaPolygonModule extends PolygonModule {
+  override def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
   	TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.translate(delta))
-  
-  override def copyElement(elem:InstanceData,delta:VectorConstant) = 
+
+  override def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData =
     elem.setField(4,elem.fieldValue(4).toPolygon.translate(delta))  
   
   override def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= 
-    TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.transform(rotator)) 
-    
-	def updateAreaValue(instRef:Reference,p:Polygon)= {
-    val poly=new Polygon(Seq(instRef),p.pathList.map(_.removeDoublePoints().removeStraightEdges()))
-	  //TransactionManager.tryWriteInstanceField(instRef,0,new DoubleConstant(p.getAreaValue))	  
-	  TransactionManager.tryWriteInstanceField(instRef,4,p)
-	  val areaList=p.pathList.flatMap(path=>PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
-	  if(areaList.size>0) {
-	    val expression=PolygonDivider.combineExpression(areaList)	    
-	    TransactionManager.tryWriteInstanceField(instRef,10,if(expression.isNullConstant)DoubleConstant(p.getAreaValue) else expression)
-	  } else
-	    TransactionManager.tryWriteInstanceField(instRef,10,DoubleConstant(p.getAreaValue))
+    TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.transform(rotator))
+
+  protected def generateExpression(inst: InstanceData, poly: Polygon): Expression = {
+    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
+    if (areaList.isEmpty) EMPTY_EX else PolygonDivider.combineExpression(areaList)
   }
-  
-  override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) =      
-	  updateAreaValue(elem.ref,elem.fieldValue(4).toPolygon.translatePoints(chPoints,delta)	)
-  
-	
-	override def createPolyAction=new CreateActionImpl("FlächenPolygon",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"PolyTo")),doCreatePoly)	
-	
-	
+
+  def updateAreaValue(inst: InstanceData, p: Polygon): Boolean = {
+    val instRef = inst.ref
+    val poly=new Polygon(Seq(instRef),p.pathList.map(_.removeDoublePoints().removeStraightEdges()))
+    TransactionManager.tryWriteInstanceField(instRef, 4, poly)
+    TransactionManager.tryWriteInstanceField(instRef, 10, generateExpression(inst, poly) match {
+      case EMPTY_EX => DoubleConstant(poly.getAreaValue)
+      case ex: Expression => ex
+    })
+  }
+
+  override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
+    updateAreaValue(elem, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
+
+  override def createPolyAction = new CreateActionImpl("FlächenPolygon", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "PolyTo")), doCreatePoly)
+
 	override def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-  	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,true)  		
-		updateAreaValue(inst.ref,polygonFromParams(inst.ref, param))
+  	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,true)
+    updateAreaValue(inst, GraphElemModule.polygonFromParams(inst.ref, param))
 		writeFormatParams(inst.ref,formFields)
 		true
-	}  
-	
-	override def intersectQuestion=new DialogQuestion("Schnittfläche mit Polygon",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.areaPolyElemType.toString)) ) 
-  
-  override def cutQuestion=new DialogQuestion("Polygonfläche abschneiden",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.areaPolyElemType.toString)) )  
-  
-  override def addQuestion=new DialogQuestion("Polygonfläche hinzufügen",Seq(new AnswerDefinition("anderes Polygon wählen",DataType.ObjectRefTyp,
-      None,"F"+TypeInfos.areaPolyElemType.toString)) )
+	}
+
+  override def intersectQuestion = DialogQuestion("Schnittfläche mit Polygon", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
+
+  override def cutQuestion = DialogQuestion("Polygonfläche abschneiden", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
+
+  override def addQuestion() = DialogQuestion("Polygonfläche hinzufügen", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+    None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
   
   override def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {   
     val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]
-      updateAreaValue(inst.ref,func(oldPoly,otherPoly))
+      updateAreaValue(inst, func(oldPoly, otherPoly))
     }
     true
   }  
 }
 
+class WohnflaechenModul extends AreaPolygonModule {
+  override def createPolyAction = new CreateActionImpl("Wohnfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "PolyTo")), doCreatePoly)
 
-object TypeInfos {	
-	val moduleMap= collection.mutable.HashMap[Int,GraphActionModule]()	
+  override def onFieldChanged(self: InstanceData, fieldNr: Byte, newValue: Expression): Unit = if (fieldNr == 13) {updateAreaValue(self, self.fieldValue(4).toPolygon)}
+
+  override val notifyFieldChanged = true
+
+  protected override def generateExpression(inst: InstanceData, poly: Polygon): Expression = {
+    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
+    val putz = UnitNumber(inst.fieldValue(13).toDouble, PolygonDivider.meterFraction)
+    val umfang = GraphElemModule.getUmfang(poly, true)
+    if (areaList.isEmpty) EMPTY_EX else if (putz.value == 0d || umfang.isNullConstant) PolygonDivider.combineExpression(areaList)
+    else BinaryOperation(PolygonDivider.combineExpression(areaList), BinOperator.minusOp,
+      BinaryOperation(putz, BinOperator.getOp('*'), umfang))
+  }
+
+}
+
+
+object TypeInfos {
+  val moduleMap: mutable.HashMap[Int, GraphActionModule] = collection.mutable.HashMap[Int, GraphActionModule]()
 	val polyElemType=42 // WARNING ElementType is fixed because it can not be found at runtime
 	val lineElemType=40
 	val arcElemType=41
 	val textElemType=44
 	val areaPolyElemType=341
+  val wohnflaechenElementType = 343
   val symbolElemType=45
   val symbolFillType=47
   val symbolDefType=411
+  val polyLineElemType = 49
+  val measureLineElemType = 342
 }

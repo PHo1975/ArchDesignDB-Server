@@ -4,7 +4,8 @@ package client.plotdesign
 import java.awt.Color
 import javax.swing.BorderFactory
 
-import client.dialog.{FieldEditor, RenderComponent, SidePanelComboBox, SidePanelDoubleTextField, SidePanelLabel}
+import client.dataviewer.ViewConstants
+import client.dialog._
 import client.graphicsView.ScaleModel
 import definition.expression.{Constant, IntConstant}
 
@@ -27,17 +28,21 @@ class PlotRefFieldEditor extends FieldEditor {
    }
   
   val scaleRenderer= new Label with RenderComponent[Int] {
-	  def setStyle(scale:Int)= text="1:"+s"${math.round(1d / ScaleModel.scales(scale)).toInt}"
-	  def setEmpty()= text=""
-	}	
-  
-  lazy val scaleList= ScaleModel.scales.keys.toSeq
+    font = ViewConstants.labelFont
+
+    def setStyle(scale: Int): Unit = text = "1:" + s"${math.round(1d / ScaleModel.scales(scale)).toInt}"
+
+    def setEmpty(): Unit = text = ""
+	}
+
+  lazy val scaleList: Seq[Int] = ScaleModel.scales.keys.toSeq
    
   lazy val scaleCombo=new SidePanelComboBox(scaleList,scaleRenderer,this,Map(className -> 1)){
     val defaultValue=7
-    def getConstant(value:Int):Constant=new IntConstant(value)  
-    
-    def valueFromConstant(c:Constant)=c.toInt
+
+    def getConstant(value: Int): Constant = IntConstant(value)
+
+    def valueFromConstant(c: Constant): Int = c.toInt
     
     override def setValue(newScale:Option[Int]):Unit= {	    
 	    super.setValue(newScale)
@@ -58,7 +63,7 @@ class PlotRefFieldEditor extends FieldEditor {
     opaque=false
     contents += getPanelPart("Mass:",scaleCombo) += getPanelPart("Winkel:",angleEditor)	+=
       getPanelPart("Textzoom",textScaleEditor)+=Swing.VStrut(10)+=layerNameLabel
-  }   
-   
-  def getPanel=panel
+  }
+
+  def getPanel: BoxPanel = panel
 }

@@ -3,34 +3,34 @@
  */
 package client.dataviewer
 
+import java.awt.Color
+import java.awt.event.InputEvent
+import javax.swing.border._
+import javax.swing.{BorderFactory, JComponent, JPopupMenu}
+
+import client.comm._
+import client.dialog.{CreateActionMenuButton, CreateMenuButton, NewButtonsList}
+import definition.comm._
 import definition.data._
 import definition.typ._
-import definition.comm._
-import client.comm._
+
+import scala.collection.mutable
 import scala.swing._
 import scala.swing.event._
-import javax.swing.{SwingUtilities,JList}
-import java.awt.Color
-import javax.swing.BorderFactory
-import javax.swing.border._
-import client.dialog.NewButtonsList
-import javax.swing.JPopupMenu
-import javax.swing.JComponent
-import client.dialog.CreateActionMenuButton
-import client.dialog.CreateMenuButton
-import java.awt.event.InputEvent
-import java.awt.GridLayout
 
 class TitlePopupMenu(title:String) extends Component {		
 	override lazy val peer : JPopupMenu = new JPopupMenu(title)	
 	def add(item:MenuItem,separator:Boolean) : Unit = { peer.add(item.peer); if (separator) peer.addSeparator() }
-	def show(comp:JComponent) = peer.show(comp, 3, 3)
-	def show(comp:JComponent,x:Int,y:Int) = peer.show(comp, x, y)
-	def show()= peer.setVisible(true)
+
+	def show(comp: JComponent): Unit = peer.show(comp, 3, 3)
+
+	def show(comp: JComponent, x: Int, y: Int): Unit = peer.show(comp, x, y)
+
+	def show(): Unit = peer.setVisible(true)
 	
 	focusable=false
-	
-	def addButtons(cList:Seq[Component])= {
+
+	def addButtons(cList: Seq[Component]): Unit = {
     //peer.setLayout(new GridLayout(cList.size,1))
     //peer.setPopupSize(new Dimension(200,cList.size*33))
 	  cList.indices.foreach(i=>{
@@ -56,17 +56,17 @@ class TitlePopupMenu(title:String) extends Component {
 class PropertyModel(val propIx:Int,val mainController:DataViewController) {	
 	var ownerRef:OwnerReference = _
 	var loaded=false
-	var subscriptionID= -1
+	var subscriptionID: Int = -1
 	protected var allowedClass:Int= _	
 	var listLock=new Object
-	var isFirstPropField:Boolean=false	 
-	var tableModMap=scala.collection.mutable.LinkedHashMap[Int,TypeTableModel]()
+	var isFirstPropField:Boolean=false
+	var tableModMap: mutable.LinkedHashMap[Int, TypeTableModel] = scala.collection.mutable.LinkedHashMap[Int, TypeTableModel]()
 	lazy val vGlue=new ClickComp(this)
-	val titleLabel=new Label("Prop")
+	val titleLabel: Label = ViewConstants.label("Prop")
 	titleLabel.font=ViewConstants.smallFont
 	titleLabel.foreground=Color.DARK_GRAY
-	val tableArea=new BoxPanel (scala.swing.Orientation.Vertical ) {		
-		contents+=vGlue		
+	val tableArea=new BoxPanel (scala.swing.Orientation.Vertical ) {
+		contents += vGlue
 	}
 	
 	val panel=new BorderPanel {
@@ -107,14 +107,14 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 							Swing.onEDT {
 								notType match {
 									case NotificationType.sendData | NotificationType.updateUndo =>
-										if (data.size == 0) {
+										if (data.isEmpty) {
 											if (isFirstPropField) vGlue.requestFocusInWindow()
 											vGlue.revalidate()
 											vGlue.visible = true
 										}
 										else {
 											val hasSubClasses = AllClasses.get.hasSubClasses(allowedClass)
-											vGlue.visible = (!singleField) && (vGlue.buttonList.size > 1)
+											vGlue.checkVisibility(singleField)
 											val grouped: Map[Int, Seq[InstanceData]] = data.groupBy(_.ref.typ)
 											var firstTable: Table = null
 											var ix = 0
@@ -130,10 +130,11 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 									case NotificationType.childAdded =>
 										val typ = data.head.ref.typ
 										val mod = tableModMap.getOrElseUpdate(typ,
-											createTableModel(tableModMap.size, typ, singleField, allowedClass == 0 || AllClasses.get.hasSubClasses(allowedClass)))
+											createTableModel(tableModMap.size, typ, singleField, allowedClass == 0 || AllClasses.get.hasSubClasses(allowedClass), true)
+										)
 										mod.addInstance(data.head)
 										mainController.updateHeight()
-										vGlue.visible = !singleField && (vGlue.buttonList.size > 1)
+										vGlue.checkVisibility(singleField)
 										tableArea.revalidate()
 									case NotificationType.fieldChanged =>
 										val typ = data.head.ref.typ
@@ -153,14 +154,14 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 				)			
 			loaded=true
 		}
-	
-	
-	def getPropFieldDefinition= mainController.mainClass.propFields (ownerRef.ownerField )
+
+
+	def getPropFieldDefinition: PropertyFieldDefinition = mainController.mainClass.propFields(ownerRef.ownerField)
 	
 	def isEmpty:Boolean= ! tableModMap.valuesIterator.exists(! _.isEmpty)
 
-	
-	def createTableModel(ix:Int,typ:Int, singleField:Boolean,showClassLabel:Boolean) = {
+
+	def createTableModel(ix: Int, typ: Int, singleField: Boolean, showClassLabel: Boolean, focusTable: Boolean = false): TypeTableModel = {
 		val newMod= new TypeTableModel(ix,typ,this,singleField,showClassLabel)	
 		if(tableArea.contents.isEmpty)
 			tableArea.contents +=newMod.scroller
@@ -171,18 +172,19 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 		tableArea.contents+=vGlue	
 		mainController.updateHeight()
 		tableArea.revalidate()
+		if (focusTable) newMod.enterFromTop()
 		newMod
 	}
-	
-	def enterFromTop()=	  if(tableModMap.nonEmpty) tableModMap.values.head.enterFromTop()
-	
-	def enterFromBottom()= if(tableModMap.nonEmpty) tableModMap.values.last.enterFromBottom()
-	
-	def getOwnerRef = listLock.synchronized( new OwnerReference(ownerRef.ownerField ,mainController.ref))
-	
-	def focusGained(table:Option[Table]) = mainController.containerFocused(table,ownerRef.ownerField )
-	
-	def shutDown() = listLock.synchronized{
+
+	def enterFromTop(): Unit = if (tableModMap.nonEmpty) tableModMap.values.head.enterFromTop()
+
+	def enterFromBottom(): Unit = if (tableModMap.nonEmpty) tableModMap.values.last.enterFromBottom()
+
+	def getOwnerRef: OwnerReference = listLock.synchronized(new OwnerReference(ownerRef.ownerField, mainController.ref))
+
+	def focusGained(table: Option[Table]): Unit = mainController.containerFocused(table, ownerRef.ownerField)
+
+	def shutDown(): Unit = listLock.synchronized {
 		ClientQueryManager.removeSubscription(subscriptionID)
 		subscriptionID= -1
 		tableArea.contents.clear()
@@ -190,37 +192,37 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 		tableModMap.valuesIterator.foreach(_.shutDown())
 		tableModMap.clear()
 		loaded=false
-    NewButtonsList.deafToButtons(vGlue.buttonList)
-    vGlue.buttonList=Seq.empty
-	}	
-	
-	def deselect(selectedType:Int) = listLock.synchronized {		
+		vGlue.shutDown()
+	}
+
+	def deselect(selectedType: Int): Unit = listLock.synchronized {
 		for(m <-tableModMap.valuesIterator;if m.typ != selectedType) m.deselect()
 	}
-	
-	def tableExitsToUp(tableIx:Int)= if(tableIx>0) tableModMap.values.toSeq(tableIx-1).enterFromBottom()
-	  else mainController.propFieldExitsToUp(propIx)	
-	
-	def tableExitsToDown(tableIx:Int)= if(tableIx<tableModMap.size-1) tableModMap.values.toSeq(tableIx+1).enterFromTop()
+
+	def tableExitsToUp(tableIx: Int): Unit = if (tableIx > 0) tableModMap.values.toSeq(tableIx - 1).enterFromBottom()
+	  else mainController.propFieldExitsToUp(propIx)
+
+	def tableExitsToDown(tableIx: Int): Unit = if (tableIx < tableModMap.size - 1) tableModMap.values.toSeq(tableIx + 1).enterFromTop()
 	  else mainController.propFieldExitsToDown(propIx)	
 	
-	
-	
+
 	
 	class ClickComp(propMod:PropertyModel) extends BoxPanel(Orientation.Horizontal) {
-		val popup=new TitlePopupMenu("Erzeugen:")		
-		val standBorder=BorderFactory.createEmptyBorder//createLineBorder(Color.lightGray)
-		val selectBorder=BorderFactory.createLineBorder(Color.blue,2)
+		val popup=new TitlePopupMenu("Erzeugen:")
+		val standBorder: Border = BorderFactory.createEmptyBorder
+		//createLineBorder(Color.lightGray)
+		val selectBorder: Border = BorderFactory.createLineBorder(Color.blue, 2)
 		focusable=true
-		val theClass=propMod
+		val theClass: PropertyModel = propMod
 		peer.setTransferHandler(new PropAreaTransferHandler(propMod))		
 		val addBut=new Button("Tabelle erzeugen...")
 		addBut.peer.putClientProperty("JComponent.sizeVariant", "small")
+		addBut.font = ViewConstants.tableFont
     addBut.peer.updateUI()
     addBut.focusable=false
 		maximumSize=new Dimension(Short.MaxValue,30)			
 		contents+=addBut
-	  var buttonList:Seq[CreateMenuButton]=Seq.empty
+		protected var buttonList: Seq[CreateMenuButton] = Seq.empty
 
     listenTo(mouse.clicks,this,addBut,keys)
 		reactions+= {			
@@ -228,8 +230,8 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 				//System.out.println("mouseclick "+peer.isFocusOwner+" "+size)
 				requestFocus()
 				focusGained(None)
-			case e:FocusGained => border=selectBorder;repaint()
-			case e:FocusLost =>border=standBorder;repaint()
+			case _: FocusGained => border = selectBorder; repaint()
+			case _: FocusLost => border = standBorder; repaint()
 			case ButtonClicked(`addBut`) =>
 				NewButtonsList.listenToButtons(buttonList)
 				requestFocusInWindow()
@@ -244,8 +246,8 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 			  case _=>
 			}
 		}
-		
-		private def showCreatePopup ()= {
+
+		private def showCreatePopup(): Unit = {
 	    requestFocus()
 			focusGained(None)
 			Swing.onEDT{
@@ -257,9 +259,9 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 	      }
 		  }				
 		}
-		
-			
-		def update(mainClass:ClientObjectClass,fieldToLoad:Int)={
+
+
+		def update(mainClass: ClientObjectClass, fieldToLoad: Int): Unit = {
 		  visible= mainClass.propFields(fieldToLoad).createChildDefs.nonEmpty
 		  if(visible){
         NewButtonsList.deafToButtons(buttonList)
@@ -268,6 +270,13 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 		    
 		  }
 		}
+
+		def shutDown(): Unit = {
+			NewButtonsList.deafToButtons(buttonList)
+			buttonList = Seq.empty
+		}
+
+		def checkVisibility(singleField: Boolean): Unit = visible = !singleField && (buttonList.size > 1)
 	}
 }
 

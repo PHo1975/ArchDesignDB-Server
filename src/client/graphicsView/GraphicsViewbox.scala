@@ -3,18 +3,18 @@
  */
 package client.graphicsView
 
-import client.layout._
-import definition.comm.{IntValue, PropertyGroup}
-import definition.data.Referencable
-import definition.typ.SelectGroup
-import scala.swing._
-import client.dialog.{SelectEventDispatcher,NewButtonsList}
-import scala.swing.event.ButtonClicked
 import javax.swing.BorderFactory
 import javax.swing.border._
-import javax.swing.event.{TableModelListener,TableModelEvent}
-import client.comm.ClientQueryManager
-import client.dialog.NewButtonsList
+
+import client.dataviewer.DataViewController
+import client.dialog.{NewButtonsList, SelectEventDispatcher}
+import client.layout._
+import definition.comm.{IntValue, PropertyGroup}
+import definition.typ.SelectGroup
+import util.Log
+
+import scala.swing._
+import scala.swing.event.ButtonClicked
 import scala.util.control.NonFatal
 
 
@@ -31,9 +31,8 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
 	val layerPanController:LayerPanelController=new LayerPanelController(graphViewController)
   
 	var boxOpen:Boolean=true
-	//val layerLabel:Label=new Label()
 	val emptyBox=Swing.HStrut(0)
-	var viewbox:Viewbox=null	
+	var viewbox: Viewbox = _
 	
 	
 	val layerScrollPane:ScrollPane = new ScrollPane() {
@@ -41,7 +40,8 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
 			viewportView=layerPanController.layerTable			
 			
 			graphViewController.layerModel.registerSizeChangeListener(callback)
-			def callback(nsize:Int) = {
+
+		def callback(nsize: Int): Unit = {
 				preferredSize=new Dimension(10,Math.round(((if(nsize==0)1d else nsize.toDouble)+1.5)*LayerPanelController.lineHeight).toInt)
 				maximumSize=preferredSize
 				GraphicsViewbox.this.revalidate()
@@ -49,11 +49,10 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
 			}
 		}  
 	border=BorderFactory.createEtchedBorder(EtchedBorder.LOWERED)
-  graphViewController.layerModel.addTableModelListener(new TableModelListener (){
-		def tableChanged(e:TableModelEvent) = {
+	graphViewController.layerModel.addTableModelListener(_ => {
 			if(viewbox!=null)viewbox.setTitle(graphViewController.layerModel.getLabelText)
 		}
-	})
+	)
 	
 	val switchLayerButton:Button=new Button("\u02c4")
 	switchLayerButton.tooltip="Layerliste zusammenklappen"
@@ -80,10 +79,16 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
   def open(readyListener:()=>Unit,sourceBoxSelection:AnyRef): Unit = {
 		sourceBoxSelection match {
 			case e:Iterable[_]=>e.headOption match {
-				case Some(selGroup:SelectGroup[_])=>{
+				case Some(selGroup: SelectGroup[_]) =>
 					val layerList=selGroup.children.filter(a=>Layer.allowedDisplayListTypes.contains(a.ref.typ)).toSeq
-					if(layerList.nonEmpty) graphViewController.layerModel.openLayers(layerList,Some(readyListener))
-				}
+					val path = NewButtonsList.lastContainer match {
+						case Some(cont) => cont match {
+							case a: DataViewController => a.viewBox.pathController.model.dataList.map(_.toString).toArray
+							case o => Log.w("Unknown container:" + o + " " + o.getClass); Array.empty[String]
+						}
+						case None => Array.empty[String]
+					}
+					if (layerList.nonEmpty) graphViewController.layerModel.openLayers(layerList, Some(readyListener), path)
 				case _=>
 			}
 			case _=>
@@ -91,22 +96,22 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
 	}
 
   def close(): Unit = 	shutDown()
-  	
-  
-  def storeSettings(pgroup:PropertyGroup) = {
+
+
+	def storeSettings(pgroup: PropertyGroup): Unit = {
     graphViewController.layerModel.storeSettings(pgroup)
-    pgroup.addProperty(new IntValue("WX", (graphViewController.scaleModel.world_X*storeFactor).toInt))
-    pgroup.addProperty(new IntValue("WY", (graphViewController.scaleModel.world_Y*storeFactor).toInt))
-    pgroup.addProperty(new IntValue("WW", (graphViewController.scaleModel.world_Width*storeFactor).toInt))
-    pgroup.addProperty(new IntValue("WH", (graphViewController.scaleModel.world_Height*storeFactor).toInt))
+		pgroup.addProperty(IntValue("WX", (graphViewController.scaleModel.world_X * storeFactor).toInt))
+		pgroup.addProperty(IntValue("WY", (graphViewController.scaleModel.world_Y * storeFactor).toInt))
+		pgroup.addProperty(IntValue("WW", (graphViewController.scaleModel.world_Width * storeFactor).toInt))
+		pgroup.addProperty(IntValue("WH", (graphViewController.scaleModel.world_Height * storeFactor).toInt))
     val (sc1,sc2)=graphViewController.scaleModel.relativeScale
-    pgroup.addProperty(new IntValue("s1", (sc1 *100d).toInt))
-    pgroup.addProperty(new IntValue("s2", (sc2 *100d).toInt))
-    pgroup.addProperty(new IntValue("fs",if(graphViewController.scaleModel.colorsFixed) 1 else 0))
+		pgroup.addProperty(IntValue("s1", (sc1 * 100d).toInt))
+		pgroup.addProperty(IntValue("s2", (sc2 * 100d).toInt))
+		pgroup.addProperty(IntValue("fs", if (graphViewController.scaleModel.colorsFixed) 1 else 0))
   }
-  
-  
-  def restoreSettings(pgroup:PropertyGroup,doneListener:()=>Unit)= try{
+
+
+	def restoreSettings(pgroup: PropertyGroup, doneListener: () => Unit): Unit = try {
     //println( "Graphviewbox start restore "+(System.currentTimeMillis()-time))
     val WX=pgroup.getIntProperty("WX").toDouble/storeFactor
     val WY=pgroup.getIntProperty("WY").toDouble/storeFactor
@@ -134,8 +139,8 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
 
   def setViewbox(box: Viewbox): Unit = { viewbox=box }
 
-  
-  def shutDown() = {
+
+	def shutDown(): Unit = {
   	graphViewController.shutDown()
     layerPanController.shutDown()
   	//SelectEventDispatcher.removeSelectListener(layerPanController)
@@ -158,5 +163,5 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
   }
   def typeID:String = "graphics"
 
-	def selectedItems=graphViewController.selectModel.list
+	def selectedItems: Iterator[SelectGroup[GraphElem]] = graphViewController.selectModel.list
 }

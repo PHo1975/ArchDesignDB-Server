@@ -1,31 +1,25 @@
 package client.dialog
 
-import scala.swing.Dialog
-import scala.swing.Component
-import client.ui.ClientApp
-import scala.swing.BorderPanel
-import scala.swing.Label
+import java.awt.{Color, Point}
+import javax.swing.{BorderFactory, JComponent}
+
 import client.dataviewer.ViewConstants
-import java.awt.Color
-import javax.swing.BorderFactory
-import scala.swing.Swing
-import javax.swing.JComponent
-import java.awt.Toolkit
-import scala.swing.Window
+
+import scala.swing.{BorderPanel, Component, Dialog, Label, Swing, Window}
 
 class CustomToast(relativeComp:JComponent,window:Window) extends Dialog(window) { 
    peer.setAlwaysOnTop(true)
    peer.setUndecorated(true)
    peer.setFocusableWindowState(false)
    peer.pack()
-   
-   def setContent(content:Component)= {
+
+  def setContent(content: Component): Unit = {
   	 contents=content      
   	 size=content.preferredSize  
   	 visible=true
    }
-   
-   def updatePos(posx:Int,posy:Int) = {
+
+  def updatePos(posx: Int, posy: Int): Unit = {
      val relPos=relativeComp.getLocationOnScreen()     
      peer.setLocation(relPos.getX().toInt+posx, relPos.getY().toInt+posy)
    }
@@ -52,7 +46,7 @@ class Toast(message:String,component:JComponent,window:Window) extends Dialog(wi
    size=panel.preferredSize 
    if(component==null) util.Log.e("Toast, comp == null")
    peer.setLocationRelativeTo(component)
-   val loc=peer.getLocation()
+  val loc: Point = peer.getLocation()
    peer.setLocation(loc.getX().toInt, loc.getY().toInt+30)
 
    new Thread(){

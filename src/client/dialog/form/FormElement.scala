@@ -3,18 +3,20 @@ package client.dialog.form
 import java.awt.{Color, Dimension}
 import javax.swing.JComponent
 
+import client.dataviewer.ViewConstants
 import definition.expression.{Expression, StringConstant}
 import definition.typ.HorAlign
-import definition.typ.form.{DataChangeListener, AbstractFormElement}
+import definition.typ.form.{AbstractFormElement, DataChangeListener}
+import util.XMLUtils._
 
+import scala.collection.mutable
+import scala.language.implicitConversions
 import scala.swing.{AbstractButton, Alignment, Component, ToggleButton}
 import scala.util.control.NonFatal
 import scala.xml._
-import scala.language.implicitConversions
-import util.XMLUtils._
 
 /**
- * Created by Kathi on 30.03.2015.
+ * Created by Peter on 30.03.2015.
  */
 trait FormCreateContext{
   def getIconableButton(commandName:String,groupName:String,ntooltipText:String):AbstractButton
@@ -34,7 +36,8 @@ trait FormElement extends AbstractFormElement {
 
   //type InitFunc=(FormElement)=>Unit
 
-  def setupComponent(comp:Component)={
+  def setupComponent(comp: Component): Unit = {
+    comp.font = ViewConstants.labelFont
     if (minWidth>0&&minHeight>0) {
       comp.minimumSize= new Dimension(minWidth,minHeight)
       comp.preferredSize=comp.minimumSize
@@ -47,7 +50,7 @@ trait FormElement extends AbstractFormElement {
   }
 
 
-  def updateProperty(propName:String,newValue:String,inf:Option[InitFunc]=None,context:FormCreateContext) = {
+  def updateProperty(propName: String, newValue: String, inf: Option[InitFunc] = None, context: FormCreateContext): FormElement = {
     val node=this.toXML.asInstanceOf[Elem]
     val newAttribs= changeAttribute(node.attributes,propName,newValue)
     val newXML=node.copy(attributes=newAttribs)
@@ -86,10 +89,10 @@ object FormElement {
   val editColor=new Color(255,255,230)
   val textEditorGroup="TextEditor"
 
-  val backgroundMap=collection.mutable.Map[Class[_],Color]()
+  val backgroundMap: mutable.Map[Class[_], Color] = collection.mutable.Map[Class[_], Color]()
   val validFormElements=List("FormLabel","TextField","TextArea","FormBox","CalcField","FormButton")
 
-  def horAlignToScala(a:HorAlign.Value)= {
+  def horAlignToScala(a: HorAlign.Value): Alignment.Value = {
 
     a match {
       case HorAlign.Left=> Alignment.Left
@@ -100,13 +103,15 @@ object FormElement {
   }
 
   object NullListener extends DataChangeListener {
-    def fieldChanged(field:Byte,newValue:Expression) =
+    def fieldChanged(field: Byte, newValue: Expression): Unit =
       util.Log.w("Reactor not initialized  field:" +field+" "+newValue)
     def parseValue(fieldNr:Byte,text:String):Expression = {
-      new StringConstant(text)
+      StringConstant(text)
     }
-    def flipMaximizeWindow(max:Boolean)={}
-    def print()={}
+
+    def flipMaximizeWindow(max: Boolean): Unit = {}
+
+    def print(): Unit = {}
   }
   object EmptyNode extends Elem (null,"",Null,xml.TopScope,false,null)
 
@@ -127,7 +132,7 @@ object FormElement {
     node.child.filter(n=>validFormElements.contains(n.label)). map(anode=> FormElement.readElement(anode,context))
   }
 
-  def getElementByName(name:String,context:FormCreateContext) = {
+  def getElementByName(name: String, context: FormCreateContext): Component with FormElement = {
     name match {
       case "FormLabel" => new FormLabel(0,0,20,0,"Label",HorAlign.Left )
       case "TextField" => new FormTextField(80,0,30,30,HorAlign.Left,0,context)

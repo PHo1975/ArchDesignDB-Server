@@ -1,37 +1,27 @@
 package client.dialog
 
-import scala.swing.Dialog
-import scala.swing.Window
 import java.awt.Dimension
-import scala.swing.Button
-import scala.swing.ListView
-import scala.swing.Table
-import javax.swing.table.AbstractTableModel
-import client.comm.CommandGroup
-import client.comm.KeyStrokeManager
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import scala.swing.ScrollPane
-import scala.swing.Swing
-import scala.swing.event.ButtonClicked
-import scala.swing.event.ListSelectionChanged
-import scala.swing.Label
-import scala.swing.event.KeyPressed
-import scala.swing.event.KeyEvent
 import javax.swing.KeyStroke
-import client.comm.ClientQueryManager
+import javax.swing.table.AbstractTableModel
+
+import client.comm.{ClientQueryManager, KeyStrokeManager}
+import client.dataviewer.ViewConstants
+
+import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, Label, ListView, Orientation, ScrollPane, Swing, Table, Window}
+import scala.swing.event.{ButtonClicked, KeyEvent, KeyPressed, ListSelectionChanged}
 
 
 class CommandModel extends AbstractTableModel {
   var currentGroupName:String= _
-  var currentCommands:Seq[(String,String,String)]=Nil  
-  override def getColumnName(column: Int) = column match {
+  var currentCommands:Seq[(String,String,String)]=Nil
+
+  override def getColumnName(column: Int): String = column match {
     case 0 => "Befehl"
     case 1 => "Tastenkürzel"
     case _ => "Belegt"
-  }  
-  def getRowCount() = currentCommands.size      
+  }
+
+  def getRowCount(): Int = currentCommands.size
   def getColumnCount() = 3
   def getValueAt(row: Int, col: Int): AnyRef = {
   	val com=currentCommands(row)
@@ -41,10 +31,11 @@ class CommandModel extends AbstractTableModel {
   	  case 2=> com._3
   	}  	 
   }
-  override def getColumnClass(column:Int)=classOf[String]
+
+  override def getColumnClass(column: Int): Class[String] = classOf[String]
   override def isCellEditable(row: Int, column: Int) = false
-  
-  def loadGroup(groupName:String)= {
+
+  def loadGroup(groupName: String): Unit = {
     currentGroupName=groupName
     val group=KeyStrokeManager.getGroup(groupName)
     val allCommandSet=collection.immutable.SortedSet[String]()++group.receiverMap.keySet++group.commandMap.keySet
@@ -57,8 +48,8 @@ class CommandModel extends AbstractTableModel {
     currentCommands=set.toSeq 
     this.fireTableDataChanged()
   }
-  
-  def refreshGroup()=if(currentGroupName.length>0)loadGroup(currentGroupName)
+
+  def refreshGroup(): Unit = if (currentGroupName.length > 0) loadGroup(currentGroupName)
 }
 
 class StrokeEditDialog (w:Window) extends Dialog(w) {
@@ -79,7 +70,8 @@ class StrokeEditDialog (w:Window) extends Dialog(w) {
     add(new BoxPanel(Orientation.Horizontal){
       contents+=new BorderPanel{
         add(new ScrollPane(groupListView),BorderPanel.Position.Center)
-        add(new Label("Befehlsgruppe"),BorderPanel.Position.North)
+        val bLabel: Label = ViewConstants.label("Befehlsgruppe")
+        add(bLabel, BorderPanel.Position.North)
         preferredSize=new Dimension(190,50)
       } += Swing.HStrut(20)+=
         new BorderPanel {
@@ -112,10 +104,9 @@ class StrokeEditDialog (w:Window) extends Dialog(w) {
   title="Tastaturkürzel bearbeiten"
   contents=mainPanel
   groupListView.selection.intervalMode=ListView.IntervalMode.Single
-  
-  
-  
-  def loadGroupList()= {
+
+
+  def loadGroupList(): Unit = {
     //println("GroupKeys="+KeyStrokeManager.groupMap.keysIterator.mkString(" | "))
     groupListView.listData=(collection.immutable.SortedSet[String]()++ KeyStrokeManager.groupMap.keysIterator).toSeq
   }
@@ -132,13 +123,13 @@ class StrokeEditDialog (w:Window) extends Dialog(w) {
       case _ =>
     }
   }
-  
-  def storeStrokes() = {
+
+  def storeStrokes(): Unit = {
     ClientQueryManager.writeKeyStrokes()
     close()
   }
-  
-  def showDialog()= {
+
+  def showDialog(): Unit = {
     loadGroupList()
     visible=true
   }

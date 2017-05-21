@@ -1,16 +1,16 @@
 package client.spreadsheet
-import java.awt.{Color, Dimension, Font, Point, Toolkit}
-import java.awt.event.{AdjustmentEvent, AdjustmentListener}
+
+import java.awt.event.{AdjustmentEvent, AdjustmentListener, MouseMotionListener}
 import java.awt.font.FontRenderContext
-import java.util.Date
-import javax.swing.{BorderFactory, DropMode, JLabel, JScrollPane, JTable, ScrollPaneConstants, SwingConstants}
+import java.awt.{Color, Dimension, Font, Point, Toolkit}
+import javax.swing._
 import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
-import javax.swing.table.TableCellRenderer
+import javax.swing.table.{JTableHeader, TableCellRenderer}
 
 import client.comm.{ClientQueryManager, SingleObjectDataModel, SubscriptionFactory}
-import client.dataviewer.{LabelRenderer, MultilineEditor, ViewConstants}
-import client.dialog.{AbstractFocusContainer, ActionPanel, NewButtonsList, SelectEventDispatcher, SelectSender}
-import definition.data.{EMPTY_OWNERREF, EMPTY_REFERENCE, InstanceData, OwnerReference, Referencable, Reference}
+import client.dataviewer.{DataViewController, LabelRenderer, MultilineEditor, ViewConstants}
+import client.dialog._
+import definition.data._
 import definition.expression._
 import definition.typ.{CustomInstanceEditor, DataType, SelectGroup, SystemSettings}
 import util.StringUtils
@@ -21,7 +21,8 @@ import scala.swing.event.{ButtonClicked, FocusGained}
 class SpreadSheetSelectGroup(nparent:OwnerReference,nchildren:Iterable[SpreadSheetCell],val controller:SpreadSheetController) extends SelectGroup[Referencable](nparent,nchildren) {
   var commonFormat:SpreadSheetFormat=UndefinedFormat
   var range:SpreadSheetRange=NO_SELECTION
-  override def toString="SSSG owner:"+parent+" children:"+children.size+" "+ children.map(i => i.toString + ":" + i.getClass.toString).mkString("|")
+
+  override def toString: String = "SSSG owner:" + parent + " children:" + children.size + " " + children.map(i => i.toString + ":" + i.getClass.toString).mkString("|")
 }
 
 
@@ -40,7 +41,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   val tableModel=new SpreadSheetTableModel(this)
   val firstColumnTableModel=new SSFirstColumnTableModel(this)
   val formatList=new SpreadSheetFormatList(this)
-  override val fullSize=true
+  override val fullSize: Boolean = DataViewController.hideProperties
   
   var selection:SpreadSheetRange=NO_SELECTION
   var notifySel=true
@@ -61,10 +62,10 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		  }, ()=>{   })
   
   class MyHeaderPanel extends BoxPanel(scala.swing.Orientation.Horizontal){
-    val nameLab=new Label("Tabelle:")
+    val nameLab: Label = ViewConstants.label("Tabelle:")
     val nameEdit=new TextField
     val resultBut=new Button("Ergebnis auswählen")
-    val resultLab=new Label("   ")
+    val resultLab: Label = ViewConstants.label("   ")
     xLayoutAlignment=0d
     resultLab.opaque=true
     resultLab.background=Color.LIGHT_GRAY.brighter()
@@ -88,8 +89,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   
   class MyFirstColTable extends Table() {
     var rowSelectRange:Range=emptyRange
-    autoResizeMode=Table.AutoResizeMode.Off		
-		rowHeight=SpreadSheet.defaultRowHeight
+    autoResizeMode=Table.AutoResizeMode.Off
+    rowHeight = (25 * ViewConstants.fontScale) / 100
 		model=firstColumnTableModel
 		showGrid=true
 		gridColor=Color.LIGHT_GRAY
@@ -101,9 +102,9 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		for (l<-peer.getMouseMotionListeners()) peer.removeMouseMotionListener(l)
 		var dragStartRow:Int= -1
 		val rowMouseListener:java.awt.event.MouseAdapter=new java.awt.event.MouseAdapter() {
-		   
-		   override def mousePressed(e:java.awt.event.MouseEvent)= if(e.getButton()==java.awt.event.MouseEvent.BUTTON1&&
-	       peer.columnAtPoint(e.getPoint)==0){		     
+
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 &&
+        peer.columnAtPoint(e.getPoint) == 0) {
 	       e.consume()
 	       dragStartRow=peer.rowAtPoint(e.getPoint)		       
 	       rowSelectRange=Range(dragStartRow,dragStartRow+1)
@@ -117,7 +118,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		     }
 		     
 		   }
-		   override def mouseDragged(e:java.awt.event.MouseEvent)= if(dragStartRow>=0){
+
+      override def mouseDragged(e: java.awt.event.MouseEvent): Unit = if (dragStartRow >= 0) {
         val row=peer.rowAtPoint(e.getPoint())
         e.consume()        
         if(row>=0) {          
@@ -129,8 +131,10 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
         	}        	
         }
 		   }
-       override def mouseReleased(e:java.awt.event.MouseEvent)= if(dragStartRow > -1 ) dragStartRow= -1         
-       override def mouseExited(e:java.awt.event.MouseEvent)= mouseReleased(e)  
+
+      override def mouseReleased(e: java.awt.event.MouseEvent): Unit = if (dragStartRow > -1) dragStartRow = -1
+
+      override def mouseExited(e: java.awt.event.MouseEvent): Unit = mouseReleased(e)
 		}
 		
     peer.addMouseListener(rowMouseListener)
@@ -138,19 +142,21 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		val firstButRend=new LabelRenderer()   
     firstButRend.font=SpreadSheet.firstColFont
 		val ftcr = new Table.AbstractRenderer[String, LabelRenderer](firstButRend) {
-			def configure(t: Table, sel: Boolean, foc: Boolean, o: String, row: Int, col: Int) = {
+      def configure(t: Table, sel: Boolean, foc: Boolean, o: String, row: Int, col: Int): Unit = {
 			  component.config(sel,foc,o,row)
 			  component.peer.setBackground(if(rowSelectRange.contains(row))t.selectionBackground else ViewConstants.buttonBackgroundColor)			  
 			}			  
 		}
-    override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int) = {			
+
+    override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int): Component = {
 			val modCol=peer.convertColumnIndexToModel(col)
 			val v=model.getValueAt(row,modCol)			
 		  ftcr.componentFor(this,sel,foc,if(v==null) "" else v.toString, row, col)			
 		}
      peer.getTableHeader().setDefaultRenderer(new JLabel() with TableCellRenderer{
       setBorder(BorderFactory.createRaisedBevelBorder())
-  	  override def revalidate()= {}
+
+       override def revalidate(): Unit = {}
       override val getPreferredSize=new Dimension(40,30)     
       def getTableCellRendererComponent(table:JTable, value:Object , isSelected:Boolean,
       hasFocus:Boolean, rowIndex:Int, colIndex:Int):java.awt.Component= this
@@ -163,16 +169,17 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   class MyTable extends Table(){   
     
     object MySelectionListener extends ListSelectionListener{
-      var selfSelected=false      
-      def valueChanged(e:ListSelectionEvent ) = if(!e.getValueIsAdjusting()&& !selfSelected) updateRangeSelection()            
+      var selfSelected=false
+
+      def valueChanged(e: ListSelectionEvent): Unit = if (!e.getValueIsAdjusting() && !selfSelected) updateRangeSelection()
     }
     
-    autoResizeMode=Table.AutoResizeMode.Off		
-		rowHeight=SpreadSheet.defaultRowHeight
-		font=SpreadSheet.tableFont
+    autoResizeMode=Table.AutoResizeMode.Off
+    rowHeight = 25 * ViewConstants.fontScale / 100
+    font = ViewConstants.tableFont
 		model=tableModel
 		showGrid=true
-		gridColor=new Color(230,230,230)
+    gridColor = new Color(220, 220, 220)
 		peer.setTransferHandler(transferHandler)
 		peer.setDragEnabled(true)
 		peer.setDropMode(DropMode.ON)	
@@ -184,20 +191,21 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		selection.elementMode=Table.ElementMode.Cell
 		this.peer.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_INTERVAL_SELECTION)		
 		peer.setColumnSelectionAllowed(true)
-		var headerSelectRange:Range=emptyRange				
-		val header=peer.getTableHeader		
-		val internMouseListeners=peer.getMouseMotionListeners()
-		
-		def disableInternMouseListeners()= for (l<-internMouseListeners) peer.removeMouseMotionListener(l)		
-		def enableInternMouseListeners()= for(l<-internMouseListeners) peer.addMouseMotionListener(l)
+		var headerSelectRange:Range=emptyRange
+    val header: JTableHeader = peer.getTableHeader
+    val internMouseListeners: Array[MouseMotionListener] = peer.getMouseMotionListeners()
+
+    def disableInternMouseListeners(): Unit = for (l <- internMouseListeners) peer.removeMouseMotionListener(l)
+
+    def enableInternMouseListeners(): Unit = for (l <- internMouseListeners) peer.addMouseMotionListener(l)
 		
 		val headerMouseListener:java.awt.event.MouseAdapter=new java.awt.event.MouseAdapter() {
 		  var dragStartWidth= 0
       var dragStartCol:Int= -1 
       var dragStartPos:Option[Point]=None
       var hasDragged=false
-      
-			override def mousePressed(e:java.awt.event.MouseEvent)= if(e.getButton()==java.awt.event.MouseEvent.BUTTON1){
+
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON1) {
 				 dragStartCol=header.columnAtPoint(e.getPoint())				 
 				 dragStartPos=Some(e.getPoint)
 				 hasDragged=false				 
@@ -212,11 +220,12 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 			  }
 			  if(!headerSelectRange.isEmpty) ActionPanel.showRightMenu(e.getPoint(),table)
 			}
-      override def mouseReleased(e:java.awt.event.MouseEvent)={
+
+      override def mouseReleased(e: java.awt.event.MouseEvent): Unit = {
         val col=header.columnAtPoint(e.getPoint())       
         if(col==peer.getColumnCount-1&& !hasDragged) {          
             tableModel.writeColumnWidths()
-            tableModel.createColumnData(peer.getColumnCount-1,SpreadSheet.defaultColumnWidth)
+          tableModel.createColumnData(peer.getColumnCount - 1, SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
             headerSelectRange=emptyRange                         
         } else if(hasDragged) {
           if(tableModel.columnModel.hasWidthChanged) tableModel.writeColumnWidths()
@@ -251,7 +260,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     peer.getColumnModel().getSelectionModel().addListSelectionListener(MySelectionListener)
     
     peer.addMouseListener(new java.awt.event.MouseAdapter() {
-      override def mousePressed(e:java.awt.event.MouseEvent)= if(e.getButton()==java.awt.event.MouseEvent.BUTTON3) {
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON3) {
 			  if(!table.hasFocus) {
 			    table.requestFocus()
 			  }
@@ -261,10 +270,11 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
        
     val cellRenderer=new SpreadSheetRenderer(SpreadSheetController.this)
 		val ctcr = new Table.AbstractRenderer[Expression, SpreadSheetRenderer](cellRenderer) {
-			def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int) =     
+      def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int): Unit =
 				component.config(t,sel,foc,o,row,col)
 		}
-    override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int) = {			
+
+    override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int): Component = {
 			val modCol=peer.convertColumnIndexToModel(col)
 			val v=model.getValueAt(row,modCol)			
 			 v match {
@@ -275,8 +285,9 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		}
     
     header.setDefaultRenderer(new JLabel() with TableCellRenderer{
-      setBorder(BorderFactory.createRaisedBevelBorder())  	
-  	  override def revalidate()= {}
+      setBorder(BorderFactory.createRaisedBevelBorder())
+
+      override def revalidate(): Unit = {}
       override val getPreferredSize=new Dimension(40,30)
       setOpaque(true)
       
@@ -296,9 +307,10 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       }
     })    
     
-    val instEditor:MultilineEditor=new MultilineEditor(this.peer)	{ 
-      textArea.setFont(SpreadSheet.tableFont)
-    	def setEditorValue(value:Object) =  value match {
+    val instEditor:MultilineEditor=new MultilineEditor(this.peer)	{
+      textArea.setFont(ViewConstants.tableFont)
+
+      def setEditorValue(value: Object): String = value match {
           case expr:Expression => if(expr.getType==DataType.StringTyp) expr.toString
     				else replaceFieldReferences(expr,false).getTerm//.replace("_SpreadSheet","")    				
           case null => ""
@@ -306,8 +318,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
         }    		
     	
     }
-    
-    override def editor(row: Int, column: Int)= instEditor			
+
+    override def editor(row: Int, column: Int): MultilineEditor = instEditor
 		
     listenTo(this,mouse.clicks)
     reactions+= {
@@ -333,7 +345,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     //peer.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
     peer.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS)
     peer.getVerticalScrollBar.addAdjustmentListener(new AdjustmentListener() {
-      def adjustmentValueChanged(e:AdjustmentEvent )= {
+      def adjustmentValueChanged(e: AdjustmentEvent): Unit = {
         //println("Adjustment type:"+e.getAdjustmentType()+" value: "+e.getValue()+" isadj:"+e.getValueIsAdjusting())
         headerScroller.peer.getVerticalScrollBar.setValue(e.getValue)
       } 
@@ -354,7 +366,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     case f: FieldReference =>
       val ref = new Reference(f.remType.get, f.remInst.get)
       tableModel.findCellByRef(ref) match {
-        case Some(cell) => new SSVariable(SpreadSheetUtil.columnIdToLetter(cell.col) + (cell.row + 1).toString, cell.exp.getValue)
+        case Some(cell) => SSVariable(SpreadSheetUtil.columnIdToLetter(cell.col) + (cell.row + 1).toString, cell.exp.getValue)
         case None => tableModel.collFuncList.theMap.get(ref) match {
           case Some(collFuncData) => collFuncData.proxy
           case None => if (allFieldRefs) f.cachedValue else f
@@ -362,8 +374,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       }
     case o => o
   }
-  
-  def getComponent =  this 
+
+  def getComponent: SpreadSheetController = this
 
   def load(ref: Reference, listener: ()=>Unit): Unit = {
     loadDoneListener=listener
@@ -384,8 +396,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     tableModel.collFuncList.load(spreadSheetRef,5)
     revalidate()
   }
-  
-  def loadFormats() = formatList.load(spreadSheetRef)
+
+  def loadFormats(): Boolean = formatList.load(spreadSheetRef)
 
   def shutDown(): Unit = {    
     deselect(false)
@@ -394,13 +406,13 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     formatList.shutDown()
     loadDoneListener=null
   }
-  
-  
-  def refresh()= {
+
+
+  def refresh(): Unit = {
     table.repaint()
   }
-  
-  protected def updateHeader(nname:String,ndate:DateConstant,nresult:Constant)= {
+
+  protected def updateHeader(nname: String, ndate: DateConstant, nresult: Constant): Unit = {
     headerPanel.nameEdit.text=nname
     headerPanel.resultLab.text=nresult.toString
   }
@@ -420,7 +432,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     	val rows=table.peer.getSelectedRows()
     	var cols=table.peer.getColumnModel().getSelectedColumns()    	
     	if(rows.nonEmpty&&cols.nonEmpty&&cols(0)>=0 ){
-    		val newSel=SpreadSheetRange.apply(cols(0),cols(cols.size-1),rows(0),rows(rows.size-1))    		
+        val newSel = SpreadSheetRange.apply(cols(0), cols(cols.length - 1), rows(0), rows(rows.size - 1))
     		if(newSel!=selection) {
     			selection=newSel    		
     			notifySelectionChanged()
@@ -437,7 +449,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   protected def notifyColSelectionChanged():Unit= {
     firstColTable.rowSelectRange=emptyRange
     firstColTable.repaint()
-    if(notifySel&&table.headerSelectRange.size>0){
+    if (notifySel && table.headerSelectRange.nonEmpty) {
       colSelGroup.children=tableModel.getColumns(table.headerSelectRange)
       colSelGroup.commonFormat=formatList.getCommonFormatForRange(selection)
       colSelGroup.range=selection     
@@ -453,7 +465,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     table.peer.setColumnSelectionInterval(col,col)
     table.peer.setRowSelectionInterval(0,tableModel.getRowCount()-1)
     table.MySelectionListener.selfSelected= false
-    selection=new ColsSelection(table.headerSelectRange)
+    selection = ColsSelection(table.headerSelectRange)
     //println("Col selection "+selection)
     notifyColSelectionChanged()
   }
@@ -462,14 +474,14 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     table.MySelectionListener.selfSelected= true
     table.peer.setColumnSelectionInterval(cols.start,cols.end-1)
     table.MySelectionListener.selfSelected= false
-    selection=new ColsSelection(table.headerSelectRange)
+    selection = ColsSelection(table.headerSelectRange)
     //println("Cols selection "+selection)
     notifyColSelectionChanged()
   }
   
   protected def selectRow(row:Int):Unit= {   
     table.headerSelectRange=emptyRange
-    selection=new RowsSelection(firstColTable.rowSelectRange)
+    selection = RowsSelection(firstColTable.rowSelectRange)
     notifySelectionChanged()    
     table.MySelectionListener.selfSelected= true      
     table.peer.setColumnSelectionInterval(0,tableModel.getColumnCount()-1)      
@@ -477,8 +489,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     table.MySelectionListener.selfSelected= false
   }  
   
-  protected def selectRows(rows:Range):Unit= {      
-    selection=new RowsSelection(rows)
+  protected def selectRows(rows:Range):Unit= {
+    selection = RowsSelection(rows)
     notifySelectionChanged()
     if(rows!=firstColTable.rowSelectRange) util.Log.w("Not same !!!")
     table.MySelectionListener.selfSelected= true
@@ -525,12 +537,12 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 	
 	
   
-  def containerName:String = "Tabellenkalkulation"  
-  
-  def containerRef=someSpreadSheetRef 
- 
-  
-  def addRows()= {    
+  def containerName:String = "Tabellenkalkulation"
+
+  def containerRef: Option[Reference] = someSpreadSheetRef
+
+
+  def addRows(): Unit = {
     selection match {
       case selRows:RowsSelection=>
         //println("Add rows newSelection "+selRows.rows)
@@ -541,8 +553,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     deselect(true)
     Swing.onEDT{tableModel.myFireTableStructureChanged()}
   }
-  
-  def removeRows() = {
+
+  def removeRows(): Unit = {
     selection match {
       case selRows:RowsSelection=>
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"removeRows",
@@ -552,8 +564,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     deselect(true)
     Swing.onEDT{tableModel.myFireTableStructureChanged()}
   }
-  
-  def addCols()= {
+
+  def addCols(): Unit = {
     selection match {
       case selCols:ColsSelection=>
         tableModel.writeColumnWidths()
@@ -564,8 +576,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     deselect(true)
     Swing.onEDT{tableModel.myFireTableStructureChanged()}
   }
-  
-  def removeCols() = {
+
+  def removeCols(): Unit = {
     selection match {
       case selCols:ColsSelection=>
         tableModel.writeColumnWidths()
@@ -576,8 +588,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     deselect(true)
     Swing.onEDT{tableModel.myFireTableStructureChanged()}    
   }
-  
-  def copyToClipBoard() = {
+
+  def copyToClipBoard(): Unit = {
     Toolkit.getDefaultToolkit().getSystemClipboard().setContents(transferHandler.createTransferable(table.peer),null)
   }
 }
@@ -585,11 +597,11 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 
 
 class SpreadSheetVariableResolver extends VariableResolver {
-  
-  def parseString(st:String)= try {
+
+  def parseString(st: String): Int = try {
     Integer.parseInt(st)
   } catch {
-    case e:Expression => -1
+    case _: Expression => -1
   }
   
   def moduleName:String="SpreadSheet"
@@ -610,7 +622,7 @@ class SpreadSheetVariableResolver extends VariableResolver {
   } else false
   
   def getVariableValue(varName:String):Constant= {
-    new IntConstant(101)
+    IntConstant(101)
   }
   def listVariables(forData:InstanceData):Iterable[String]=Seq.empty
   
@@ -621,6 +633,8 @@ class SpreadSheetVariableResolver extends VariableResolver {
 object SpreadSheet {
   FunctionManager.get.registerVariableResolver(new SpreadSheetVariableResolver)
   val focusColor=new Color(0, 155, 250)
+  val defaultRowHeight = 25
+  val tableFont = new Font("Arial", 0, 14)
   lazy val spreadSheetType:Int = SystemSettings().systemTypes("SpreadSheet")
   lazy val spreadSheetColumnType:Int = SystemSettings().systemTypes("SpreadSheetColumn")
   lazy val spreadSheetFormatSetType:Int = SystemSettings().systemTypes("SpreadSheetFormatSet")
@@ -634,12 +648,10 @@ object SpreadSheet {
   
   val spreadSheetModulName="SpreadSheet"
   val rowOverhead=15
-  val firstColumnWidth=40
+  lazy val firstColumnWidth = 40
   val lastColumnWidth=30
-  val tableFont=new Font("Arial",0,14)
-  val defaultRowHeight=23
   val defaultColumnWidth=100
-  val firstColFont=new Font("Arial",0,12)
+  val firstColFont: Font = ViewConstants.smallFont
   
   lazy val defaultFormat=new SpreadSheetFormatRange(EMPTY_REFERENCE,All_SELECTION,new SpreadSheetFormat(HorAlign.LEFT,VertAlign.CENTER,
       CellFormat.Number,Some("%,1.2f"),Some(tableFont.getName), Some(tableFont.getSize().toFloat),
@@ -657,7 +669,7 @@ object SpreadSheet {
 }
 
 object SpreadSheetUtil {
-   def lettersToCoords(letters:String)={
+  def lettersToCoords(letters: String): (Int, Int) = {
 	  val up=letters.toUpperCase()
 	  val c1=up.charAt(0)-65
 	  val c2=up.charAt(1)

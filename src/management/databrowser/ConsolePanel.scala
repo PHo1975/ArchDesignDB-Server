@@ -2,47 +2,49 @@
  * Author: Peter Started:14.12.2010
  */
 package management.databrowser
-import scala.swing._
-import java.awt.Font
-import client.comm.ErrorListener
-import client.comm.ClientQueryManager
-import java.io.OutputStream
+
+import java.io.{OutputStream, PrintStream}
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.io.PrintStream
+import javax.swing.text.Document
+
+import client.dataviewer.ViewConstants
+
+import scala.swing._
+
 /**
  * 
  */
-class ConsolePanel(debug:Boolean) extends BorderPanel with ErrorListener{
+class ConsolePanel(debug: Boolean) extends BorderPanel {
 	val textArea=new TextArea
-	val doc=textArea.peer.getDocument()
-	//textArea.wordWrap=true
-	//textArea.lineWrap=true
-	val textFont=new Font("Courier New",0,12)
-	textArea.font=textFont
+  val doc: Document = textArea.peer.getDocument()
+  textArea.font = ViewConstants.tableFont
 	textArea.editable=false
 	val timeFormat=new SimpleDateFormat("dd| HH:mm ")
 	add(new Label("Log-Console"),BorderPanel.Position.North)
 	add(new ScrollPane {
 		viewportView=textArea
 	},BorderPanel.Position.Center)
+  util.Log.addLogListener((st) => printError(st + "\n"))
 
-	def printError(errorText:String)=Swing.onEDT{		
-		textArea.append(errorText)
+  def printError(errorText: String): Unit = Swing.onEDT {
+    textArea.append(timeFormat.format(new Date()) + errorText)
+    //println("print error "+errorText)
 	}
-	def printWithTimeStamp(text:String,error:Boolean)={
+
+  def printWithTimeStamp(text: String, error: Boolean): Unit = {
     //if (error) println(text + "::" + Thread.currentThread().getStackTrace.drop(2).mkString("\n "))
     Swing.onEDT {
     textArea.append( timeFormat.format(new Date()) + (if (error) "Error: " else "") + text)
   }
 	}
 	class MyStream(error:Boolean) extends OutputStream {
-		override def write( b:Int)= printError( String.valueOf( b.toChar))
+    override def write(b: Int): Unit = printError(String.valueOf(b.toChar))
 
-		override def write(b:Array[Byte], off:Int, len:Int) = if(len==2&&b(1)=='\n') printError("\n")
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = if (len == 2 && b(1) == '\n') printError("\n")
     		else printWithTimeStamp(new String(b, off, len),error)
 
-		override def write(b:Array[Byte]) =  write(b, 0, b.length)
+    override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
 	}
 	
 	val out = new PrintStream(new MyStream(false),true)
@@ -51,7 +53,7 @@ class ConsolePanel(debug:Boolean) extends BorderPanel with ErrorListener{
 	if(!debug) {
 	  System.setOut(out)
 	  System.setErr( err)
-	}
+  } else println("debug")
 }
 
 

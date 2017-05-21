@@ -8,6 +8,7 @@ import java.awt.print.{PageFormat, Paper}
 import java.io.{ByteArrayInputStream, DataInputStream}
 import javax.swing.BorderFactory
 
+import client.dataviewer.ViewConstants
 import definition.data.{FontStyleList, InstanceData, PageData, RenderContext}
 import definition.expression.{BlobConstant, DateConstant}
 import util.{Log, MyListView}
@@ -23,17 +24,17 @@ class ArchivePageable(data:InstanceData) extends APageable{
 	
 	lazy val myContext:RenderContext=new AbstractContext {		
 	  def getScale=1
-	  
-		val fontStyleList =if(data.fieldValue.head.toString.length==0) new FontStyleList(Seq.empty) else
+
+		val fontStyleList: FontStyleList = if (data.fieldValue.head.toString.length == 0) new FontStyleList(Seq.empty) else
 		  FontStyleList.fromXML(scala.xml.XML.loadString( data.fieldValue.head.toString) )
 		
 	}
 	override def context=if(tempContext==null)myContext else tempContext
 
-	val leftBorder=data.fieldValue(5).toFloat
-	val topBorder=data.fieldValue(6).toFloat
-	val rightBorder=data.fieldValue(7).toFloat
-	val bottomBorder=data.fieldValue(8).toFloat
+	val leftBorder: Float = data.fieldValue(5).toFloat
+	val topBorder: Float = data.fieldValue(6).toFloat
+	val rightBorder: Float = data.fieldValue(7).toFloat
+	val bottomBorder: Float = data.fieldValue(8).toFloat
 	val paper=new Paper()
 	paper.setSize(context.toUnit(pageWidth),context.toUnit(pageHeight))
 	paper.setImageableArea(0, 0, context.toUnit(pageWidth),context.toUnit(pageHeight))
@@ -46,28 +47,28 @@ class ArchivePageable(data:InstanceData) extends APageable{
 			val inStream=new DataInputStream(new ByteArrayInputStream(b.data))
 			for( i <-0 until inStream.readInt) yield PageData(inStream)
 		case _ => Log.w("No blob");  Seq.empty
-	}	
+	}
 
-	val date=data.fieldValue(10).toDate		
-	
-	override def toString= {
+	val date: DateConstant = data.fieldValue(10).toDate
+
+	override def toString: String = {
 		date.toDateString + " "+pagesList.size+" Seiten"
 	}
 }
 
 class ArchiveRenderer() extends GridPanel(2,1 ) {
-	val dateLabel=new Label
-	val pageLabel=new Label
+	val dateLabel: Label = ViewConstants.label()
+	val pageLabel: Label = ViewConstants.label()
 	
 	contents+=dateLabel+=pageLabel
 
-	override def foreground_=(c: Color) = {
+	override def foreground_=(c: Color): Unit = {
 		super.foreground_=(c)
 		dateLabel.foreground=c
 		pageLabel.foreground=c
 	}
-	
-	override def background_=(c:Color) = {
+
+	override def background_=(c: Color): Unit = {
 		super.background_=(c)
 		dateLabel.background=c
 		pageLabel.background=c

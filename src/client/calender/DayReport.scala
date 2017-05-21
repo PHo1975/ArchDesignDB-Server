@@ -87,7 +87,7 @@ class DayReportForm(mod:CalendarModel) {
   buttonBox.getChildren().addAll(wButtons.asJava)
   GridPane.setConstraints(buttonBox, 0, 0,1,1)
 
-  val companiesLabel=new Label("Firmen vor Ort:")  
+  val companiesLabel = new Label("Firmen vor Ort:")
   companiesLabel.setTooltip(new Tooltip("Anwesende Firmen können aus den Projektadressen\nin diese Liste hineingezogen werden."))
   GridPane.setConstraints(companiesLabel, 0, 1,1,1)
   val companiesListView=new ListView[Address]

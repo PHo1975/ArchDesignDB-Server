@@ -4,15 +4,15 @@
 package client.dialog
 
 import java.awt.Dimension
-import javax.swing.JSpinner
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.table.TableCellEditor
+import javax.swing.{JSpinner, SpinnerNumberModel}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.ViewConstants
 import client.ui.ClientApp
 import definition.data._
-import definition.expression.{Constant, DoubleConstant, Expression, IntConstant, ParserError, StringConstant, StringParser}
+import definition.expression._
 import definition.typ.{AllClasses, DataType, SelectGroup}
 
 import scala.swing.event.{EditDone, SelectionChanged}
@@ -27,7 +27,8 @@ trait FieldEditor extends AbstractFieldEditor {
   var dataList:Iterable[SelectGroup[_ <:Referencable]]=Seq.empty
   var inited=false
   var allowedClassIds:Map[String,Int]=Map.empty
-  val fieldComponents:Seq[SidePanelComponent[_]]  
+
+  def fieldComponents: Seq[SidePanelComponent[_]]
   
   def allowedClassNames:Iterable[String]  
       
@@ -43,8 +44,8 @@ trait FieldEditor extends AbstractFieldEditor {
         fc.updateSearchValue()
     }
   }
-  
-  def init()= if(!inited){
+
+  def init(): Unit = if (!inited) {
     inited=true
     ClientQueryManager.registerSetupListener(()=>{    
 	  allowedClassIds=allowedClassNames.map(a => a -> AllClasses.get.getClassIDByName(a) ).toMap
@@ -52,10 +53,10 @@ trait FieldEditor extends AbstractFieldEditor {
 	    f.createFieldMap(allowedClassIds)
   })
   }
-	
-  def getPanelPart(lname:String,partComp:Component)=new PanelPart(lname,partComp)
-  
-  def storeValue[A](newValue:A,component:SidePanelComponent[A]) = {
+
+  def getPanelPart(lname: String, partComp: Component): PanelPart = new PanelPart(lname, partComp)
+
+  def storeValue[A](newValue: A, component: SidePanelComponent[A]): Unit = {
     //println("store Value" +newValue+" comp:"+component.getClass+" datasize:"+dataList.size+" typMap:"+component.fieldMap)
     val instList=dataList.flatMap(_.children.filter(inst=>component.fieldMap.contains(inst.ref.typ )))
 	  if(instList.nonEmpty){
@@ -68,8 +69,8 @@ trait FieldEditor extends AbstractFieldEditor {
 				ClientQueryManager.writeInstancesField(typedMap(typ),component.fieldMap(typ),newConstant)
 		}    
   }
-  
-  def storeValueMapped[A](component:SidePanelComponent[A],func:(A)=>A)= {
+
+  def storeValueMapped[A](component: SidePanelComponent[A], func: (A) => A): Unit = {
     val instList=dataList.flatMap(_.children.filter(inst=>component.fieldMap.contains(inst.ref.typ )))
 	  if(instList.nonEmpty)
 	    for(elem<-instList){	
@@ -82,22 +83,23 @@ trait FieldEditor extends AbstractFieldEditor {
 }
 
 object FieldEditor {
-  val labelSize=new Dimension(Short.MaxValue,20)
-  val comboSize=new Dimension(Short.MaxValue,28)
-  val panelSize=new Dimension(Short.MaxValue,32)
-  val panelLabelPrefSize=new Dimension(60,20)
+  val labelSize = new Dimension(Short.MaxValue, 20 * ViewConstants.fontScale / 100)
+  val comboSize = new Dimension(Short.MaxValue, 28 * ViewConstants.fontScale / 100)
+  val panelSize = new Dimension(Short.MaxValue, 32 * ViewConstants.fontScale / 100)
+  val panelLabelPrefSize = new Dimension(60 * ViewConstants.fontScale / 100, 20 * ViewConstants.fontScale / 100)
 }
 
 class PanelPart(lname:String,partComp:Component) extends BorderPanel {
 	opaque=false
-  val label=getLabel(lname)
+  val label: Label = getLabel(lname)
 	add(label,BorderPanel.Position.West)
 	add(partComp,BorderPanel.Position.Center)	  
 	maximumSize=FieldEditor.panelSize
 	xLayoutAlignment=0
 
-	def getLabel(lname:String)= {
-		val label=new Label(lname)    
+  def getLabel(lname: String): Label = {
+    val label = new Label(lname)
+    label.font = ViewConstants.labelFont
 		label.preferredSize=FieldEditor.panelLabelPrefSize    
 		label.horizontalAlignment=Alignment.Left
 		label
@@ -136,11 +138,11 @@ trait SidePanelComponent[A] {
   var elemToValueLookup:PartialFunction[Referencable,A]={
     	case inst:InstanceData if fieldMap.contains(inst.ref.typ) =>
     		valueFromConstant(inst.fieldValue(fieldMap(inst.ref.typ)))   	
-    }  
-  
-  protected var searchValue:Option[A]=null
-  
-  def createFieldMap(nameMap:Map[String,Int])= fieldMap= allowedFields map (elem => nameMap(elem._1) -> elem._2.toByte)
+    }
+
+  protected var searchValue: Option[A] = _
+
+  def createFieldMap(nameMap: Map[String, Int]): Unit = fieldMap = allowedFields map (elem => nameMap(elem._1) -> elem._2.toByte)
   
   def defaultValue:A
   
@@ -151,15 +153,15 @@ trait SidePanelComponent[A] {
   def valueFromConstant(c:Constant):A
   
   def resetSearchValue():Unit= searchValue=null
-  
-  def internSetSearchValue(newValue:A)=  if(searchValue==null) searchValue= Some(newValue) 
+
+  def internSetSearchValue(newValue: A): Unit = if (searchValue == null) searchValue = Some(newValue)
     	else if(searchValue.isDefined && searchValue.get!=newValue) searchValue=None
   
   def checkSearchValue(value:Referencable):Unit= {
     if(elemToValueLookup.isDefinedAt(value)) internSetSearchValue(elemToValueLookup(value))
-  }	
-  
-  def addSearchLookup(newCase:PartialFunction[Referencable,A])= {
+  }
+
+  def addSearchLookup(newCase: PartialFunction[Referencable, A]): Unit = {
     elemToValueLookup=newCase orElse elemToValueLookup
   }
   
@@ -173,7 +175,8 @@ trait SidePanelComponent[A] {
 
 trait IntSidePanelComponent extends SidePanelComponent[Int] {
    def defaultValue=0
-   def getConstant(value:Int):Constant=new IntConstant(value)  
+
+  def getConstant(value: Int): Constant = IntConstant(value)
    def valueFromConstant(c:Constant):Int=c.toInt
 }
 
@@ -196,7 +199,8 @@ abstract class ActiveComboBox[A,C<:RenderComponent[A]](items: Seq[A],theRender:C
 abstract class SidePanelComboBox[A,C<:RenderComponent[A]](items: Seq[A],theRender:C,editor:FieldEditor,val allowedFields:Map[String,Byte])  
 extends ActiveComboBox[A,C](items,theRender) with SidePanelComponent[A] {
   focusable=false
-  def elemClicked(item:A)= editor.storeValue(item,this)  
+
+  def elemClicked(item: A): Unit = editor.storeValue(item, this)
 }
 
 
@@ -205,12 +209,14 @@ trait ActiveTextComponent extends TextComponent{
   
   listenTo(this)
   peer.getDocument.addDocumentListener(new DocumentListener{
-    def insertUpdate(e:DocumentEvent)=dirty=true    
-    def removeUpdate(e:DocumentEvent)=dirty=true
-    def changedUpdate(e:DocumentEvent)=dirty=true
+    def insertUpdate(e: DocumentEvent): Unit = dirty = true
+
+    def removeUpdate(e: DocumentEvent): Unit = dirty = true
+
+    def changedUpdate(e: DocumentEvent): Unit = dirty = true
   })
-  
-  override def text_=(t: String) ={
+
+  override def text_=(t: String): Unit = {
     super.text_=(t)
     dirty=false
   }
@@ -232,17 +238,18 @@ trait ActiveTextField extends TextField with ActiveTextComponent
 
 abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends Component{
   var selfChanged=false
-  lazy val n= minV.asInstanceOf[Comparable[Number]]
-  lazy val n1= maxV.asInstanceOf[Comparable[Number]]
-  lazy val model={ val m=new javax.swing.SpinnerNumberModel(minV,n,n1,step)
-    	m.addChangeListener(new javax.swing.event.ChangeListener() {
-    		def stateChanged(e:javax.swing.event.ChangeEvent)= if (!selfChanged){
-    			m.getValue match {
-    			  case n:Number => fieldChanged(n )    			  
-    			  case _=>
-    			}    			    			 
-    		}    
-   	}	)  
+  lazy val n: Comparable[Number] = minV.asInstanceOf[Comparable[Number]]
+  lazy val n1: Comparable[Number] = maxV.asInstanceOf[Comparable[Number]]
+  lazy val model: SpinnerNumberModel = {
+    val m = new javax.swing.SpinnerNumberModel(minV, n, n1, step)
+    m.addChangeListener { _ =>
+      if (!selfChanged) {
+        m.getValue match {
+          case n: Number => fieldChanged(n)
+          case _ =>
+        }
+      }
+    }
     m
   }
   
@@ -250,7 +257,7 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
     val p= new JSpinner(model) with SuperMixin
     val ed=p.getEditor().asInstanceOf[JSpinner.NumberEditor].getTextField
     ed.addFocusListener(new java.awt.event.FocusAdapter {
-      override def focusGained(e:java.awt.event.FocusEvent)= {
+      override def focusGained(e: java.awt.event.FocusEvent): Unit = {
         //println("focus"+model.undefined+" "+model.getValue+" "+p.getEditor().asInstanceOf[JSpinner.NumberEditor].getTextField.getText.size)
         if(ed.getText.length==0) p.setValue(new java.lang.Integer(0))
       }
@@ -259,9 +266,9 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
   }
     
   
-  def fieldChanged(newVal:Number):Unit  
-  
-  def setValue(value:Number)= {
+  def fieldChanged(newVal:Number):Unit
+
+  def setValue(value: Number): Unit = {
     selfChanged=true    
     Swing.onEDT({
       peer.setValue(maxV)
@@ -269,8 +276,8 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
       selfChanged=false
      })        
   }
-  
-  def setToUndefined()={
+
+  def setToUndefined(): Unit = {
     selfChanged=true
     //model.setToUndefined()
     peer.setValue(minV)
@@ -284,19 +291,21 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
 trait SidePanelTextComponent extends  ActiveTextComponent with SidePanelComponent[String] {
   val defaultValue=""
   def editor:FieldEditor
-  def getConstant(value:String):Constant=new StringConstant(value)  
-	def valueFromConstant(c:Constant)=c.toString
+
+  def getConstant(value: String): Constant = StringConstant(value)
+
+  def valueFromConstant(c: Constant): String = c.toString
   def filter(text:String)=true
-	
-	override def setValue(newValue:Option[String])= {	
+
+  override def setValue(newValue: Option[String]): Unit = {
   	super.setValue(newValue)
   	newValue match {
   		case Some(sVal)=> text=sVal
   		case _ => text=defaultValue
   	}
-  } 
-  
-  def fieldChanged(newVal:String)=  if(filter(newVal)){    
+  }
+
+  def fieldChanged(newVal: String): Unit = if (filter(newVal)) {
     editor.storeValue(newVal,this)
     NewButtonsList.focusLastContainer()
   }
@@ -309,13 +318,13 @@ class SidePanelTextField(val allowedFields:Map[String,Byte],val editor:FieldEdit
 class SidePanelTextArea(val allowedFields:Map[String,Byte],val editor:FieldEditor) extends TextArea with SidePanelTextComponent{
   wordWrap=true
   lineWrap=true
-  
-  def pasteLineBreak()=peer.insert("\n", peer.getCaretPosition)
+
+  def pasteLineBreak(): Unit = peer.insert("\n", peer.getCaretPosition)
   
   protected override def onFirstSubscribe(): Unit = {
     super.onFirstSubscribe()
 	  peer.addKeyListener(new java.awt.event.KeyAdapter{
-	    override def keyPressed(e:java.awt.event.KeyEvent)= {
+      override def keyPressed(e: java.awt.event.KeyEvent): Unit = {
 	      e.getKeyCode() match {
 	        case java.awt.event.KeyEvent.VK_ENTER=> if(e.isControlDown()){
             pasteLineBreak()
@@ -329,7 +338,7 @@ class SidePanelTextArea(val allowedFields:Map[String,Byte],val editor:FieldEdito
 	    }
 	  })
 	  peer.addFocusListener(new java.awt.event.FocusAdapter{
-	    override def focusLost(e:java.awt.event.FocusEvent)= {
+      override def focusLost(e: java.awt.event.FocusEvent): Unit = {
 	      publish(EditDone(null))
 	    }
 	  })
@@ -339,21 +348,23 @@ class SidePanelTextArea(val allowedFields:Map[String,Byte],val editor:FieldEdito
 trait SidePanelDoubleComponent extends  ActiveTextComponent with SidePanelComponent[Double] {
   val defaultValue=0d
   def editor:FieldEditor
-  def getConstant(value:Double):Constant=new DoubleConstant(value)  
-  def valueFromConstant(c:Constant)=c.toDouble
+  def getConstant(value:Double):Constant=new DoubleConstant(value)
+
+  def valueFromConstant(c: Constant): Double = c.toDouble
   def filter(value:Double)=true
   def precision:Int
-  val formatPattern="%3."+precision+"f"
-  
-  override def setValue(newValue:Option[Double])= { 
+
+  val formatPattern: String = "%3." + precision + "f"
+
+  override def setValue(newValue: Option[Double]): Unit = {
     super.setValue(newValue)
     newValue match {
       case Some(dVal)=> text=formatPattern.format(dVal)
       case _ => text=""
     }
-  } 
-  
-  def fieldChanged(newVal:String)={
+  }
+
+  def fieldChanged(newVal: String): Unit = {
     //println("Field changed "+text+" newVal:"+newVal)
     //println(Thread.currentThread.getStackTrace.drop(1).take(15).mkString("\n "))
     StringParser.parse(text, DataType.DoubleTyp) match {
@@ -373,23 +384,26 @@ class SidePanelDoubleTextField(val allowedFields:Map[String,Byte],val editor:Fie
 
 class MultiLineLabel extends Label() {
   opaque=true
-  background=DialogManager.leftPanelColor
-  override def text_=(st:String)= {
+  background = ViewConstants.leftPanelColor
+
+  override def text_=(st: String): Unit = {
     super.text_=("<HTML><Center>"+st+"</html>")
-    maximumSize=new Dimension(DialogManager.sidePanelWidth-30,preferredSize.height)
+    maximumSize = new Dimension(ViewConstants.sidePanelWidth - 30, preferredSize.height)
   }
   font=ViewConstants.questionFont
   //preferredSize=new Dimension(DialogManager.sidePanelWidth-30,40)
-  maximumSize=new Dimension(DialogManager.sidePanelWidth-30,Short.MaxValue)
+  maximumSize = new Dimension(ViewConstants.sidePanelWidth - 30, Short.MaxValue)
 }
 
 
 class SidePanelLabel(val allowedFields:Map[String,Byte],val editor:FieldEditor) extends MultiLineLabel with SidePanelComponent[String] {
   val defaultValue=""
-  def getConstant(value:String):Constant=new StringConstant(value)  
-	def valueFromConstant(c:Constant)=c.toString
-	
-	override def setValue(newValue:Option[String])= {	
+
+  def getConstant(value: String): Constant = StringConstant(value)
+
+  def valueFromConstant(c: Constant): String = c.toString
+
+  override def setValue(newValue: Option[String]): Unit = {
   	super.setValue(newValue)
   	newValue match {
   		case Some(sVal)=> text=sVal

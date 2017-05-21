@@ -14,10 +14,10 @@ import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.StringConstant
 import definition.typ.SystemSettings
 
+import scala.collection.JavaConverters._
 import scala.swing.Table.{ElementMode, IntervalMode}
 import scala.swing.event.{ButtonClicked, EditDone}
-import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Label, Orientation, ScrollPane, Swing, Table, TextField, Window}
-import scala.collection.JavaConverters._
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Orientation, ScrollPane, Swing, Table, TextField, Window}
 
 object AdressLinkDialog{
   val letterType=54
@@ -117,14 +117,14 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   }
     
   val leftPanel=new BorderPanel{
-    add(new Label("Adress-Ordner:"),BorderPanel.Position.North)
+    add(ViewConstants.label("Adress-Ordner:"), BorderPanel.Position.North)
     add(treeScroller,BorderPanel.Position.Center)
     add(new BoxPanel(Orientation.Horizontal){
       contents+=addFolderBut+=editFolderBut
     },BorderPanel.Position.South)
   }
   val rightPanel=new BorderPanel{
-    add(new Label("Adresse:"),BorderPanel.Position.North)
+    add(ViewConstants.label("Adresse:"), BorderPanel.Position.North)
     add(tableScroller,BorderPanel.Position.Center)
     add(new BoxPanel(Orientation.Horizontal){
         contents+=addAddressBut//+=delAddressBut      

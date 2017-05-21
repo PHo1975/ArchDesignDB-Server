@@ -4,50 +4,35 @@
 package client.print
 
 import java.awt.Color
-import java.awt.event.WindowAdapter
-import java.awt.event.WindowEvent
+import java.awt.event.{WindowAdapter, WindowEvent}
+import javax.swing.BorderFactory
+import javax.swing.border.TitledBorder
 
-import scala.swing.Alignment
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.Button
-import scala.swing.Dialog
-import scala.swing.Dimension
-import scala.swing.Label
-import scala.swing.ListView
-import scala.swing.Orientation
-import scala.swing.ScrollPane
-import scala.swing.Swing
-import scala.swing.Window
-import scala.swing.event.{ButtonClicked, MouseClicked}
 import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
-import definition.data.OutputDefinition
-import definition.data.Reference
-import definition.expression.BoolConstant
-import definition.expression.Constant
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import javax.swing.{BorderFactory, UIManager}
-import javax.swing.border.TitledBorder
+import definition.data.{OutputDefinition, Reference}
+import definition.expression.{BoolConstant, Constant, IntConstant, StringConstant}
+
+import scala.swing.{Alignment, BorderPanel, BoxPanel, Button, Dialog, Dimension, Label, ListView, Orientation, ScrollPane, Swing, Window}
+import scala.swing.event.{ButtonClicked, MouseClicked}
 
 
 class OutDefRenderer() extends BoxPanel(Orientation.Vertical ) {
-	val topLabel=new Label
-	val bottomLabel=new Label	
+	val topLabel: Label = ViewConstants.label()
+	val bottomLabel: Label = ViewConstants.label()
 	contents+=topLabel+=bottomLabel
 	opaque=true
 	topLabel.opaque=true
 	bottomLabel.opaque=true
 	val back=new Color(57,105,138)
 
-	override def foreground_=(c: Color) = {
+	override def foreground_=(c: Color): Unit = {
 		super.foreground_=(c)
 		topLabel.foreground=c
 		bottomLabel.foreground=c		
 	}
-	
-	override def background_=(c:Color) = {
+
+	override def background_=(c: Color): Unit = {
 		super.background_=(c)
 		topLabel.background=c
 		bottomLabel.background=c		
@@ -126,39 +111,39 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 				case ev:MouseClicked=> if(ev.clicks==2) choseOutdef()
 		}
 	}
-	
-	def closeWithReset()= {
+
+	def closeWithReset(): Unit = {
 	  close()
 	  resetOnClose=true
 	  DialogManager.reset()
 	}
 	
 	contents=mainPanel
-	
-	def getIx= if(outdefListView.selection.indices.isEmpty)-1 else outdefListView.selection.indices.head
-	
-	def changeOutdef ()=  /*if(!outdefListView.selection.items.isEmpty)*/{
+
+	def getIx: Int = if (outdefListView.selection.indices.isEmpty) -1 else outdefListView.selection.indices.head
+
+	def changeOutdef(): Unit = /*if(!outdefListView.selection.items.isEmpty)*/ {
 		val selOD=if(outdefListView.selection.items.isEmpty) PrintModel.outDefs.head else outdefListView.selection.items.head
 		changedODInst=selOD.odInst
 		PrintQuestionHandler.newDialog.setLocationRelativeTo(createBut )
 		PrintQuestionHandler.newDialog.showEditDialog(whenOutputDefChanged,selOD)
 	}
-	
-	def createOutdef() = {
+
+	def createOutdef(): Unit = {
 		PrintQuestionHandler.newDialog.setLocationRelativeTo(createBut )
 		PrintQuestionHandler.newDialog.showDialog("Neue Ausgabe definieren:",whenNewoutputDefined,false)
 	}
-	
-	def deleteOutdef() = if(outdefListView.selection.indices.nonEmpty){
+
+	def deleteOutdef(): Unit = if (outdefListView.selection.indices.nonEmpty) {
 		val selOD=outdefListView.selection.items.head		
 		DialogManager.processCustomEnquiry(IndexedSeq(("DeleteOutDef",IntConstant(selOD.odInst)) ))
 		PrintModel.setOutDefs(PrintModel.outDefs.filterNot(_.odInst ==selOD.odInst))		
 	}
-	
-	def choseOutdef() = if(outdefListView.selection.indices.nonEmpty)	chooseOutdef(outdefListView.selection.items.head)
 
-	
-	protected def chooseOutdef(selOD:OutputDefinition)={
+	def choseOutdef(): Unit = if (outdefListView.selection.indices.nonEmpty) chooseOutdef(outdefListView.selection.items.head)
+
+
+	protected def chooseOutdef(selOD: OutputDefinition): Unit = {
 	  PrintQuestionHandler.newDialog.loadOutDefSettings(selOD)
 		val sm=PrintModel.lastSelectedMedia
 		DialogManager.processCustomEnquiry(IndexedSeq(("ChoseOutDef",IntConstant(selOD.odInst)),
@@ -168,27 +153,26 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 		  close()
 		}
 	}
-	
-	
-	
-	def start()={
+
+
+	def start(): Unit = {
 	  if(PrintModel.outDefs.size==1) {
 	    chooseOutdef(PrintModel.outDefs.head)
 	  }else{	    
 	    visible=true
 	  } 
 	}
-	
-	def showArchive ()= if(outdefListView.selection.indices.nonEmpty){
+
+	def showArchive(): Unit = if (outdefListView.selection.indices.nonEmpty) {
 		val selOD=outdefListView.selection.items.head
 		PrintQuestionHandler.newDialog.loadOutDefSettings(selOD)
 		PrintQuestionHandler.previewWindow .showArchive("Druck-Archiv", new Reference(OutputDefinition.odefType,selOD.odInst ),PrintQuestionHandler)
 	}
-	
-	def getCurrentOutDef= outdefListView.selection.items.head
-	
-	
-	def loadOutdefs(newList:Seq[OutputDefinition])= {	
+
+	def getCurrentOutDef: OutputDefinition = outdefListView.selection.items.head
+
+
+	def loadOutdefs(newList: Seq[OutputDefinition]): Unit = {
 	  if(newList.isEmpty) {
       util.Log.e("Load outdefs empty newList ")
       outdefListView.listData=PrintModel.outDefs
@@ -196,14 +180,14 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 	  else outdefListView.listData=newList
 		outdefListView.selection.indices+=0
 	}
-	
-	def whenNewoutputDefined(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Seq[(String,Constant)])= {
+
+	def whenNewoutputDefined(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[(String, Constant)]): Unit = {
 	  resetOnClose=false
 	  close()
 	  PrintQuestionHandler.outputDefined(formIx,printer,pageSetting,portrait,w,h,paramData)
 	}
-	
-	def whenOutputDefChanged(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Seq[(String,Constant)])= {
+
+	def whenOutputDefChanged(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[(String, Constant)]): Unit = {
 	  resetOnClose=false
 	  close()
 	  //println("when outputdef changed "+formIx)
@@ -213,8 +197,8 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
   		("Portrait",BoolConstant(portrait)),("PageWidth",IntConstant(w)),("PageHeight",IntConstant(h)) ) ++ paramData)
 	}
 	
-	peer.addWindowListener (new WindowAdapter(){		
-		override def windowClosing(e:WindowEvent)= closeWithReset()
+	peer.addWindowListener (new WindowAdapter(){
+		override def windowClosing(e: WindowEvent): Unit = closeWithReset()
 	})
 	
 }

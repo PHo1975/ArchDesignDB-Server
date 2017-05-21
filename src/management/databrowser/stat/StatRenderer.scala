@@ -1,19 +1,19 @@
 package management.databrowser.stat
 
+import java.awt.{Color, Font, Graphics, Graphics2D}
+import javax.swing.{JComponent, JTable}
 import javax.swing.table.TableCellRenderer
-import javax.swing.JTable
-import javax.swing.JComponent
-import java.awt.Graphics
-import java.awt.Graphics2D
-import java.awt.Color
-import java.awt.Font
+
+import client.dataviewer.ViewConstants
 
 class StatRenderer extends JComponent with TableCellRenderer {
-    override def invalidate() = {}
-    override def revalidate() = {}
-    var data:Array[Byte]=null
+  override def invalidate(): Unit = {}
+
+  override def revalidate(): Unit = {}
+
+  var data: Array[Byte] = _
     var theRow:Int=0
-    var myFont=new Font("Arial",0,9)
+  var myFont: Font = ViewConstants.smallFont
     def getTableCellRendererComponent(table:JTable, a:Object, isSelected: Boolean, focused: Boolean,  row: Int,col:Int):java.awt.Component = {
       a match {
         case ar:Array[Byte]=>data=ar
@@ -22,9 +22,10 @@ class StatRenderer extends JComponent with TableCellRenderer {
       theRow=row
       this
     }
-    val barColor=Color.green
-    
-    override def paintComponent(g:Graphics)= {
+
+  val barColor: Color = Color.green
+
+  override def paintComponent(g: Graphics): Unit = {
       val g2=g.asInstanceOf[Graphics2D]
       val size=getSize()
       g2.setColor(Color.white)

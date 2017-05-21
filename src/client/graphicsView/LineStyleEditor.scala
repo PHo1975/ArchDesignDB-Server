@@ -3,31 +3,17 @@
  */
 package client.graphicsView
 
-import java.awt.BasicStroke
-import java.awt.Color
-import scala.swing.Button
-import scala.swing.CheckBox
-import scala.swing.Component
-import scala.swing.Dimension
-import scala.swing.Graphics2D
-import scala.swing.GridPanel
-import scala.swing.Label
-import util.MyListView
-import scala.swing.Panel
-import scala.swing.Table
-import client.dataviewer.InstanceRenderer
-import client.dialog.FieldEditor
-import client.dialog.InplaceFieldEditor
-import client.dialog.RenderComponent
-import definition.data.LineStyle
-import definition.expression.Constant
-import definition.expression.Expression
-import definition.expression.IntConstant
-import javax.swing.DefaultCellEditor
-import javax.swing.JTable
+import java.awt.{BasicStroke, Color}
 import javax.swing.table.TableCellEditor
-import util.MyComboBox
-import client.dialog.SidePanelComboBox
+import javax.swing.{DefaultCellEditor, JCheckBox, JComboBox, JTable}
+
+import client.dataviewer.InstanceRenderer
+import client.dialog.{FieldEditor, InplaceFieldEditor, RenderComponent, SidePanelComboBox}
+import definition.data.LineStyle
+import definition.expression.{Constant, Expression, IntConstant}
+import util.{MyComboBox, MyListView}
+
+import scala.swing.{Button, CheckBox, Color, Component, Dimension, Graphics2D, GridPanel, Label, Panel, Table}
 
 
 class BoolEditor extends InplaceFieldEditor {
@@ -36,8 +22,8 @@ class BoolEditor extends InplaceFieldEditor {
   myCheck.background=Color.white
   val renderer=new CheckBoxRenderer
   def getEditor:TableCellEditor=new DefaultCellEditor(myCheck.peer){
-    
-    override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ) = {  		
+
+		override def getTableCellEditorComponent(table: JTable, value: Object, isSelected: Boolean, row: Int, column: Int): JCheckBox = {
   		myCheck.selected=value match {
   		  case c:Expression => c.getValue.toBoolean
   		  case _ => false
@@ -74,8 +60,9 @@ object LineStyleEditor{
 }
 
 class LineWidthRenderer extends Label with RenderComponent[Int] {
-	  def setStyle(width:Int)= text=f"${width.toDouble / 100d}%3.2f"
-	  def setEmpty()= text=""
+	def setStyle(width: Int): Unit = text = f"${width.toDouble / 100d}%3.2f"
+
+	def setEmpty(): Unit = text = ""
 	}	
 
 /**
@@ -83,14 +70,17 @@ class LineWidthRenderer extends Label with RenderComponent[Int] {
  */
 class LineStyleEditor extends FieldEditor {
 	import client.graphicsView.LineStyleEditor._
-	val allowedClassNames=Seq("LineElem","ArcElem","PolyElem","EllipseElem","AreaPolygon")
-	val widthFieldNr=1.toByte
-	val styleFieldNr=2.toByte	
-	
-	lazy val widthCombo=new SidePanelComboBox(widthList,new LineWidthRenderer(),this,(allowedClassNames.map((_,widthFieldNr)):+(("AreaPolygon",2.toByte))).toMap) {
+
+	val allowedClassNames = Seq("LineElem", "ArcElem", "PolyElem", "EllipseElem", "AreaPolygon", "Wohnfläche")
+	val widthFieldNr: Byte = 1.toByte
+	val styleFieldNr: Byte = 2.toByte
+
+	lazy val widthCombo = new SidePanelComboBox(widthList, new LineWidthRenderer(), this, (allowedClassNames.map((_, widthFieldNr)) :+ (("AreaPolygon", 2.toByte)) :+ (("Wohnfläche", 2.toByte))).toMap) {
 	  val defaultValue=0
-    def getConstant(value:Int):Constant=new IntConstant(value)  
-    def valueFromConstant(c:Constant)=c.toInt
+
+		def getConstant(value: Int): Constant = IntConstant(value)
+
+		def valueFromConstant(c: Constant): Int = c.toInt
     override def setValue(newWidth:Option[Int]):Unit= {	    
 	    super.setValue(newWidth)
 	    selfSelected=true
@@ -106,9 +96,11 @@ class LineStyleEditor extends FieldEditor {
 	
 	lazy val styleCombo=new SidePanelComboBox(LineStyleHandler.styles.map(_.ix),new StylePreviewPan,this,
 	    (allowedClassNames.map((_,styleFieldNr)):+(("AreaPolygon",3.toByte))).toMap) {
-	  val defaultValue=LineStyleHandler.undefinedStyle.ix
-	  def getConstant(value:Int)= new IntConstant(value)
-	  def valueFromConstant(c:Constant)=c.toInt
+		val defaultValue: Int = LineStyleHandler.undefinedStyle.ix
+
+		def getConstant(value: Int) = IntConstant(value)
+
+		def valueFromConstant(c: Constant): Int = c.toInt
 	  override def setValue(newStyle:Option[Int]):Unit= {	
 	    //println("set Value "+newStyle+" "+LineStyleHandler.styles.mkString(","))
 	    super.setValue(newStyle)
@@ -137,8 +129,8 @@ class LineStyleEditor extends FieldEditor {
 
 class InplaceStyleEditor() extends InplaceFieldEditor{  
   val styleCombo=new MyComboBox(LineStyleHandler.styles)  
-  val editor = new DefaultCellEditor(styleCombo.peer) {  	
-  	override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ) = {  		
+  val editor = new DefaultCellEditor(styleCombo.peer) {
+		override def getTableCellEditorComponent(table: JTable, value: Object, isSelected: Boolean, row: Int, column: Int): JComboBox[LineStyle] = {
   		styleCombo.selection.index=value match {
   		  case c:Constant => c.toInt
   		  case _ => -1
@@ -154,8 +146,9 @@ class InplaceStyleEditor() extends InplaceFieldEditor{
   	}
   }
   
-  val previewPrototype=new StylePreviewPan    
-  def getEditor=editor  
+  val previewPrototype=new StylePreviewPan
+
+	def getEditor: DefaultCellEditor = editor
   def createRenderer=new Table.AbstractRenderer[Expression,StylePreviewPan](new StylePreviewPan){
     def configure(table: Table, isSelected: Boolean, hasFocus: Boolean, a: Expression, row: Int, column: Int): Unit = {
       component.setStyle(null,a.asInstanceOf[Constant].toInt)
@@ -174,22 +167,22 @@ class StylePreviewPan extends Component with RenderComponent[Int] {
   val numWidth=20
   var stroke=new BasicStroke(2f)
   var theIndex=0
-  opaque=true  
-  lazy val strokes=LineStyleHandler.createStandardStrokes()
+  opaque=true
+	lazy val strokes: Seq[BasicStroke] = LineStyleHandler.createStandardStrokes()
   val b=new Button
   preferredSize=new Dimension(40,25)
-  val standBack=b.background
-  
-  
-  def setStyle(a:LineStyle,ix:Int)= {
+	val standBack: Color = b.background
+
+
+	def setStyle(a: LineStyle, ix: Int): Unit = {
     stroke=if(ix== -1){
      if(a==null)null else strokes(a.ix)     
     } else strokes(ix)
     peer.setToolTipText(a.name)
     theIndex=ix
   }
-  
-  def setStyle(a:Int)= {
+
+	def setStyle(a: Int): Unit = {
     stroke=if(a< 0 || a >= strokes.size) null
     else strokes(a)
     peer.setToolTipText(LineStyleHandler.styles.find(_.ix==a)match {
@@ -197,10 +190,10 @@ class StylePreviewPan extends Component with RenderComponent[Int] {
     })
     if(a<strokes.size) theIndex=a
   }
-  
-  def setEmpty()= stroke=null
-  
-  override def paintComponent(g:Graphics2D)= {
+
+	def setEmpty(): Unit = stroke = null
+
+	override def paintComponent(g: Graphics2D): Unit = {
     super.paintComponent(g)
     val back=if(stroke==null)standBack else background
     g.setColor(back) 

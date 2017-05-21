@@ -1,16 +1,17 @@
 package client.graphicsView
 
-import java.awt.{BasicStroke, Color, Dimension, Graphics2D, RenderingHints}
+import java.awt._
 import javax.swing.BorderFactory
 
 import client.comm.ClientQueryManager
+import client.dataviewer.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, LineStyle, Reference}
-import definition.expression.{Constant, DoubleConstant, IntConstant, NULLVECTOR, PointList, Polygon, StringConstant, VectorConstant}
+import definition.expression.{Polygon => _, _}
 import definition.typ.CustomInstanceEditor
 import util.StringUtils
 
-import scala.swing.event.{UIElementResized, SelectionChanged, EditDone, ButtonClicked}
+import scala.swing.event.{ButtonClicked, EditDone, SelectionChanged, UIElementResized}
 import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, ComboBox, Component, Label, ListView, Orientation, Swing, TextField}
 
 class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstanceEditor[Component] {
@@ -38,16 +39,16 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
     listenTo(checkBox)
     reactions+= {
       case ButtonClicked(`checkBox`)=>
-        setField(5,new IntConstant(if(secondBox.oldStyle> -1) -1 else 0)) // invert number to switch visibility
+        setField(5, IntConstant(if (secondBox.oldStyle > -1) -1 else 0)) // invert number to switch visibility
     }
   }
   val chooseSecondBox= new MyChooseBox 
   
   class LineBox(lineNr:Int) extends BoxPanel(Orientation.Horizontal)
    {
-    val angleLab=new Label("Linie "+(lineNr+1)+",   Winkel:")
-    val distLab=new Label(" Abstand:")
-    val styleLab=new Label(" Stil:")
+     val angleLab: Label = ViewConstants.label("Linie " + (lineNr + 1) + ",   Winkel:")
+     val distLab: Label = ViewConstants.label(" Abstand:")
+     val styleLab: Label = ViewConstants.label(" Stil:")
     val angleEdit=new TextField
     val distEdit=new TextField
     val styleCombo=new ComboBox(LineStyleHandler.styles)
@@ -73,10 +74,11 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
       case SelectionChanged(`styleCombo`)=> if(selfStyleSelected) selfStyleSelected=false
 			else if(styleCombo.selection.index> -1){
 				val ix=styleCombo.selection.index
-				if(ix!=oldStyle)setField(2+lineNr*3,new IntConstant(ix))
+        if (ix != oldStyle) setField(2 + lineNr * 3, IntConstant(ix))
 			}
     }
-    def setValues(data:InstanceData)= {
+
+     def setValues(data: InstanceData): Unit = {
       oldAngle=data.fieldValue(1+lineNr*3).toDouble
       angleEdit.text=oldAngle.toString
       oldDist=data.fieldValue(3+lineNr*3).toDouble
@@ -90,7 +92,7 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
   }
   
   val endBox=new BoxPanel(Orientation.Horizontal) {
-    val thickLabel=new Label("Linien-Dicke:") 
+    val thickLabel: Label = ViewConstants.label("Linien-Dicke:")
     thickEdit.maximumSize=new Dimension(80,30)
     thickEdit.preferredSize=thickEdit.maximumSize
     
@@ -106,7 +108,7 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
   
   
   val previewBox=new BorderPanel {
-    val previewLabel=new Label ("Vorschau:")
+    val previewLabel: Label = ViewConstants.label("Vorschau:")
     add(previewLabel,BorderPanel.Position.North)
     add(previewComp,BorderPanel.Position.Center)
   }
@@ -117,7 +119,7 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
   
   reactions+= {
     case EditDone(`nameEdit`)=>
-      if(nameEdit.text!=oldName) setField(0,new StringConstant(nameEdit.text))
+      if (nameEdit.text != oldName) setField(0, StringConstant(nameEdit.text))
     case EditDone(`thickEdit`)=>
       val thick=StringUtils.stringToDouble(thickEdit.text)
       if(thick!=oldThick) setField(7,new DoubleConstant(thick))
@@ -131,13 +133,13 @@ class HatchDefEditor extends BoxPanel(Orientation.Horizontal)with CustomInstance
  /* override def setSizeChangeListener(listener:() => Unit)= {
     sizeChangeListener=Some(listener)
   }*/
-  
-  def updatePreview(dat:InstanceData)= {
+
+  def updatePreview(dat: InstanceData): Unit = {
     val hs=new HatchStyle(1,dat)
     previewComp.setHatch(hs,true,true)
-  }  
+  }
 
-  def getComponent = this
+  def getComponent: HatchDefEditor = this
   
 
   def load(ref: Reference ,doneListener:()=>Unit):Unit= {
@@ -197,14 +199,14 @@ class HatchPreview extends Component {
    private val sm=new ScaleModel
    sm.vpBorder=1
    sm.viewSize=preferredSize
-   sm.setScaleRatio(1,100)   
-   
-   def setHatch(newHatch:HatchStyle,paperStyle:Boolean,update:Boolean) = {     
+   sm.setScaleRatio(1,100)
+
+  def setHatch(newHatch: HatchStyle, paperStyle: Boolean, update: Boolean): Unit = {
      _hatch=if(newHatch==null) HatchHandler.undefinedHatch else newHatch    
      if(update)Swing.onEDT{repaint()}
    }
-  
-   override def paintComponent(g: Graphics2D) = {     
+
+  override def paintComponent(g: Graphics2D): Unit = {
      super.paintComponent(g)
      if(size!=lastSize) updateSize()
      g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
@@ -219,9 +221,9 @@ class HatchPreview extends Component {
      case e:UIElementResized =>
        updateSize()
        Swing.onEDT{repaint()}
-   }   
-   
-   def updateSize() = {  	 
+   }
+
+  def updateSize(): Unit = {
   	 sm.viewSize=size
   	 sm.setScaleRatio(1,100)
   	 sm.viewSize=size
@@ -230,9 +232,9 @@ class HatchPreview extends Component {
   	 val yp=sm.yToWorld(m.top)
   	 val w= sm.xToWorld(size.width-m.left-m.right)
   	 val h=sm.yToWorld( size.height-m.top-m.bottom)
-  	 lastSize=size  	 
-  	 p=new Polygon(Seq.empty,Seq(new PointList(Seq(new VectorConstant(xp,yp,0),new VectorConstant(w,yp,0),new VectorConstant(w,h,0),
-  			 new VectorConstant(xp,h,0)))))
+  	 lastSize=size
+    p = new Polygon(Seq.empty, Seq(PointList(Seq(new VectorConstant(xp, yp, 0), new VectorConstant(w, yp, 0), new VectorConstant(w, h, 0),
+      new VectorConstant(xp, h, 0)))))
    }
    
 }

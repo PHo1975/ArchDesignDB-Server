@@ -3,34 +3,35 @@
  */
 package client.layout
 
-import definition.comm.{PropertyGroup, ListValue, PropertyValue}
+import java.awt.Color
+
+import client.ui.ClientApp
+import definition.comm.{ListValue, PropertyGroup, PropertyValue}
 
 import scala.collection.mutable
-import scala.swing._
-import java.awt.Color
-import javax.swing.UIManager
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.HashMap
+import scala.swing._
 
 /**
  * 
  */
 class MainBox extends Panel with ViewboxHolder {
-	
-	def layoutManager = peer.getLayout.asInstanceOf[ViewboxLayout]  
-	var _centerBox:Viewbox=null	
+
+	def layoutManager: ViewboxLayout = peer.getLayout.asInstanceOf[ViewboxLayout]
+
+	var _centerBox: Viewbox = _
 	def centerBox:Viewbox=_centerBox
-	
-	
-	
-	def centerBox_=(newB:Viewbox)={
+
+
+	def centerBox_=(newB: Viewbox): Unit = {
 		//if(_centerBox!=null) remove(_centerBox)		
 		_centerBox=newB
 		//add(_centerBox)
 	}
-	
-	def add(comp:Component)= peer.add(comp.peer)
-	def remove(comp:Component)= peer.remove(comp.peer)
+
+	def add(comp: Component): Unit = peer.add(comp.peer)
+
+	def remove(comp: Component): Unit = peer.remove(comp.peer)
 	
 	opaque=true
 	background=Color.lightGray
@@ -43,33 +44,36 @@ class MainBox extends Panel with ViewboxHolder {
 	  if(_centerBox!=null) centerBox.foreach(_.shutDown())
 	  centerBox=null
 	}
-	
-	def maximizeBox(mBox:Viewbox)={
+
+	def maximizeBox(mBox: Viewbox): Unit = {
 	  layoutManager.maximizedBox match {
 	    case Some(oldBox) =>
 				oldBox.doUnMaximize()
 				layoutManager.maximizedBox=None
 				showAllBoxes()
+				ClientApp.top.decorate()
 			case None =>
 				layoutManager.maximizedBox=Some(mBox)
 				mBox.doMaximize()
 				hideAllBoxes(mBox)
+				ClientApp.top.undecorate()
 		}
 	  revalidate()
 	  repaint()
 	}
-	
-	def hideAllBoxes(besidesBox:Viewbox)= {
+
+	def hideAllBoxes(besidesBox: Viewbox): Unit = {
 	  if(_centerBox!=null) centerBox.foreach(b=> if(b!=besidesBox) b.visible=false)
 	}
-	def showAllBoxes() = 
+
+	def showAllBoxes(): Unit =
 	  if(_centerBox!=null) centerBox.foreach(b=> b.visible=true)
 	
 	def storeSettings(pGroup:PropertyGroup):Unit = {
 	  val groupList=new ArrayBuffer[PropertyGroup] () 
 	  var counter=0
 		if(_centerBox!=null) centerBox.foreach(box => {
-		  val newGroup=new PropertyGroup(counter.toString,new mutable.HashMap[String,PropertyValue]())
+			val newGroup = PropertyGroup(counter.toString, new mutable.HashMap[String, PropertyValue]())
 		  groupList +=newGroup
 		  box.storeSettings(newGroup)
 		  counter+=1
@@ -88,6 +92,7 @@ class MainBox extends Panel with ViewboxHolder {
 	  
 	  centerBox=new Viewbox(this,false,this)
     //println("restoreSettings "+(System.currentTimeMillis()-now))
+		//println("start Restore "+groupStack.mkString("\n"))
 	  centerBox.restoreSettings(groupStack,readyListener)
 	  revalidate()
 	  repaint()
@@ -95,10 +100,10 @@ class MainBox extends Panel with ViewboxHolder {
 	}
 	
 	
-	override lazy val peer = new MainboxPeer 
-		
-	
-  def replaceBox(oldBox:Viewbox,newBox:Viewbox) = {
+	override lazy val peer = new MainboxPeer
+
+
+	def replaceBox(oldBox: Viewbox, newBox: Viewbox): Unit = {
 	  //System.out.println("replace "+newBox)
 	  centerBox=newBox
 	  revalidate()
@@ -108,7 +113,7 @@ class MainBox extends Panel with ViewboxHolder {
 	def deleteMe(oldBox:Viewbox):Boolean = false
 	
 	class MainboxPeer extends javax.swing.JPanel(new ViewboxLayout) with SuperMixin {
-		def mainBox= MainBox.this
+		def mainBox: MainBox = MainBox.this
 	}
 	
 	

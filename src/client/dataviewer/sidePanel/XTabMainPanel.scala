@@ -3,23 +3,22 @@
  */
 package client.dataviewer.sidePanel
 
-import scala.swing.Panel
-import java.awt.{Color,Dimension}
-import scala.swing._
+import java.awt.Dimension
 import javax.swing.JViewport
+
+import scala.swing._
 
 /** Main Panel for XTab
  * 
  */
 class XTabMainPanel(table:Table) extends Component with Container  {
-   background=Color.blue
-   //preferredSize=new Dimension(100,20)
-   xLayoutAlignment=0d
-   yLayoutAlignment=0d
    override lazy val peer=new JViewport with SuperMixin{
-  	 override def getPreferredSize = getView.getPreferredSize
-  	 override def getMaximumSize = getView.getPreferredSize
+     override def getPreferredSize: Dimension = getView.getPreferredSize
+
+     override def getMaximumSize: Dimension = getView.getPreferredSize
    }
    peer.setView(table.peer)
+  xLayoutAlignment = 0d
+  yLayoutAlignment = 0d
    def contents=List(table)
 }

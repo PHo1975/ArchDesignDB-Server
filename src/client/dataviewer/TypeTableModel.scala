@@ -3,29 +3,31 @@
  */
 package client.dataviewer
 
-import java.awt.{Color, Dimension, Font}
 import java.awt.event.{InputEvent, KeyEvent}
-import javax.swing.{BorderFactory, DropMode, JComponent, JTextArea, KeyStroke}
-import javax.swing.event.{ChangeEvent, ListSelectionEvent, ListSelectionListener, TableColumnModelEvent, TableColumnModelListener}
-import javax.swing.table.AbstractTableModel
+import java.awt.{Color, Dimension, Font, Insets}
+import javax.swing._
+import javax.swing.border.Border
+import javax.swing.event._
+import javax.swing.table.{AbstractTableModel, JTableHeader, TableCellEditor}
 
 import client.comm.{ClientObjectClass, ClientQueryManager, HasError, KeyStrokeManager}
 import client.dataviewer.sidePanel.{ControllerContainer, SPControllerList, SidePanelController}
-import client.dialog.{DialogManager, ActionPanel, EditorFactory, Toast}
+import client.dialog.{ActionPanel, EditorFactory, Toast}
 import client.ui.ClientApp
 import definition.data.{InstanceData, Reference}
-import definition.expression.{Expression, IntConstant, ParserError, ParserResult, StringConstant, StringParser}
+import definition.expression._
 import definition.typ.{AllClasses, DataType, EnumData}
 
 import scala.Option.option2Iterable
+import scala.swing.event.{ListSelectionEvent => _, _}
 import scala.swing.{Alignment, BoxPanel, Button, Component, Label, Orientation, Panel, SequentialContainer, Swing, Table}
-import scala.swing.event.{ButtonClicked, FocusGained, KeyPressed, MousePressed, MouseReleased, TableRowsSelected}
 
 
 
 class MySelectionModel extends javax.swing.DefaultListSelectionModel {
-  override def setAnchorSelectionIndex(index:Int)= super.setAnchorSelectionIndex(if(index==0)1 else index)   
-  override def setSelectionInterval(anchor:Int,lead:Int)= {     
+	override def setAnchorSelectionIndex(index: Int): Unit = super.setAnchorSelectionIndex(if (index == 0) 1 else index)
+
+	override def setSelectionInterval(anchor: Int, lead: Int): Unit = {
     super.setSelectionInterval(if(anchor==0)1 else anchor,if(lead==0) 1 else lead)   
   }
 }
@@ -36,7 +38,8 @@ class MySelectionModel extends javax.swing.DefaultListSelectionModel {
  */
 class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singleField:Boolean,showClassLabel:Boolean) extends AbstractTableModel with ControllerContainer {
   import client.dataviewer.ViewConstants._
-	val objClass=AllClasses.get.getClassByID(typ).asInstanceOf[ClientObjectClass]
+
+	val objClass: ClientObjectClass = AllClasses.get.getClassByID(typ).asInstanceOf[ClientObjectClass]
 	var dataList:Seq[InstanceData]= Seq.empty	
 	var selfSelectChanged=false
 	var selfAdded=false
@@ -47,10 +50,10 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	val transferHandler=new TableTransferHandler(this)
 	val listLock=new Object
 	val classLabel=new Label("   "+AllClasses.get.getClassByID(typ).getDescriptionOrName)
-	var clickedRow= -1
-	var clickedCol= -1	
-	var editActionNotDone:java.awt.event.ActionEvent=null
-	var oldEnterAction:javax.swing.Action=null
+	var clickedRow: Int = -1
+	var clickedCol: Int = -1
+	var editActionNotDone: java.awt.event.ActionEvent = _
+	var oldEnterAction: javax.swing.Action = _
 	val sideBarPanel=new BoxPanel(Orientation.Vertical)
   var currentSideBarController:Option[SidePanelController]=None
 	
@@ -59,8 +62,8 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			case ButtonClicked(e) => openSideBarController(e.name)
 		}
 	}
-	
-	lazy val sideControllerList=SPControllerList.generateList(objClass)  
+
+	lazy val sideControllerList: Seq[SidePanelController] = SPControllerList.generateList(objClass)
 	
 	val sm=new MySelectionModel
 	val table:Table=new Table(){			
@@ -139,12 +142,9 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				gridColor=Color.lightGray
 					
 				peer.getColumnModel().setSelectionModel(sm)
-				sm.addListSelectionListener(new ListSelectionListener{
-				  def valueChanged(e:ListSelectionEvent )= if(!e.getValueIsAdjusting()&& 
-				      table.selection.columns.nonEmpty&& table.selection.rows.nonEmpty && table.hasFocus)
-					  scrollToSelection()
-				  
-				})
+		sm.addListSelectionListener((e: ListSelectionEvent) => if (!e.getValueIsAdjusting() &&
+			table.selection.columns.nonEmpty && table.selection.rows.nonEmpty && table.hasFocus)
+			scrollToSelection())
 				peer.getColumnModel().addColumnModelListener(new TableColumnModelListener(){ 
 					def columnAdded(e:TableColumnModelEvent ): Unit = {}
 					def columnMarginChanged(e:ChangeEvent ): Unit = {}
@@ -157,7 +157,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 					def columnSelectionChanged(e:javax.swing.event.ListSelectionEvent ): Unit = {}
 				})
 
-    val custRendererMap=(objClass.fields.indices filter(objClass.fieldSetting(_).editor.length>0) flatMap (
+		val custRendererMap: Map[Int, Table.Renderer[Expression]] = (objClass.fields.indices filter (objClass.fieldSetting(_).editor.length > 0) flatMap (
 				    ix=>  EditorFactory.getInplaceEditor(objClass.fieldSetting(ix).editor) match {
 				      case Some(editor)=> Some(ix -> editor.createRenderer)
 				      case None => None
@@ -174,22 +174,22 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
     // setup renderers
 				val firstButRend=new FirstColumnRenderer(TypeTableModel.this)
 				val ftcr = new Table.AbstractRenderer[String, FirstColumnRenderer](firstButRend) {
-					def configure(t: Table, sel: Boolean, foc: Boolean, o: String, row: Int, col: Int) =     
+					def configure(t: Table, sel: Boolean, foc: Boolean, o: String, row: Int, col: Int): Unit =
 						component.config(sel,foc,o,row)  
 				}
 				
 				val instRenderer=new InstanceRenderer(AllClasses.get.getClassByID(typ))
 				val itcr = new Table.AbstractRenderer[Expression, InstanceRenderer](instRenderer) {
-					def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int) =     
+					def configure(t: Table, sel: Boolean, foc: Boolean, o: Expression, row: Int, col: Int): Unit =
 						component.config(t,sel,foc,o,row,col)
 				}
 				val etcr = new Table.AbstractRenderer[(String, Int), EnumRenderer](new EnumRenderer) {
-					def configure(t: Table, sel: Boolean, foc: Boolean, o:(String, Int), row: Int, col: Int) = {
+					def configure(t: Table, sel: Boolean, foc: Boolean, o: (String, Int), row: Int, col: Int): Unit = {
 						component.prepare(t,sel,o,row)
 				  }
-				}				
-				
-				override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int) = {
+				}
+
+		override def rendererComponent(sel: Boolean, foc: Boolean, row: Int, col: Int): Component = {
 					//FIND VALUE
 					val modCol=peer.convertColumnIndexToModel(col)
 					val v=model.getValueAt(row,modCol)
@@ -208,8 +208,8 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				}
 				
 				super.rendererComponent(false,false,0,0).font=tableFont
-				
-				override def editor(row: Int, column: Int)= {
+
+		override def editor(row: Int, column: Int): TableCellEditor = {
 					if(column==0)null
 					else {
 						val edit=peer.getColumnModel.getColumn(column).getCellEditor
@@ -224,7 +224,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ENTER,(oldAction)=>{
 		oldEnterAction=oldAction
 		new javax.swing.AbstractAction() {
-			def actionPerformed(e:java.awt.event.ActionEvent)= {
+			def actionPerformed(e: java.awt.event.ActionEvent): Unit = {
 				//System.out.println("Enter Abgefangen "+table.peer .isEditing)
 				if(!table.peer.isEditing) {
 					oldAction.actionPerformed(e)
@@ -241,7 +241,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	
 	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ESCAPE,(oldAction)=> {
 		new javax.swing.AbstractAction() {
-			def actionPerformed(e:java.awt.event.ActionEvent)= {
+			def actionPerformed(e: java.awt.event.ActionEvent): Unit = {
 				//System.out.println("Escape :"+table.peer .isEditing)
 				if(table.peer.isEditing)
 					oldAction.actionPerformed(e)				
@@ -250,7 +250,8 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	})
 	
 	val inputValidator=new MyInputValidator() {
-	  var editorComponent:JComponent=null
+		var editorComponent: JComponent = _
+
 	  def validate(text:String,col:Int):Option[Int] = {
 	    val mcol=table.peer.convertColumnIndexToModel(col)
 	    if(text!=null&& text.length>0&& col >0 && objClass.fields(mcol-1).typ!=DataType.StringTyp) {
@@ -268,11 +269,12 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	    }
 	    else None
 	  }
-    def setEditorComponent(comp:JComponent)= editorComponent=comp
+
+		def setEditorComponent(comp: JComponent): Unit = editorComponent = comp
 	}
 	
 	val instEditor=new MultilineEditor(table.peer,Some(inputValidator))	{
-		def setEditorValue(value:Object) = value match {
+		def setEditorValue(value: Object): String = value match {
 				case expr: Expression =>
 					if (expr.getType == DataType.StringTyp) expr.toString
 					else expr.getTerm
@@ -287,11 +289,12 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	
 	val leftPanel= new Panel with SequentialContainer.Wrapper {
 		yLayoutAlignment=0d
+		xLayoutAlignment = 0d
    	val headerWrapper= new Component {
-			override lazy val peer=table.peer.getTableHeader
+			override lazy val peer: JTableHeader = table.peer.getTableHeader
 			xLayoutAlignment=0d
-		}		
-		xLayoutAlignment=0d
+		}
+
 		if(!singleField&&showClassLabel) {
 			classLabel.horizontalAlignment=Alignment.Left
 			classLabel.xLayoutAlignment=0d
@@ -301,44 +304,44 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		}			
 		contents+=headerWrapper
 		contents+=table//viewportWrapper			
-		
-		override lazy val peer = {
+
+		override lazy val peer: JPanel = {
 			val p = new javax.swing.JPanel with SuperMixin {
 				override def getPreferredSize= new Dimension(table.peer.getPreferredSize.width,table.peer.getPreferredSize.height+
 				    (if(singleField) 0 else classLabel.preferredSize.height)+headerWrapper.preferredSize.height)
-				override def getMaximumSize=getPreferredSize
+
+				override def getMaximumSize: Dimension = getPreferredSize
 			}
 			val l = new javax.swing.BoxLayout(p, Orientation.Vertical.id)
 			p.setLayout(l)    
 			p
 		}		
-	}	
-	
-	val scroller= new BoxPanel(Orientation.Horizontal){		
+	}
+
+	val scroller = new BoxPanel(Orientation.Horizontal) {
 		sideBarPanel.yLayoutAlignment=0d
-		sideBarPanel.maximumSize=new Dimension(Short.MaxValue,Short.MaxValue)
-		sideBarPanel.xLayoutAlignment=0d	  
+		sideBarPanel.xLayoutAlignment = 0d
+		sideBarPanel.maximumSize = new Dimension(Short.MaxValue, Short.MaxValue)
 		contents+=leftPanel+=sideBarPanel
 	  minimumSize=new Dimension(0,0)		
 	}
-	
-	
-	
-	def isEmpty=dataList.isEmpty
-	
-	def openChild(row:Int)=listLock.synchronized { propMod.mainController.openChild(dataList(row).ref)}	
+
+
+	def isEmpty: Boolean = dataList.isEmpty
+
+	def openChild(row: Int): Unit = listLock.synchronized {propMod.mainController.openChild(dataList(row).ref)}
 	
 	def scrollToSelection():Unit= if(table.selection.rows.nonEmpty&& table.selection.columns.nonEmpty)
     table.peer.scrollRectToVisible(table.peer.getCellRect( table.selection.rows.head,/*table.selection.columns.head*/1 , true))
-					      
-  
-	def enterFromTop()=Swing.onEDT{	  
+
+
+	def enterFromTop(): Unit = Swing.onEDT {
 	  table.selection.columns+=1
 	  table.peer.setRowSelectionInterval(0,0)	  
 	  table.requestFocus()	  
 	}
-	
-	def enterFromBottom()=Swing.onEDT{
+
+	def enterFromBottom(): Unit = Swing.onEDT {
 	  table.selection.columns+=1
 	  table.peer.setRowSelectionInterval(getRowCount-1, getRowCount-1)
 	  table.requestFocus()	  
@@ -380,6 +383,9 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			}
 			emptyHeaderPanel.contents+=Swing.HGlue
 			sideBarPanel.contents+=emptyHeaderPanel
+		sideBarPanel.peer.invalidate()
+		sideBarPanel.peer.revalidate()
+		sideBarPanel.repaint()
 	}
 	
 	/** is called by the emptyHeaderPanel when a Button is clicked
@@ -388,6 +394,8 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	 * @param name name of the Controller choosen
 	 */
 	private def openSideBarController(name:String):Unit = {
+		for (h <- emptyHeaderPanel.contents.headOption)
+			emptyHeaderPanel.deafTo(h)
 	  //println("open sidebar:"+name)
 		currentSideBarController=None
 		for(contr <-sideControllerList.find(_.panelName==name)) {
@@ -405,6 +413,8 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			//propMod.mainController .currentSidePanelControllerWasUsed =true
 		}
 		sideBarPanel.peer.invalidate()
+		sideBarPanel.revalidate()
+		sideBarPanel.repaint()
 		scroller.peer.revalidate()
 		scroller.peer.repaint()
 	}
@@ -412,7 +422,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	/** shuts down eventually open sidebar controllers 
 	 * 
 	 */
-	def shutDown() = {
+	def shutDown(): Unit = {
 		removeSideBar()
 	}
 	
@@ -421,20 +431,22 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			c.closePanel()
 		currentSideBarController=None
 		sideBarPanel.contents.clear()
+
 	}
 	
 	/** is called from the sideBarController when it's close button was clicked
 	 * 
 	 */
-	def closeSideBar() = {
+	def closeSideBar(): Unit = {
 		removeSideBar()
-		sideBarPanel.contents+=emptyHeaderPanel
 		propMod.mainController.activeSidePanelController=None
+		showEmptyHeaderPanel()
 		scroller.repaint()
-	}		
-	
-	def getParentRef=propMod.mainController.ref
-	def getPropField= propMod.ownerRef.ownerField 
+	}
+
+	def getParentRef: Reference = propMod.mainController.ref
+
+	def getPropField: Byte = propMod.ownerRef.ownerField
 	    
   /** load the current values in the table model
    * 
@@ -443,7 +455,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
    * @param onlyRefresh // true= this is only a refresh call after a move, false: it is first time called for loading
    * @param isFirstTable is the first Table in the TableViewBox
    */
-	def setDataList(data:Seq[InstanceData],selectInstance:Option[Reference],onlyRefresh:Boolean,isFirstTable:Boolean) =  {
+	def setDataList(data: Seq[InstanceData], selectInstance: Option[Reference], onlyRefresh: Boolean, isFirstTable: Boolean): Unit = {
 		listLock.synchronized {
 			Swing.onEDT{
 				clickedRow= -1
@@ -486,9 +498,9 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			}
 			updateControllers()
 		}
-	}	
-	
-	def calcSize() = {}
+	}
+
+	def calcSize(): Unit = {}
 
 	def changeInstance(newInst:InstanceData):Unit = listLock.synchronized {
 		//System.out.println("tablemod change inst: "+newInst.ref)
@@ -508,19 +520,11 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		}	
 	}
 
-	def addInstance(newInst:InstanceData) = listLock.synchronized {
+	def addInstance(newInst: InstanceData): Unit = listLock.synchronized {
 		//System.out.println("tablemod add inst: "+newInst.ref)
-		if(dataList==null) {
-			dataList=IndexedSeq(newInst)
-			//setupColumns()
-		}
-		else {
-			//if(pos<0 || pos >=dataList.size)
-				dataList=dataList :+ newInst
-				//else  dataList=(dataList.take(pos):+newInst)++ dataList.drop(pos)
-		}
+		dataList = if (dataList == null) IndexedSeq(newInst)
+		else dataList :+ newInst
 		selectedInstances.buf=dataList
-		//System.out.println("added "+dataList.size+" "+Thread.currentThread+ " "+table.selection.rows)
 		val newSize=dataList.size
 		
 		fireTableRowsInserted(newSize,newSize)
@@ -535,11 +539,9 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				editActionNotDone=null
 			}
 		}
-		
-			//table.peer.setRowSelectionInterval(newSize-1,newSize-1)}
 	}
 
-	def removeInstance(ref:Reference) = listLock.synchronized{	
+	def removeInstance(ref: Reference): Unit = listLock.synchronized {
 		//System.out.println("tablemod remove inst: "+ref)
 		val pos=dataList.indexWhere(_.ref==ref)
 		if(pos<0) util.Log.e("Remove Instance "+ref+" not found !")
@@ -553,22 +555,20 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	}
 
 
-	def getRowCount= listLock.synchronized{
-		 //System.out.println("get size "+(dataList.size+1)+ " " +Thread.currentThread)
-		if(dataList!=null) if(singleField)1 else dataList.size+1
-		else 0
+	def getRowCount: Int = listLock.synchronized {
+		if (dataList == null) 0 else if (singleField) 1 else dataList.size + 1
 	}
 
-	def getColumnCount= listLock.synchronized{
+	def getColumnCount: Int = listLock.synchronized {
 		objClass.fields.size+1
 	}
 
-	def getValueAt(row:Int,col:Int) = listLock.synchronized{
+	def getValueAt(row: Int, col: Int): Object = listLock.synchronized {
 		if(dataList!=null&& row<dataList.size) {
 			val el=dataList(row)
 			if(col==0) { 
 				var retStr=if (el.hasChildren) "+" else " "
-				if(el.secondUseOwners.size>0) 
+				if (el.secondUseOwners.nonEmpty)
 					retStr=retStr+" ·"
 				retStr
 			} // childInfo in column 0
@@ -643,7 +643,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		columnIndex>0 
 	}
 
-	override def getColumnName(col:Int) = listLock.synchronized {
+	override def getColumnName(col: Int): String = listLock.synchronized {
 		if(col==0) "ch" else objClass.fields(col-1).name
 	}
 	
@@ -661,14 +661,14 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				if (objClass.fields(columnIndex-1).typ==DataType.StringTyp)	{
 						StringParser.parse( value.toString) match {
 						  case ex:Expression => ex
-						  case err:ParserError => new StringConstant(value.toString)
+							case _: ParserError => new StringConstant(value.toString)
 						} 
 					}					
 				else StringParser.parse( value.toString) // throw exception when fail
 	}
 
 
-	def deselect() = listLock.synchronized{
+	def deselect(): Unit = listLock.synchronized {
 		//System.out.println("deselect " +typ+ " rows:"+table.selection.rows)
 		if(dataList!=null && table.selection.rows.nonEmpty) {
 			if(table.peer .isEditing) instEditor.stopCellEditing()
@@ -678,35 +678,36 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			selectedInstances.setFilter(Array())
 		}
 	}
-	
-	
 
 	
 
 
 	class SelectList[A](var buf: Seq[A],private var filterSet:Array[Int]=Array()) 
 	extends collection.immutable.IndexedSeq[A] {
-		def length = if(buf==null) 0 else filterSet.size
-		def apply(idx: Int) ={ //System.out.println ("buf size:"+buf.size+ " "+" idx:"+idx+" filterSet:"+filterSet.mkString+" "+Thread.currentThread)
+		def length: Int = if (buf == null) 0 else filterSet.size
+
+		def apply(idx: Int): A = { //System.out.println ("buf size:"+buf.size+ " "+" idx:"+idx+" filterSet:"+filterSet.mkString+" "+Thread.currentThread)
 			val bufIx=filterSet(idx)
 			if(bufIx<buf.size)
 			buf.apply(filterSet(idx))
 			else null.asInstanceOf[A]
 		}
-		def setFilter(newFilter:Array[Int]) = if(buf!=null && newFilter.contains(buf.size)) {
-			filterSet=newFilter.take(newFilter.length-1)
-		} else filterSet=newFilter
+
+		def setFilter(newFilter: Array[Int]): Unit =
+			filterSet = if (buf != null && newFilter.contains(buf.size)) newFilter.take(newFilter.length - 1)
+			else newFilter
 
 		override def toString:String ="buffer:"+(if(buf == null)"null" else buf.mkString(",")+"\nfilter:"+filterSet.mkString(","))
-	 }
+	}
 
-  class FirstColumnRenderer(mod:TypeTableModel) extends LabelRenderer {
-  	val raisedBorder=BorderFactory.createRaisedBevelBorder()
-    val loweredBorder=BorderFactory.createLoweredBevelBorder()
+
+	class FirstColumnRenderer(mod:TypeTableModel) extends LabelRenderer {
+		val raisedBorder: Border = BorderFactory.createRaisedBevelBorder()
+		val loweredBorder: Border = BorderFactory.createLoweredBevelBorder()
 
     override def config( isSelected: Boolean, focused: Boolean, a: String, row: Int): Unit = {
 			if(a==null) text="" else text=a
-  	  super.background= if(a==null)DialogManager.leftPanelColor else if(clickedCol==0&&clickedRow==row)Color.lightGray else buttonBackgroundColor
+			super.background = if (a == null) ViewConstants.leftPanelColor else if (clickedCol == 0 && clickedRow == row) Color.lightGray else buttonBackgroundColor
   	  border=if(clickedCol==0&&clickedRow==row)loweredBorder else raisedBorder
 		}
 	}
@@ -715,7 +716,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 }
 
 class EnumRenderer extends Label {
-  	override def revalidate()= {}
+	override def revalidate(): Unit = {}
   	def prepare(t:Table,isSelected:Boolean,o: (String, Int),row:Int): Unit = {
   		horizontalAlignment=Alignment.Left
   		text = "· "+o._1 //or whatever
@@ -723,40 +724,64 @@ class EnumRenderer extends Label {
   		else  /*if (row % 2 == 0)InstanceRenderer.alternateColor
   		else*/ Color.white
   	}
+
+	font = ViewConstants.tableFont
   }
 
 
 class LabelRenderer extends Label {
-  	//border=BorderFactory.createRaisedBevelBorder();
-  	
-  	override def revalidate()= {}
+	override def revalidate(): Unit = {}
   	super.background=ViewConstants.buttonBackgroundColor
   	super.foreground=Color.black
-  	override def background_=(c: Color) = {				
-		}
-  	override def foreground_=(c: Color) = {				
-		}
-  	
-		def config( isSelected: Boolean, focused: Boolean, a: String, row: Int)= text=a  
-		
+
+	override def background_=(c: Color): Unit = {}
+
+	override def foreground_=(c: Color): Unit = {}
+
+	def config(isSelected: Boolean, focused: Boolean, a: String, row: Int): Unit = text = a
 	}
 
 
 object ViewConstants {
+	var defFont = new Font("Arial", 0, 16)
   val nearWhite=new Color(254,254,254)
-  val defaultRowHeight=25
-  val tableFont=new Font("Arial",0,14)
-  val smallFont=new Font("Arial",0,12)
-  val tinyFont=new Font("Arial",0,10)
-	val tableTypeFont=new Font("Arial",Font.ITALIC,11)
-  val labelFont=new Font("Arial",0,14)
-  val questionFont=new Font("Arial",0,15)
-  val errorFont=new Font("Arial",1,14)
-  
-	val buttonBackgroundColor= /*UIManager.getLookAndFeel() match {
-    case nimbus:com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel => UIManager.getColor("Panel.background") 
-    case other =>*/new Color(214,217,223)
-  //}
-	  
-//	
+	var defaultRowHeight: Int = 25
+	var tableFont = new Font("Arial", 0, 14)
+	var smallFont = new Font("Arial", 0, 12)
+	var tinyFont = new Font("Arial", 0, 10)
+	var tableTypeFont = new Font("Arial", Font.ITALIC, 11)
+	var labelFont = new Font("Arial", 0, 14)
+	var questionFont = new Font("Arial", 0, 15)
+	var errorFont = new Font("Arial", 1, 14)
+	val buttonBackgroundColor = new Color(214, 217, 223)
+	var lineCatchDistance = 6
+	var pointCatchDistance = 8
+	var dragTreshold = 8
+	var fontScale = 100
+
+	def label(text: String = ""): Label = {
+		val res = new Label(text)
+		res.font = labelFont
+		res
+	}
+
+	val hoverColor: Color = Color.cyan.darker
+
+	val leftPanelColor = new Color(247, 247, 252)
+	val eitherColor = new Color(225, 225, 225)
+	lazy val sidePanelWidth: Int = 195 * ViewConstants.fontScale / 100
+
+	lazy val buttonDefaults: UIDefaults = {
+		val res = new UIDefaults()
+		res.put("Button.contentMargins", new Insets(6, 6, 6, 6))
+		res
+	}
+
+	lazy val toggleButtonDefaults: UIDefaults = {
+		val res = new UIDefaults()
+		res.put("ToggleButton.contentMargins", new Insets(7, 7, 7, 7))
+		res
+	}
+	lazy val buttonSize = new Dimension(sidePanelWidth - 10, 30)
+	lazy val minButtonSize = new Dimension(sidePanelWidth - 10 * ViewConstants.fontScale / 100, 40)
 }

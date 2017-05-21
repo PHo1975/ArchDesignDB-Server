@@ -1,31 +1,13 @@
 package client.dialog.symbolbrowser
 
-import client.dialog.FieldEditor
-import client.dialog.SidePanelTextField
-import scala.swing.BoxPanel
-import scala.swing.Orientation
 import java.awt.Dimension
-import client.graphicsView.symbol.SymbolElem
-import client.graphicsView.symbol.SymbolFiller
-import util.StrToInt
-import scala.swing.CheckBox
-import scala.swing.ButtonGroup
-import scala.swing.Swing
-import definition.typ.SelectGroup
-import definition.data.Referencable
+
+import client.dataviewer.ViewConstants
+import client.dialog._
+import client.graphicsView.symbol.{SymbolElem, SymbolFiller, SymbolOrient}
+
 import scala.swing.event.ButtonClicked
-import client.dialog.SidePanelComponent
-import definition.expression.Constant
-import definition.expression.IntConstant
-import util.StrToDouble
-import client.dialog.IntSidePanelComponent
-import client.graphicsView.symbol.SymbolFiller
-import client.graphicsView.symbol.FillMode
-import client.comm.ClientQueryManager
-import client.graphicsView.symbol.SymbolOrient
-import scala.swing.RadioButton
-import client.dialog.SidePanelDoubleTextField
-import scala.swing.Label
+import scala.swing.{BoxPanel, ButtonGroup, CheckBox, Label, Orientation, RadioButton, Swing}
 
 
 
@@ -40,13 +22,14 @@ class SymbolFieldEditor extends FieldEditor {
    
    lazy val panel=new BoxPanel(Orientation.Vertical){
      contents+=getPanelPart("Winkel:",angleField)+=getPanelPart("Zoom:",scaleField)
-     maximumSize=new Dimension(Short.MaxValue,64) 
+     maximumSize = new Dimension(Short.MaxValue, 64 * ViewConstants.fontScale / 100)
      xLayoutAlignment=0d
      opaque=false
    }
    
    lazy val fieldComponents=Seq(angleField,scaleField)
-   def getPanel=panel  
+
+  def getPanel: BoxPanel = panel
 }
 
 
@@ -57,7 +40,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
    lazy val allowedClassNames=Seq("SymbolFiller")
    
    lazy val firstField=new SidePanelDoubleTextField(Map("SymbolFiller"->8),this,4) {
-     override def filter(st:Double)=if(fixedCheckBox.selected) st>1 else true
+     override def filter(st: Double): Boolean = if (fixedCheckBox.selected) st > 1 else true
      addSearchLookup{ case fill:SymbolFiller=>
        numElemsLab.text="Anzahl: "+fill.fillData.elemRange.size.toString
        fill.fillData match {
@@ -83,7 +66,8 @@ class SymbolFillerFieldEditor extends FieldEditor {
        numElemsLab.text="Anzahl: "+fill.fillData.elemRange.size.toString
        fill.code
      }
-     override def setValue(value:Option[Int])= {
+
+     override def setValue(value: Option[Int]): Unit = {
        //println("Set value code "+value)
        super.setValue(value)
        selfSelected=true
@@ -107,16 +91,16 @@ class SymbolFillerFieldEditor extends FieldEditor {
    val thirdCheckBox=new CheckBox("..")
    val bGroup=new ButtonGroup(fixedCheckBox,defDistCheckBox,circleCheckBox,tileCheckBox)
    var selfSelected=false
-   
-   val part1=getPanelPart("a1:",firstField)
-   val part2=getPanelPart("Max-Dist:",secondField)
-   val numElemsLab=new Label("..")
+
+  val part1: PanelPart = getPanelPart("a1:", firstField)
+  val part2: PanelPart = getPanelPart("Max-Dist:", secondField)
+  val numElemsLab: Label = ViewConstants.label("..")
    numElemsLab.xLayoutAlignment=0d
    
    lazy val panel=new BoxPanel(Orientation.Vertical){
      contents+=fixedCheckBox+=tileCheckBox+=defDistCheckBox+=circleCheckBox+=Swing.VStrut(10)+=part1+=part2+=
        thirdCheckBox+=Swing.VStrut(15)+=numElemsLab
-     maximumSize=new Dimension(Short.MaxValue,214) 
+     maximumSize = new Dimension(Short.MaxValue, 214 * ViewConstants.fontScale / 100)
      xLayoutAlignment=0d
      opaque=false
    }
@@ -140,9 +124,9 @@ class SymbolFillerFieldEditor extends FieldEditor {
          case _=> 0
        }
        this.storeValue((currValue & -129)+(if(thirdCheckBox.selected)128 else 0), codeField)
-   }   
-   
-   def getPanel=panel
+   }
+
+  def getPanel: BoxPanel = panel
    
    private def setFillMode(mode:Int)= {
      val currValue=codeField.currentValue match{

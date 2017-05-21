@@ -3,43 +3,16 @@
  */
 package server.comm
 
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
-import java.io.DataInput
-import java.io.DataInputStream
-import java.io.DataOutput
-import java.io.DataOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.net.Socket
-import java.net.SocketException
+import java.io._
+import java.net.{Socket, SocketException}
 import java.util.zip.Deflater
 
-import definition.comm.ClientCommands
-import definition.comm.CommandError
-import definition.comm.ServerCommands
-import definition.data.EMPTY_REFERENCE
-import definition.data.InstanceData
-import definition.data.OwnerReference
-import definition.data.Reference
-import definition.data.TransStepData
-import definition.expression.Constant
-import definition.expression.Expression
-import definition.expression.IntConstant
-import definition.typ.AllClasses
-import definition.typ.ParamQuestion
-import definition.typ.SystemSettings
-import server.config.FSPaths
-import server.config.ServerSystemSettings
-import server.storage.ActionImpl
-import server.storage.ActionIterator
-import server.storage.ActionNameMap
-import server.storage.CreateActionImpl
-import server.storage.ServerClassList
-import server.storage.ServerObjectClass
-import server.storage.StorageManager
+import definition.comm.{ClientCommands, CommandError, ServerCommands}
+import definition.data._
+import definition.expression.{Constant, Expression, IntConstant}
+import definition.typ.{AllClasses, ParamQuestion, SystemSettings}
+import server.config.{FSPaths, ServerSystemSettings}
+import server.storage._
 import transaction.handling.{ActionList, TransactionManager}
 import util.{CollUtils, Log, StringUtils}
 
@@ -56,7 +29,7 @@ trait AbstractUserSocket {
 
 	var appName:String=""
 
-	def sendSystemSettings()= sendData(ServerCommands.sendSystemSettings) {out=>
+  def sendSystemSettings(): Unit = sendData(ServerCommands.sendSystemSettings) { out =>
 		//println("Sending system settings")
 		out.writeInt(userEntry.id)
 		SystemSettings().asInstanceOf[ServerSystemSettings].write(out)
@@ -72,6 +45,7 @@ trait AbstractUserSocket {
 			userEntry.startRef.write(out)
 			if(!file.exists||file.length==0) out.writeInt(0)
 			else {
+        //println("config file "+file)
 				CollUtils.tryWith(new FileInputStream(file))(in=>{
 					val l=file.length.toInt
 					//System.out.println("read Settings: "+l)
@@ -105,6 +79,7 @@ trait AbstractUserSocket {
 			// readKeyStrokes
 			val ksFile=new File(FSPaths.configDir+userEntry.name+".kst")
 			if(ksFile.exists) {
+        //println("Keystrokes "+ksFile)
 				val in=new DataInputStream(new FileInputStream(ksFile))
 				val numGroups=in.readInt
 				out.writeInt(numGroups)
@@ -131,7 +106,6 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 	var userEntry:UserInfo=_
 	@volatile var wantRun=true
 	var connectionEntry:ConnectionEntry=_
-	val socketLock:AnyRef = new Object
 
 
 	type CommandHandlerFunc= (DataInputStream)=>Unit
@@ -174,7 +148,7 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 				System.out.print("user "+userName+" logged in ")
 				Thread.`yield`()
 				UserList.userIterator.find(_.name==userName) match {
-				  case Some(u)=> {
+          case Some(u) =>
 						userEntry=u
 						if(! (passWord==StringUtils.deobfuscate(userEntry.password)))
 							writeOut("Wrong password")
@@ -184,12 +158,12 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 						else {
 							writeOut("welcome")
 							System.out.println("and added")
-							connectionEntry = new ConnectionEntry(appName, this, queryHandler)
+              connectionEntry = ConnectionEntry(appName, this, queryHandler)
 							UserList.addConnection(userEntry.id, connectionEntry)
 							// start command loop
 							handleCommands(in, userEntry)
 						}
-					}
+
 				  case None=> writeOut("User "+userName+" not known")
 				}
 			}
@@ -207,7 +181,7 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 		}
 	}
 
-	private def writeOut(st:String ) = {out.writeUTF(st);out.flush()}
+  private def writeOut(st: String) = outStreamLock.synchronized {out.writeUTF(st); out.flush()}
 
 
 	private def handleCommands(in:DataInputStream,user:UserInfo):Unit = {
@@ -216,7 +190,7 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 			while(wantRun)
 			{
 				val command =ClientCommands(in.readByte.toInt)
-				//System.out.println("#"+userEntry.id+"# ClientCommand:"+command)
+        //System.out.println("User:"+userEntry.name+" ClientCommand:"+command)
 				try {
 					command match {
 						case ClientCommands.getTypes => sendTypes()
@@ -239,24 +213,23 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 	}
 
 	private def logoutUser() = 	{
-		System.out.println("user "+userEntry.name+" logged off")
+    Log.w("user " + userEntry.name + " logged off")
 		UserList.removeConnection(userEntry.id,connectionEntry)
 	}
 
 	def sendData(command:ServerCommands.Value)(func:  (DataOutput)=>Unit): Unit =
-		socketLock.synchronized		{
 		  //print(" $S:"+command.toString().substring(0,10))
-			try {
-				outStreamLock.synchronized {
-					out.writeByte(command.id.toByte)
-					func(out)
-          if(!ActionList.isBufferingUpdates) out.flush()
-				}
+    try {
+      outStreamLock.synchronized {
+        out.writeByte(command.id.toByte)
+        func(out)
+        if (!ActionList.isBufferingUpdates) out.flush()
+      }
+    }
+    catch {
+      case e: IOException => Log.e("Send Data", e)
 			}
-			catch {
-				case e: IOException => Log.e("Send Data",e)
-			}
-		}
+
 
 	private def sendTypes() = 	{
 		//System.out.println("Sending Types to "+userEntry.name)
@@ -358,7 +331,6 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 
 	private def wantWriteMultiFields(in:DataInputStream) = {
 		var error:CommandError=null
-		var result:Constant=null
 		val numInst=in.readInt
 		val refList=for(i <-0 until numInst) yield Reference(in)
 		val field=in.readByte
@@ -405,7 +377,10 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 				if (inst==null)	error=new CommandError("Unknown Issue",ClientCommands.createInstance.id,0)
 				else result=inst.ref.instance
 			})
-			for(transError <-ret) error=new CommandError(transError.getMessage,ClientCommands.createInstance.id,0)
+      for (transError <- ret) {
+        error = new CommandError(transError.getMessage, ClientCommands.createInstance.id, 0)
+        Log.e("Create Instance " + transError.getMessage + " typ:" + typ + " owners:" + ownerArray.mkString(","))
+      }
 		}
   	catch {
   		case e:Exception =>
@@ -513,7 +488,6 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 
 	private def copyOrMove(in:DataInput,command:ClientCommands.Value,move:Boolean)= {
 		var error:CommandError=null
-		var result:Constant=null
 		val numInstances=in.readShort
 		val refList:Seq[Reference] = for(i <- 0 until numInstances) yield Reference(in)
 		val fromOwner:OwnerReference=OwnerReference.read(in)
@@ -553,7 +527,6 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 
 	private def create2ndUseCopies(in:DataInput)= {
 		var error:CommandError=null
-		var result:Constant=null
 		val numInstances=in.readShort
 		val refList:Seq[Reference] = for(i <- 0 until numInstances) yield Reference(in)
 		val fromOwner:OwnerReference=OwnerReference.read(in)
@@ -760,7 +733,7 @@ class JavaClientSocket(val socket: Socket) extends Thread  with AbstractUserSock
 		sendData(ServerCommands.sendGeneratedData ) (func)
 	}
 
-	def flushTransactionBuffers():Unit= {
+  def flushTransactionBuffers(): Unit = outStreamLock.synchronized {
     try {
       out.flush()
     } catch {
