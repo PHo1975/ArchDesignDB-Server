@@ -27,12 +27,12 @@ object UserSettings extends UserSetting
 class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:String,appName:String,readTypes:Boolean=true) extends Thread("Socket-Thread") {
 	
 	private val socket = new Socket(serverAddress, port)
-	val out =  new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()))
+	val out =  new DataOutputStream(new BufferedOutputStream(socket.getOutputStream))
 	private val outStreamLock : AnyRef = new Object()
 	private val inStreamLock = new Object()
 	
 	var wantRun=true	
-	private var isSetup=false
+	//private var isSetup=false
 	type CommandHandlerFunc= (DataInputStream)=>Unit
 	
 	var classesReadListener:()=>Unit = _
@@ -49,7 +49,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	
 	override def run():Unit = {
 		 try {			
-			 val in = new DataInputStream(new BufferedInputStream(socket.getInputStream()))
+			 val in = new DataInputStream(new BufferedInputStream(socket.getInputStream))
 			 // send user name and password
 			 writeOut(name)
 			 writeOut(password)
@@ -70,14 +70,13 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
      }
 	}
 	
-	private def writeOut(st:String ) = {out.writeUTF(st);out.flush()}
+	private def writeOut(st:String ): Unit = {out.writeUTF(st);out.flush()}
 	
 	private def handleCommands(in:DataInputStream):Unit = inStreamLock.synchronized {
 		while(wantRun)
 			try {
-			  //println("fetch ")
 				val command =ServerCommands(in.readByte.toInt)
-				//System.out.println("ServerCommand: "+command)
+				//Log.e("Server Command :"+command)
 				command match {
 					case ServerCommands.sendTypes  => readInTypes(in)
 					case ServerCommands.sendSystemSettings=>readSystemSettings(in)
@@ -103,19 +102,22 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 			}
 	}
   
-  private def connectionBroken()={    
+  private def connectionBroken(): Unit ={
+		println("Connection broken")
     if(connectionBrokenListener!=null)connectionBrokenListener()
 		wantRun = false
 		//System.exit(0)
   }
 	
 	private def readSystemSettings(in:DataInputStream):Unit= {
-	  //val start=System.currentTimeMillis()
 	  SystemSettings.settings=new ClientSystemSettings(in) {
-			override def loadChildren(ref: Reference): IndexedSeq[InstanceData] = ClientQueryManager.queryInstance(ref,1)
+
+			override def loadChildren(ref: Reference): IndexedSeq[InstanceData] =
+				ClientQueryManager.queryInstance(ref,1)
+
 		}
-	  //println("read system settings "+(System.currentTimeMillis()-start))
-	  sendData(if(readTypes)ClientCommands.getTypes else ClientCommands.getUserSettings ){out:DataOutputStream =>{}}
+		println("Systemsettings read")
+	  sendData(if(readTypes)ClientCommands.getTypes else ClientCommands.getUserSettings ){_:DataOutputStream =>{}}
 	}
 		
 	private def readInTypes(in: DataInputStream):Unit = 	{
@@ -131,22 +133,23 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		inf.end()
     val cc=new ClientClasses(xml.XML.loadString(new String(fullBuffer,"UTF-8")))
 		AllClasses.set(cc, resolve = false)
-		//println(" Classes read "+(System.currentTimeMillis()-start)+" uncompressedsize:"+uncompressedSize+" size:"+numBytes)
+		println(" Classes read  uncompressedsize:"+uncompressedSize+" size:"+numBytes)
 		sendData(ClientCommands.getUserSettings  ){out:DataOutputStream =>{}}
 	}
 	
 	
-	private def readUserSettings(in:DataInputStream) = {	  
-    //val start=System.currentTimeMillis()
+	private def readUserSettings(in:DataInputStream): Unit = {
+
 		val editable=in.readBoolean()
 		val userID=in.readInt()
 		val startRef=Reference(in)
-		UserSettings.readFromStream(in,in.readInt(),true)
+		UserSettings.readFromStream(in,in.readInt(),atClient = true)
 		KeyStrokeManager.load(in)
 		genDataHandlerMap(GeneratorType.printGenerator )=PrintQuestionHandler
 		if(classesReadListener!=null)classesReadListener()
 		ClientQueryManager.notifySetupListeners()
 		for(s<-startupFinishListener)s()
+		println("read User settings done")
 	}		
 	
 	

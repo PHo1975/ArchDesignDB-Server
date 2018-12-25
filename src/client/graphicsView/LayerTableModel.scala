@@ -6,17 +6,18 @@ package client.graphicsView
 
 import java.awt.geom.Rectangle2D
 import java.lang
-import javax.swing.table._
 
 import client.comm.ClientQueryManager
 import definition.comm.{IntValue, ListValue, PropertyGroup, StringValue}
 import definition.data._
 import definition.expression.{StringConstant, VectorConstant}
-import util.StringUtils
+import javax.swing.table._
+import util.{Log, StringUtils}
 
 import scala.collection.SortedMap
 import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
+import scala.util.control.NonFatal
 
 /**
  * 
@@ -267,7 +268,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 		else null
 	}
 
-  override def setValueAt(value: Object, row: Int, col: Int): Unit = if (col > 2 && col < 5 && row < layerList.size) {
+  override def setValueAt(value: Object, row: Int, col: Int): Unit = if (col ==4 && row < layerList.size) {
 	  val layer=layerList(row)
     ClientQueryManager.writeInstanceField(layer.ref, (col - 3).toByte, StringConstant(value.toString))
 	}
@@ -297,7 +298,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 
   override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean =
-	  columnIndex>2&&columnIndex<5
+	  columnIndex==4
 
 
   def calcAllLayerBounds(): Rectangle2D.Double = {
@@ -318,7 +319,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 		bounds
 	}
 	
-	private def doLayerCheck(lay:AbstractLayer,bounds:Rectangle2D.Double) = {	  
+	private def doLayerCheck(lay:AbstractLayer,bounds:Rectangle2D.Double): Unit = {
 		val lb=lay.calcBounds()
 		if(lb.x<bounds.x)bounds.x=lb.x
 		if(lb.y<bounds.y)bounds.y=lb.y
@@ -369,10 +370,10 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 
   def restoreSettings(pgroup: PropertyGroup, doneListener: Option[() => Unit]): Unit = {
-	  //System.out.println("LayerModel restore settings ")
+	  System.out.println("LayerModel restore settings ")
 	  layerList.clear()
 	  val numLayer=pgroup.getIntProperty("NumLay")
-	  //System.out.println("NumLayer "+numLayer)
+	  System.out.println("NumLayer "+numLayer)
 
 		for(i<- 0 until numLayer) {
 			val layRef=Reference(pgroup.getStringProperty("L"+i.toString))
@@ -385,15 +386,21 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 				layerList +=newLayer
 			}
 		}
+		println("layers found "+layerList.size)
 		notifySizeChanged()
+		println("notify size")
 		loadLayers(doneListener)
+		println("Layers loaded")
 		setActiveLayerIx(pgroup.getIntProperty("AS"))
+		println("Active layer set")
 	}
 
-	private def loadLayers(doneListener:Option[()=>Unit]):Unit= {
+	private def loadLayers(doneListener:Option[()=>Unit]):Unit= try{
+		println("Load Layers")
 		var layerToLoad= 0
 
 		def layerLoaded():Unit = {
+			println("Layer loaded "+layerToLoad)
 			layerToLoad+=1
 			while(layerToLoad < layerList.size&& !layerList(layerToLoad).visible)
 				layerToLoad+=1
@@ -406,6 +413,9 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 			layerToLoad+=1
 		if(layerToLoad<layerList.size) layerList(layerToLoad).load(Some(layerLoaded _),false)
 		else for(d<-doneListener)d()
+	} catch {
+		case NonFatal(e)=> Log.e("Load Layers ",e)
+			case e:Throwable =>println("Fehler:"+e)
 	}
 
 

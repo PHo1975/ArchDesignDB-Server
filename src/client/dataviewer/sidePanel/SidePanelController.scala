@@ -2,11 +2,12 @@
  * Author: Peter Started:07.03.2011
  */
 package client.dataviewer.sidePanel
-import definition.data._
-import scala.swing._
-import definition.typ.AbstractObjectClass
 import client.dataviewer.TypeTableModel
+import definition.data._
+import definition.typ.AbstractObjectClass
 import javax.swing.Icon
+
+import scala.swing._
 
 
 // the class that contains the controller

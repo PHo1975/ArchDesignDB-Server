@@ -236,7 +236,8 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
       case _ =>
     }
     forcePrecBut.selected = forcePrecision
-  	if(AnswerPanelsData.currentViewController!=null) {  		
+  	if(AnswerPanelsData.currentViewController!=null) {
+      if(ViewConstants.showToast==1)FollowMouseToast.showToast(DialogManager.questionField.puretext+" "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
   		if(answerDesc.constraint =="Create")
   			AnswerPanelsData.currentViewController.deselect()
   		AnswerPanelsData.currentViewController.askForPointClick(this) 		
@@ -244,6 +245,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   }
 
   override def reset(): Unit = {
+    FollowMouseToast.reset()
     editActive=false
   	//System.out.println("pointpanel reset "+active+" ca"+preventCancelOnReset)
   	super.reset()

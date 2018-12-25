@@ -1,16 +1,15 @@
 package server.print
 
 import definition.data.InstanceData
-import definition.expression.Constant
-import definition.expression.StringConstant
-import server.storage.StorageManager
+import definition.expression.{Constant, StringConstant}
 import definition.typ.SystemSettings
+import server.storage.StorageManager
 
 
 class PlotPrintvarResolver extends CustomPrintvarResolver {
-  lazy val scales=SystemSettings().enums("DrawingScales").enumValues.map(_.swap) 
-  val measureLayerType=SystemSettings().systemTypes("MeasureLayer")
-  val actionMap=Map[String,(InstanceData)=>Constant]("dim"->getDimensions,"layids"->getLayIDs)
+  lazy val scales: collection.Map[Int, String] =SystemSettings().enums("DrawingScales").enumValues.map(_.swap)
+  val measureLayerType: Int =SystemSettings().systemTypes("MeasureLayer")
+  val actionMap: Map[String, InstanceData => Constant] =Map[String, InstanceData =>Constant]("dim"->getDimensions,"layids"->getLayIDs)
   
   
   
@@ -31,7 +30,7 @@ class PlotPrintvarResolver extends CustomPrintvarResolver {
     Set.empty
   }
   
-  def emptyIterator=Seq.empty.iterator
+  def emptyIterator: Iterator[Nothing] =Seq.empty.iterator
   
   def layerIterator(currData:InstanceData):Iterator[(InstanceData,InstanceData)]= {
     for(dprops <-StorageManager.getInstanceProperties(currData.ref))  {
@@ -52,6 +51,6 @@ class PlotPrintvarResolver extends CustomPrintvarResolver {
     }).toSeq.distinct.mkString(", "))    
   }
   
-  def getLayIDs(currData:InstanceData):Constant= new StringConstant(getFieldValue(currData,0).mkString(", "))
+  def getLayIDs(currData:InstanceData):Constant= StringConstant(getFieldValue(currData, 0).mkString(", "))
 }
 

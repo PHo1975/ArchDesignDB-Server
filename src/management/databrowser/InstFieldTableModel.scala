@@ -3,14 +3,12 @@
  */
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-import definition.typ._
-import definition.data._
-import definition.expression.StringParser
-import server.storage._
-import transaction.handling._
 import definition.comm._
-import definition.expression._
+import definition.data._
+import definition.expression.{StringParser, _}
+import definition.typ._
+import javax.swing.table.AbstractTableModel
+import transaction.handling._
 
 import scala.util.control.NonFatal
 

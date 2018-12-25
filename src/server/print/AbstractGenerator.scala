@@ -11,10 +11,11 @@ import util.Log
 
 
 trait AbstractGenerator {
-  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext):Unit 
+  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit
   def map[B](f: AbstractGenerator => B): Seq[B]
   def optionName:Option[String]=None
 }
+
 
 class SinglePageGenerator(val form:FormDescription,val generatorClass:String,val formName:String,val stampBoxes:Seq[StampBox]) extends AbstractGenerator {
 	def decoratePage(instData: InstanceData, dataEater: DataEater, context: PrintContext): Unit = {
@@ -24,8 +25,7 @@ class SinglePageGenerator(val form:FormDescription,val generatorClass:String,val
 		})
   }
   
-  
-  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext):Unit = {
+  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit = {
     context.setCurrInstance(instData)
     val custGen=PrintEngine.getGenerator(generatorClass)
     custGen.fillPlotPage(instData,dataEater,this)
@@ -33,8 +33,8 @@ class SinglePageGenerator(val form:FormDescription,val generatorClass:String,val
   }
 
 	def map[B](f: AbstractGenerator => B): Seq[B] = Seq.empty
-  
 }
+
 
 
 /**
@@ -52,23 +52,27 @@ class PrintIterator(val form:FormDescription, val propField:Byte, val forType:In
 	def checkIfIgnore(context: PrintContext): Boolean =
 	  optionName.isDefined&& context.ignoreItersWithOption.contains(optionName.get)	
 	
-	def iterate(instData:InstanceData, dataEater:DataEater, context:PrintContext):Unit = {	 
+	def iterate(instData:InstanceData, dataEater:DataEater, context:PrintContext,firstData:Boolean):Unit = {
 	  if(!checkIfIgnore(context)) internIterate(instData,dataEater,context)
 	}
 
-	def loopPropField(forType: Int, propField: Int, pData: InstanceProperties, f: (InstanceData) => Unit): Unit = if (forType > 0) {
+	def loopPropField(forType: Int, propField: Int, pData: InstanceProperties, f: (InstanceData,Boolean) => Unit): Unit = if (forType > 0) {
 		if(propField>=pData.propertyFields.length) Log.e("Wrong property Field "+propField+" in "+pData.ref+
 		    "\nData:"+pData+" "+pData.ref+" allowed fieldNr:"+pData.propertyFields.length)
-		else for(cData <-pData.propertyFields(propField).propertyList) {
-			val childClass=AllClasses.get.getClassByID(cData.typ)							
-			if(childClass.inheritsFrom(forType )){
-				f(StorageManager.getInstanceData(cData))
-			}								
-		} 
+		else{
+      var first:Boolean=true
+      for(cData <-pData.propertyFields(propField).propertyList) {
+        val childClass=AllClasses.get.getClassByID(cData.typ)
+        if(childClass.inheritsFrom(forType )){
+          f(StorageManager.getInstanceData(cData),first)
+          if(first) first=false
+        }
+      }
+    }
 	}else Log.e(" no forType defined ! proptfield" +propField+" "+pData.ref)
 	
 	protected def internIterate(instData:InstanceData, dataEater:DataEater, context:PrintContext):Unit = {
-		//if(optionName.isDefined&& context.ignoreItersWithOption.contains(optionName.get)) return // Option is set to false
+    //println("interniterate "+instData.ref)
 
 		context.setCurrInstance(instData)
 		context.parentInstance = None
@@ -78,15 +82,16 @@ class PrintIterator(val form:FormDescription, val propField:Byte, val forType:In
 		})
 		StorageManager.getInstanceProperties(instData.ref) match {
 			case Some(pData )=> 
-				for(iter <-childIterators){				  
+				for(iter <-childIterators){
 					iter match {
 						case p:ParentIterator =>
-							p.iterate(instData, dataEater, context)
+							p.iterate(instData, dataEater, context,firstData = false)
 							context.parentInstance = None
 						case childIt:PrintIterator if childIt.forType > 0 =>
-						  loopPropField(childIt.forType,childIt.propField,pData,(inst)=>{context.parentInstance=Some(instData);childIt.iterate(inst,dataEater,context)})
+						  loopPropField(childIt.forType,childIt.propField,pData,(inst,first)=>
+              {context.parentInstance=Some(instData);childIt.iterate(inst,dataEater,context,first)})
 						case custIt:CustomIterator if custIt.forType > 0 =>
-						  loopPropField(custIt.forType,custIt.propField,pData,(inst)=> {context.parentInstance=Some(instData);custIt.iterate(inst,dataEater,context)})
+						  loopPropField(custIt.forType,custIt.propField,pData,(inst,first)=> {context.parentInstance=Some(instData);custIt.iterate(inst,dataEater,context,first)})
 						case o => Log.e("Unknown generator type "+o)
 					}
 				}			
@@ -107,9 +112,11 @@ class PrintIterator(val form:FormDescription, val propField:Byte, val forType:In
 	  buffer+=f(this)
 	  buffer++=childIterators.flatMap(_.map(f))
 	  buffer
-	} 	
-	
+	}
 }
+
+
+
 
 class SectionIterator(nform:FormDescription,npropField:Byte,nforType:Int,nhorOrient:Boolean,nsortFeld:Int,nbeforeStamps:Seq[Stamp],nafterStamps:Seq[Stamp],	
 	val headerStamps:Seq[Stamp],val footerStamps:Seq[Stamp],	nchildIterators:Seq[AbstractGenerator],noptionName:Option[String],firstSectionChild:Boolean,
@@ -123,17 +130,20 @@ class SectionIterator(nform:FormDescription,npropField:Byte,nforType:Int,nhorOri
 	override def toString: String = "SectionIterator for type " + forType + " numBefore:" + beforeStamps.size + " numAfter:" + afterStamps.size + " numHeader:" + headerStamps.size +
 	" numFooter:"+footerStamps.size//+	" ChildItTypes:"+childIterators.map(_.forType).mkString(",")
 	
-	override def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext):Unit = if(!checkIfIgnore(context)){
+	override def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit = if(!checkIfIgnore(context)){
+    //println("Section Iterate inst:"+instData.ref+" fs:"+firstSectionChild+" ls:"+lastSectionChild+" first:"+firstData)
 		context.setCurrInstance(instData)								
 		context.sectionInstance=Some(instData)
 		dataEater.currentHeader =headerStamps .headOption
 		dataEater.currentFooter =footerStamps .headOption
-		if (!firstSectionChild) dataEater.initSection() else if (dataEater.getCurrPageNum == 0) dataEater.initPage()
+		if (!firstSectionChild && !firstData) dataEater.initSection() else if (dataEater.getCurrPageNum == 0) dataEater.initPage()
 		super.internIterate(instData,dataEater,context)
 		if (!lastSectionChild) dataEater.addPage()
 		context.sectionInstance=None
 	}
 }
+
+
 
 class ParentIterator(nform:FormDescription,npropField:Byte,nforType:Int,nhorOrient:Boolean,nsortFeld:Int,nbeforeStamps:Seq[Stamp],nafterStamps:Seq[Stamp],
 	nchildIterators:Seq[AbstractGenerator],noptionName:Option[String],val parentType:Int) extends 
@@ -142,7 +152,7 @@ class ParentIterator(nform:FormDescription,npropField:Byte,nforType:Int,nhorOrie
 	override def toString: String = "parentIterator for type " + forType + " numBefore:" + beforeStamps.size + " numAfter:" + afterStamps.size +
 	" ChildItTypes:"+/*childIterators.map(_.forType).mkString(",")+*/" parentType:"+parentType
 	
-	override def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext):Unit = if(!checkIfIgnore(context)){
+	override def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit = if(!checkIfIgnore(context)){
 		//println("parentIterator iter:"+instData)
 		StorageManager.getNextParentOfType(instData.ref, parentType) match {
 			case Some(parent)=>
@@ -151,8 +161,8 @@ class ParentIterator(nform:FormDescription,npropField:Byte,nforType:Int,nhorOrie
 			case None => throw new IllegalArgumentException("ParentIterator cant find Parent of type "+parentType+" in Ref:"+instData.ref)			
 		}		
 	}
-	
 }
+
 
 
 class CustomIterator(val form:FormDescription, val propField:Byte, val forType:Int, val horOrient:Boolean, val sortFeld:Int, 
@@ -163,10 +173,11 @@ class CustomIterator(val form:FormDescription, val propField:Byte, val forType:I
 	def checkIfIgnore(context: PrintContext): Boolean =
 	  optionName.isDefined&& context.ignoreItersWithOption.contains(optionName.get)	
   
-  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext):Unit =if(!checkIfIgnore(context)){   
+  def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit =if(!checkIfIgnore(context)){
     dataEater.addCustomBlock(generator.fillInIterator(instData, dataEater,context))
   }
 }
+
 
 
 
@@ -181,7 +192,7 @@ object AbstractGenerator {
       PrintEngine.sectionIteratorType -> {(form,data,firstSectionChild,lastSectionChild)=>{
         new SectionIterator(form,data.fieldValue(4).toInt.toByte,data.fieldValue.head.toInt,data.fieldValue(1).toBoolean,data.fieldValue(2).toInt,
         		loadStamps(form,data.ref,0.toByte),loadStamps(form,data.ref,1.toByte),loadStamps(form,data.ref,3.toByte),
-        		loadStamps(form,data.ref,4.toByte),loadChildren(form,data.ref,true),stringToOption(data.fieldValue(5)),firstSectionChild,lastSectionChild)}}, 
+        		loadStamps(form,data.ref,4.toByte),loadChildren(form,data.ref,parentIsSectionIterator = true),stringToOption(data.fieldValue(5)),firstSectionChild,lastSectionChild)}},
       PrintEngine.parentIteratorType -> {(form,data,firstSectionChild,lastSectionChild)=>{
         new ParentIterator(form,data.fieldValue(4).toInt.toByte,data.fieldValue.head.toInt,data.fieldValue(1).toBoolean,data.fieldValue(2).toInt,
         		loadStamps(form,data.ref,0.toByte),loadStamps(form,data.ref,1.toByte),loadChildren(form,data.ref,false),
@@ -229,14 +240,15 @@ object AbstractGenerator {
 	}
 
 	def loadIteratorsFromProperty(form: FormDescription, propertyList: IndexedSeq[Reference]): Seq[AbstractGenerator] = {
+    //println("loadIterators from Property "+propertyList.mkString(", "))
 	  propertyList match {
 	    case IndexedSeq() => Seq.empty
-	    case IndexedSeq(oneData)=> Seq(AbstractGenerator(form,StorageManager.getInstanceData(oneData),true,true))
-	    case IndexedSeq(firstData,secondData)=> IndexedSeq(AbstractGenerator(form,StorageManager.getInstanceData(firstData),true,false),
-	     AbstractGenerator(form,StorageManager.getInstanceData(secondData),false,true))   
-	    case other=> AbstractGenerator(form,StorageManager.getInstanceData(other.head),true,false)+:
-	     other.drop(1).dropRight(1).map(a=> AbstractGenerator(form, StorageManager.getInstanceData(a),false,false)) :+
-	      AbstractGenerator(form,StorageManager.getInstanceData(other.last),false,true)
+	    case IndexedSeq(oneData)=> Seq(AbstractGenerator(form,StorageManager.getInstanceData(oneData),firstSectionChild = true,lastSectionChild = true))
+	    case IndexedSeq(firstData,secondData)=> IndexedSeq(AbstractGenerator(form,StorageManager.getInstanceData(firstData),firstSectionChild = true,lastSectionChild = false),
+	     AbstractGenerator(form,StorageManager.getInstanceData(secondData),firstSectionChild = false,lastSectionChild = true))
+	    case other=> AbstractGenerator(form,StorageManager.getInstanceData(other.head),firstSectionChild = true,lastSectionChild = false)+:
+	     other.drop(1).dropRight(1).map(a=> AbstractGenerator(form, StorageManager.getInstanceData(a),firstSectionChild = false,lastSectionChild = false)) :+
+	      AbstractGenerator(form,StorageManager.getInstanceData(other.last),firstSectionChild = false,lastSectionChild = true)
 	  }
 	}
 	

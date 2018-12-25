@@ -1,12 +1,12 @@
 package client.importer
-import scala.swing.Window
 import java.awt.Point
-import definition.data.InstanceData
-import definition.data.Reference
-import definition.data.OwnerReference
 import java.io.File
+
 import client.comm.ClientQueryManager
+import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.StringConstant
+
+import scala.swing.Window
 
 trait FileImportDescriptor {
   

@@ -1,20 +1,19 @@
 package server.print
 
-import definition.data.InstanceData
-import definition.data.PrintElement
-import javax.imageio.ImageIO
-import java.io.File
-import definition.data.BitmapPrintElement
 import java.awt.geom.Rectangle2D
-import definition.data.PageBreakMarker
-import definition.data.TextPrintElement
+import java.io.File
+
+import definition.data._
+import javax.imageio.ImageIO
+import server.config.FSPaths
+
 import scala.util.control.NonFatal
 
 class BitmapGenerator extends CustomGenerator {
   
   class DataSet(dataParent:InstanceData){
     lazy val name=dataParent.fieldValue.head.toString
-    val link=new File(dataParent.fieldValue(1).toString)
+    val link=new File(util.JavaUtils.restoreDelimiters(util.JavaUtils.resolveImagePath(FSPaths.imageDir,dataParent.fieldValue(1).toString)))
     val dwidth=dataParent.fieldValue(2).toFloat
     val dheight=dataParent.fieldValue(3).toFloat
     val xMargin=dataParent.fieldValue(4).toFloat

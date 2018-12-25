@@ -3,12 +3,10 @@
  */
 package runtime.function
 
-import definition.data.InstanceData
-import definition.data.OwnerReference
+import definition.data.{InstanceData, OwnerReference}
 import definition.expression.Constant
-import server.comm.{AbstractUserSocket, JavaClientSocket}
-import server.storage.ActionIterator
-import server.storage.ActionModule
+import server.comm.AbstractUserSocket
+import server.storage.{ActionIterator, ActionModule}
 import transaction.handling.TransactionManager
 
 /** Action module for base class

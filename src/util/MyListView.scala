@@ -2,25 +2,28 @@
 
 package util
 
-import scala.swing.event.ListSelectionChanged
+import java.awt.Color
+
 import javax.swing._
 import javax.swing.event._
-import scala.swing.Component
-import scala.swing.Publisher
-import java.awt.Color
+import util.MyListView.IntervalMode
+import java.util
+
+import scala.swing.event.ListSelectionChanged
+import scala.swing.{Component, Publisher}
 
 object MyListView {
   /**
    * The supported modes of user selections.
    */
   object IntervalMode extends Enumeration {
-    val Single = Value(ListSelectionModel.SINGLE_SELECTION)
-    val SingleInterval = Value(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
-    val MultiInterval = Value(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
+    val Single: IntervalMode.Value = Value(ListSelectionModel.SINGLE_SELECTION)
+    val SingleInterval: IntervalMode.Value = Value(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
+    val MultiInterval: IntervalMode.Value = Value(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
   }
 
-  def wrap[A](c: JList[A]) = new MyListView[A] {
-    override lazy val peer = c
+  def wrap[A](c: JList[A]): MyListView[A] = new MyListView[A] {
+    override lazy val peer:JList[A] = c
   }
 
   object Renderer {
@@ -30,7 +33,7 @@ object MyListView {
      * Wrapper for <code>javax.swing.ListCellRenderer<code>s
      */
   	class Wrapped[A](override val peer: ListCellRenderer[A]) extends Renderer[A] {
-  	  def componentFor(list: MyListView[A], isSelected: Boolean, focused: Boolean, a: A, index: Int) = {
+  	  def componentFor(list: MyListView[A], isSelected: Boolean, focused: Boolean, a: A, index: Int): Component = {
         Component.wrap(peer.getListCellRendererComponent(list.peer, a, index, isSelected, focused).asInstanceOf[JComponent])
       }
   	}
@@ -48,7 +51,7 @@ object MyListView {
    */
   abstract class Renderer[A] {
     class IntR extends ListCellRenderer[A] {
-      def getListCellRendererComponent(list: JList[_ <: A], a: A, index: Int, isSelected: Boolean, focused: Boolean) =
+      def getListCellRendererComponent(list: JList[_ <: A], a: A, index: Int, isSelected: Boolean, focused: Boolean): JComponent =
         componentFor(MyListView.wrap[A](list.asInstanceOf[JList[A]]), isSelected, focused, a.asInstanceOf[A], index).peer
     }
     def peer:ListCellRenderer[A] = new IntR 
@@ -120,7 +123,6 @@ object MyListView {
  * @see javax.swing.JList
  */
 class MyListView[A] extends Component {
-  import util.MyListView._
   override lazy val peer: JList[A] = new JList[A] with SuperMixin
 
   def this(items: Seq[A]) = {
@@ -129,27 +131,27 @@ class MyListView[A] extends Component {
   }
 
   protected class ModelWrapper(val items: Seq[A]) extends AbstractListModel[A] {
-    def getElementAt(n: Int) = items(n)//.asInstanceOf[AnyRef]
-    def getSize = items.size
+    def getElementAt(n: Int): A = items(n)//.asInstanceOf[AnyRef]
+    def getSize: Int = items.size
   }
 
   def listData: Seq[A] = peer.getModel match {
     case model: ModelWrapper => model.items
     case model @ _ => new Seq[A] { selfSeq =>
-     def length = model.getSize
-     def iterator = new Iterator[A] {
+     def length: Int = model.getSize
+     def iterator: Iterator[A] = new Iterator[A] {
        var idx = 0
-       def next() = { idx += 1; apply(idx-1) }
-       def hasNext = idx < selfSeq.length
+       def next(): A = { idx += 1; apply(idx-1) }
+       def hasNext: Boolean = idx < selfSeq.length
      }
-     def apply(n: Int) = model.getElementAt(n).asInstanceOf[A]
+     def apply(n: Int): A = model.getElementAt(n).asInstanceOf[A]
     }
   }
 
   def listData_=(items: Seq[A]): Unit = {
     peer.setModel(new AbstractListModel[A] {
-      def getElementAt(n: Int) = items(n)//.asInstanceOf[AnyRef]
-      def getSize = items.size
+      def getElementAt(n: Int): A = items(n)//.asInstanceOf[AnyRef]
+      def getSize: Int = items.size
     })
   }
 
@@ -160,9 +162,9 @@ class MyListView[A] extends Component {
     protected abstract class Indices[B](a: =>Seq[B]) extends scala.collection.mutable.Set[B] {
       def -=(n: B): this.type
       def +=(n: B): this.type
-      def contains(n: B) = a.contains(n)
-      override def size = a.length
-      def iterator = a.iterator
+      def contains(n: B): Boolean = a.contains(n)
+      override def size: Int = a.length
+      def iterator: Iterator[B] = a.iterator
     }
 
     def leadIndex: Int = peer.getSelectionModel.getLeadSelectionIndex
@@ -180,7 +182,7 @@ class MyListView[A] extends Component {
      * The currently selected items.
      */
     //object items extends scala.collection.SeqProxy[A] {
-      def items = peer.getSelectedValuesList
+      def items: util.List[A] = peer.getSelectedValuesList
     //}
 
     def intervalMode: IntervalMode.Value = IntervalMode(peer.getSelectionModel.getSelectionMode)
@@ -192,33 +194,33 @@ class MyListView[A] extends Component {
       }
     })
 
-    def adjusting = peer.getSelectionModel.getValueIsAdjusting
+    def adjusting: Boolean = peer.getSelectionModel.getValueIsAdjusting
   }
 
-  def renderer = MyListView.Renderer.wrap(peer.getCellRenderer)
+  def renderer: MyListView.Renderer[_ >: A] = MyListView.Renderer.wrap(peer.getCellRenderer)
   def renderer_=(r: MyListView.Renderer[A]): Unit = { peer.setCellRenderer(r.peer) }
 
-  def fixedCellWidth = peer.getFixedCellWidth
-  def fixedCellWidth_=(x: Int) = peer.setFixedCellWidth(x)
+  def fixedCellWidth: Int = peer.getFixedCellWidth
+  def fixedCellWidth_=(x: Int): Unit = peer.setFixedCellWidth(x)
 
-  def fixedCellHeight = peer.getFixedCellHeight
-  def fixedCellHeight_=(x: Int) = peer.setFixedCellHeight(x)
+  def fixedCellHeight: Int = peer.getFixedCellHeight
+  def fixedCellHeight_=(x: Int): Unit = peer.setFixedCellHeight(x)
 
   def prototypeCellValue: A = peer.getPrototypeCellValue
 
   def prototypeCellValue_=(a: A): Unit = { peer.setPrototypeCellValue(a) }
 
-  def visibleRowCount = peer.getVisibleRowCount
-  def visibleRowCount_=(n: Int) = peer.setVisibleRowCount(n)
+  def visibleRowCount: Int = peer.getVisibleRowCount
+  def visibleRowCount_=(n: Int): Unit = peer.setVisibleRowCount(n)
 
-  def ensureIndexIsVisible(idx: Int) = peer.ensureIndexIsVisible(idx)
+  def ensureIndexIsVisible(idx: Int): Unit = peer.ensureIndexIsVisible(idx)
 
   def selectionForeground: Color = peer.getSelectionForeground
-  def selectionForeground_=(c: Color) = peer.setSelectionForeground(c)
+  def selectionForeground_=(c: Color): Unit = peer.setSelectionForeground(c)
   def selectionBackground: Color = peer.getSelectionBackground
-  def selectionBackground_=(c: Color) = peer.setSelectionBackground(c)
+  def selectionBackground_=(c: Color): Unit = peer.setSelectionBackground(c)
 
-  def selectIndices(ind: Int*) = peer.setSelectedIndices(ind.toArray)
+  def selectIndices(ind: Int*): Unit = peer.setSelectedIndices(ind.toArray)
 
   
 }

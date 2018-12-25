@@ -3,18 +3,14 @@
  */
 package client.graphicsView
 
-import server.storage.{ActionModule,ActionImpl,ActionIterator}
-import definition.typ._
-import definition.expression._
 import definition.data._
-import java.io._
-import transaction.handling.{TransactionManager,SessionManager}
-import server.comm.{AbstractUserSocket, JavaClientSocket}
-import scala.collection.Iterator
-import server.storage.StorageManager
-import runtime.function.GraphElemModule
-import runtime.function.TypeInfos
-import transaction.handling.ActionList
+import definition.expression._
+import definition.typ._
+import runtime.function.{GraphElemModule, TypeInfos}
+import server.comm.AbstractUserSocket
+import server.storage.{ActionImpl, ActionModule, StorageManager}
+import transaction.handling.{SessionManager, TransactionManager}
+
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 

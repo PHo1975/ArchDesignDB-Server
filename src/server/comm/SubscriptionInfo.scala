@@ -12,12 +12,12 @@ sealed abstract class SubscriptionInfo(val connectionEntry:AbstractConnectionEnt
 
 class SingleSubscription(override val connectionEntry:AbstractConnectionEntry,override  val id:Int,override val parentRef:Reference)
 extends SubscriptionInfo(connectionEntry,id,parentRef) {
-	override def equals(other: Any) = other match {
+	override def equals(other: Any): Boolean = other match {
 		case that: SingleSubscription => that.canEqual(this) && this.connectionEntry == that.connectionEntry && this.id==that.id && this.parentRef==that.parentRef
 		case _ => false
 	}
-	override def hashCode = 41 * connectionEntry.hashCode + 1041*id+4041*parentRef.hashCode+3
-	override def toString = "SingleSubs("+id+ " ref: "+parentRef+")"
+	override def hashCode: Int = 41 * connectionEntry.hashCode + 1041*id+4041*parentRef.hashCode+3
+	override def toString: String = "SingleSubs("+id+ " ref: "+parentRef+")"
 	def canEqual(that: SingleSubscription) = true  
 }
 object SingleSubsciption {	
@@ -35,10 +35,9 @@ extends SubscriptionInfo (connectionEntry,id,parentRef)
  */
 case class PathSubscription(override val connectionEntry:AbstractConnectionEntry,override  val id:Int,var path:Seq[Reference])
 extends SingleSubscription(connectionEntry,id,null) {
-	def updatePath(newPath:Seq[Reference]) = {
-		//new PathSubscription(user,id,newPath)
+	def updatePath(newPath:Seq[Reference]): PathSubscription = {
 		path=newPath
 		this
 	}
-	override def toString = "PathSubs(id:"+id+ " path: "+path.mkString+")"
+	override def toString: String = "PathSubs(id:"+id+ " path: "+path.mkString+")"
 }

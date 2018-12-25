@@ -5,16 +5,16 @@ package client.print
 
 import java.awt.Color
 import java.awt.event.{WindowAdapter, WindowEvent}
-import javax.swing.BorderFactory
-import javax.swing.border.TitledBorder
 
 import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
 import definition.data.{OutputDefinition, Reference}
 import definition.expression.{BoolConstant, Constant, IntConstant, StringConstant}
+import javax.swing.BorderFactory
+import javax.swing.border.TitledBorder
 
-import scala.swing.{Alignment, BorderPanel, BoxPanel, Button, Dialog, Dimension, Label, ListView, Orientation, ScrollPane, Swing, Window}
 import scala.swing.event.{ButtonClicked, MouseClicked}
+import scala.swing.{Alignment, BorderPanel, BoxPanel, Button, Dialog, Dimension, Label, ListView, Orientation, ScrollPane, Swing, Window}
 
 
 class OutDefRenderer() extends BoxPanel(Orientation.Vertical ) {

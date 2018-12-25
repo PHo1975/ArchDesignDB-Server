@@ -164,17 +164,17 @@ object SpreadSheetRange {
 
 
 sealed trait RangeIteratorResult
-
-sealed trait CellIteratorResult
-
-object NoChange extends RangeIteratorResult with CellIteratorResult
-
-object Delete extends RangeIteratorResult with CellIteratorResult
-
 case class ChangeRows(newRows:Range) extends RangeIteratorResult
 case class ChangeCols(newCols:Range) extends RangeIteratorResult
 
+
+sealed trait CellIteratorResult
 case class ChangeRow(row:Int) extends CellIteratorResult
 case class ChangeCol(col:Int) extends CellIteratorResult
+
+object NoChange extends RangeIteratorResult with CellIteratorResult
+object Delete extends RangeIteratorResult with CellIteratorResult
+
+
 
 

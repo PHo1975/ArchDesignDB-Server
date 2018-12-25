@@ -7,8 +7,8 @@ import client.dialog._
 import definition.expression.{Constant, IntConstant}
 
 import scala.collection.Seq
-import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
 import scala.swing.event.{ButtonClicked, SelectionChanged}
+import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
 
 
 class HatchFieldEditor extends FieldEditor {  
@@ -29,7 +29,7 @@ class HatchFieldEditor extends FieldEditor {
     val paperScaleBut= new CheckBox("Papiermasstab")
     paperScaleBut.focusable=false
     val styleCombo=new RenderedComboBox(HatchHandler.hatchList,new HatchFieldPreview(()=>paperScaleBut.selected))
-    
+    styleCombo.maximumRowCount=22
     val defaultValue=0
     val allowedFields = Map((tcn, 5.toByte), (apn, 6.toByte), (wof, 6.toByte))
     

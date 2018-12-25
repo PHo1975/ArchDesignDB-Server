@@ -1,5 +1,11 @@
 package client.calender
 
+import client.calender.CalendarHelper.handleEvent
+import client.comm.ClientQueryManager
+import com.sun.javafx.scene.control.skin.LabeledText
+import definition.comm.UserInfo
+import definition.data.{InstanceData, OwnerReference, Referencable, Reference}
+import definition.expression.{BoolConstant, DateConstant, IntConstant, StringConstant}
 import javafx.beans.InvalidationListener
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.{ChangeListener, ObservableValue}
@@ -11,13 +17,6 @@ import javafx.scene.Parent
 import javafx.scene.control._
 import javafx.scene.input.{ClipboardContent, TransferMode}
 import javafx.scene.layout.{GridPane, HBox, Priority}
-
-import client.calender.CalendarHelper.handleEvent
-import client.comm.ClientQueryManager
-import com.sun.javafx.scene.control.skin.LabeledText
-import definition.comm.UserInfo
-import definition.data.{InstanceData, OwnerReference, Referencable, Reference}
-import definition.expression.{BoolConstant, DateConstant, IntConstant, StringConstant}
 import util.StrToInt
 
 import scala.Array.canBuildFrom
@@ -61,7 +60,7 @@ class FirstRowCell extends TableCell[RowData,String] {
     super.updateItem(item,empty)
     if(item!=null) {	    
 	    setText(item.toString)
-	    getStyleClass().add("first-row-cell")
+	    getStyleClass.add("first-row-cell")
     }
   } 
 }
@@ -75,7 +74,7 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
 	  chk.setSelected(d.done)
 	  if(d.projID>=0) {
 	    val color=CalendarHelper.colors(d.projID % 10)
-      lb.setStyle("-fx-background-color: rgb("+(color.getRed()*255d).toInt+","+(color.getGreen()*255d).toInt+","+(color.getBlue()*255d).toInt+");" +
+      lb.setStyle("-fx-background-color: rgb("+(color.getRed*255d).toInt+","+(color.getGreen*255d).toInt+","+(color.getBlue*255d).toInt+");" +
 	    		"-fx-text-fill:black;-fx-padding:1;")
 	  } 
   }
@@ -84,7 +83,7 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
     if(data.size==1 && data.head.projID== -1) null else {
 	    val grid=new GridPane() 
 	    grid.setHgap(2)
-	    val ch=grid.getChildren()    
+	    val ch=grid.getChildren
 	    for(ix<-data.indices;d=data(ix)) {
 	      val hb=new HBox
 	      val chk=new CheckBox("")
@@ -93,11 +92,11 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
 	      chk.setMinWidth(18)
 	      val lb=new Label()
 	      setupLabel(chk,lb,d)
-	      lb.getStyleClass().add("event-label")
+	      lb.getStyleClass.add("event-label")
 	      chk.setOnAction(handleEvent(e=>{
-	        ClientQueryManager.writeInstanceField(d.ref, 5, new BoolConstant(chk.isSelected()))
+	        ClientQueryManager.writeInstanceField(d.ref, 5, BoolConstant(chk.isSelected))
 	      }))
-		    grid.getColumnConstraints().add(CalendarHelper.columnConstraint)
+		    grid.getColumnConstraints.add(CalendarHelper.columnConstraint)
 	      lb.setMaxWidth(Double.MaxValue)
 		    lb.setMaxHeight(Double.MaxValue) 
 		    lb.setTextOverrun(OverrunStyle.CLIP)
@@ -124,17 +123,17 @@ class CalendarCell(r:CellInfoReceiver[Seq[CalendarEvent]],mod:CalendarModel) ext
 
   def convertToEditString(d: Seq[CalendarEvent]): String = if (d != null) d.head.name else ""
 
-  def createItem(st: String) = List(CalendarEvent(null, DateConstant.NULL_DATE, 0, st, ClientQueryManager.getMyUserId, -1, "", false))
+  def createItem(st: String) = List(CalendarEvent(null, DateConstant.NULL_DATE, 0, st, ClientQueryManager.getMyUserId, -1, "", done = false))
   
   def createView(data:Seq[CalendarEvent],oldView:Parent):Parent = if (data==null) null else {
     if(oldView!=null && data.size==1){
-      val ch=oldView.asInstanceOf[GridPane].getChildren()
+      val ch=oldView.asInstanceOf[GridPane].getChildren
       if(ch.size==1) {
         ch.get(0) match {
           case hb:HBox =>
             val hch=hb.getChildren
             if(hch.size==2) setupLabel(hch.get(0).asInstanceOf[CheckBox],hch.get(1).asInstanceOf[Label],data.head)
-            return oldView
+            oldView
           case _=>
         }
       }
@@ -225,7 +224,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
       } 
     }))*/
     col.setOnEditCommit(handleEvent(e=> {
-      val row=e.getRowValue()   
+      val row=e.getRowValue
       //println("set on commit:"+e.getEventType()+" "+e.getNewValue()+ " "+view.isEditable())
       row.daysInfo(ix).getValue match {
         case null =>
@@ -233,20 +232,20 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
           openAndShowFormEvent=true
           if(visibleUsers.contains(ClientQueryManager.getMyUserId))
             ClientQueryManager.runInPool{
-              createEvent(row.hour,day,e.getNewValue().head.name)
+              createEvent(row.hour,day,e.getNewValue.head.name)
           }
-        case oldData => ClientQueryManager.writeInstanceField(oldData.head.ref, 1, StringConstant(e.getNewValue().head.name))
+        case oldData => ClientQueryManager.writeInstanceField(oldData.head.ref, 1, StringConstant(e.getNewValue.head.name))
       }
     }))  
     col
   })     
   
   def getSelectedEvent:Option[CalendarEvent]= {    
-    val sc=view.getSelectionModel.getSelectedCells()      
+    val sc=view.getSelectionModel.getSelectedCells
     if(sc.size==1) {
-      val cell=sc.get(0)	
-      val row=hourList.get(cell.getRow())      
-      val cellValues=row.daysInfo(cell.getColumn()-1).getValue
+      val cell: TablePosition[_, _] =sc.get(0)
+      val row: RowData =hourList.get(cell.getRow)
+      val cellValues=row.daysInfo(cell.getColumn-1).getValue
       if(cellValues!=null && cellValues.size==1) 
         Some(cellValues.head)
       else None
@@ -257,18 +256,18 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
 
   def initTable(aview: TableView[RowData]): Unit = {
     view=aview
-    view.getColumns().add(firstCol)
-    view.getColumns().addAll(dayCols:_*)
+    view.getColumns.add(firstCol)
+    view.getColumns.addAll(dayCols:_*)
     view.setEditable(false)   
     for(w<-dayCols) w.prefWidthProperty.bind(view.widthProperty.subtract(firstColWidth+20).divide(6))    
-    val selMod=view.getSelectionModel()
+    val selMod=view.getSelectionModel
     selMod.setSelectionMode(SelectionMode.SINGLE)
     selMod.setCellSelectionEnabled(true)
     hourList.addAll((for (i <- 7 to 19) yield RowData(i)).asJavaCollection)
     hourList.add(RowData(0))
     view.setItems(hourList)    
     view.autosize()     
-    onListChanged(view.getSelectionModel.getSelectedCells(),(e:Change[_<: TablePosition[_,_]])=> if(!e.getList.isEmpty()){      
+    onListChanged(view.getSelectionModel.getSelectedCells, (e:Change[_<: TablePosition[_,_]])=> if(!e.getList.isEmpty){
       getSelectedEvent match {
         case Some(event) => model.eventForm.loadEvent(event)
         case None => model.eventForm.loadNoEvent()
@@ -277,13 +276,13 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }) 
     
     view.setOnKeyPressed(handleEvent(e=> {            
-      if(e.getCode().isLetterKey()||e.getCode().isDigitKey() )
-        view.getSelectionModel().getSelectedCells().asScala.headOption match {
+      if(e.getCode.isLetterKey||e.getCode.isDigitKey )
+        view.getSelectionModel.getSelectedCells.asScala.headOption match {
 	        case Some(a)=>
             //println("Start "+e.getCode().getName)
             startEditChar=Some(e.getCode.getName)
             e.consume()
-            view.edit(a.getRow(), a.getTableColumn().asInstanceOf[TableColumn[RowData,_]])
+            view.edit(a.getRow, a.getTableColumn.asInstanceOf[TableColumn[RowData,_]])
           case _=>
 	      }
       
@@ -303,58 +302,58 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
    })) 
    
    view.setOnDragOver(handleEvent (event=> {
-     if (event.getDragboard().hasContent(CalendarHelper.CalendarDragFormat) &&event.getX>firstColWidth){      
+     if (event.getDragboard.hasContent(CalendarHelper.CalendarDragFormat) &&event.getX>firstColWidth){
        mouseOverColumn match {
          case c:MyTableColumn[_,_]=>
            //println("over y:"+mouseOverRow+" x:"+c.ix+" item:"+currentItem)
            if(currentItem==null|| currentItem.isEmpty ) event.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
          case _=>
        }       
-     } else if (event.getDragboard().hasContent(CalendarHelper.AddressDragFormat) &&event.getX>firstColWidth){
+     } else if (event.getDragboard.hasContent(CalendarHelper.AddressDragFormat) &&event.getX>firstColWidth){
        event.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
      }
      event.consume()
    }))   
    
-   view.setOnDragDropped(handleEvent(event=> {
+   view.setOnDragDropped(event=> {
      var success=false
      mouseOverColumn match {       
        case co:MyTableColumn[_,_]=> if(co.ix> -1){
          val newDay=firstDayOfWeek.addDays(co.ix)
          //println("dropped "+co.ix+" "+newDay)
-       	 if (event.getDragboard().hasContent(CalendarHelper.CalendarDragFormat) &&event.getX>firstColWidth&& currentItem==null){       
-           event.getDragboard().getContent(CalendarHelper.CalendarDragFormat) match {
-             case ce:CalendarEvent =>
-               model.projectList.findProject(ce.projID) match {
+       	 if (event.getDragboard.hasContent(CalendarHelper.CalendarDragFormat) &&event.getX>firstColWidth&& currentItem==null){
+           event.getDragboard.getContent(CalendarHelper.CalendarDragFormat) match {
+             case cEvent:CalendarEvent =>
+               model.projectList.findProject(cEvent.projID) match {
                  case Some(project)=>
-                   val oldParentRef=project.getMonthParentRef(ce.day)
-                   event.getTransferMode() match {
+                   val oldParentRef=project.getMonthParentRef(cEvent.day)
+                   event.getTransferMode match {
 		                 case TransferMode.MOVE=>
-                       if(ce.day!=newDay){
-                         ClientQueryManager.writeInstanceField(ce.ref, 0, IntConstant(newDay.day))
-		                     if(ce.day.month!=newDay.month||ce.day.year!=newDay.year){ // move to other Monthdata
-		                            ClientQueryManager.moveInstances(Seq(ce.ref),new OwnerReference(0.toByte,oldParentRef),
+                       if(cEvent.day!=newDay){
+                         ClientQueryManager.writeInstanceField(cEvent.ref, 0, IntConstant(newDay.day))
+		                     if(cEvent.day.month!=newDay.month||cEvent.day.year!=newDay.year){ // move to other Monthdata
+		                            ClientQueryManager.moveInstances(Seq(cEvent.ref),new OwnerReference(0.toByte,oldParentRef),
 		                                  new OwnerReference(0.toByte,project.getMonthParentRef(newDay)), -1)
 		                           success=true
 		                     }
 		                   }
                        if(mouseOverRow>13) {
-		                     if(ce.time>=7 && ce.time<20) {
-                           ClientQueryManager.writeInstanceField(ce.ref, 2, IntConstant(0)) // change to job
+		                     if(cEvent.time>=7 && cEvent.time<20) {
+                           ClientQueryManager.writeInstanceField(cEvent.ref, 2, IntConstant(0)) // change to job
 		                         success=true
 		                       }
 		                   } else {
 		                     val newTime=mouseOverRow+7
-                         if (newTime != ce.time) ClientQueryManager.writeInstanceField(ce.ref, 2, IntConstant(newTime))
+                         if (newTime != cEvent.time) ClientQueryManager.writeInstanceField(cEvent.ref, 2, IntConstant(newTime))
 		                     success=true
 		                   }
                      case TransferMode.COPY=>ClientQueryManager.runInPool{
-		                   val inst=ClientQueryManager.createInstance(model.addressType, Array(new OwnerReference(0,project.getMonthParentRef(newDay))))
-		                   val newRef=new Reference(model.addressType,inst)
+		                   val inst=ClientQueryManager.createInstance(model.calEventType, Array(new OwnerReference(0,project.getMonthParentRef(newDay))))
+		                   val newRef=new Reference(model.calEventType,inst)
                        ClientQueryManager.writeInstanceField(newRef, 0, IntConstant(newDay.day))
-                       if (ce.name.length > 0) ClientQueryManager.writeInstanceField(newRef, 1, StringConstant(ce.name))
-                       ClientQueryManager.writeInstanceField(newRef, 3, IntConstant(ce.userID))
-                       if (ce.place.length > 0) ClientQueryManager.writeInstanceField(newRef, 4, StringConstant(ce.place))
+                       if (cEvent.name.length > 0) ClientQueryManager.writeInstanceField(newRef, 1, StringConstant(cEvent.name))
+                       ClientQueryManager.writeInstanceField(newRef, 3, IntConstant(cEvent.userID))
+                       if (cEvent.place.length > 0) ClientQueryManager.writeInstanceField(newRef, 4, StringConstant(cEvent.place))
 		                   if(mouseOverRow<14)
                          ClientQueryManager.writeInstanceField(newRef, 2, IntConstant(mouseOverRow + 7))
 		                 }
@@ -363,12 +362,12 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
                  case _=>
                }
            }                
-	       } else if (event.getDragboard().hasContent(CalendarHelper.AddressDragFormat) &&event.getX>firstColWidth){
+	       } else if (event.getDragboard.hasContent(CalendarHelper.AddressDragFormat) &&event.getX>firstColWidth){
 		       event.getDragboard().getContent(CalendarHelper.AddressDragFormat) match {
 		         case add:Address=> if(currentItem==null||currentItem.isEmpty){ // address dragged to an empty cell		           
 		            val buttons= eventFromAddressMenuItems.map(new MenuItem(_))
 		            val callBack=handleEvent[ActionEvent](e=> {
-		              e.getSource() match {
+		              e.getSource match {
 		                case m:MenuItem=> ClientQueryManager.runInPool{
 		                  createEvent(if(mouseOverRow<14) mouseOverRow+7 else 0,newDay,m.getText()+" "+add.name) match {
 		                    case Some(eventRef)=>
@@ -391,7 +390,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
      }
      event.setDropCompleted(success)     
      event.consume()
-   })) 
+   })
     
    onChanged(model.tabPane.getSelectionModel().selectedIndexProperty(),(b:Number,a:Number)=>{
      if(b.intValue()==0&&a.intValue()==1) {

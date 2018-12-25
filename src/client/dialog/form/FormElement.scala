@@ -1,12 +1,12 @@
 package client.dialog.form
 
 import java.awt.{Color, Dimension}
-import javax.swing.JComponent
 
 import client.dataviewer.ViewConstants
 import definition.expression.{Expression, StringConstant}
 import definition.typ.HorAlign
 import definition.typ.form.{AbstractFormElement, DataChangeListener}
+import javax.swing.JComponent
 import util.XMLUtils._
 
 import scala.collection.mutable
@@ -39,12 +39,12 @@ trait FormElement extends AbstractFormElement {
   def setupComponent(comp: Component): Unit = {
     comp.font = ViewConstants.labelFont
     if (minWidth>0&&minHeight>0) {
-      comp.minimumSize= new Dimension(minWidth,minHeight)
+      comp.minimumSize= new Dimension(minWidth*ViewConstants.fontScale/100,minHeight*ViewConstants.fontScale/100)
       comp.preferredSize=comp.minimumSize
     }
     if(maxWidth!=0||maxHeight!=0)
-      comp.maximumSize= new Dimension(if(maxWidth<1)Short.MaxValue else maxWidth,
-        if(maxHeight<1)Short.MaxValue else maxHeight)
+      comp.maximumSize= new Dimension(if(maxWidth<1)Short.MaxValue else maxWidth *ViewConstants.fontScale/100,
+        if(maxHeight<1)Short.MaxValue else maxHeight*ViewConstants.fontScale/100)
     if(maxHeight<0)
       comp.preferredSize=comp.maximumSize
   }

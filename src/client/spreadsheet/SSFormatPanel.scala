@@ -1,13 +1,11 @@
 package client.spreadsheet
-import scala.swing.Panel
-import scala.swing.BoxPanel
-import scala.swing.Orientation
-import client.dialog.ActiveTextField
-import definition.data.StyleService
-import javax.swing.BorderFactory
 import java.awt.Color
-import client.dialog.ActiveNumberSpinner
+
+import client.dialog.{ActiveNumberSpinner, ActiveTextField}
+import javax.swing.BorderFactory
 import util.StringUtils
+
+import scala.swing.{BoxPanel, Orientation, Panel}
 
 trait SSFormatPanel extends Panel {
   opaque=false

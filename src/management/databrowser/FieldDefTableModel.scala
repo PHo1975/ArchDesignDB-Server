@@ -4,9 +4,9 @@
 package management.databrowser
 
 
-import javax.swing.table.AbstractTableModel
 import definition.expression.StringParser
 import definition.typ._
+import javax.swing.table.AbstractTableModel
 import server.storage.ServerObjectClass
 
 /**
@@ -16,11 +16,11 @@ abstract class ActivableAbstractTableModel extends AbstractTableModel {
 	var isDirty:Boolean=false
 	
 	protected var _isCreating:Boolean=false
-	def isCreating_=(newValue:Boolean)= {
+	def isCreating_=(newValue:Boolean): Unit = {
 		_isCreating=newValue
 		fireTableDataChanged()
 	}
-	def isCreating=_isCreating
+	def isCreating: Boolean =_isCreating
 	
 	def update(theClass:ServerObjectClass): Unit
 }
@@ -32,9 +32,9 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
   protected var fieldDefList:Seq[AbstractFieldDefinition]=Seq.empty
   protected var fieldSettingList:Seq[FieldSetting]=Seq.empty
   
-  def getRowCount(): Int = fieldDefList.size+( if(ownfieldTable)1 else 0)
+  def getRowCount: Int = fieldDefList.size+( if(ownfieldTable)1 else 0)
 
-  def getColumnCount(): Int = { 10 }
+  def getColumnCount: Int = { 10 }
   
     
   override def getColumnClass(col:Int):Class[_] = {
@@ -48,13 +48,13 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
   	}
   }
   
-  override def isCellEditable(row:Int,col:Int):Boolean = {
+  override def isCellEditable(row:Int,col:Int):Boolean =
   	if (col>2) true
   	else if(_isCreating) ownfieldTable
   	else false    	
-  }
 
-  def getValueAt(row: Int, column: Int): Object = {
+
+  def getValueAt(row: Int, column: Int): Object =
   	if(row>=fieldDefList.size) null
   	else {
   		if(column<4) {
@@ -83,7 +83,7 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
   			}
   		}
   	}  	 
-  }
+
   
   override def setValueAt(value:Object,row:Int,column:Int):Unit= {  	
   	if(row==fieldDefList.size&&ownfieldTable) {
@@ -92,44 +92,45 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
   		fieldDefList=fieldDefList:+newField
   		fieldSettingList=fieldSettingList:+new FieldSetting(fieldDefList.size-1+offset)
   	}
-  	if(column==0) return
-  	if(column<4 && (  !ownfieldTable))return
-  	if(column==2 && !_isCreating) return
-  	if(column<4) {
-  	  val field=fieldDefList(row)
-  	  //println("Mod set value:"+value+" col:"+column)
-  	  fieldDefList=MainWindow.updateSeq(fieldDefList,row,
-  	  	column match {
-  	  	case 1 =>field.setName(value.toString)
-  	  	case 2 => field.setType(value.asInstanceOf[DTWrap].typ)
-  	  	case _ =>field.setEnumID(value.asInstanceOf[EnumDefinition].id) 
-  	  })
-  	  	  	  	  
-  	}
-  	else {
-  		val fs= {
-  			val w= fieldSettingList(row)  		
-  			if(w.fieldNr == -1) { // empty setting  			  
-  				val n=new FieldSetting(row+offset)
-  				fieldSettingList=MainWindow.updateSeq(fieldSettingList,row,n)
-  				n
-  			}
-  			else w
-  		}
-  		column match {
-  	    case 4 => fs.readOnly=value.asInstanceOf[Boolean].booleanValue
-  	    case 5 => fs.showFormula=value.asInstanceOf[Boolean].booleanValue
-  	    case 6 => fs.formatField=value.asInstanceOf[Boolean].booleanValue
-  	    case 7 => fs.visible=value.asInstanceOf[Boolean].booleanValue
-  	    case 8 => fs.editor=value.toString
-  	    case 9 => fs.startValue=StringParser.parse(value.toString,fieldDefList(row).typ).withException
-  	    case 10 => fs.formString=value.toString
-  	    case _ =>
-  		}
-  	}
-  	isDirty=true 
-  	//System.out.println("set Value ready "+fieldDefList.mkString("\n "))
-  	fireTableDataChanged()
+  	if ( column!=0 &&
+  	!(column<4 && (  !ownfieldTable)) &&
+  	!(column==2 && !_isCreating)) {
+			if (column < 4) {
+				val field = fieldDefList(row)
+				//println("Mod set value:"+value+" col:"+column)
+				fieldDefList = MainWindow.updateSeq(fieldDefList, row,
+					column match {
+						case 1 => field.setName(value.toString)
+						case 2 => field.setType(value.asInstanceOf[DTWrap].typ)
+						case _ => field.setEnumID(value.asInstanceOf[EnumDefinition].id)
+					})
+
+			}
+			else {
+				val fs = {
+					val w = fieldSettingList(row)
+					if (w.fieldNr == -1) { // empty setting
+						val n = new FieldSetting(row + offset)
+						fieldSettingList = MainWindow.updateSeq(fieldSettingList, row, n)
+						n
+					}
+					else w
+				}
+				column match {
+					case 4 => fs.readOnly = value.asInstanceOf[Boolean].booleanValue
+					case 5 => fs.showFormula = value.asInstanceOf[Boolean].booleanValue
+					case 6 => fs.formatField = value.asInstanceOf[Boolean].booleanValue
+					case 7 => fs.visible = value.asInstanceOf[Boolean].booleanValue
+					case 8 => fs.editor = value.toString
+					case 9 => fs.startValue = StringParser.parse(value.toString, fieldDefList(row).typ).withException
+					case 10 => fs.formString = value.toString
+					case _ =>
+				}
+			}
+			isDirty = true
+			//System.out.println("set Value ready "+fieldDefList.mkString("\n "))
+			fireTableDataChanged()
+		}
   }
 
   def setValues(newDefs:Seq[AbstractFieldDefinition],newSettings:Seq[FieldSetting],noffset:Int):Unit= {
@@ -141,9 +142,8 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
   	super.fireTableDataChanged()
   }
   
-  def update(theClass:ServerObjectClass) = if(isDirty){    
-  	if(ownfieldTable) theClass.ownFields=fieldDefList  	
-  }
+  def update(theClass:ServerObjectClass): Unit = if(isDirty&& ownfieldTable) theClass.ownFields=fieldDefList
+
   
-  def getFieldSettings=fieldSettingList.filter(_.fieldNr> -1)
+  def getFieldSettings: Seq[FieldSetting] =fieldSettingList.filter(_.fieldNr> -1)
 }

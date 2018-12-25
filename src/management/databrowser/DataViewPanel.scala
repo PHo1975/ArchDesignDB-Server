@@ -3,15 +3,14 @@
  */
 package management.databrowser
 
-import javax.swing.JOptionPane
-
 import client.dataviewer.ViewConstants
 import definition.comm._
 import definition.data._
 import definition.typ.AllClasses
+import javax.swing.JOptionPane
 import server.storage._
 import transaction.handling._
-import util.StrToInt
+import util.{Log, StrToInt}
 
 import scala.swing._
 import scala.swing.event._
@@ -21,20 +20,17 @@ import scala.swing.event._
  */
 object DataViewPanel extends BorderPanel 
 {
-	val ixTable = new Table()
-	{
+	val ixTable = new Table()	{
 		model=IndexTableModel				
 		selection.intervalMode=Table.IntervalMode.Single
 	}	
 	
-	val fieldTable= new Table()
-	{
+	val fieldTable= new Table()	{
 		model=InstFieldTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 	
-	val propTable=new Table()
-	{
+	val propTable=new Table()	{
 		model=InstPropTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
@@ -51,30 +47,29 @@ object DataViewPanel extends BorderPanel
 
 
   add(new BorderPanel() { // left rail
-		preferredSize=new Dimension(190,200)
+		preferredSize=new Dimension(430,200)
     add(ViewConstants.label("Index-Table"), BorderPanel.Position.North)
-		add (new ScrollPane()
-		{
+		add (new ScrollPane()	{
 			viewportView=ixTable 
 		},BorderPanel.Position.Center)
 
-		add (new GridPanel(5,1)
-		{
+		add (new GridPanel(6,1)		{
 			val openBut=new Button("Open Instance")
 			val createBut=new Button("Create Instance")
 			val deleteBut=new Button("Delete Instance")
 			val checkCollBut=new Button("check CollData")
 			val restoreChildrenBut=new Button("restore Children")
+			val seekStatisticsBut=new Button("Seek Statistics")
 			
-			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut
-			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut)
-			reactions += 
-			{
+			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut+=seekStatisticsBut
+			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut,seekStatisticsBut)
+			reactions += 	{
 				case ButtonClicked(`openBut`) => openInstance()
 				case ButtonClicked(`createBut`) => createInstance()
 				case ButtonClicked(`deleteBut`) => deleteInstance()
 				case ButtonClicked(`checkCollBut`) => checkCollData()
 				case ButtonClicked(`restoreChildrenBut`) => restoreChildren()
+					case ButtonClicked(`seekStatisticsBut`) => seekStatistics()
 			}
 		},BorderPanel.Position.South)
 
@@ -123,8 +118,7 @@ object DataViewPanel extends BorderPanel
 			val ix:Int= ixTable.selection.rows.head
 			val inst:Int=IndexTableModel.ixList(ix).inst
 			//System.out.println("inst: "+inst)
-			if (StorageManager.instanceExists(InstFieldTableModel.theClass.id,inst))
-			{
+			if (StorageManager.instanceExists(InstFieldTableModel.theClass.id,inst)){
 				val r=new Reference(InstFieldTableModel.theClass.id,inst)
 				val i=StorageManager.getInstanceData(r)
 		    InstFieldTableModel.setInstance(i)
@@ -134,7 +128,7 @@ object DataViewPanel extends BorderPanel
 		    	case Some(rData)=> rData.links .toSeq
 		    	case None =>Seq.empty
 		    })
-			} 
+			} else Log.e("Instance doesnt exist "+InstFieldTableModel.theClass.id+","+inst)
 		}
 	}
 
@@ -185,8 +179,7 @@ object DataViewPanel extends BorderPanel
 	}
 
   def restoreChildren(): Unit = {
-	  if(ixTable.selection.rows.nonEmpty)
-		{			
+	  if(ixTable.selection.rows.nonEmpty)		{
 			val ix:Int= ixTable.selection.rows.head
 			val inst:Int=IndexTableModel.ixList(ix).inst		  	
 		  val ref=new Reference(InstFieldTableModel.theClass.id,inst)
@@ -201,5 +194,12 @@ object DataViewPanel extends BorderPanel
 				case _ =>
 		  }
 		}
+	}
+	def seekStatistics():Unit = {
+
+
+			val handler=StorageManager.ixHandler(MainWindow.getSelectedType)
+			Log.w("Seek Statistics for " +handler.fileName+": "+ handler.benchmarkBuffer.mkString(" "))
+
 	}
 }

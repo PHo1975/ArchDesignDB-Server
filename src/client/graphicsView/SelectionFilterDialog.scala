@@ -1,17 +1,18 @@
 package client.graphicsView
 
+import java.awt.Color
+
+import definition.data.LineStyle
+import javax.swing.BorderFactory
 import util.StrToInt
 
 import scala.swing._
-import scala.swing.event.{EditDone, ButtonClicked, MouseClicked}
-import javax.swing.BorderFactory
-import java.awt.Color
-import definition.data.LineStyle
+import scala.swing.event.{ButtonClicked, EditDone, MouseClicked}
 
-class ListPanel[T](caption:String,data:Seq[T],doubleClickAction:(Int)=>Unit) extends BorderPanel(){
+class ListPanel[T](caption:String,data:Seq[T],doubleClickAction:Int=>Unit) extends BorderPanel(){
   val label=new Label(caption)
   val listView=new ListView(data)
-  val scroller=new ScrollPane{
+  val scroller:ScrollPane=new ScrollPane{
      viewportView=listView
   }
   val checkBox=new CheckBox("Alle auswählen")
@@ -29,8 +30,8 @@ class ListPanel[T](caption:String,data:Seq[T],doubleClickAction:(Int)=>Unit) ext
     else listView.selection.indices.clear()
     case e:MouseClicked if e.clicks == 2 => if(listView.selection.indices.nonEmpty) doubleClickAction(listView.selection.indices.head)
   }
-  def getInfo= if(listView.selection.indices.size==data.size) Seq.empty 
-  else listView.selection.indices.toSeq
+  def getInfo: Seq[Int] = if(listView.selection.indices.size==data.size) Seq.empty
+    else listView.selection.indices.toSeq
 }
 
 class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dialog(w) {
@@ -38,25 +39,25 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   val okBut=new Button("Filtern")
   val cancelBut=new Button("Abbruch")
   val colorEdit=new TextField("")
-  val elementPanel=new ListPanel("Zeichen-Elemente",SelectionFilterInfo.elemFilters,(ix)=>{
+  val elementPanel=new ListPanel("Zeichen-Elemente",SelectionFilterInfo.elemFilters,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(mapElemTypes(Seq(ix)),Seq.empty,Seq.empty,Seq.empty,None))
    visible=false
   })
-  val widthPanel=new ListPanel("Linienstärke",LineStyleEditor.widthList,(ix)=>{
+  val widthPanel=new ListPanel("Linienstärke",LineStyleEditor.widthList,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,mapLineWidth(Seq(ix)),Seq.empty,Seq.empty,None))
    visible=false
   })
-  val stylePanel=new ListPanel("Strichart",LineStyleHandler.styles,(ix)=>{
+  val stylePanel=new ListPanel("Strichart",LineStyleHandler.styles,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq(ix),Seq.empty,None))
    visible=false
   })
-  val hatchPanel=new ListPanel("Schraffur",HatchHandler.hatchList,(ix)=>{
+  val hatchPanel=new ListPanel("Schraffur",HatchHandler.hatchList,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(Seq(0),// hack: Polygon-Type is first type in List,
        Seq.empty,Seq.empty,Seq(ix),None))
    visible=false
   })
 		
-	val mainPanel=new BorderPanel(){
+	val mainPanel: BorderPanel =new BorderPanel(){
 	  add(new BoxPanel(Orientation.Horizontal){
 	    contents+=elementPanel+=Swing.HStrut(10)+=widthPanel+=Swing.HStrut(10)+=stylePanel+=Swing.HStrut(10)+=hatchPanel
 	  },BorderPanel.Position.Center)
@@ -101,14 +102,14 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
       controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq.empty,Seq.empty,getColor))
   }
 	
-	def mapElemTypes(ixList:Seq[Int])=
+	def mapElemTypes(ixList:Seq[Int]): Seq[Int] =
 	  ixList.map(ix=>SelectionFilterInfo.elemFilters(ix).typ)
 	
-	 def mapLineWidth(ixList:Seq[Int])=
+	 def mapLineWidth(ixList:Seq[Int]): Seq[Int] =
 	   ixList.map(ix=>LineStyleEditor.widthList(ix))	   
 
 
-  def getColor=colorEdit.text.trim match {
+  def getColor: Option[Int] =colorEdit.text.trim match {
     case "" => None
     case StrToInt(color)=>Some(color)
     case _=> None

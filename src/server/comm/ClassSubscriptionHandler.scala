@@ -13,17 +13,16 @@ import scala.collection.mutable
  */
 class ClassSubscriptionHandler(typID:Int) {
 	// subscriptions to single objects
-	var singleSubsMap=mutable.Map[Reference,List[SingleSubscription]]()
+	protected var singleSubsMap: mutable.Map[Reference, List[SingleSubscription]] =mutable.Map[Reference,List[SingleSubscription]]()
 	// subscriptions to parents
-	var propSubsMap=mutable.Map[Reference,List[PropSubscription]]()
+	protected var propSubsMap: mutable.Map[Reference, List[PropSubscription]] =mutable.Map[Reference,List[PropSubscription]]()
 	
-	def addSubscription(s:SubscriptionInfo): Unit = {
-		//System.out.println("csh typ:"+typID+" addSubs:"+s)
+	def addSubscription(s:SubscriptionInfo): Unit =
 		s match {
-			case a:SingleSubscription => addSingleS(a)
+			case a:SingleSubscription => addSingleS(a,a.parentRef)
 			case b:PropSubscription => addPropS(b)
 		}				
-	}
+
 	
 	def addPathSubscription(p:PathSubscription,ref:Reference): Unit = {
 			val list=if(singleSubsMap.contains(ref )) p :: singleSubsMap(ref) else List(p)
@@ -96,7 +95,7 @@ class ClassSubscriptionHandler(typID:Int) {
 			if(propSubsMap.contains(ref)) { // a parent ref of a subscription is deleted
 				val list=propSubsMap(ref)
 				for(subs <-list)
-					subs.connectionEntry.queryHandler.notifyInstanceDeleted(subs,ref)
+					subs.connectionEntry.queryHandler.notifyParentDeleted(subs,ref)
 				propSubsMap.remove(ref)
 			}	
 		} // check property subscriptions
@@ -109,20 +108,16 @@ class ClassSubscriptionHandler(typID:Int) {
 	
 	// ********************** Internal routines ***********************
 	
-	private def addSingleS(s:SingleSubscription) =
-		if(singleSubsMap.contains(s.parentRef )) { // add to existing
-			val list=singleSubsMap(s.parentRef)
-			singleSubsMap.put(s.parentRef,s :: list)
-		} else // add new
-		singleSubsMap.put(s.parentRef ,List(s))
+	private def addSingleS(s:SingleSubscription,ref:Reference) =
+		singleSubsMap.put(ref,  if(singleSubsMap.contains(ref )) s :: singleSubsMap(ref)
+														else List(s))
+
 	
 	private def addPropS(s:PropSubscription) =
-		if(propSubsMap.contains(s.parentRef )) { // add to existing
-			val list=propSubsMap(s.parentRef)
-			propSubsMap.put(s.parentRef,s :: list)
-		} else // add new
-		propSubsMap.put(s.parentRef ,List(s))
-	
+		propSubsMap.put(s.parentRef,if(propSubsMap.contains(s.parentRef)) s :: propSubsMap(s.parentRef)
+																else List(s))
+
+
 	private def removeSingleS(s:SingleSubscription) =
 		//System.out.println("csm remove singleSubs:"+s)
 		if(singleSubsMap.contains(s.parentRef)) {

@@ -85,7 +85,7 @@ GraphElem(nref,ncolor) {
     g.setPaint(thePaint)	
 		g.setStroke(sm.getStroke(if(styleInfo.lineWidth>0)styleInfo.lineWidth.toFloat else 10f,0))
 		
-		def drawLine(a:VectorConstant,b:VectorConstant)= GraphElemConst.drawLineFloat(g,sm.xToScreen(a.x) ,sm.yToScreen(a.y) ,	sm.xToScreen(b.x),sm.yToScreen(b.y)) 
+		def drawLine(a:VectorConstant,b:VectorConstant): Unit = GraphElemConst.drawLineFloat(g,sm.xToScreen(a.x) ,sm.yToScreen(a.y) ,	sm.xToScreen(b.x),sm.yToScreen(b.y))
 		
     val hoff=(lastInterPoint-firstInterPoint).unit*(rscale*styleInfo.helpLineOffset/1000)
 		if(!styleInfo.hideDimensionLine)drawLine(firstInterPoint-hoff,lastInterPoint+hoff)
@@ -100,7 +100,7 @@ GraphElem(nref,ncolor) {
 		  else drawLine(p1+dirUnit* mp.helpLineLength,ip+decorOff)
 		  // draw decore
 		  if(styleInfo.symbolElems.nonEmpty) {
-			  val oldTrans=g.getTransform()
+			  val oldTrans=g.getTransform
 			  val xpos=sm.xToScreen(ip.x)
 	      val ypos=sm.yToScreen(ip.y)
 	      g.rotate(-radAngle,xpos,ypos)
@@ -111,36 +111,34 @@ GraphElem(nref,ncolor) {
 	        el.draw(g,myScaler,selectColor)
 			  g.setTransform(oldTrans)	
 		  }
-		  //g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)		
-		  //g.setStroke(sm.getStroke(if(styleInfo.lineWidth>0)styleInfo.lineWidth.toFloat else 10f,0))
 		}
     
     val textDistance=hdirVector*(styleInfo.textPosition*rscale/1000d)    
 		
     if(styleInfo.isStationDimLine){
       val mUnit=mdirVector.unit
-      for(il<-intersectionLines){
-        val deltaM=il._2-mainRefIntersection
+      for((_,il)<-intersectionLines){
+        val deltaM=il-mainRefIntersection
 	      val measure=deltaM.toDouble*deltaM.unit.getScaleTo(mUnit) +relDist
 	      val text=styleInfo.formatMeasure(measure)      
-	      val fontHeight=((GraphElemConst.toMM(font.getSize2D())*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
-	      val oldTrans=g.getTransform()
-	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-	      val textWidth=layout.getBounds().getWidth
+	      val fontHeight=((GraphElemConst.toMM(font.getSize2D)*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
+	      val oldTrans=g.getTransform
+	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext)
+	      val textWidth=layout.getBounds.getWidth
         val moveitX = 0.5f
-        val moveitY = 0.1f
+        val moveitY = 0.3f
 	      val withHtext= text.size>1&&text(1)!="0"
         //val worldTextWidth=(if(withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth+4)/sm.scale
 	     
-	      val xpos=sm.xToScreen(il._2.x-textDistance.y)
-	      val ypos=sm.yToScreen(il._2.y-textDistance.x)-moveitY*fontHeight
-	      g.rotate(-radAngle+Math.PI/2,xpos,ypos)
-        StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, false)
+	      val xpos=sm.xToScreen(il.x-textDistance.y)
+	      val ypos=sm.yToScreen(il.y-textDistance.x)-moveitY*fontHeight
+	      g.rotate(-radAngle+Math.PI/2,sm.xToScreen(il.x),sm.yToScreen(il.y))
+        StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, wide = false)
 	      g.setPaint(thePaint) 
 	      layout.draw(g,xpos+moveitX*fontHeight,ypos)
 	      if(withHtext) {               
-	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-          StringUtils.fillTextLayout(g, hlayout, xpos - moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
+	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext)
+          StringUtils.fillTextLayout(g, hlayout, xpos + moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, wide = false)
 	        g.setPaint(thePaint) 
 	        hlayout.draw(g,xpos+moveitX*fontHeight+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
 	      }
@@ -151,11 +149,11 @@ GraphElem(nref,ncolor) {
       val measure= (a._2-b._2).toDouble
       val text=styleInfo.formatMeasure(measure) 
       //println("\ntext:"+text.mkString(";"))
-      val fontHeight=((GraphElemConst.toMM(font.getSize2D())*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
+      val fontHeight=((GraphElemConst.toMM(font.getSize2D)*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
       val midPoint=VectorConstant.midPoint(a._2,b._2)
-      val oldTrans=g.getTransform()
-      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-      val textWidth=layout.getBounds().getWidth      
+      val oldTrans=g.getTransform
+      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext)
+      val textWidth=layout.getBounds.getWidth
       var moveitX=1f
       var moveitY=0f
       val withHtext= text.size>1&&text(1)!="0"
@@ -178,8 +176,9 @@ GraphElem(nref,ncolor) {
       g.setPaint(thePaint)
       layout.draw(g,xpos,ypos)
       if(withHtext) {               
-        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-        StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
+        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext)
+
+        StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, wide = false)
         g.setPaint(thePaint)
         hlayout.draw(g,xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
       }

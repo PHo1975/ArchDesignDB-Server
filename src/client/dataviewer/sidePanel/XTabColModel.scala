@@ -3,16 +3,16 @@
  */
 package client.dataviewer.sidePanel
 import client.comm.ClientQueryManager
+import client.dataviewer.ViewConstants
 import definition.comm.NotificationType
-import definition.data.{InstanceData, Reference, OwnerReference}
-import definition.typ.AllClasses
-import javax.swing.table.TableColumn
-import definition.expression.StringParser
-import definition.typ.NOFORMAT
-import definition.expression.Expression
-import definition.expression.ParserError
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{Expression, ParserError, StringConstant, StringParser}
+import definition.typ.{AllClasses, NOFORMAT}
+import util.JavaUtils
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
-import definition.expression.StringConstant
 //import XTabSidePanelModel#Structure
 
 /**
@@ -25,13 +25,13 @@ class XTabColModel (mod:XTabSidePanelModel) {
 	val lock=new Object		
 	val columnWidth=100	
 	val noteColumnWidth=25
-	val columnList=collection.mutable.ArrayBuffer[ColumnInfo]()	
+	val columnList: ArrayBuffer[ColumnInfo] =collection.mutable.ArrayBuffer[ColumnInfo]()
 	val colModel=new client.dataviewer.FieldColumnModel	
 	
-	private def clearColModel()= while(colModel.getColumnCount>0)colModel.removeColumn(colModel.getColumn(0))
+	private def clearColModel(): Unit = while(colModel.getColumnCount>0)colModel.removeColumn(colModel.getColumn(0))
 	
 	
-	def loadColumns(topParent:Reference,columnPropField:Byte) = lock.synchronized{
+	def loadColumns(topParent:Reference,columnPropField:Byte): Unit = lock.synchronized{
 		//println("load columns topParent:"+topParent+" columnProp:"+columnPropField)		
 	  colSubsID=ClientQueryManager.createSubscription(topParent,columnPropField)((action:NotificationType.Value,data:IndexedSeq[InstanceData])=>  
 		lock.synchronized {Swing.onEDT{
@@ -83,7 +83,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 	/** checks for updates in subheader objects. The actual objects are loaded in getCellPath
 	 * 
 	 */
-	def registerSubHeaderQuery() = for(s <- mod.structure){		
+	def registerSubHeaderQuery(): Unit = for(s <- mod.structure){
 	  //println("registerSubHeaderQuery s.YParent:"+s.yParent+" propField:"+s.yParentPropField)
 		subHeaderSubsID=ClientQueryManager.createSubscription(s.yParent,s.yParentPropField) (( action:NotificationType.Value,data:IndexedSeq[InstanceData]) => 
 		lock.synchronized { Swing.onEDT{
@@ -117,7 +117,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 					  val isNoteField=newColumn.isNoteField(s, field)
 					  //println("create Col "+(columnList.size*s.numDataCellFields+field)+" "+newColumn.getColumnName(s,field))
 						colModel.createColumn(columnList.size*s.numDataCellFields+field,newColumn.getColumnName(s,field),
-						    if(isNoteField)noteColumnWidth else columnWidth)
+						    if(isNoteField)noteColumnWidth else columnWidth*ViewConstants.fontScale/100)
 					}
 					columnList+=newColumn
 					//TODO:custom renderer colModel.getColumn(columnList.size-1).setHeaderRenderer(new XRenderer(mod.controller))
@@ -127,7 +127,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 		} 
 	}
 	
-	def shutDown() = if(colSubsID!=0) lock.synchronized{
+	def shutDown(): Unit = if(colSubsID!=0) lock.synchronized{
 		columnList.foreach(_.shutDown())
 		ClientQueryManager.removeSubscription(colSubsID)
 		ClientQueryManager.removeSubscription(subHeaderSubsID)
@@ -135,7 +135,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 		columnList.clear()
 	} else util.Log.e("ColModel subst=0")
 	
-	def notifyUpdate() = lock.synchronized{
+	def notifyUpdate(): Unit = lock.synchronized{
 		mod.fireTableStructureChanged()
 		//println("headers:"+columnList.mkString("|"))
 	}
@@ -150,7 +150,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 		}		
 	}
 	
-	def getColumn(ix:Int)= lock.synchronized {columnList(ix)}
+	def getColumn(ix:Int): ColumnInfo = lock.synchronized {columnList(ix)}
 	
 	
 	
@@ -158,24 +158,24 @@ class XTabColModel (mod:XTabSidePanelModel) {
 	
 	class ColumnInfo (var colData:InstanceData,var startModelIndex:Int) {
 		
-	  val cellPath= getCellPath
+	  val cellPath: List[Reference] = getCellPath
 	  var subLevelCellData:InstanceData=_
 		var headerObject:Option[InstanceData] = None	
 		var headerWords:List[String]= Nil
-		val dataCells=collection.mutable.HashMap[Reference,InstanceData]()				
+		val dataCells: mutable.HashMap[Reference, InstanceData] =collection.mutable.HashMap[Reference,InstanceData]()
 		var headerSubstID:Int=_
 		var dataSubstID:Int=_
 		
-		def load()=
+		def load(): Unit =
 			headerSubstID=ClientQueryManager.createSubscription(colData.ref, mod.findHeaderPropField(colData.ref.typ))((notType:NotificationType.Value,data: IndexedSeq[InstanceData]) => 
 			lock.synchronized{Swing.onEDT{			
 			  if(headerSubstID>0){
 			  	//println("headerCallBack "+colData+" "+notType+" "+data.mkString)
 			  	notType match {
 			  		case NotificationType.sendData|NotificationType.updateUndo =>
-							setHeaderObject(if(data.isEmpty) None else Some(data.head))
+							setHeaderObject(data.headOption)
 							if(notType==NotificationType.sendData) loadData()
-						case NotificationType.fieldChanged =>	setHeaderObject(if(data.isEmpty) None else Some(data.head))
+						case NotificationType.fieldChanged =>	setHeaderObject(data.headOption)
 			  		case NotificationType.instanceRemoved => setHeaderObject(None)			  		
 			  		case _ =>
 					}
@@ -184,7 +184,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 			
 		//}	
 	  
-	  private def loadData()= {
+	  private def loadData(): Unit = {
 	    dataSubstID=ClientQueryManager.createSubscription(subLevelCellData.ref, findCellPropField(subLevelCellData.ref.typ))( 
 	        (notType:NotificationType.Value,data: IndexedSeq[InstanceData]) =>
 			lock.synchronized{
@@ -235,7 +235,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 			throw new IllegalArgumentException("FindCellPropField can't find fitting propfield in class "+aType)
 		}	
 	  
-	  def setSubLevelCellData(newValue:InstanceData)= for(s<-mod.structure){
+	  def setSubLevelCellData(newValue:InstanceData): Unit = for(s<-mod.structure){
 	  	//println("SetSublevelcelldata :"+newValue+" result:"+newValue.resultString+" "+newValue.fieldValue (0))
 	  	subLevelCellData=newValue
 	  	if( s.subHeaderClass.resultFormat!=NOFORMAT ) // when there is a resultFormat, update the last column
@@ -243,21 +243,20 @@ class XTabColModel (mod:XTabSidePanelModel) {
 	  	mod.controller.table.peer.getTableHeader.repaint()	  	
 	  }
 	  
-	  def setHeaderObject(newValue:Option[InstanceData]) = for(s<-mod.structure){
+	  def setHeaderObject(newValue:Option[InstanceData]): Unit = for(s<-mod.structure){
 	  	headerObject=newValue	  	
 	  	headerWords= s.dataCellColumns.reverse.takeWhile(_.name.contains("Note_")).map(x=>"").toList:::(headerObject match {
-	  		case Some(ho)=>if(s.numDataCellFields>1) ho.toString.split(' ').filter(_.length>0).toList else List(ho.toString())
+	  		case Some(ho)=>if(s.numDataCellFields>1) JavaUtils.joinStrings(ho.toString.split(' ').filter(_.length>0),4).toList else List(ho.toString())
 	  		case None => Nil
 	  	})	  	
 	  	//println("set header object "+newValue+" headerWords:"+headerWords.mkString(",")+" startModelIndex:"+startModelIndex)
-	  	var dropIx=0
 	  	for(field <-0 until s.numDataCellFields )
 	  		colModel.getColumnByModelIndex(startModelIndex+field).setHeaderValue(getColumnName(s,field))	    
 	  }
 	  
-	  def getHeaderObjWord(wordNr:Int)= {
-	  	if(headerWords.size>wordNr)headerWords(wordNr) else ""
-	  }
+	  def getHeaderObjWord(wordNr:Int): String =
+	  	if(headerWords.lengthCompare(wordNr) > 0)headerWords(wordNr) else ""
+
 		
 		
 				/** Checks if all necessary sublevel cells exist and create missing cells
@@ -293,7 +292,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 		}
 		
 			
-		def shutDown()= lock.synchronized{
+		def shutDown(): Unit = lock.synchronized{
 			if(headerSubstID!=0){		
 			  ClientQueryManager.removeSubscription(headerSubstID)
 			  headerSubstID=0			
@@ -311,11 +310,11 @@ class XTabColModel (mod:XTabSidePanelModel) {
 		}
 		
 		
-		def setCellValue(yOwnerRef:Reference,field:Byte,value:Object) = {		  			
+		def setCellValue(yOwnerRef:Reference,field:Byte,value:Object): Unit = {
 			lock.synchronized {
 			  for(s<- mod.structure) {
           util.Log.e("setCell field:"+field+" "+getFieldName(s,field))
-			     val expr=if(s.isNoteColumn(field)) new StringConstant(value.toString) else 
+			     val expr=if(s.isNoteColumn(field)) StringConstant(value.toString) else
 			       StringParser.parse(value.toString) match {
 					    case ex:Expression =>ex
 					    case err:ParserError=>
@@ -327,14 +326,14 @@ class XTabColModel (mod:XTabSidePanelModel) {
 					else { // create
 						val owners=Array(new OwnerReference(s.dataCellPropField,yOwnerRef),
 							new OwnerReference(s.dataCellPropFieldInSubHeaders,subLevelCellData.ref))
-							val fieldsList=s.dataCellClass.emptyFieldListWithSingleField(/*s.getActualColumnModelIndex*/ field, expr)
-							ClientQueryManager.createInstances( owners,Seq((s.dataCellType,fieldsList)),true)							
+							val fieldsList=s.dataCellClass.emptyFieldListWithSingleField( field, expr)
+							ClientQueryManager.createInstances( owners,Seq((s.dataCellType,fieldsList)),checkLinks = true)
 					}
 				}			  			  
 			}
 		}	
 		
-		def getFieldName(s:XTabSidePanelModel#Structure,field:Int)=s.dataCellColumns(/*s.getActualColumnModelIndex*/ s.numDataCellFields - 1 - field).name
+		def getFieldName(s:XTabSidePanelModel#Structure,field:Int): String =s.dataCellColumns( s.numDataCellFields - 1 - field).name
 		
 		def isNoteField(s:XTabSidePanelModel#Structure,field:Int)= s.isNoteColumn(s.numDataCellFields-1-field)
 		

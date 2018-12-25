@@ -3,13 +3,14 @@
  */
 package client.print
 
+import java.awt._
 import java.awt.font.TextLayout
-import java.awt.geom.{Line2D, Rectangle2D}
+import java.awt.geom.{AffineTransform, Line2D, Rectangle2D}
 import java.awt.print.{PageFormat, Pageable, Printable}
-import java.awt.{BasicStroke, Color, Graphics, Graphics2D}
 
-import client.graphicsView.symbol.{StampPool, SymbolOrient}
+import client.dataviewer.ViewConstants
 import client.graphicsView._
+import client.graphicsView.symbol.{StampPool, SymbolOrient}
 import definition.data._
 import definition.expression.{Polygon, VectorConstant}
 import util.StringUtils
@@ -50,7 +51,7 @@ trait AbstractContext extends RenderContext {
   private object PrintScaler extends APrintScaler(this) 
   
 	val emptyRect=new Rectangle2D.Float(0,0,0,0)
-	def lineStyleHandler=client.graphicsView.LineStyleHandler
+	def lineStyleHandler: LineStyleHandler.type =client.graphicsView.LineStyleHandler
 
 	def pageFormatChanged(): Unit = {
 		strokeMap.clear() // clear old strokes for new print resolution
@@ -58,40 +59,44 @@ trait AbstractContext extends RenderContext {
 
 	def drawHatch(poly:Polygon,hatchStyle:Int,paperScale:Boolean,g:Graphics2D,color:Color,layerScale:Float,startPoint:VectorConstant,hatchAngle:Double):Unit = {
 		g.setColor(color)    
-		val unit=toUnit(1)
+		//val unit=toUnit(1)
 		if(hatchStyle==0) {
       util.Log.e("DrawHatch == 0")
-			return
-		}
-		val hs=HatchHandler.quickGetHatch(hatchStyle)    
-		drawHatches(hs.angle1+hatchAngle,hs.distance1,hs.lineStyle1,hs.thickness,false)
-		if(hs.lineStyle2> -1) 
-			drawHatches(hs.angle2+hatchAngle,hs.distance2,hs.lineStyle2,hs.thickness,hs.angle2==hs.angle1)
+		} else {
+      val hs = HatchHandler.quickGetHatch(hatchStyle)
+      drawHatches(hs.angle1 + hatchAngle, hs.distance1, hs.lineStyle1, hs.thickness, offset = false)
+      if (hs.lineStyle2 > -1)
+        drawHatches(hs.angle2 + hatchAngle, hs.distance2, hs.lineStyle2, hs.thickness, hs.angle2 == hs.angle1)
 
-			def drawHatches(angle:Double,distance:Double,style:Int,thickness:Int,offset:Boolean)= if(distance>0){
-				//val line=new Line2D.Double
-				g.setStroke(getStroke(if(thickness>0)toUnit(thickness/100) else 1/100,style))
-				val a1=angle*math.Pi/180d
-				val dir1=new VectorConstant(scala.math.cos(a1),-scala.math.sin(a1),0)
-				val dist=if(paperScale) distance else distance*layerScale
-				val n1=new VectorConstant(-dir1.y*dist,dir1.x*dist,0)		  
-				val (minh,maxh)=poly.findMinMaxHatchDistances(dir1,n1,startPoint)
-				val startIx=scala.math.ceil(minh).toInt+(if(offset) -1 else 0)
-				val endIx=math.floor(maxh).toInt		  
-				def drawLine(p1:VectorConstant,p2:VectorConstant)= {
-						PrintScaler.intLine.x1=toUnit(p1.x);PrintScaler.intLine.y1=toUnit(p1.y)
-						PrintScaler.intLine.x2=toUnit(p2.x);PrintScaler.intLine.y2=toUnit(p2.y)		    
-						g.draw(PrintScaler.intLine)
-				}    
-				for(i <-startIx to endIx) {
-					val sp1=startPoint+n1*(i.toDouble +(if(offset)0.5 else 0))
-					val sp2=sp1+dir1		    
-					val inters=poly.intersectionsWith(sp1,sp2).grouped(2)
-					for(li<-inters;if li.size == 2){
-						drawLine(li.head._2,li(1)._2)
-					}
-				}	
-			}
+      def drawHatches(angle: Double, distance: Double, style: Int, thickness: Int, offset: Boolean): Unit = if (distance > 0) {
+        //val line=new Line2D.Double
+        g.setStroke(getStroke(toUnit(if (thickness > 0) thickness / 100 else 1 / 10), style))
+        val a1 = angle * math.Pi / 180d
+        val dir1 = new VectorConstant(scala.math.cos(a1), -scala.math.sin(a1), 0)
+        val dist = if (paperScale) distance else distance * layerScale
+        val n1 = new VectorConstant(-dir1.y * dist, dir1.x * dist, 0)
+        val (minh, maxh) = poly.findMinMaxHatchDistances(dir1, n1, startPoint)
+        val startIx = scala.math.ceil(minh).toInt + (if (offset) -1 else 0)
+        val endIx = math.floor(maxh).toInt
+
+        def drawLine(p1: VectorConstant, p2: VectorConstant): Unit = {
+          PrintScaler.intLine.x1 = toUnit(p1.x);
+          PrintScaler.intLine.y1 = toUnit(p1.y)
+          PrintScaler.intLine.x2 = toUnit(p2.x);
+          PrintScaler.intLine.y2 = toUnit(p2.y)
+          g.draw(PrintScaler.intLine)
+        }
+
+        for (i <- startIx to endIx) {
+          val sp1 = startPoint + n1 * (i.toDouble + (if (offset) 0.5 else 0))
+          val sp2 = sp1 + dir1
+          val inters = poly.intersectionsWith(sp1, sp2).grouped(2)
+          for (li <- inters; if li.size == 2) {
+            drawLine(li.head._2, li(1)._2)
+          }
+        }
+      }
+    }
 	}
 
 	def drawDimLine(g:Graphics2D,dimLine:DimLinePrintElement):Unit= {
@@ -103,7 +108,7 @@ trait AbstractContext extends RenderContext {
 		//g.setStroke(getStroke(if(styleInfo.lineWidth>0)toUnit(styleInfo.lineWidth.toFloat/100) else 1,0))
 		g.setStroke(PrintScaler.myStroke)
 
-		def drawLine(a:VectorConstant,b:VectorConstant)={
+		def drawLine(a:VectorConstant,b:VectorConstant): Unit ={
 		  PrintScaler.intLine.x1=toUnit(a.x)
 		  PrintScaler.intLine.y1=toUnit(a.y)
 		  PrintScaler.intLine.x2=toUnit(b.x)
@@ -112,7 +117,7 @@ trait AbstractContext extends RenderContext {
 		}   
 		val hoff=(lastInterPoint-firstInterPoint).unit* styleInfo.helpLineOffset
 		if(!styleInfo.hideDimensionLine)drawLine(firstInterPoint-hoff,lastInterPoint+hoff)
-		val oldTrans=g.getTransform()
+		val oldTrans=g.getTransform
 		for((mp,ip)<-intersectionLines;p1=mp.refPoint){
 			val dirUnit=(ip-p1).unit
 			val decorOff=dirUnit* styleInfo.helpLineOffset
@@ -142,24 +147,24 @@ trait AbstractContext extends RenderContext {
 	      val measure=deltaM.toDouble*deltaM.unit.getScaleTo(mUnit) +relDist	      
 	      val text=styleInfo.formatMeasure(measure)      
 	      //println("measure: "+measure+" text:"+text)
-	      val fontHeight=toUnit(font.getSize2D()*PrintScaler.myScale.toFloat*textScale/10f)*25.4f/72.0f
-	      val oldTrans=g.getTransform()
-	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-	      val textWidth=layout.getBounds().getWidth
+	      val fontHeight=toUnit(font.getSize2D*PrintScaler.myScale.toFloat*textScale/10f)*25.4f/72.0f
+	      val oldTrans=g.getTransform
+	      val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext)
+	      val textWidth=layout.getBounds.getWidth
 				val moveitX = 0.5f
-				val moveitY = 0.1f
-	      val withHtext= text.size>1&&text(1)!="0"
+				val moveitY = 0.3f
+	      val withHtext= text.size>1 && text(1) != "0"
 				// val worldTextWidth= if (withHtext) textWidth * (text.size + 1) / text.size + 4 else textWidth + 4
 	     
 	      val xpos=toUnit(il._2.x-textDistance.y)
 	      val ypos=toUnit(il._2.y-textDistance.x)-moveitY*fontHeight
-	      g.rotate(-radAngle+Math.PI/2,xpos,ypos)
-				StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, false)
+	      g.rotate(-radAngle+Math.PI/2,toUnit(il._2.x),toUnit(il._2.y))
+				StringUtils.fillTextLayout(g, layout, xpos + moveitX * fontHeight, ypos, wide = false)
 	      g.setPaint(dimLine.ncolor) 
 	      layout.draw(g,xpos+moveitX*fontHeight,ypos)
 	      if(withHtext) { 
-	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-					StringUtils.fillTextLayout(g, hlayout, xpos - moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
+	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext)
+					StringUtils.fillTextLayout(g, hlayout, xpos + moveitX * fontHeight + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, wide = false)
 	        g.setPaint(dimLine.ncolor)
 	        hlayout.draw(g,xpos+moveitX*fontHeight+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
 	      }
@@ -173,11 +178,11 @@ trait AbstractContext extends RenderContext {
 			val realMeasure=(ma-mb).toDouble			
 			val text=styleInfo.formatMeasure(realMeasure)
 			//println("measure: "+measure+" real measure:"+realMeasure+" text:"+text+" ma:"+ma+" mb:"+mb)
-			val fontHeight=toUnit(font.getSize2D()*PrintScaler.myScale.toFloat*textScale/10f)*25.4f/72.0f
+			val fontHeight=toUnit(font.getSize2D*PrintScaler.myScale.toFloat*textScale/10f)*25.4f/72.0f
 			val midPoint=VectorConstant.midPoint(a._2,b._2)
 			
-			val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext())
-			val textWidth=math.abs(layout.getBounds().getWidth)
+			val layout=new TextLayout(text.head,font.deriveFont(fontHeight),g.getFontRenderContext)
+			val textWidth=math.abs(layout.getBounds.getWidth)
 			var moveitX=1f
 			var moveitY=0f
 			val withHtext= text.size>1&&text(1)!="0"
@@ -192,12 +197,12 @@ trait AbstractContext extends RenderContext {
 			val xpos=toUnit(midPoint.x-textDistance.x)-((textWidth/2f)*moveitX).toFloat
 			val ypos=toUnit(midPoint.y-textDistance.y)-moveitY*fontHeight
 			if(radAngle!=0d) g.rotate(-radAngle,xpos+(textWidth/2f*moveitX).toFloat,ypos+moveitY*fontHeight)
-			StringUtils.fillTextLayout(g, layout, xpos, ypos, false)
+			StringUtils.fillTextLayout(g, layout, xpos, ypos, wide = false)
 			g.setPaint(dimLine.ncolor)
 			layout.draw(g,xpos,ypos)	
 			if(withHtext) {        
-	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext())
-				StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, false)
+	        val hlayout=new TextLayout(text(1),font.deriveFont(fontHeight*DimLineStyleHandler.DimLineHTextScale),g.getFontRenderContext)
+				StringUtils.fillTextLayout(g, hlayout, xpos + textWidth.toFloat + 1f, ypos - fontHeight * 0.45f, wide = false)
 	        g.setPaint(dimLine.ncolor)
 	        hlayout.draw(g,xpos+textWidth.toFloat+1f,ypos-fontHeight*0.45f)        
       }
@@ -216,7 +221,7 @@ trait AbstractContext extends RenderContext {
   }
   
   
-  private def printSymbolElems(xoff:Double,yoff:Double,g:Graphics2D,elems:Seq[GraphElem])={
+  private def printSymbolElems(xoff:Double,yoff:Double,g:Graphics2D,elems:Seq[GraphElem]): Unit ={
     PrintScaler.xoff=xoff
     PrintScaler.yoff=yoff
     for (el<-elems)
@@ -245,6 +250,8 @@ trait AbstractContext extends RenderContext {
 			case None => util.Log.e("Print: Stamp not found "+s.symbolData)
     }
   }
+
+	override def resolveImagePath(path: String): String = util.JavaUtils.restoreDelimiters(util.JavaUtils.resolveImagePath(ViewConstants.imagePath,path))
 }
 
 object MyContext extends AbstractContext {
@@ -266,44 +273,67 @@ abstract class APageable extends Pageable with Printable {
 
 	var tempContext:RenderContext= _
 
-	def getNumberOfPages(): Int = pagesList.size
+	def getNumberOfPages: Int = pagesList.size
 	def getPageFormat(pageIn7dex: Int): PageFormat =  pageFormat
 	def getPrintable(pageIndex: Int): Printable = this
 	def clipRect()=new Rectangle2D.Float(context.toUnit(leftBorder),context.toUnit( topBorder),context.toUnit(pageWidth-leftBorder-rightBorder), 
 			context.toUnit(pageHeight-topBorder-bottomBorder))
 
 	def print(g: Graphics, pf: PageFormat, pageIndex: Int): Int = {
-		
     if(pageIndex<pagesList.size) {
       val g2=g.asInstanceOf[Graphics2D]
-      /*g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
+      //g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
       g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY ))
-      g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_NORMALIZE ))*/
+      //g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_NORMALIZE ))
       val cl=clipRect()
       g.clipRect(cl.x.toInt+1,cl.y.toInt+1,cl.width.toInt-1,cl.height.toInt-1)
       g2.setStroke(new BasicStroke(0.2f))
       val page=pagesList(pageIndex)
       val (basic,decorated)=page.elementList.span(_.getElementType!=PrintElType.DecoreMarker)
-      val (noClipped,clipped)=basic.span(_.getElementType!=PrintElType.ClipPrintElement)
-      //println("\nPrint start ")
-      printSorted(g2,noClipped)
-
-      if(clipped.nonEmpty) {
-        var clipStartPos = 1
-        clipped.head.print(g2, context)
-        for ((el, ix) <- clipped.view.zipWithIndex; if el.getElementType == PrintElType.ClipRestoreElement) {
-          printSorted(g2, clipped.view(clipStartPos, ix))
-          el.print(g2, context)
-          if (ix + 1 < clipped.size) clipped(ix + 1).print(g2, context) // next clip
-          clipStartPos = ix + 2
-        }
-      }
+			printRotated(g2,basic,(elems)=>{
+				val (noClipped,clipped)=elems.span(_.getElementType!=PrintElType.ClipPrintElement)
+				printSorted(g2,noClipped)
+				if(clipped.nonEmpty) {
+					var clipStartPos = 1
+					clipped.head.print(g2, context)
+					for ((el, ix) <- clipped.view.zipWithIndex; if el.getElementType == PrintElType.ClipRestoreElement) {
+						printSorted(g2, clipped.view(clipStartPos, ix))
+						el.print(g2, context)
+						if (ix + 1 < clipped.size) clipped(ix + 1).print(g2, context) // next clip
+						clipStartPos = ix + 2
+					}
+				}
+			})
       printSorted(g2,decorated)
       Printable.PAGE_EXISTS
     } else Printable.NO_SUCH_PAGE
   }
 
-	def printSorted(g: Graphics2D, elems: Iterable[PrintElement]): Unit = if (elems.nonEmpty) {
+	protected def printRotated(g:Graphics2D,elems:Seq[PrintElement],callBack:(Seq[PrintElement])=>Unit):Unit = {
+		//val partList:ArrayBuffer[PrintElement]=new ArrayBuffer[PrintElement]()
+		var rotationStartIx = -1
+		var listStart=0
+		var oldTransform:AffineTransform=null
+		for (ix<-elems.indices;elem=elems(ix)){
+			if(elem.getElementType==PrintElType.RotationPrintElement) {
+				callBack(elems.slice(listStart,ix))
+				rotationStartIx=ix+1
+				oldTransform=g.getTransform
+				g.rotate(-elem.bounds.width,context.toUnit(elem.bounds.x),context.toUnit(elem.bounds.y))
+			}
+			if(elem.getElementType==PrintElType.RotationEndPrintElement) {
+				callBack(elems.slice(rotationStartIx,ix))
+				g.setTransform(oldTransform)
+				listStart=ix+1
+        oldTransform=null
+			}
+		}
+    if(oldTransform!=null) g.setTransform(oldTransform)
+		if(listStart==0) callBack(elems)
+		else if(listStart<elems.size) callBack(elems.slice(listStart,elems.size))
+	}
+
+	protected def printSorted(g: Graphics2D, elems: Iterable[PrintElement]): Unit = if (elems.nonEmpty) {
 		for(el<-elems) if(el.getElementType==PrintElType.GraphBitmap) el.print(g,context)
     for(el<-elems) if(el.getElementType==PrintElType.Poly) el.print(g,context)
     for(el<-elems) el match {
@@ -311,6 +341,7 @@ abstract class APageable extends Pageable with Printable {
       case t:GraphTextElement=>
       case d:DimLinePrintElement=>
 			case b:GraphBitmapPrintElement=>
+      case r:RotationPrintElement=>
       case _ => el.print(g,context)
     }
     for(el<-elems) if(el.getElementType==PrintElType.DimLine) el.print(g,context)

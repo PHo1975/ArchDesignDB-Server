@@ -16,14 +16,7 @@ trait PathControllable {
 	 * @param indent how much should the parent ref be indented in the path view
 	 * @param doneListener to be called when the client is done loading
 	 */
-	def openData(parentRef:Reference,selectRef:Option[Reference],indent:Int,doneListener:Option[()=>Unit]): Unit
+	def openData(parentRef:Reference,selectRef:Option[Reference],indent:Int,doneListener:Option[()=>Unit],withCustomEditor:Boolean): Unit
 	
-	/** register a callback routine that notifies the PathController that a child
-	 * reference should be opened 
-	 * 
-	 * @param callBack the call back routine of the PathController
-	 */
-	//def registerOpenChildCallBack(callBack: (Reference)=> Unit)
-	
-	
+
 }

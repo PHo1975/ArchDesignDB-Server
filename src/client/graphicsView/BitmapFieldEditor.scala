@@ -2,10 +2,9 @@ package client.graphicsView
 
 import java.awt.Dimension
 
-import client.dialog.{SidePanelTextArea, SidePanelTextField, SidePanelDoubleTextField, FieldEditor}
-import client.graphicsView.symbol.{SymbolFiller, SymbolElem}
+import client.dialog.{FieldEditor, SidePanelDoubleTextField, SidePanelTextArea}
 
-import scala.swing.{ScrollPane, Orientation, BoxPanel}
+import scala.swing.{BoxPanel, Orientation, ScrollPane}
 
 /**
  * Created by Kathi on 23.06.2015.

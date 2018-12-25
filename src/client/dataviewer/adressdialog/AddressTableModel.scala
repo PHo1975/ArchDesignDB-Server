@@ -1,22 +1,22 @@
 package client.dataviewer.adressdialog
 
-import javax.swing.table.AbstractTableModel
 import client.calender.Address
-import client.comm.ClientQueryManager
-import client.comm.SingleObjectDataModel
+import client.comm.{ClientQueryManager, SingleObjectDataModel}
 import definition.expression.StringConstant
+import javax.swing.table.AbstractTableModel
+
 import scala.swing.Table
 
 class AddressTableModel(table:Table) extends AbstractTableModel {
-  val fieldNames=Seq("Vorname","Name","Straße","PLZ","Ort","Telefon","Fax","Email","z. Hd.")
+  val fieldNames: Seq[String] =Seq("Vorname","Name","Straße","PLZ","Ort","Telefon","Fax","Email","z. Hd.")
   val currentAddress=new SingleObjectDataModel[Address](data=> new Address(data), ()=>fireUpdate() )
   
   var subsID:Int= -1
   
-  def getColumnCount()=2
-  def getRowCount()=fieldNames.size
+  def getColumnCount =2
+  def getRowCount(): Int =fieldNames.size
   
-  def getValueAt(rowIndex:Int, columnIndex:Int)={
+  def getValueAt(rowIndex:Int, columnIndex:Int): String ={
     if(columnIndex==0) fieldNames(rowIndex)
     else currentAddress.currentData match{
       case Some(address)=> rowIndex match{
@@ -35,27 +35,27 @@ class AddressTableModel(table:Table) extends AbstractTableModel {
     } 
   }
   
-  override def getColumnName(col:Int)= if(col==0)"Feld" else "Wert"
+  override def getColumnName(col:Int): String = if(col==0)"Feld" else "Wert"
     
-  override def isCellEditable(rowIndex:Int, columnIndex:Int)=columnIndex==1
+  override def isCellEditable(rowIndex:Int, columnIndex:Int): Boolean =columnIndex==1
     
-  def setAddress(addr:Address)= {
+  def setAddress(addr:Address): Unit = {
     currentAddress.load(addr)
   } 
   
-  def fireUpdate()={
-    val row=table.peer.getSelectedRow()
+  def fireUpdate(): Unit ={
+    val row=table.peer.getSelectedRow
     fireTableDataChanged()
     table.peer.getSelectionModel.setSelectionInterval(row,row)
     table.peer.setColumnSelectionInterval(1, 1)
   }
   
-  override def setValueAt(aValue:Object, row:Int, column:Int)=
+  override def setValueAt(aValue:Object, row:Int, column:Int): Unit =
     if(column==1&&row<9) for(addr<-currentAddress.currentData){
     	ClientQueryManager.writeInstanceField(addr.ref, row.toByte,StringConstant(aValue.toString))
   }
   
-  def shutDown()= currentAddress.shutDown()
+  def shutDown(): Unit = currentAddress.shutDown()
   
 
 }

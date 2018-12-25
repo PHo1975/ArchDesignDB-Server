@@ -9,7 +9,7 @@ import scala.swing.event.EditDone
 /**
  * 
  */
-class ReactiveTextField(func:(String)=>Unit) extends TextField {
+class ReactiveTextField(func: String =>Unit) extends TextField {
   listenTo(this)
   reactions+={
   	case e:EditDone =>  func(text)  		

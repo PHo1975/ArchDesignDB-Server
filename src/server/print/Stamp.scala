@@ -3,18 +3,16 @@
  */
 package server.print
 
-import java.io.{DataInput,DataOutput}
+import java.awt.Color
+import java.awt.font.{LineBreakMeasurer, TextAttribute}
+import java.awt.geom.Rectangle2D
+import java.text.AttributedString
+
 import definition.data._
+import definition.expression.{Expression, StringConstant}
+import definition.typ.{HorAlign, SystemSettings}
 import server.storage.StorageManager
 import transaction.handling.SessionManager
-import definition.typ.{SystemSettings,DataType}
-import definition.expression.{StringConstant,Expression}
-import java.awt.geom.Rectangle2D
-import java.awt.font.LineBreakMeasurer
-import java.text.AttributedString
-import definition.typ.HorAlign
-import java.awt.Color
-import java.awt.font.TextAttribute
 
 trait StampElement {
 	def minWidth:Float
@@ -24,7 +22,7 @@ trait StampElement {
 	def updateVariables(cx:Context): Unit
 	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean):Seq[PrintElement]
 	def setRenderWidth(nw:Float): Unit
-	def setRenderHeight(nh:Float)= {}
+	def setRenderHeight(nh:Float): Unit = {}
 }
 
 object StampElement {
@@ -35,7 +33,7 @@ object StampElement {
 	var stampBoxType:Int= -1
 	var stampValueSetterType:Int = -1
 	var stampType:Int= -1
-	var stampFontType = -1
+	var stampFontType: Int = -1
 	var stampLineType:Int= -1
 	var stampFillerType:Int= -1
 	
@@ -56,7 +54,7 @@ object StampElement {
 		constructorMap(stampFillerType)=new StampFiller(_:FormDescription,_:InstanceData)		
 	})
 	
-	def apply(form:FormDescription,data:InstanceData) =	constructorMap(data.ref.typ)(form,convertVariables(data))	
+	def apply(form:FormDescription,data:InstanceData): StampElement =	constructorMap(data.ref.typ)(form,convertVariables(data))
 	
 	def readChildren(nForm:FormDescription,parent:Reference,propField:Byte):Seq[StampElement]= {
 		StorageManager.getInstanceProperties(parent) match {
@@ -66,30 +64,30 @@ object StampElement {
 	}
 	
 	def convertVariables(data:InstanceData):InstanceData= {		
-		new InstanceData(data.ref, data.fieldData .map(a=> a.replaceExpression(_ match {
-			case s:StringConstant =>
-				var name=s.n
-				if(isPrintVar(s.n)) new PrintVariable(s.n .substring(3))
-				else if(isPlaceHolderPrintVar(s.n)) new PlaceHolderPrintVariable(s.n.substring(4,s.n.length-1))
-				else s
-			case other => other
-		})),data.owners,data.secondUseOwners,data.hasChildren)
+		new InstanceData(data.ref, data.fieldData .map(a=> a.replaceExpression {
+      case s: StringConstant =>
+        var name = s.n
+        if (isPrintVar(s.n)) new PrintVariable(s.n.substring(3))
+        else if (isPlaceHolderPrintVar(s.n)) new PlaceHolderPrintVariable(s.n.substring(4, s.n.length - 1))
+        else s
+      case other => other
+    }),data.owners,data.secondUseOwners,data.hasChildren)
 	}
 	
-	def isPrintVar(st:String)= if(st.length>3){
+	def isPrintVar(st:String): Boolean = if(st.length>3){
 		(st.charAt(0)=='p'||st.charAt(0)=='P')&&
     (st.charAt(1)=='r'||st.charAt(1)=='R')&&
     st.charAt(2)=='_'
 	} else false
 	
-	def isPlaceHolderPrintVar(st:String)= if(st.length>5){
+	def isPlaceHolderPrintVar(st:String): Boolean = if(st.length>5){
 		(st.charAt(0)=='#')&&(st.charAt(st.length-1)=='#')&&
 		(st.charAt(1)=='p'||st.charAt(1)=='P')&&
     (st.charAt(2)=='r'||st.charAt(21)=='R')&&
     st.charAt(3)=='_'
 	} else false
 	
-	def isFormParam(st:String)=if(st.length>9&& st.charAt(0)=='f') st.startsWith("formParam") else false
+	def isFormParam(st:String): Boolean = if(st.length>9&& st.charAt(0)=='f') st.startsWith("formParam") else false
 }
 
 
@@ -105,18 +103,18 @@ class StampText (form:FormDescription,val text:Expression,val mWidth:Float,val m
 			form.fonts.getStyle( data.fieldData(7).toString),data.fieldValue(8).toBoolean)
 	}
 	
-	var renderWidth=mHeight
+	var renderWidth: Float =mHeight
 	
-	override def toString="StampText "+(if(text.toString.length>12)text.toString.substring(0,12) else text.toString)
+	override def toString: String ="StampText "+(if(text.toString.length>12)text.toString.substring(0,12) else text.toString)
 	
-	def updateVariables(cx:Context)= {
+	def updateVariables(cx:Context): Unit = {
 		text foreach(_ match {
 			case p:PrintVariable=> p.updateVariable(cx)//;println("update "+p+"->"+p.value)
 			case o => 
 		}		)
 	}
 	
-	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean)= {
+	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean): List[PrintElement] = {
 	  if(!wordWrap) {
 		  val tx=text.getValue.toString		  
 			val sbounds=fontStyle.getStringBounds(tx)
@@ -174,10 +172,10 @@ class StampText (form:FormDescription,val text:Expression,val mWidth:Float,val m
 	
 	def createTextElement(rect:Rectangle2D.Float,ntext:String,nfont:String):ATextPrintElement= new TextPrintElement(rect,ntext,nfont)
 		
-	def minWidth=if(mWidth== 0) {		
+	def minWidth: Float = if(mWidth== 0) {
 		val sbounds=fontStyle.getStringBounds(text.getValue.toString)
 		FormDescription.toMM(sbounds.getWidth)+StampElement.textGap
-	}  else mWidth //fixed
+	} else mWidth //fixed
 	
 	
 	def minHeight:Float=if(mHeight== 0){
@@ -198,7 +196,7 @@ class StampText (form:FormDescription,val text:Expression,val mWidth:Float,val m
 				val as=new AttributedString(tx,fontStyle.font.getAttributes)
 				as.addAttribute(TextAttribute.FONT, fontStyle.font)				
 				val measurer=new LineBreakMeasurer(as.getIterator,FontStyle.fontRenderCtx)
-				while (measurer.getPosition() < tx.length) {
+				while (measurer.getPosition < tx.length) {
 					val lay=measurer.nextLayout(rb)
 					lh+=lay.getAscent+lay.getDescent+lay.getLeading
 				}				
@@ -207,7 +205,7 @@ class StampText (form:FormDescription,val text:Expression,val mWidth:Float,val m
 			FormDescription.toMM(lh)+StampElement.textGap
 		}
 	} else mHeight // fixed	
-	override def setRenderWidth(nw:Float)= {renderWidth=nw}
+	override def setRenderWidth(nw:Float): Unit = {renderWidth=nw}
 }
 
 
@@ -217,13 +215,13 @@ class StampPlaceHolder (nform:FormDescription,ntext:PlaceHolderPrintVariable,int
     maWidth:Float,miHeight:Float,maHeight:Float,wWrap:Boolean,
 	hAlign:HorAlign.Value,fStyle:FontStyle)	
 	 extends StampText (nform,ntext,miWidth,maWidth,miHeight,maHeight,wWrap,hAlign,fStyle,false) {	  
-		override def createTextElement(rect:Rectangle2D.Float,atext:String,nfont:String)={
+		override def createTextElement(rect:Rectangle2D.Float,atext:String,nfont:String): PlaceHolderElement ={
 			val newEl=new PlaceHolderElement(rect,ntext.name,nfont)
 			val varName=if(interpreteVar) PrintEngine.context.getVarValue(ntext.name).toString else ntext.name
 			PrintEngine.context.createPlaceHolder(varName,newEl)
 			newEl
 		}
-		override def toString="PlaceHolder "+ntext
+		override def toString: String ="PlaceHolder "+ntext
 	}
 
 
@@ -231,7 +229,7 @@ class StampPlaceHolder (nform:FormDescription,ntext:PlaceHolderPrintVariable,int
 object StampText {
 	private def withCross(text:String)=text.length>2&&text.charAt(0)=='#'&&text.charAt(text.length-1)=='#'
 		
-	def apply(form:FormDescription,data:InstanceData)={
+	def apply(form:FormDescription,data:InstanceData): StampText ={
 		data.fieldData.head match {
 			case p:PlaceHolderPrintVariable=>
 				//println("STPLH by match var "+p)
@@ -262,12 +260,12 @@ class StampValueSetter(form:FormDescription,name:Expression,value:Expression) ex
 	def maxHeight:Float=0f	
   //var tempContext:Context=null
 	
-	def updateVariables(cx:Context)= {
+	def updateVariables(cx:Context): Unit = {
 	  //tempContext=cx
 		internUpdateVariables(cx)		
 	}
 	
-	protected def internUpdateVariables(cx:Context)= {	  
+	protected def internUpdateVariables(cx:Context): Unit = {
 		def check(ex:Expression) = ex  match {
 			case p:PrintVariable=> p.updateVariable(cx)//;println("setter update "+p+"->"+p.value)
 			case o => 
@@ -281,43 +279,44 @@ class StampValueSetter(form:FormDescription,name:Expression,value:Expression) ex
 		Seq.empty
 	}
 	
-	def setRenderWidth(nw:Float)= {}
-	override def toString="ValueSetter:"+name
+	def setRenderWidth(nw:Float): Unit = {}
+	override def toString: String ="ValueSetter:"+name
 }
 
 
 
-class StampLine(form:FormDescription,val minWidth:Float,val minHeight:Float,isRectangle:Boolean,val lineThickness:Expression,
+class StampLine(form:FormDescription,val _minWidth:Float,val minHeight:Float,isRectangle:Boolean,val lineThickness:Expression,
 	val lineStyle:Byte,val color:Color) extends StampElement {
 	def this(form:FormDescription,data:InstanceData) = {
 		this(form,data.fieldValue.head.toFloat,data.fieldValue(1).toFloat,data.fieldValue(2).toBoolean,data.fieldData (3),
 			data.fieldValue(4).toInt.toByte,new Color(data.fieldValue(5).toInt))
 	}
+  def minWidth: Float = if(lineThickness.getValue.toFloat==0f  ) 0 else _minWidth
 	var renderWidth:Float = _
 	var renderHeight:Float = _
-	def maxWidth=minWidth
-	def maxHeight=minHeight
-	def updateVariables(cx:Context)= {
-		lineThickness foreach({
+	def maxWidth: Float =minWidth
+	def maxHeight: Float =minHeight
+	def updateVariables(cx:Context): Unit =
+		lineThickness foreach {
 			case p: PrintVariable => p.updateVariable(cx) //;println("update "+p+"->"+p.value)
 			case o =>
-		}		)
+
 	}
 	
 	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean):Seq[PrintElement]= {
 	  if(lineThickness.getValue.toFloat==0f)Nil else {
 			val rect = new Rectangle2D.Float(x, currY.currentYPos, if (minWidth < 0) renderWidth else minWidth,
 				if (minHeight < 0) renderHeight else minHeight)
-			val ret = if (isRectangle) List(new RectPrintElement(rect, lineThickness.getValue.toFloat, lineStyle, color))
-			else List(new LinePrintElement(rect, lineThickness.getValue.toFloat, lineStyle, color))
+			val ret = if (isRectangle) List(RectPrintElement(rect, lineThickness.getValue.toFloat, lineStyle, color))
+			else List(LinePrintElement(rect, lineThickness.getValue.toFloat, lineStyle, color))
 			//currY.currentYPos=currY.currentYPos+restHeight
 			ret
 		}
 	}
 	
-	def setRenderWidth(nw:Float) = {renderWidth=nw}
-	override def setRenderHeight(nh:Float) = {renderHeight=nh}
-	override def toString="Line w="+minWidth
+	def setRenderWidth(nw:Float): Unit = {renderWidth=nw}
+	override def setRenderHeight(nh:Float): Unit = {renderHeight=nh}
+	override def toString: String ="Line w="+minWidth
 }
 
 
@@ -335,7 +334,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 	}
 	var inst:Reference=_
 	
-	def hasCutElement=exists {
+	def hasCutElement: Boolean =exists {
 		case s: StampText => s.cutable
 		case _ => false
 	}
@@ -358,7 +357,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		} else width		
 	}
 	
-	def maxWidth=width
+	def maxWidth: Float =width
 	
 	def minHeight:Float= {
 	  if(width== -2) 0 else
@@ -383,9 +382,9 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		} else height			
 	}		
 		
-	def maxHeight=height
+	def maxHeight: Float =height
 	
-	def updateVariables(cx:Context)= {
+	def updateVariables(cx:Context): Unit = {
 		//def sub(se:StampElement)= se.updateVariables(cx)	
 		foreach(_.updateVariables(cx))
 		//frontChildren.foreach(sub)
@@ -393,12 +392,12 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		//bottomChildren.foreach(sub)
 	}
 	
-	def foreach(f:(StampElement)=>Unit)= { 
+	def foreach(f:(StampElement)=>Unit): Unit = {
 		frontChildren.foreach(f)
 		centerChildren.foreach(f)
 		bottomChildren.foreach(f)
 	}
-	def foreachIndexed(f:(Int,StampElement)=>Unit)= {	 
+	def foreachIndexed(f:(Int,StampElement)=>Unit): Unit = {
 		var ix=0
 		def func(el:StampElement)={f(ix,el);ix+=1}
 		frontChildren.foreach(func)
@@ -407,10 +406,10 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 	}
 	
 	
-	def size= frontChildren.size+centerChildren.size+bottomChildren.size
+	def size: Int = frontChildren.size+centerChildren.size+bottomChildren.size
 	
 	
-	def flatMap[A](f:(StampElement)=>Traversable[A])= {
+	def flatMap[A](f:(StampElement)=>Traversable[A]): Seq[A] = {
 		frontChildren.flatMap(f)++ centerChildren.flatMap(f)++ bottomChildren.flatMap(f)
 	}
 	
@@ -432,7 +431,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 	  false
 	}
 	
-	protected def horGenerateMoveY(currY:YPosHolder,theHeight:Float)={}
+	protected def horGenerateMoveY(currY:YPosHolder,theHeight:Float): Unit ={}
 	
 	
 	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean):Seq[PrintElement]= {
@@ -445,8 +444,8 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		
 		
 		val backgroundRect:Seq[PrintElement]=if(measure) Seq.empty else centerChildren.collect({case e:StampFiller => e}).headOption.map(el=> 
-		  new FillPrintElement(new Rectangle2D.Float(x,currY.currentYPos,restWidth,restHeight),Color.black,0,new Color(el.backgroundColor))	).toSeq/* :+
-		    new TextPrintElement(new Rectangle2D.Float(currX,currY.currentYPos-4f,15f,4f),restHeight.toString,"Debug2")*/
+		  FillPrintElement(new Rectangle2D.Float(x, currY.currentYPos, restWidth, restHeight), Color.black, 0, new Color(el.backgroundColor))	).toSeq
+
 		if(horOrient){
 			foreach(el =>{
 				if(el.minWidth== -1) numSpring += 1
@@ -517,7 +516,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 				val elWidth=el.minWidth
 				el.setRenderWidth(if(elWidth== -1)theWidth else elWidth)
 			})	
-			val oldY=currY.currentYPos
+			//val oldY=currY.currentYPos
 			val tempY=new ProxyYHolder()
 			tempY.copyFrom(currY)
 			tempY.intRestHeight=restHeight
@@ -557,14 +556,14 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		}// vertical		
 	}
 	
-	def setRenderWidth(nw:Float)= {
+	def setRenderWidth(nw:Float): Unit = {
 		if(!horOrient){
 			foreach(el =>{
 				if(el.minWidth== -1)el.setRenderWidth(nw)
 			})
 		}
 	} 
-	override def toString=if(horOrient)"HBox" else "VBox"
+	override def toString: String = if(horOrient)"HBox" else "VBox"
 }
 
 
@@ -580,11 +579,11 @@ case class Stamp(form:FormDescription, forType:Int, name:String,nhorOrient:Boole
 			StampElement.readChildren(form,data.ref,2))
 			inst=data.ref
 	}
-	override protected def horGenerateMoveY(currY:YPosHolder,theHeight:Float)={
+	override protected def horGenerateMoveY(currY:YPosHolder,theHeight:Float): Unit ={
 	  currY.currentYPos+=theHeight
 	}
 	
-	override def toString= "Stamp "+name+" for Type:"+forType+" horOrient:"+horOrient/*+" wSet:"+widthSetting*/+" w:"+width/*+" hSet:"+heightSetting*/+
+	override def toString: String = "Stamp "+name+" for Type:"+forType+" horOrient:"+horOrient/*+" wSet:"+widthSetting*/+" w:"+width/*+" hSet:"+heightSetting*/+
 	" h:"+height+"\nFrontChildren:"+frontChildren.mkString("\n")+"\nCenterChildren:"+centerChildren.mkString("\n")+
 	"\nBottomChildren:"+bottomChildren.mkString("\n")	
 }
@@ -599,10 +598,10 @@ case class StampFiller(form:FormDescription,backgroundColor:Int) extends StampEl
 	def minHeight:Float=0.01f
 	def maxHeight:Float=0f	
 	
-	def updateVariables(cx:Context)= {}
+	def updateVariables(cx:Context): Unit = {}
 	def getPrintElements(x:Float,currY:YPosHolder,restWidth:Float,restHeight:Float,measure:Boolean):Seq[PrintElement]=  Seq.empty
 	
-	def setRenderWidth(nw:Float)= {}
+	def setRenderWidth(nw:Float): Unit = {}
 	override def toString="Filler "+backgroundColor
 }
 

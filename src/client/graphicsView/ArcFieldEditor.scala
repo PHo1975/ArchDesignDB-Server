@@ -2,7 +2,7 @@ package client.graphicsView
 
 import client.dialog._
 
-import scala.swing.{Orientation, BoxPanel, Panel}
+import scala.swing.{BoxPanel, Orientation, Panel}
 
 /**
  * Created by Kathi on 17.05.2015.

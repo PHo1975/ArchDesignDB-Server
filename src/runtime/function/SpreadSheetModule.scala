@@ -1,34 +1,13 @@
 package runtime.function
 
-import scala.collection.mutable.ArrayBuffer
+import client.spreadsheet._
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{Constant, FieldReference, IntConstant, StringConstant}
+import server.comm.AbstractUserSocket
+import server.storage.{ActionIterator, ActionModule}
+import transaction.handling.{ActionList, TransactionManager}
 
-import runtime.function.SpreadSheetProxy.SSDoubleCellType
-import runtime.function.SpreadSheetProxy.parser
-import client.spreadsheet.ChangeCol
-import client.spreadsheet.ChangeCols
-import client.spreadsheet.ChangeRow
-import client.spreadsheet.ChangeRows
-import client.spreadsheet.ColsSelection
-import client.spreadsheet.Delete
-import client.spreadsheet.NoChange
-import client.spreadsheet.RangeIteratorResult
-import client.spreadsheet.RangeSelection
-import client.spreadsheet.RowsSelection
-import client.spreadsheet.SSCollProxy
-import client.spreadsheet.SSVariable
-import client.spreadsheet.SingleCellSelection
-import definition.data.InstanceData
-import definition.data.OwnerReference
-import definition.data.Reference
-import definition.expression.Constant
-import definition.expression.FieldReference
-import definition.expression.IntConstant
-import definition.expression.StringConstant
-import server.comm.{AbstractUserSocket, JavaClientSocket}
-import server.storage.ActionIterator
-import server.storage.ActionModule
-import transaction.handling.ActionList
-import transaction.handling.TransactionManager
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 class MyActionIterator(nname:String,nfunc:(AbstractUserSocket,OwnerReference,Seq[InstanceData],Seq[(String,Constant)]) => Boolean) extends 
@@ -76,7 +55,7 @@ class SpreadSheetModule extends ActionModule{
     }
     
     for(col<-startCol to endCol){    
-          val newInst=TransactionManager.tryCreateInstance(SpreadSheetProxy.SSColumnType,proxy.colDataOwnerArray,false, -1,true )
+          val newInst=TransactionManager.tryCreateInstance(SpreadSheetProxy.SSColumnType,proxy.colDataOwnerArray,false, -1)
           TransactionManager.tryWriteInstanceField(newInst.ref,0,IntConstant(col))
           if(oldColumnData.contains(col))
             TransactionManager.tryWriteInstanceField(newInst.ref,2,oldColumnData(col).fieldValue(2))        
@@ -121,7 +100,6 @@ class SpreadSheetModule extends ActionModule{
     proxy.iterateRanges {
       case RowsSelection(oldRows) => insertRange(oldRows, range, false)
       case RangeSelection(_, oldRows) => insertRange(oldRows, range, false)
-
       case SingleCellSelection(_, row) => if (row >= startRow) ChangeRows(Range(row + size, row + size))
       else NoChange
       case _ => NoChange
@@ -179,11 +157,11 @@ class SpreadSheetModule extends ActionModule{
     // loop all cells
     for(row<-startRow to endRow;col<-startCol to endCol;
     newValString=param(col-startCol+(row-startRow)*numCols +6)._1
-        if newValString.size > 0) {
+        if newValString.nonEmpty) {
       //print("col:"+col+" row:"+row+" valstring:"+newValString)
       val instance=aquireFunc(col,row)
       val oldCollFuncs=ArrayBuffer[InstanceData]()++proxy.findCollFuncsFor(instance.ref)
-    	val expression=try {parser.parse(newValString) } catch {case NonFatal(_)=>new StringConstant(newValString)}    	
+    	val expression=try {parser.parse(newValString) } catch {case NonFatal(_)=>StringConstant(newValString)}
     	val replacedExpression=expression.replaceExpression {
         case v: SSVariable => proxy.resolveVariable(v, deltaX, deltaY, aquireFunc)
         case s: SSCollProxy => proxy.resolveCollFunc(instance.ref, s.delta(deltaX, deltaY), oldCollFuncs)
@@ -211,7 +189,7 @@ class SpreadSheetModule extends ActionModule{
   
   
   
-  def setObjectType(typeID:Int)={theTypeID=typeID}
+  def setObjectType(typeID:Int): Unit = theTypeID=typeID
   
   protected def insertRange(oldRange:Range,newRange:Range,asCol:Boolean):RangeIteratorResult=if(oldRange.end >=newRange.start) {
       val range= if(oldRange.start<newRange.start) Range(oldRange.start,oldRange.end+newRange.size)

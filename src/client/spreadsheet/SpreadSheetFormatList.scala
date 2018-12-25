@@ -1,9 +1,8 @@
 package client.spreadsheet
-import definition.data.Reference
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
-import definition.data.InstanceData
-import definition.expression.IntConstant
+import definition.data.{InstanceData, Reference}
+
 import scala.swing.Swing
 
 class SpreadSheetFormatList(controller:SpreadSheetController) {

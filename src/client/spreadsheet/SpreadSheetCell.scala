@@ -1,12 +1,9 @@
 package client.spreadsheet
-import definition.data.InstanceData
-import definition.data.Reference
+import java.io.DataInput
+
+import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression.Expression
 import definition.typ.DataType
-import java.io.DataInput
-import definition.data.Referencable
-import definition.data.EMPTY_REFERENCE
-import definition.expression.EMPTY_EX
 
 /*trait SpreadSheetCell {
   def row:Int

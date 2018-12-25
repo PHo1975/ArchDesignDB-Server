@@ -4,10 +4,10 @@ package client.graphicsView
 
 import java.awt._
 import java.awt.event.{ComponentAdapter, MouseWheelEvent}
-import javax.swing.{SwingUtilities, TransferHandler}
 
 import client.dataviewer.ViewConstants
 import definition.expression.VectorConstant
+import javax.swing.{SwingUtilities, TransferHandler}
 
 import scala.swing.Component
 import scala.swing.event._
@@ -53,6 +53,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     val b = bounds
     val ratiox = e.getPoint.getX / b.width.toDouble
     val ratioy = e.getPoint.getY / b.height.toDouble
+    println("Wheel "+e.getWheelRotation)
     if (e.getWheelRotation > 0) controller.scaleModel.zoomMinus(ratiox, ratioy)
     else controller.scaleModel.zoomPlus(ratiox, ratioy)
 	})
@@ -203,24 +204,39 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       }
       g.setPaintMode()
     }
-	}
+	} //else if(! SwingUtilities.isEventDispatchThread) Log.w("draw cross not dispatch !")
 	
-	
-	private def drawHitPoints(g:Graphics2D)= if(pointHitPos!=null){
-    val rh = 4 * ViewConstants.fontScale / 100
-    val rh2 = rh * 2
+
+  private def drawFadenKreuzHitpoints(g:Graphics,rh:Int,rh2:Int): Unit = {
+    for(hx<-pointHitPos.hitX){
+      g.drawRect(hx.x - rh, hx.y - rh, rh2, rh2)
+      g.drawLine(hx.x,hx.y,hx.x,currentMousePos.y)
+    }
+    for(hy<-pointHitPos.hitY) {
+      g.drawRect(hy.x - rh, hy.y - rh, rh2, rh2)
+      g.drawLine(hy.x,hy.y,currentMousePos.x,hy.y)
+    }
+  }
+
+	private def drawHitPoints(g:Graphics2D): Unit = if(pointHitPos!=null){
+    val rh: Int = 4 * ViewConstants.fontScale / 100
+    val rh2: Int = rh * 2
 		g.setPaint(Color.blue)
 		for (hb<-pointHitPos.hitBoth)
       g.drawRect(hb.x - rh, hb.y - rh, rh2, rh2)
     if (pointHitPos.hitBoth.isEmpty) {
-			for(hx<-pointHitPos.hitX){
-        g.drawRect(hx.x - rh, hx.y - rh, rh2, rh2)
-				g.drawLine(hx.x,hx.y,hx.x,currentMousePos.y)
-			}
-			for(hy<-pointHitPos.hitY) {
-        g.drawRect(hy.x - rh, hy.y - rh, rh2, rh2)
-				g.drawLine(hy.x,hy.y,currentMousePos.x,hy.y)
-			}
+      if(ViewConstants.showHitPoints==1)
+      controller.findCrossPoint( controller.scaleModel.xToWorld(currentMousePos.x),
+        controller.scaleModel.yToWorld(currentMousePos.y)) match {
+        case Some(crossPoint) ⇒
+          val cx=controller.scaleModel.xToScreen(crossPoint.x).toInt
+          val cy=controller.scaleModel.yToScreen(crossPoint.y).toInt
+          g.drawLine(cx-rh2,cy-rh2,cx+rh2,cy+rh2)
+          g.drawLine(cx+rh2,cy-rh2,cx-rh2,cy+rh2)
+
+        case None ⇒ // no crosspoint, draw hint points along the fadenkreuz
+          drawFadenKreuzHitpoints(g,rh,rh2)
+      } else drawFadenKreuzHitpoints(g,rh,rh2)
 		}
 	}
   
@@ -234,7 +250,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 
   override def paintComponent(g: Graphics2D): Unit = {
     super.paintComponent(g)
-    g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON))
+    if(ViewConstants.antialias==1) g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON))
     g.setPaint(Color.white)
     g.fillRect(0, 0, size.width, size.height)
 
@@ -310,7 +326,6 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     }
     //print(" elems done ")
     // draw selected elements
-    g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF))
     if (controller.inplaceTextElement.isEmpty) {
       for (lay <- controller.lastHittedElements; el <- lay._2)
         el.draw(g, controller.scaleModel, ColorMap.multiSelectColor)
@@ -319,6 +334,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
         el.draw(g, controller.scaleModel, ColorMap.selectColor)
     }
     // draw Line-To graphics
+    g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF))
     g.setStroke(defaultStroke)
     if (controller.showTempElements)
       for (el <- controller.layerModel.newElemLayer.elemList)
@@ -356,7 +372,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 	  //println(" paint done")
 	}
 	
-	private def intDrawDragGraphics(g:Graphics2D) = {
+	private def intDrawDragGraphics(g:Graphics2D): Unit = {
 		if(dragToPoint!=null)	controller.viewportState match {
 			case ViewportState.SelectState =>
 				drawDragRect(g)
@@ -369,7 +385,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 		}
 	}
 	
-	private def drawDragRect(g:Graphics2D)= if(dragStartPoint!=null && dragToPoint!=null){
+	private def drawDragRect(g:Graphics2D): Unit = if(dragStartPoint!=null && dragToPoint!=null){
 		g.setXORMode(Color.white)
 		g.setPaint(Color.gray)
 		val sx=scala.math.min(dragStartPoint.x,dragToPoint.x)

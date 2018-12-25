@@ -6,16 +6,16 @@ package client.print
 import java.awt
 import java.awt.event.{WindowAdapter, WindowEvent}
 import java.awt.{Color, Dimension}
-import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, OrientationRequested}
-import javax.swing._
-import javax.swing.border.TitledBorder
-import javax.swing.table.TableCellEditor
 
 import client.comm.ClientQueryManager
 import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
 import client.dialog.DialogManager
 import definition.data.{FormDescription, OutputDefinition}
 import definition.expression._
+import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, OrientationRequested}
+import javax.swing._
+import javax.swing.border.TitledBorder
+import javax.swing.table.TableCellEditor
 import util.{MyComboBox, MyListView}
 
 import scala.swing.event.{ButtonClicked, ListSelectionChanged, SelectionChanged}
@@ -95,8 +95,8 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 	
 	val fieldColMod=new FieldColumnModel{
     	createColumn(0,"Name",130)
-    	createColumn(1,"Beschreibung",270)
-    	createColumn(2,"Wert",90)
+    	createColumn(1,"Beschreibung",200)
+    	createColumn(2,"Wert",150)
 	}	
 	
 	val tcr = new Table.AbstractRenderer[BoolConstant, BoolRenderer](new BoolRenderer) {
@@ -137,13 +137,13 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		override def editor(row: Int, column: Int):TableCellEditor = {
 		  if(column==2) 
 		     model.getValueAt(row,column) match {
-		  	  case (boolValue:BoolConstant)=> return boolEditor
-		  	  case _=>
+		  	  case (boolValue:BoolConstant)=> boolEditor
+		  	  case _=>  stringEditor
 		  	}
-		  super.editor(row,column)
+      else super.editor(row,column)
 		}
          
-		peer.setDefaultEditor(classOf[Constant],stringEditor)
+		peer.setDefaultEditor(classOf[String],stringEditor)
 	}
 	
 	val paramScroller=new ScrollPane {
@@ -248,7 +248,7 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 
 	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[(String, Constant)]) => Unit, odef: OutputDefinition): Unit = {
 		loadOutDefSettings(odef)		
-		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,true)
+		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,nresetOnClose = true)
 	}
 
 	def loadForms(newList: Seq[FormDescription]): Unit = {

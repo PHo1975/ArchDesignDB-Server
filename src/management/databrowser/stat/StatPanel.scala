@@ -6,8 +6,8 @@ import client.dataviewer.ViewConstants
 import management.databrowser.MainWindow
 import util.MyListView
 
-import scala.swing.{BorderPanel, BoxPanel, Button, Label, Orientation, ScrollPane, Swing}
 import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, BoxPanel, Button, Label, Orientation, ScrollPane, Swing}
 
 class StatPanel extends BoxPanel(Orientation.Vertical) {
   val projList=new MyListView[String]

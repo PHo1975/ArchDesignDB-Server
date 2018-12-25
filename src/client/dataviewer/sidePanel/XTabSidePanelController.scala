@@ -5,9 +5,6 @@ package client.dataviewer.sidePanel
 
 import java.awt.event.{MouseAdapter, MouseEvent}
 import java.awt.{Color, Dimension}
-import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
-import javax.swing.table.{JTableHeader, TableCellEditor, TableCellRenderer}
-import javax.swing.{BorderFactory, ImageIcon}
 
 import client.dataviewer.{MultilineEditor, TypeTableModel, ViewConstants}
 import client.dialog.{AbstractFocusContainer, NewButtonsList, SelectEventDispatcher, SelectSender}
@@ -15,6 +12,9 @@ import client.icons.IconManager
 import definition.data.{EMPTY_OWNERREF, OwnerReference, Reference}
 import definition.expression.Expression
 import definition.typ._
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
+import javax.swing.table.{JTableHeader, TableCellEditor, TableCellRenderer}
+import javax.swing.{BorderFactory, ImageIcon}
 
 import scala.swing._
 import scala.swing.event.ButtonClicked
@@ -47,7 +47,7 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	
 	var dropTransferHandler=new XTabHeaderTransferHandler(XTabSidePanelController.this)	
 		
-	val rightDropComp=new Panel {
+	val rightDropComp: Panel =new Panel {
 		maximumSize = new Dimension(closeBut.preferredSize.width, Short.MaxValue)
 		preferredSize=new Dimension(closeBut.preferredSize.width/*+15*/,10)
 		yLayoutAlignment = 0d
@@ -94,9 +94,9 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 		  }
 		}
 		
-		peer.getColumnModel().getSelectionModel().addListSelectionListener(new ListSelectionListener(){
-		  def valueChanged(e:ListSelectionEvent ):Unit = if(!e.getValueIsAdjusting()) {		    
-		  	notifySelectionChanged(peer.getColumnModel().getSelectedColumns()) 
+		peer.getColumnModel.getSelectionModel.addListSelectionListener(new ListSelectionListener(){
+		  def valueChanged(e:ListSelectionEvent ):Unit = if(!e.getValueIsAdjusting) {
+		  	notifySelectionChanged(peer.getColumnModel.getSelectedColumns)
 		  }
 		})
 	}
@@ -125,11 +125,11 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 		tableClass.inheritsFrom(XTabRowType)
 	}
 	
-	private def setYDataModel(ymod:TypeTableModel) = {
+	private def setYDataModel(ymod:TypeTableModel): Unit = {
 		ydataModel=ymod
 	  table.rowHeight=ViewConstants.defaultRowHeight
 	  table.font=ViewConstants.tableFont
-	  table.peer.getTableHeader().setFont(ViewConstants.smallFont)
+	  table.peer.getTableHeader.setFont(ViewConstants.smallFont)
 	}
 
 	def parentsFits(dataModel: TypeTableModel, parentRef: Reference): Boolean = {
@@ -165,7 +165,7 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 		val header: JTableHeader = table.peer.getTableHeader
   	val headerWrapper= new XTabHeaderPanel(header)
 
-  	headerWrapper.peer.setMaximumSize(new Dimension(tmodel.colModel.columnWidth,headerWrapper.preferredSize.height))
+  	headerWrapper.peer.setMaximumSize(new Dimension(tmodel.colModel.columnWidth*ViewConstants.fontScale/100,headerWrapper.preferredSize.height))
 		//headerWrapper.peer.setPreferredSize(new Dimension(tmodel.colModel.columnWidth,headerWrapper.preferredSize.height))
 		contents += new LineComponent(0d)
   	contents+=headerWrapper  	

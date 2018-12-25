@@ -2,11 +2,11 @@ package client.graphicsView
 
 
 import java.awt.{Color, Dimension}
-import javax.swing.{DefaultCellEditor, JComboBox, JTable}
 
 import client.dataviewer.{InstanceRenderer, ViewConstants}
 import client.dialog.InplaceFieldEditor
 import definition.expression.{Constant, Expression}
+import javax.swing.{DefaultCellEditor, JComboBox, JTable}
 import util.{MyComboBox, MyListView}
 
 import scala.swing.{BorderPanel, Label, Table}

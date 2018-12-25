@@ -4,17 +4,17 @@
 package client.print
 
 import java.awt.{Color, Dimension}
-import javax.print.attribute.standard.PageRanges
-import javax.swing.{BorderFactory, ImageIcon, JOptionPane}
-import javax.swing.event.{DocumentEvent, DocumentListener}
 
 import client.dataviewer.ViewConstants
 import client.icons.IconManager
 import definition.data.Reference
+import javax.print.attribute.standard.PageRanges
+import javax.swing.event.{DocumentEvent, DocumentListener}
+import javax.swing.{BorderFactory, ImageIcon, JOptionPane}
 import util.StrToInt
 
-import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, Component, Dialog, Label, Orientation, RadioButton, ScrollPane, TextField}
 import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, Component, Dialog, Label, Orientation, RadioButton, ScrollPane, TextField}
 import scala.util.control.NonFatal
 
 /**

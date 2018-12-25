@@ -12,8 +12,8 @@ import definition.expression.{ObjectReference, StringConstant}
 import definition.typ.CustomPanel
 import util.MyListView
 
-import scala.swing.{BoxPanel, Button, Label, Orientation, ScrollPane, Swing, TextField}
 import scala.swing.event.{ButtonClicked, ListSelectionChanged}
+import scala.swing.{BoxPanel, Button, Label, Orientation, ScrollPane, Swing, TextField}
 
 
 class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel with PathControllable {
@@ -133,7 +133,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
     folderEdit.text=""
   }
 
-  def openData(parentRef: Reference, selectRef: Option[Reference], indent: Int, doneListener: Option[() => Unit]): Unit = {
+  def openData(parentRef: Reference, selectRef: Option[Reference], indent: Int, doneListener: Option[() => Unit],withCustomEditor:Boolean): Unit = {
     println("folderList open Data " + parentRef + " indent:" + indent + "sel:" + selectRef)
     pathLineLabel.shutDown()
     currentFolder=Some(parentRef)

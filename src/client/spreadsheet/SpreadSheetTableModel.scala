@@ -1,13 +1,12 @@
 package client.spreadsheet
 
-import javax.swing.event.TableModelEvent
-import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
-
 import client.comm.{ClientQueryManager, MapDataModel, TreeMapDataModel}
 import client.dataviewer.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{EMPTY_OWNERREF, InstanceData, Reference}
 import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}
+import javax.swing.event.TableModelEvent
+import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -20,7 +19,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     var widthChanged=false
     super.setWidth(startWidth)
 
-    override def setWidth(nWidth: Int): Unit = if (controller.table.peer.isValid()) {
+    override def setWidth(nWidth: Int): Unit = if (controller.table.peer.isValid) {
       super.setWidth(nWidth)
       widthChanged=true
     } //else println("want set Width but not valid "+modelIndex)
@@ -32,7 +31,6 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
   
   
   
-  
   class MyColumnModel extends DefaultTableColumnModel{
     def clear(): Unit = tableColumns.clear()
 
@@ -40,7 +38,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
 
     def getMyColumn(i: Int): MyTableColumn = getColumn(i).asInstanceOf[MyTableColumn]
 
-    def hasWidthChanged: Boolean = this.getColumns().asScala.exists {
+    def hasWidthChanged: Boolean = this.getColumns.asScala.exists {
       case mc: MyTableColumn => mc.widthChanged;
       case _ => false
     }
@@ -60,7 +58,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     override def updateUndo(): Unit = updateColumns()
 
     override def fieldChanged(elem: SpreadSheetColumnData): Unit = {
-      //println("column changed "+elem)      
+      //println("column changed "+elem)
       updateColumns()//(elem)
     	myFireTableStructureChanged()
     }
@@ -92,9 +90,9 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
 
   override def getColumnClass(col:Int):java.lang.Class[_] =   classOf[Expression]  
   
-  def getRowCount(): Int = { maxRowNum+SpreadSheet.rowOverhead }
+  def getRowCount: Int = { maxRowNum+SpreadSheet.rowOverhead }
 
-  def getColumnCount(): Int = if(columnData.theMap.isEmpty)1 else 
+  def getColumnCount: Int = if(columnData.theMap.isEmpty)1 else
     math.max(columnData.theMap.keys.max,if(colCellList.isEmpty) 0 else colCellList.keys.max)+2
   
 
@@ -141,18 +139,23 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
   
   
   //TODO: optimize this function
-  def removePreviousCellData(cell:SpreadSheetCell):Unit =colCellList.synchronized{ 
-    colCellList.values.foreach(collData =>collData.findCellByRef(cell.ref) match {
-      case Some(oldCell) if oldCell.col != cell.col || oldCell.row != cell.row =>
-        //println("Remove previous "+cell+" was:"+oldCell);
-        collData.removeCell(oldCell.row)
-        if(collData.cellMap.isEmpty && cell.col!=oldCell.col) colCellList-= collData.col
-        return
-      case _=> 
-    })   
+  def removePreviousCellData(cell:SpreadSheetCell):Unit = colCellList.synchronized{
+    var runIt=false
+    val iter=colCellList.valuesIterator
+    while(iter.hasNext&& runIt){
+      val collData=iter.next
+      collData.findCellByRef(cell.ref) match {
+        case Some(oldCell) if oldCell.col != cell.col || oldCell.row != cell.row =>
+          collData.removeCell(oldCell.row)
+          if(collData.cellMap.isEmpty && cell.col!=oldCell.col) colCellList-= collData.col
+          runIt=false
+        case _=>
+      }
+    }
   }
   
-  def addCell(cell:SpreadSheetCell,notify:Boolean):Unit= colCellList.synchronized{ 
+  def addCell(cell:SpreadSheetCell,notify:Boolean):Unit= colCellList.synchronized{
+    //println("add cell "+cell+" "+notify)
     if(cell.col> -1) { // ignore created instances with column== -1
 	    getCellList(cell.col).addCell(cell) 
 	    if(notify) myFireTableChanged()    
@@ -248,11 +251,11 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
   
   
   def updateColumn(colData:SpreadSheetColumnData):Unit= {
-    if(colData.col== columnModel.getColumnCount()-1){
+    if(colData.col== columnModel.getColumnCount-1){
       val newCol = new MyTableColumn(colData.col, SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
       setColDataToModel(colData,newCol)
       columnModel.insertAt(newCol,colData.col)
-      val lastIx=columnModel.getColumnCount()-1
+      val lastIx=columnModel.getColumnCount-1
       columnModel.getColumn(lastIx).setModelIndex(lastIx)
     }
     else if(colData.col>columnModel.getColumnCount-1) updateColumns()

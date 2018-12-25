@@ -3,9 +3,6 @@ package client.spreadsheet
 import java.awt.event.{AdjustmentEvent, AdjustmentListener, MouseMotionListener}
 import java.awt.font.FontRenderContext
 import java.awt.{Color, Dimension, Font, Point, Toolkit}
-import javax.swing._
-import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
-import javax.swing.table.{JTableHeader, TableCellRenderer}
 
 import client.comm.{ClientQueryManager, SingleObjectDataModel, SubscriptionFactory}
 import client.dataviewer.{DataViewController, LabelRenderer, MultilineEditor, ViewConstants}
@@ -13,7 +10,10 @@ import client.dialog._
 import definition.data._
 import definition.expression._
 import definition.typ.{CustomInstanceEditor, DataType, SelectGroup, SystemSettings}
-import util.StringUtils
+import javax.swing._
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
+import javax.swing.table.{JTableHeader, TableCellRenderer}
+import util.{Log, StringUtils}
 
 import scala.swing._
 import scala.swing.event.{ButtonClicked, FocusGained}
@@ -94,23 +94,23 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		model=firstColumnTableModel
 		showGrid=true
 		gridColor=Color.LIGHT_GRAY
-		this.peer.getTableHeader().setReorderingAllowed(false)
+		this.peer.getTableHeader.setReorderingAllowed(false)
 		this.peer.setAutoCreateColumnsFromModel(false)
 		this.peer.setColumnModel(firstColumnTableModel.columnModel)
 		this.peer.setRowSelectionAllowed(false)
 		this.peer.setColumnSelectionAllowed(false)
-		for (l<-peer.getMouseMotionListeners()) peer.removeMouseMotionListener(l)
+		for (l<-peer.getMouseMotionListeners) peer.removeMouseMotionListener(l)
 		var dragStartRow:Int= -1
 		val rowMouseListener:java.awt.event.MouseAdapter=new java.awt.event.MouseAdapter() {
 
-      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 &&
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton == java.awt.event.MouseEvent.BUTTON1 &&
         peer.columnAtPoint(e.getPoint) == 0) {
 	       e.consume()
 	       dragStartRow=peer.rowAtPoint(e.getPoint)		       
 	       rowSelectRange=Range(dragStartRow,dragStartRow+1)
 	       selectRow(dragStartRow)
 	       peer.repaint()		       		     
-		   } else if(e.getButton()==java.awt.event.MouseEvent.BUTTON3&&(peer.columnAtPoint(e.getPoint)==0)) {
+		   } else if(e.getButton==java.awt.event.MouseEvent.BUTTON3&&(peer.columnAtPoint(e.getPoint)==0)) {
 		     e.consume()
 		     SpreadSheetController.this.selection match {
 		       case r:RowsSelection=> ActionPanel.showRightMenu(e.getPoint,MyFirstColTable.this) 
@@ -120,7 +120,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		   }
 
       override def mouseDragged(e: java.awt.event.MouseEvent): Unit = if (dragStartRow >= 0) {
-        val row=peer.rowAtPoint(e.getPoint())
+        val row=peer.rowAtPoint(e.getPoint)
         e.consume()        
         if(row>=0) {          
         	val rangeChanged=if(row<dragStartRow&& row !=rowSelectRange.start) { rowSelectRange=Range(row,dragStartRow+1);true}
@@ -153,7 +153,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 			val v=model.getValueAt(row,modCol)			
 		  ftcr.componentFor(this,sel,foc,if(v==null) "" else v.toString, row, col)			
 		}
-     peer.getTableHeader().setDefaultRenderer(new JLabel() with TableCellRenderer{
+     peer.getTableHeader.setDefaultRenderer(new JLabel() with TableCellRenderer{
       setBorder(BorderFactory.createRaisedBevelBorder())
 
        override def revalidate(): Unit = {}
@@ -165,13 +165,16 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   }
   
   val firstColTable=new MyFirstColTable
-  
+
+
+  // *************************************************************************************************
+
   class MyTable extends Table(){   
     
     object MySelectionListener extends ListSelectionListener{
       var selfSelected=false
 
-      def valueChanged(e: ListSelectionEvent): Unit = if (!e.getValueIsAdjusting() && !selfSelected) updateRangeSelection()
+      def valueChanged(e: ListSelectionEvent): Unit = if (!e.getValueIsAdjusting && !selfSelected) updateRangeSelection()
     }
     
     autoResizeMode=Table.AutoResizeMode.Off
@@ -185,7 +188,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		peer.setDropMode(DropMode.ON)	
 		
 		
-		this.peer.getTableHeader().setReorderingAllowed(false)
+		this.peer.getTableHeader.setReorderingAllowed(false)
 		this.peer.setAutoCreateColumnsFromModel(false)
 		this.peer.setColumnModel(tableModel.columnModel)
 		selection.elementMode=Table.ElementMode.Cell
@@ -193,7 +196,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		peer.setColumnSelectionAllowed(true)
 		var headerSelectRange:Range=emptyRange
     val header: JTableHeader = peer.getTableHeader
-    val internMouseListeners: Array[MouseMotionListener] = peer.getMouseMotionListeners()
+    val internMouseListeners: Array[MouseMotionListener] = peer.getMouseMotionListeners
 
     def disableInternMouseListeners(): Unit = for (l <- internMouseListeners) peer.removeMouseMotionListener(l)
 
@@ -205,8 +208,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       var dragStartPos:Option[Point]=None
       var hasDragged=false
 
-      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON1) {
-				 dragStartCol=header.columnAtPoint(e.getPoint())				 
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton == java.awt.event.MouseEvent.BUTTON1) {
+				 dragStartCol=header.columnAtPoint(e.getPoint)
 				 dragStartPos=Some(e.getPoint)
 				 hasDragged=false				 
 				 if(dragStartCol<peer.getColumnCount -1) {				   
@@ -214,15 +217,15 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 				   selectColumn(dragStartCol)				   
 				   header.repaint()  
 				 }			 
-			} else if(e.getButton()==java.awt.event.MouseEvent.BUTTON3) {
+			} else if(e.getButton==java.awt.event.MouseEvent.BUTTON3) {
 			  if(!table.hasFocus) {
 			    table.requestFocus()
 			  }
-			  if(!headerSelectRange.isEmpty) ActionPanel.showRightMenu(e.getPoint(),table)
+			  if(!headerSelectRange.isEmpty) ActionPanel.showRightMenu(e.getPoint,table)
 			}
 
       override def mouseReleased(e: java.awt.event.MouseEvent): Unit = {
-        val col=header.columnAtPoint(e.getPoint())       
+        val col=header.columnAtPoint(e.getPoint)
         if(col==peer.getColumnCount-1&& !hasDragged) {          
             tableModel.writeColumnWidths()
           tableModel.createColumnData(peer.getColumnCount - 1, SpreadSheet.defaultColumnWidth * ViewConstants.fontScale / 100)
@@ -256,15 +259,15 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		
 		header.addMouseListener(headerMouseListener)
     header.addMouseMotionListener(headerMouseListener)
-    peer.getSelectionModel().addListSelectionListener(MySelectionListener)   
-    peer.getColumnModel().getSelectionModel().addListSelectionListener(MySelectionListener)
+    peer.getSelectionModel.addListSelectionListener(MySelectionListener)
+    peer.getColumnModel.getSelectionModel.addListSelectionListener(MySelectionListener)
     
     peer.addMouseListener(new java.awt.event.MouseAdapter() {
-      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton() == java.awt.event.MouseEvent.BUTTON3) {
+      override def mousePressed(e: java.awt.event.MouseEvent): Unit = if (e.getButton == java.awt.event.MouseEvent.BUTTON3) {
 			  if(!table.hasFocus) {
 			    table.requestFocus()
 			  }
-			  ActionPanel.showRightMenu(e.getPoint(),table)
+			  ActionPanel.showRightMenu(e.getPoint,table)
 			}
     })
        
@@ -297,11 +300,11 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
         setHorizontalAlignment(SwingConstants.CENTER)
         setText(if(value==null) "" else value.toString)
         if(headerSelectRange.contains(colIndex)) {
-          setBackground(table.getSelectionBackground())
-          setForeground(table.getSelectionForeground())
+          setBackground(table.getSelectionBackground)
+          setForeground(table.getSelectionForeground)
         } else {          
-          setBackground(table.getBackground())
-          setForeground(table.getForeground())
+          setBackground(table.getBackground)
+          setForeground(table.getForeground)
         }
         this
       }
@@ -340,7 +343,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     
   }
   
-  val tableScroller=new ScrollPane(){ 
+  val tableScroller=new ScrollPane(){
     viewportView=table
     //peer.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
     peer.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS)
@@ -429,8 +432,8 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     		table.repaint()
     		firstColTable.repaint()
     	}
-    	val rows=table.peer.getSelectedRows()
-    	var cols=table.peer.getColumnModel().getSelectedColumns()    	
+    	val rows=table.peer.getSelectedRows
+    	var cols=table.peer.getColumnModel.getSelectedColumns
     	if(rows.nonEmpty&&cols.nonEmpty&&cols(0)>=0 ){
         val newSel = SpreadSheetRange.apply(cols(0), cols(cols.length - 1), rows(0), rows(rows.size - 1))
     		if(newSel!=selection) {
@@ -456,8 +459,6 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       notifySelectListeners(colSelGroupList) 
     }
   }
-  
-  
   
   protected def selectColumn(col:Int):Unit={
     firstColTable.rowSelectRange=emptyRange    
@@ -496,7 +497,6 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     table.MySelectionListener.selfSelected= true
     table.peer.setRowSelectionInterval(rows.start,rows.end-1)     
     table.MySelectionListener.selfSelected= false
-        
   }
   
     
@@ -511,13 +511,11 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     } 
   }
   
-  
-  
   def deselect(notify:Boolean):Unit= {  
     //println(" Spreadsheet "+spreadSheetRef+" deselect :"+notify)
     notifySel= notify
-    table.peer.getSelectionModel().setSelectionInterval(-1,-1)
-    table.peer.getColumnModel().getSelectionModel().setSelectionInterval(-1,-1)
+    table.peer.getSelectionModel.setSelectionInterval(-1,-1)
+    table.peer.getColumnModel.getSelectionModel.setSelectionInterval(-1,-1)
     notifySel= true    
     table.headerSelectRange=emptyRange
     firstColTable.rowSelectRange=emptyRange
@@ -545,13 +543,16 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   def addRows(): Unit = {
     selection match {
       case selRows:RowsSelection=>
-        //println("Add rows newSelection "+selRows.rows)
-        ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"addRows",
-        Seq(("startRow",IntConstant(selRows.rows.start)),("endRow",IntConstant(selRows.rows.end-1))))
-      case _=>
+        ClientQueryManager.runInPool{
+          ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"addRows",
+            Seq(("startRow",IntConstant(selRows.rows.start)),("endRow",IntConstant(selRows.rows.end-1))))
+
+          Swing.onEDT{
+            deselect(true)
+            tableModel.myFireTableStructureChanged()}
+        }
+      case o=> Log.e("unkown Rows "+o)
     }
-    deselect(true)
-    Swing.onEDT{tableModel.myFireTableStructureChanged()}
   }
 
   def removeRows(): Unit = {
@@ -559,7 +560,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       case selRows:RowsSelection=>
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"removeRows",
        Seq(("startRow",IntConstant(selRows.rows.start)),("endRow",IntConstant(selRows.rows.end-1))))
-      case _=>
+      case o=> Log.e("unkown Rows "+o)
     }
     deselect(true)
     Swing.onEDT{tableModel.myFireTableStructureChanged()}
@@ -569,8 +570,13 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     selection match {
       case selCols:ColsSelection=>
         tableModel.writeColumnWidths()
+        for(col<-selCols.cols.start until tableModel.getColumnCount)
+          if(tableModel.colCellList.contains(col))
+            tableModel.colCellList(col).clear()
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"addColumns",
         Seq(("startCol",IntConstant(selCols.cols.start)),("endCol",IntConstant(selCols.cols.end-1))))
+        for(col <-selCols.cols)
+          tableModel.colCellList(col).clear()
       case _=>
     }
     deselect(true)
@@ -581,16 +587,20 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     selection match {
       case selCols:ColsSelection=>
         tableModel.writeColumnWidths()
+        for(col<-selCols.cols.start until tableModel.getColumnCount)
+          if(tableModel.colCellList.contains(col))
+            tableModel.colCellList(col).clear()
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"removeColumns",
         Seq(("startCol",IntConstant(selCols.cols.start)),("endCol",IntConstant(selCols.cols.end-1))))
       case _=>
-    }   
-    deselect(true)
-    Swing.onEDT{tableModel.myFireTableStructureChanged()}    
+    }
+    Swing.onEDT{
+      deselect(true)
+      tableModel.myFireTableStructureChanged()}
   }
 
   def copyToClipBoard(): Unit = {
-    Toolkit.getDefaultToolkit().getSystemClipboard().setContents(transferHandler.createTransferable(table.peer),null)
+    Toolkit.getDefaultToolkit.getSystemClipboard.setContents(transferHandler.createTransferable(table.peer),null)
   }
 }
 

@@ -4,9 +4,10 @@ import java.awt.Dimension
 import java.io._
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import java.security.{KeyPair, KeyStore}
-import javax.swing.JOptionPane
 
 import client.dataviewer.ViewConstants
+import javax.swing.JOptionPane
+import org.bouncycastle.pkcs.PKCS10CertificationRequest
 import org.shredzone.acme4j.challenge.{Challenge, Http01Challenge}
 import org.shredzone.acme4j.exception.{AcmeConflictException, AcmeException, AcmeRetryAfterException}
 import server.config.FSPaths
@@ -18,6 +19,8 @@ import org.shredzone.acme4j.util.{CSRBuilder, CertificateUtils, KeyPairUtils}
 import scala.collection.JavaConverters._
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, TextArea}
+import scala.util.control.NonFatal
+
 
 /**
  * Created by Peter Holzer   on 02.03.2017 .
@@ -75,6 +78,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
       }
 
     } else {
+      Log.e("Zertifikatdatei "+file+" existiert nicht, wird neu angelegt")
       val keyPair = KeyPairUtils.createKeyPair(2048)
       CollUtils.tryWith(new FileWriter(file)) {
         f => KeyPairUtils.writeKeyPair(keyPair, f)
@@ -85,34 +89,38 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
 
   def findOrRegisterAccount(sess: Session): Registration = {
     try {
+      Log.w("Session:"+sess)
       val regBuilder = new RegistrationBuilder()
       regBuilder.addContact("mailto:" + FSPaths.certEmail)
       val reg = regBuilder.create(sess)
       Log.w("Register a new User:" + reg.getLocation)
-      val agreement = reg.getAgreement()
+      val agreement = reg.getAgreement
       reg.modify().setAgreement(agreement).commit()
       Log.w("TOS:\n" + agreement)
       reg
     }
     catch {
       case ex: AcmeConflictException =>
-        Log.w("Account already exists:" + ex.getLocation)
-        Registration.bind(sess, ex.getLocation())
+        Log.e("Account already exists:" + ex.getLocation)
+        Registration.bind(sess, ex.getLocation)
     }
   }
+
 
   def authorize(reg: Registration, domain: String): Unit = {
     val auth = reg.authorizeDomain(domain)
     Log.w("Authorization for " + domain)
     val challenge = httpChallenge(auth, domain)
-    if (challenge.getStatus() != Status.VALID) {
+    if (challenge.getStatus != Status.VALID) {
       Log.w("challenge triggered")
+      infoLabel.text="challenge triggered"
       challenge.trigger()
       try {
         var attempts = 10
-        while (challenge.getStatus() != Status.VALID && attempts > 0) {
-          if (challenge.getStatus() == Status.INVALID) throw new AcmeException("Challenge failed")
+        while (challenge.getStatus != Status.VALID && attempts > 0) {
+          if (challenge.getStatus == Status.INVALID) throw new AcmeException("Challenge failed")
           else Log.w("Challenge status:" + challenge.getStatus())
+          Swing.onEDT(infoLabel.text="challenge attempts "+attempts)
           Thread.sleep(2000L)
           try {
             challenge.update()
@@ -121,15 +129,15 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
               val when = re.getRetryAfter
               val now = new java.util.Date()
               println("retry at:" + when)
-              if (when.getTime > now.getTime)
-                Thread.sleep(when.getTime - now.getTime)
+              Thread.sleep(2000L)
           }
           attempts -= 1
         }
       } catch {case ex: InterruptedException => Log.e("Challenge interrupted", ex)}
     } else println("Challenge already valid")
-    if (challenge.getStatus() == Status.INVALID) throw new AcmeException("Challenge failed final")
+    if (challenge.getStatus == Status.INVALID) throw new AcmeException("Challenge failed final")
   }
+
 
   def httpChallenge(auth: Authorization, domain: String): Challenge = {
     val challenge: Http01Challenge = auth.findChallenge(Http01Challenge.TYPE)
@@ -141,14 +149,34 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
   }
 
 
-  def doCert(): Unit = {
-    infoLabel.text = ""
+  protected def requestCertificate(reg:Registration,csr: PKCS10CertificationRequest):Unit = try {
+    val certificate = reg.requestCertificate(csr.getEncoded())
+    Log.w("Certificate generated:" + certificate.getLocation)
+    val cert = certificate.download()
+    if(cert!=null) {
+      Log.w("Certificate valid until:" + cert.getNotAfter)
+      infoLabel.text = "new Certificate valid until " + cert.getNotAfter
+      val chain = certificate.downloadChain()
+      CollUtils.tryWith(new FileWriter(domainChainFile)) { d =>
+        CertificateUtils.writeX509CertificateChain(d, cert, chain: _*)
+      }
+      Log.w("Certificate chain written " + chain.mkString("\n"))
+      saveInKeyStore()
+    } else Log.e("Cert == null")
+  } catch {case NonFatal(e)=> Log.e("requestCertificatge",e)}
+
+
+  def doCert(): Unit = try {
+
     WebServer.switchToCertMode()
     val userKeyPair = createOrLoadKeys(userKeyFile)
     val domainKeyPair = createOrLoadKeys(domainKeyFile)
+    infoLabel.text = "do Cert "+userKeyPair.getPublic.toString
     val session = new Session(FSPaths.certAcmeURL, userKeyPair)
 
-    val reg = findOrRegisterAccount(session)
+    val reg: Registration = findOrRegisterAccount(session)
+    println("Reg: status:"+reg.getStatus+"\nauthorisations:"+reg.getAuthorizations.asScala.mkString(" | ")+
+      "\ncertificates:"+reg.getCertificates.asScala.mkString(" | "))
     authorize(reg, FSPaths.certDomain)
     val csrBuilder = new CSRBuilder()
     csrBuilder.addDomain(FSPaths.certDomain)
@@ -156,25 +184,21 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
     CollUtils.tryWith(new FileWriter(domainCSRFile)) { c =>
       csrBuilder.write(c)
     }
-    val certificate = reg.requestCertificate(csrBuilder.getEncoded())
-    Log.w("Certificate generated:" + certificate.getLocation)
-    val cert = certificate.download()
-    Log.w("Certificate valid until:" + cert.getNotAfter)
-    infoLabel.text = "new Certificate valid until " + cert.getNotAfter
-    val chain = certificate.downloadChain()
-    CollUtils.tryWith(new FileWriter(domainChainFile)) { d =>
-      CertificateUtils.writeX509CertificateChain(d, cert, chain: _*)
-    }
-    Log.w("Certificate chain written " + chain.mkString("\n"))
-    saveInKeyStore()
+    val csr=csrBuilder.getCSR
+    Log.w("CSR:"+csr)
+    requestCertificate(reg,csr)
+  } catch {
+    case NonFatal(e)=> Log.e("do cert",e)
   }
 
-  def updateRegistration(): Unit = {
+  def updateRegistration(): Unit = try{
     val userKeyPair = createOrLoadKeys(userKeyFile)
     val reg = findOrRegisterAccount(new Session(FSPaths.certAcmeURL, userKeyPair))
     val agreement = reg.getAgreement
     Log.w("Agreement:" + agreement)
     reg.modify().addContact("mailto:" + FSPaths.certEmail).setAgreement(agreement).commit()
+  } catch {
+    case NonFatal(e)=> Log.e("updateRegistration",e)
   }
 
   def loadInfo(): Unit = {
@@ -195,25 +219,23 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
   }
 
   def renewCertificate(): Unit = {
+    WebServer.switchToCertMode()
     val userKeyPair = createOrLoadKeys(userKeyFile)
+    Log.w("Keypair:"+userKeyPair)
     val reg = findOrRegisterAccount(new Session(FSPaths.certAcmeURL, userKeyPair))
+    Log.w("Registration:"+reg.getContacts.asScala.mkString(","))
     if (domainCSRFile.exists) {
       CollUtils.tryWith(new FileInputStream(domainCSRFile)) { df =>
-        val csr = CertificateUtils.readCSR(df)
-        val newCert = reg.requestCertificate(csr.getEncoded)
-        val cert = newCert.download()
-        Log.w("new Certificate valid until:" + cert.getNotAfter)
-        infoLabel.text = "new Certificate valid until " + cert.getNotAfter
-        val chain = newCert.downloadChain()
-        if (domainChainFile.exists()) domainChainFile.delete()
-        CollUtils.tryWith(new FileWriter(domainChainFile)) { d =>
-          CertificateUtils.writeX509CertificateChain(d, cert, chain: _*)
-        }
-        Log.w("Certificate chain written " + chain.mkString("\n"))
-        infoLabel.text = "Certificate chain written " + chain.mkString("\n")
+        val csr: PKCS10CertificationRequest = CertificateUtils.readCSR(df)
+        Log.w("CSR:"+csr)
+        requestCertificate(reg,csr)
       }
-    } else infoLabel.text = "no certfile found"
+    } else{
+      Log.e("Zertifikatdatei "+domainCSRFile+" nicht gefunden")
+      infoLabel.text = "no certfile found "+domainCSRFile
+    }
     saveInKeyStore()
+    WebServer.switchToProductionMode()
   }
 
   private def loadCertChain(): Array[Certificate] = if (domainChainFile.exists)

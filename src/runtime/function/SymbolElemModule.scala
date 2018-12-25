@@ -2,8 +2,8 @@ package runtime.function
 
 import definition.data.{InstanceData, OwnerReference}
 import definition.expression.{Constant, VectorConstant}
-import definition.typ.{DataType, AnswerDefinition, DialogQuestion, CommandQuestion}
-import server.comm.{AbstractUserSocket, JavaClientSocket}
+import definition.typ.{AnswerDefinition, CommandQuestion, DataType, DialogQuestion}
+import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, CreateActionImpl, StorageManager}
 import transaction.handling.{ActionList, TransactionManager}
 import util.GraphUtils
@@ -47,11 +47,11 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def moveElement(elem:InstanceData,delta:VectorConstant) = {
+  def moveElement(elem:InstanceData,delta:VectorConstant): Unit = {
     TransactionManager.tryWriteInstanceField(elem.ref,5,elem.fieldValue(5).toVector+delta)
   }
   
-  def copyElement(elem:InstanceData,delta:VectorConstant) = {
+  def copyElement(elem:InstanceData,delta:VectorConstant): InstanceData = {
     elem.setField(5,elem.fieldValue(5).toVector+delta) 
   } 
   
@@ -63,13 +63,13 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     elem
   }
   
-  override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = pointModField(5,elem,delta,chPoints)
+  override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]): Unit = pointModField(5,elem,delta,chPoints)
   
   def doBreakUp(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
     for(d<-data;if d.ref.typ == theTypeID){
       val symbolRef=d.fieldValue(1).toObjectReference
       val angle=d.fieldValue(2).toDouble*Math.PI/180d
-      val scale=d.fieldValue(3).toDouble
+      //val scale=d.fieldValue(3).toDouble
       val pos=d.fieldValue(5).toVector
       val rotator=GraphUtils.createRotator(pos, angle)
       val owners=Array(owner)
@@ -88,8 +88,8 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   }
 
-  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
-    var xValue=0d
+  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>1){
+    var xValue =0d
     for(d<-data)
       xValue+=d.fieldValue(5).toVector.x
     val newValue=xValue/data.size.toDouble
@@ -98,7 +98,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   } else false
 
-  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
+  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>1){
     var yValue=0d
     for(d<-data)
       yValue+=d.fieldValue(5).toVector.y
@@ -108,7 +108,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   } else false
 
-  def doDistribute (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>2){
+  def doDistribute (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>2){
     //println("Verteilen "+param.mkString("|"))
     val horizontal= param.head._2.toString==horizontalText
 

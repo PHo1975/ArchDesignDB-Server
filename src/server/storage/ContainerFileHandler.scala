@@ -14,9 +14,9 @@ import util.UnsyncBAInputStream
  */
 class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Reference,DataInput) => T) {
   val compFileName=new File(FSPaths.dataDir+fileName)
-	var theFile= new RandomAccessFile(compFileName,"rwd")	
-	val bufferStream= new MyByteStream(256)
-	val outStream=new DataOutputStream(bufferStream)
+	var theFile= new RandomAccessFile(compFileName,"rw")
+	protected val bufferStream= new MyByteStream(256)
+	protected val outStream=new DataOutputStream(bufferStream)
 
   var readBuffer: Array[Byte] = Array.ofDim[Byte](256)
 	var inBufferStream=new UnsyncBAInputStream(readBuffer)
@@ -85,6 +85,8 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
   def shutDown(): Unit = {
 		theFile.close()
 	}
+
+	def flush():Unit = theFile.getChannel.force(true)
 
   def takeOverReorgFile(reorgFile: File): Unit = {
 	  theFile.close()

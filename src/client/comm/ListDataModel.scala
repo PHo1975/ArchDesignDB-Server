@@ -1,12 +1,11 @@
 package client.comm
 
-import javax.swing.AbstractListModel
-import definition.data.InstanceData
-import scala.collection.mutable.ArrayBuffer
-import definition.data.Reference
-import scala.swing.Swing
 import definition.comm.NotificationType
-import definition.data.Referencable
+import definition.data.{InstanceData, Referencable, Reference}
+import javax.swing.AbstractListModel
+
+import scala.collection.mutable.ArrayBuffer
+import scala.swing.Swing
 
 class ListDataModel[T<:Referencable](typeFilter:Seq[Int],factory:InstanceData=>T ) extends AbstractListModel[T] {
   var subsID:Int= -1
@@ -14,7 +13,7 @@ class ListDataModel[T<:Referencable](typeFilter:Seq[Int],factory:InstanceData=>T
   val theList=new ArrayBuffer[T]()  
   
   
-  def shutDown()= {
+  def shutDown(): Unit = {
     if(subsID> -1 ) {      
       ClientQueryManager.removeSubscription(subsID)
       theList.clear()
@@ -22,14 +21,14 @@ class ListDataModel[T<:Referencable](typeFilter:Seq[Int],factory:InstanceData=>T
     }
   }
   
-  val noListener=()=>{}
+  val noListener: () => Unit = ()=>{}
   
-  def appliesFilter(data:Referencable)= typeFilter.isEmpty || typeFilter.contains(data.ref.typ)
+  def appliesFilter(data:Referencable): Boolean = typeFilter.isEmpty || typeFilter.contains(data.ref.typ)
   
-  def filtered(data:IndexedSeq[InstanceData])= if(typeFilter.isEmpty) data 
+  def filtered(data:IndexedSeq[InstanceData]): Seq[InstanceData] = if(typeFilter.isEmpty) data
     else data.view.filter(appliesFilter)
   
-  def load(superRef:Reference,propField:Int,loadReadyListener:()=>Unit=noListener)={
+  def load(superRef:Reference,propField:Int,loadReadyListener:()=>Unit=noListener): Unit ={
     shutDown() 
     
     subsID=ClientQueryManager.createSubscription(superRef,propField.toByte)((command,data)=> Swing.onEDT{
@@ -75,7 +74,7 @@ class ListDataModel[T<:Referencable](typeFilter:Seq[Int],factory:InstanceData=>T
   } 
   
   def getElementAt(index:Int) = theList(index)
-  def getSize=theList.size
+  def getSize: Int =theList.size
 }
 
 class InstanceDataListModel(typeFilter:Seq[Int]) extends ListDataModel[InstanceData](typeFilter,a=>a)

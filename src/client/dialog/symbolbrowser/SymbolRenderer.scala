@@ -1,27 +1,17 @@
 package client.dialog.symbolbrowser
 
-import scala.swing.BorderPanel
-import client.dialog.RenderComponent
-import client.graphicsView.symbol.SymbolStamp
-import scala.swing.Label
-import scala.swing.Alignment
-import scala.swing.Component
-import java.awt.Dimension
-import java.awt.Color
-import java.awt.Font
-import client.dataviewer.ViewConstants
-import javax.swing.BorderFactory
-import client.graphicsView.GraphElem
+import java.awt.{Color, RenderingHints}
 import java.awt.geom.Rectangle2D
+
+import client.dataviewer.ViewConstants
+import client.dialog.RenderComponent
+import client.graphicsView.{ElemContainer, GraphElem, GraphElemConst, ScaleModel}
+import client.graphicsView.symbol.SymbolStamp
 import client.plotdesign.LayerRef
-import client.graphicsView.ElemContainer
-import client.graphicsView.ScaleModel
-import definition.expression.VectorConstant
-import definition.expression.NULLVECTOR
-import java.awt.RenderingHints
-import java.awt.Stroke
-import client.graphicsView.LineStyleHandler
-import client.graphicsView.GraphElemConst
+import definition.expression.{NULLVECTOR, VectorConstant}
+import javax.swing.BorderFactory
+
+import scala.swing.{Alignment, BorderPanel, Component, Label}
 
 class SymbolRenderer extends BorderPanel with RenderComponent[SymbolStamp] {
   

@@ -1,21 +1,14 @@
 package client.spreadsheet
-import javax.swing.TransferHandler
-import javax.swing.JComponent
-import java.awt.datatransfer.Transferable
-import definition.data.Reference
-import definition.expression.Expression
-import java.awt.datatransfer.DataFlavor
-import java.awt.datatransfer.UnsupportedFlavorException
-import javax.swing.JTable
+import java.awt.datatransfer.{DataFlavor, Transferable, UnsupportedFlavorException}
 import java.nio.charset.Charset
-import definition.expression.Variable
+
 import client.comm.ClientQueryManager
-import definition.data.EMPTY_OWNERREF
-import definition.expression.IntConstant
-import definition.expression.EMPTY_EX
+import client.dataviewer.{InstanceSelection, TableHeaderMap}
+import definition.data.{EMPTY_OWNERREF, Reference}
+import definition.expression.{EMPTY_EX, Expression, IntConstant, Variable}
+import javax.swing.{JComponent, JTable, TransferHandler}
+
 import scala.swing.Swing
-import client.dataviewer.InstanceSelection
-import client.dataviewer.TableHeaderMap
 
 class SpreadSheetTransferHandler(controller:SpreadSheetController) extends TransferHandler {
   var isExporting:Boolean=false

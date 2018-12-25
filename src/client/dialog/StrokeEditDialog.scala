@@ -1,14 +1,14 @@
 package client.dialog
 
 import java.awt.Dimension
-import javax.swing.KeyStroke
-import javax.swing.table.AbstractTableModel
 
 import client.comm.{ClientQueryManager, KeyStrokeManager}
 import client.dataviewer.ViewConstants
+import javax.swing.KeyStroke
+import javax.swing.table.AbstractTableModel
 
-import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, Label, ListView, Orientation, ScrollPane, Swing, Table, Window}
 import scala.swing.event.{ButtonClicked, KeyEvent, KeyPressed, ListSelectionChanged}
+import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, Label, ListView, Orientation, ScrollPane, Swing, Table, Window}
 
 
 class CommandModel extends AbstractTableModel {

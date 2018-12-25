@@ -17,6 +17,7 @@ class ActiveVarInput(field: Field) extends ActiveTextField {
   field.getType match {
     case ViewConstantsDialog.FontClass => text = field.get(ViewConstants).asInstanceOf[Font].getSize.toString
     case ViewConstantsDialog.IntClass => text = field.get(ViewConstants).asInstanceOf[Int].toString
+    case ViewConstantsDialog.StringClass => text = field.get(ViewConstants).toString
     case o => text = " " + o.toString
       Log.e("Unknown typ:" + o)
   }
@@ -30,7 +31,10 @@ class ActiveVarInput(field: Field) extends ActiveTextField {
           case ViewConstantsDialog.IntClass => field.set(ViewConstants, size)
           case o => Log.e("unkown field type " + o)
         }
-      case _ =>
+      case o => field.getType match {
+        case ViewConstantsDialog.StringClass => field.set(ViewConstants, o)
+        case n => Log.e("String not expected "+n)
+      }
     }
 
   }
@@ -40,7 +44,7 @@ class ViewConstantsDialog(w: Window) extends Dialog(w) {
   preferredSize = new Dimension(400, 700)
 
   val fields: Array[Field] = ViewConstants.getClass.getDeclaredFields.filter(f => f.getType == ViewConstantsDialog.FontClass
-    || f.getType == ViewConstantsDialog.IntClass /*if (f.getModifiers&Modifier.PUBLIC) >0 */)
+    || f.getType == ViewConstantsDialog.IntClass || f.getType== ViewConstantsDialog.StringClass)
   val panel = new GridPanel(fields.length + 1, 2)
   for (f <- fields) f.setAccessible(true)
   //Log.w("Fields:"+fields.mkString("\n"))
@@ -59,4 +63,5 @@ class ViewConstantsDialog(w: Window) extends Dialog(w) {
 object ViewConstantsDialog {
   val FontClass: Class[Font] = classOf[Font]
   val IntClass: Class[Int] = classOf[Int]
+  val StringClass: Class[String] = classOf[String]
 }

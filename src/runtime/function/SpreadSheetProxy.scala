@@ -1,31 +1,11 @@
 package runtime.function
-import definition.expression.FieldReference
-import client.spreadsheet.All_SELECTION
-import client.spreadsheet.RangeSelection
-import transaction.handling.TransactionManager
+import client.spreadsheet._
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression._
+import transaction.handling.{ActionList, TransactionManager}
+
+import scala.collection.immutable
 import scala.collection.mutable.ArrayBuffer
-import transaction.handling.ActionList
-import client.spreadsheet.ColsSelection
-import client.spreadsheet.SSCollProxy
-import client.spreadsheet.RowsSelection
-import client.spreadsheet.NO_SELECTION
-import definition.data.OwnerReference
-import client.spreadsheet.SpreadSheetUtil
-import definition.data.InstanceData
-import client.spreadsheet.SSVariable
-import client.spreadsheet.SingleCellSelection
-import definition.expression.StringConstant
-import definition.expression.Expression
-import definition.data.Reference
-import client.spreadsheet.SpreadSheetRange
-import definition.expression.CollectingFuncCall
-import definition.expression.IntConstant
-import definition.expression.ObjectReference
-import client.spreadsheet.SpreadSheetParser
-import definition.expression.EMPTY_EX
-import client.spreadsheet.CellIteratorResult
-import client.spreadsheet.{Delete,ChangeRow,ChangeCol,NoChange,ChangeRows,ChangeCols,RangeIteratorResult}
-import client.spreadsheet.SpreadSheetFormatRange
 
 class SpreadSheetProxy(val ref:Reference) {
   import runtime.function.SpreadSheetProxy._
@@ -37,11 +17,11 @@ class SpreadSheetProxy(val ref:Reference) {
   lazy val colDataOwnerArray=Array(colDataOwnerRef)
   
   
-  def cellRefs= ActionList.getInstanceProperties(ref).map(_.propertyFields(4).propertyList)
-  def colDataRefs= ActionList.getInstanceProperties(ref).map(_.propertyFields(1).propertyList)
-  def collFuncRefs=ActionList.getInstanceProperties(ref).map(_.propertyFields(5).propertyList)
-  def formatRefs=ActionList.getInstanceProperties(ref).map(_.propertyFields(3).propertyList)
-  def formats= formatRefs match {
+  def cellRefs: Option[immutable.IndexedSeq[Reference]] = ActionList.getInstanceProperties(ref).map(_.propertyFields(4).propertyList)
+  def colDataRefs: Option[immutable.IndexedSeq[Reference]] = ActionList.getInstanceProperties(ref).map(_.propertyFields(1).propertyList)
+  def collFuncRefs: Option[immutable.IndexedSeq[Reference]] =ActionList.getInstanceProperties(ref).map(_.propertyFields(5).propertyList)
+  def formatRefs: Option[immutable.IndexedSeq[Reference]] =ActionList.getInstanceProperties(ref).map(_.propertyFields(3).propertyList)
+  def formats: IndexedSeq[SpreadSheetFormatRange] = formatRefs match {
     case Some(list)=> for (fref<-list;data=ActionList.getInstanceData(fref)) yield{  
        new SpreadSheetFormatRange(data)
      }
@@ -49,16 +29,16 @@ class SpreadSheetProxy(val ref:Reference) {
   }
   
   
-  def getInst(ref:Reference)=ActionList.getInstanceData(ref)
-  def colFieldValue(data:InstanceData)= data.fieldValue.head.toInt
-  def rowFieldValue(data:InstanceData)= data.fieldValue(1).toInt
-  def targetFieldValue(data:InstanceData)=data.fieldValue.head.toObjectReference
+  def getInst(ref:Reference): InstanceData =ActionList.getInstanceData(ref)
+  def colFieldValue(data:InstanceData): Int = data.fieldValue.head.toInt
+  def rowFieldValue(data:InstanceData): Int = data.fieldValue(1).toInt
+  def targetFieldValue(data:InstanceData): Reference =data.fieldValue.head.toObjectReference
  
   def findCellValueAt(col:Int,row:Int):Option[InstanceData]= cellRefs flatMap(
       _.collectFirst({case Inst(a) if colFieldValue(a) == col && rowFieldValue(a) == row =>a}))
   
         
-  def findCollFuncsFor(targetRef:Reference) = collFuncRefs match {
+  def findCollFuncsFor(targetRef:Reference): Seq[InstanceData] = collFuncRefs match {
     case Some(list)=> list.collect({case Inst(a) if targetFieldValue(a) == targetRef =>a})
     case None=> Seq.empty
   }  
@@ -66,7 +46,7 @@ class SpreadSheetProxy(val ref:Reference) {
   
   def createCellAt(col:Int,row:Int):InstanceData= {
     val inst=TransactionManager.tryCreateInstance(SSDoubleCellType,cellOwnerArray,false,-1,true,false).
-    setField(0,new IntConstant(col)).setField(1,new IntConstant(row))    
+    setField(0,IntConstant(col)).setField(1,IntConstant(row))
     TransactionManager.tryWriteInstanceData(inst)
     
     collFuncRefs match {
@@ -86,9 +66,11 @@ class SpreadSheetProxy(val ref:Reference) {
   
   def resolveVariable(v:SSVariable,deltaX:Int,deltaY:Int,aquireFunc:(Int,Int)=>InstanceData=aquireCellAt):Expression={  
     val (col,row)= SpreadSheetUtil.lettersToCoords(v.name)	  
-	  if(col+deltaX<0 ||row+deltaY<0) return new StringConstant("[negativer Index]")
-    val targetCell=aquireCellAt(col+deltaX,row+deltaY)    
-	  new FieldReference(Some(SSDoubleCellType),Some(targetCell.ref.instance),2.toByte)  	  
+	  if(col+deltaX<0 ||row+deltaY<0) StringConstant("[negativer Index]")
+    else {
+      val targetCell = aquireCellAt(col + deltaX, row + deltaY)
+      new FieldReference(Some(SSDoubleCellType), Some(targetCell.ref.instance), 2.toByte)
+    }
   }
   
   def resolveCollFunc(cellRef:Reference,s:SSCollProxy,oldCols:ArrayBuffer[InstanceData]):Expression= {
@@ -143,8 +125,8 @@ class SpreadSheetProxy(val ref:Reference) {
     			val data=getInst(ref)      
     		  iterator(colFieldValue(data),rowFieldValue(data)) match {
     				case Delete => deleteList+=data
-    				case ChangeRow(newRow)=> TransactionManager.tryWriteInstanceField(ref,1.toByte,new IntConstant(newRow))
-    				case ChangeCol(newCol)=> TransactionManager.tryWriteInstanceField(ref,0.toByte,new IntConstant(newCol))
+    				case ChangeRow(newRow)=> TransactionManager.tryWriteInstanceField(ref,1.toByte,IntConstant(newRow))
+    				case ChangeCol(newCol)=> TransactionManager.tryWriteInstanceField(ref,0.toByte,IntConstant(newCol))
     				case NoChange =>
     			}
     		}
@@ -154,14 +136,16 @@ class SpreadSheetProxy(val ref:Reference) {
     for((col,inst)<-createColumnDataTree) iterator(col,-1) match {
         case Delete => TransactionManager.tryDeleteInstance(inst.ref,None,None)
     		case ChangeRow(newRow) =>
-      	case ChangeCol(newCol) => TransactionManager.tryWriteInstanceField(inst.ref,0.toByte,new IntConstant(newCol))
+      	case ChangeCol(newCol) => TransactionManager.tryWriteInstanceField(inst.ref,0.toByte,IntConstant(newCol))
     		case NoChange =>
     }    
   }
   
-  def createColumnDataTree=(for(list<-colDataRefs) yield 
+  def createColumnDataTree: Seq[(Int, InstanceData)] =(for(list<-colDataRefs) yield
       collection.immutable.TreeMap[Int,InstanceData]() ++ list.map(ref=> {
-        val inst=getInst(ref); (inst.fieldValue.head.toInt,inst)})).toSeq.flatten
+        val inst=getInst(ref)
+        (inst.fieldValue.head.toInt,inst)
+      })).toSeq.flatten
   
   def iterateCollRanges(iterator:(SpreadSheetRange)=>RangeIteratorResult):Unit={    
       for(list<-collFuncRefs;ref<-list){
@@ -170,13 +154,13 @@ class SpreadSheetProxy(val ref:Reference) {
             data.fieldValue(3).toInt,data.fieldValue(5).toInt)) match {
         	case Delete =>
             TransactionManager.tryWriteInstanceField(ref,1.toByte,EMPTY_EX)
-            TransactionManager.tryWriteInstanceField(ref,2.toByte,new IntConstant(-1))
+            TransactionManager.tryWriteInstanceField(ref,2.toByte,IntConstant(-1))
           case ChangeRows(newRows)=>
-            TransactionManager.tryWriteInstanceField(ref,3.toByte,new IntConstant(newRows.start))
-            TransactionManager.tryWriteInstanceField(ref,5.toByte,new IntConstant(newRows.end))
+            TransactionManager.tryWriteInstanceField(ref,3.toByte,IntConstant(newRows.start))
+            TransactionManager.tryWriteInstanceField(ref,5.toByte,IntConstant(newRows.end))
           case ChangeCols(newCols)=>
-            TransactionManager.tryWriteInstanceField(ref,2.toByte,new IntConstant(newCols.start))
-            TransactionManager.tryWriteInstanceField(ref,4.toByte,new IntConstant(newCols.end))
+            TransactionManager.tryWriteInstanceField(ref,2.toByte,IntConstant(newCols.start))
+            TransactionManager.tryWriteInstanceField(ref,4.toByte,IntConstant(newCols.end))
           case NoChange=>
         }
       }
@@ -235,10 +219,10 @@ object SpreadSheetProxy {
   val SSFormatType=510
   val SSCollDataType=511
   
-  lazy val nullString= new StringConstant("")
+  lazy val nullString= StringConstant("")
   
   def deleteSpreadSheetCells(data:Seq[InstanceData]):Unit= {
-    if(data.size==0) return
+    if(data.isEmpty) return
     // assumption that all data are in the same spread sheet    
     val proxy=new SpreadSheetProxy(data.head.owners.head.ownerRef)
     val collFuncList=proxy.collFuncRefs.toSeq.flatten.map(proxy.getInst)

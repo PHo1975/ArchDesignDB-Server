@@ -13,12 +13,12 @@ trait AbstractColumnSetups{
 }
 
 class ColumnSetups(userSetting:UserSetting) extends AbstractColumnSetups {
-  val typeList = mutable.HashMap[Int,ColumnSetup]()
-  def getColumnSetup(typ:Int)= typeList.getOrElseUpdate(typ,new ColumnSetup(typ,userSetting))
+  val typeList: mutable.HashMap[Int, ColumnSetup] = mutable.HashMap[Int,ColumnSetup]()
+  def getColumnSetup(typ:Int): ColumnSetup = typeList.getOrElseUpdate(typ,new ColumnSetup(typ,userSetting))
 }
 
 object DummyColumnSetups extends AbstractColumnSetups{
-  def getColumnSetup(typ:Int)=DummyColumnSetup
+  def getColumnSetup(typ:Int): DummyColumnSetup.type =DummyColumnSetup
 }
 
 trait AbstractColumnSetup{
@@ -27,12 +27,12 @@ trait AbstractColumnSetup{
 }
 
 class ColumnSetup(val typ:Int,userSetting:UserSetting) extends AbstractColumnSetup{
-  val columns=ArrayBuffer[Int]()
+  val columns: ArrayBuffer[Int] =ArrayBuffer[Int]()
   def getColumn(col:Int):Int=columns(col)
   def size:Int=columns.size
 
   readColumns()
-  def readColumns()={
+  def readColumns(): Unit ={
     val theClass=AllClasses.get.getClassByID(typ)
     val numColumn:Int=theClass.fields.size
     val settings=userSetting.getListProperty[(Int, Int)]("TableColumns",typ.toString,Nil)

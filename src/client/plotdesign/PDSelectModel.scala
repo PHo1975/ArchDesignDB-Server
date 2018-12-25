@@ -1,14 +1,9 @@
 package client.plotdesign
 
 import client.dialog.SelectSender
-import client.dialog.SelectListener
-import definition.typ.SelectGroup
-import definition.data.Reference
-import definition.data.OwnerReference
-import definition.data.EMPTY_REFERENCE
 import client.graphicsView.AbstractSelectModel
-import client.graphicsView.GraphElem
-import client.graphicsView.Formatable
+import definition.data.{EMPTY_REFERENCE, OwnerReference, Reference}
+import definition.typ.SelectGroup
 
 class PDSelectModel(controller:PlotDesignController) extends SelectSender with AbstractSelectModel[LayerRef] {
   

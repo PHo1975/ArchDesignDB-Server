@@ -23,11 +23,12 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
 
   lazy val area = new Area(createPath(createPoints(GraphElemConst.identityTransform)))
 
+  println("poly "+nref+" "+poly.pathList.size)
 
   def loopPoints(trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
     poly.pathList.headOption match {
       case Some(pl) if pl.points.size > 1 =>
-        //println("points:"+pl.points.mkString(" | "))
+        println("points:"+pl.points.mkString(" | "))
         new Iterator[VectorConstant] {
           var st: Int = -1
 
@@ -72,13 +73,14 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
   }
 
   def createPoints(trans: (VectorConstant) => VectorConstant): Iterator[VectorConstant] = {
-    //println("createPoints "+poly.pathList.head.points.mkString)
+    println("createPoints "+poly.pathList.mkString)
     val w = if (width == 0) 0.05d else width
     loopPoints(trans, w * (-0.5d + align)) ++ loopPoints(trans, w * (0.5d + align)).toSeq.reverseIterator
   }
 
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
     val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm) _
+    println("draw path "+createPoints(trans).mkString(" "))
     val path = createPath(createPoints(trans))
     //println("draw path :"+path.getBounds)
     val theArea = new Area(path)
@@ -93,7 +95,7 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
   override def drawRotated(g: Graphics2D, sm: Scaler, selectColor: Color, angle: Double, rotator: VectorConstant => VectorConstant): Unit =
     internDraw(g, sm, selectColor, rotator, NULLVECTOR)
 
-  private def internDraw(g: Graphics2D, sm: Scaler, selectColor: Color, trans: VectorConstant => VectorConstant, offSet: VectorConstant) = {
+  private def internDraw(g: Graphics2D, sm: Scaler, selectColor: Color, trans: VectorConstant => VectorConstant, offSet: VectorConstant): Unit = {
     //val trans=transformWithOffset(sm,offSet)_
     val newPoly = poly.toPathTransformed(trans)
     val theArea = new Area(newPoly)

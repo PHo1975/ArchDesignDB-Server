@@ -3,9 +3,8 @@
  */
 package management.databrowser
 
-import javax.swing.SwingWorker
-
 import client.dataviewer.ViewConstants
+import javax.swing.SwingWorker
 import server.storage.{TransDetailLogHandler, TransLogHandler}
 
 import scala.swing._
@@ -18,7 +17,7 @@ import scala.swing.event._
  */
 object TransLogPanel extends GridPanel(1,2) {
   
-  val leftPanel= new BorderPanel {
+  val leftPanel: BorderPanel = new BorderPanel {
     add(ViewConstants.label("Transaction Log File "), BorderPanel.Position.North)
   	
     add( new ScrollPane() {
@@ -47,7 +46,7 @@ object TransLogPanel extends GridPanel(1,2) {
     },BorderPanel.Position.South )
   }
   
-  val rightPanel= new BorderPanel {
+  val rightPanel: BorderPanel = new BorderPanel {
     add(ViewConstants.label("Trasaction Details Log File "), BorderPanel.Position.North)
     
     add( new ScrollPane() {

@@ -3,10 +3,9 @@
  */
 package management.databrowser
 
+import definition.data.{LogIndexSet, TransType}
 import javax.swing.table.AbstractTableModel
 import server.storage._
-import definition.data.TransType
-import definition.data.LogIndexSet
 
 import scala.swing.Swing
 
@@ -23,7 +22,7 @@ object LogFileModel extends AbstractTableModel {
        transList.length 	 
    }
    
-   override def getColumnClass(col:Int)= col match {
+   override def getColumnClass(col:Int) = col match {
   	   case 0 => classOf[Int]
   		 case 1 => classOf[TransType.Value]
   		 case 2 => classOf[Int]  		 
@@ -33,15 +32,15 @@ object LogFileModel extends AbstractTableModel {
   		 case 6 => classOf[Int]
    }		 
    
-   def refresh() = {
-  	 transList=TransLogHandler.readFullIndex
+   def refresh(): Unit = {
+  	 transList=TransLogHandler.readFullIndex()
   	 println("refresh Translog "+transList.size)
 		 Swing.onEDT{
 			 fireTableStructureChanged()
 		 }
    }
    
-   def filter(typ:Int,inst:Int)= {
+   def filter(typ:Int,inst:Int): Unit = {
      transList=transList.filter(r=> r.typ ==typ&&r.inst==inst)
      fireTableStructureChanged()
    }
@@ -50,7 +49,7 @@ object LogFileModel extends AbstractTableModel {
    
    def getColumnCount:Int = 7
    
-   def getValueAt(row:Int,col:Int) = {
+   def getValueAt(row:Int,col:Int): AnyRef = {
   	 val rec=transList(row)
   	 col match {
   	   case 0 => row.asInstanceOf[AnyRef]
@@ -65,7 +64,7 @@ object LogFileModel extends AbstractTableModel {
   	 }
    }
    
-   override def getColumnName(col:Int) = col match {
+   override def getColumnName(col:Int): String = col match {
      case 0 => "Pos"
   	 case 1 => "Trans-Type "
   	 case 2 => "TransID"

@@ -3,34 +3,32 @@
  */
 package server.storage
 
-import java.io.ByteArrayInputStream
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.File
-import java.io.RandomAccessFile
-import definition.data.LogIndexSet
-import definition.data.Reference
-import definition.data.TransType
+import java.io._
+
+import definition.data.{LogIndexSet, Reference, TransType}
 import server.config.FSPaths
+import util.Log
+
 import scala.collection.mutable.ArrayBuffer
 
 /** manages the transaction log
  * 
  */
-object TransLogHandler 
-{
-	val fileName=FSPaths.dataDir+"transaction.log"	
-	var theFile= new RandomAccessFile(fileName,"rwd")
+object TransLogHandler {
+	val fileName: String =FSPaths.dataDir+"transaction.log"
+	protected var theFile= new RandomAccessFile(fileName,"rw")
 	val recordSize=25
-	val bufferStream= new MyByteStream(recordSize)
-	val outStream=new DataOutputStream(bufferStream)		
-	val readBuffer= new Array[Byte](recordSize)	
-	val inBufferStream=new ByteArrayInputStream(readBuffer)
-	val dataInStream=new DataInputStream(inBufferStream)
+	protected val bufferStream= new MyByteStream(recordSize*4)
+	protected val outStream=new DataOutputStream(bufferStream)
+	protected val readBuffer= new Array[Byte](recordSize)
+	protected val inBufferStream=new ByteArrayInputStream(readBuffer)
+	protected val dataInStream=new DataInputStream(inBufferStream)
 	
 	lazy val largeReadBuffer= new Array[Byte](recordSize*10)
 	lazy val largeInBufferStream=new ByteArrayInputStream(largeReadBuffer)
 	lazy val largeDataInStream=new DataInputStream(largeInBufferStream)
+
+	var numCombi=0
 	
 	private var insertPos:Int=0
 		
@@ -39,9 +37,8 @@ object TransLogHandler
 	  else {
 	  	theFile.seek(0)	  	
 	  	insertPos=theFile.readInt// ((theFile.length()-4)/recordSize).toInt
-      println("translog insertPos:"+insertPos+" size:"+theFile.length)
 	  	if(insertPos==0) {
-	  	  println("Warning: InsertPos==0 !")
+	  	  Log.w("Warning: InsertPos==0 !")
 	  	  theFile.seek(0)
 	  	  theFile.writeInt(1)
 				1
@@ -52,13 +49,19 @@ object TransLogHandler
 	  		tr
 	  	}
 	  }
-	//readFinished()  
+	//readFinished()
+
+	def setInsertPosToEnd():Unit= {
+		insertPos=((theFile.length()-4)/recordSize).toInt
+		flush()
+		Log.w("InsertPos was set to "+insertPos)
+	}
 	
-	def getSeekPos(inPos:Int)= 4+inPos*recordSize
+	def getSeekPos(inPos:Int): Int = 4+inPos*recordSize
   
-  def getTransID=transID
+  def getTransID: Int =transID
   
-  def getInsertPos=insertPos
+  def getInsertPos: Int =insertPos
 	
   /** prepares the LogHander for writing of Log data
    *  
@@ -71,19 +74,28 @@ object TransLogHandler
 	//def resetTransID()= transID -=1
 	
 	def instanceCreated(ref: Reference ):Unit = dataChanged(TransType.created,ref.typ,ref.instance,0,0)		
-		
+
+	def startCombiWrite():Unit ={
+		bufferStream.reset()
+		numCombi=0
+	}
 	
-	def dataChanged(transTyp: TransType.Value,typ:Int,inst:Int,dataPos:Long,dataLength:Int):Unit =	{		
+	def dataChanged(transTyp: TransType.Value,typ:Int,inst:Int,dataPos:Long,dataLength:Int,writeInstant:Boolean=true):Unit =	{
 		//System.out.println("TransLog changed ID:" + transID+ " transtyp:"+transTyp+" "+typ+", "+inst )    
-		bufferStream.reset()		
+		if(writeInstant) bufferStream.reset()
 		outStream.writeByte(transTyp.id)
 		outStream.writeInt(transID)		
 		outStream.writeInt(typ)		
 		outStream.writeInt(inst )
 		outStream.writeLong(dataPos)
 		outStream.writeInt(dataLength)    
-		theFile.write(bufferStream.buffer,0,bufferStream.size())
+		if(writeInstant)theFile.write(bufferStream.buffer,0,recordSize)
 		insertPos+=1
+		numCombi+=1
+	}
+
+	def flushCombiWrite():Unit = {
+		theFile.write(bufferStream.buffer,0,recordSize*numCombi)
 	}
 	
 	def shutDown():Unit =	{		
@@ -127,7 +139,7 @@ object TransLogHandler
 	 * @param inst the instance id of the instance
 	 * @param startPos the position in the log where the search should start backwards
 	 * @param fittingTrActions TransType actions that we are looking for 
-	 * @returns (transType.id,dataPos,dataLength)
+	 * @return (transType.id,dataPos,dataLength)
 	 */
 	def getLastLivingData(typ:Int,inst:Int,startPos:Int,fittingTrActions:Seq[Int],skipDeleteEntries:Boolean=false):(Int,Long,Int)= {
 	  //val stt=System.currentTimeMillis()
@@ -197,10 +209,11 @@ object TransLogHandler
     flush()
 	}
 	
-	def flush():Unit= {	  
+	def flush():Unit= {
+		//Log.w("Transloghandler flush "+insertPos)
     theFile.seek(0)
     theFile.writeInt(insertPos)
-    theFile.getChannel().force(false)
+    theFile.getChannel.force(true)
 	}
 	
 }

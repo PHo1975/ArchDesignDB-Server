@@ -1,9 +1,8 @@
 package client.comm
-import definition.data.InstanceData
-import definition.data.Reference
 import definition.comm.NotificationType
+import definition.data.{InstanceData, Referencable}
+
 import scala.swing.Swing
-import definition.data.Referencable
 
 class SingleObjectDataModel[T](factory:InstanceData=>T,onChanged: ()=>Unit=()=>{},onDelete: ()=>Unit=()=>{}) {
   //var currentInstData:Option[InstanceData];

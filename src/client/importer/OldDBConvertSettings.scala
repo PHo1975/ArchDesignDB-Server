@@ -1,11 +1,11 @@
 package client.importer
-import definition.data.InstanceData
 import client.comm.ClientQueryManager
-import definition.data.{Reference,OwnerReference}
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{Expression, ParserError, StringConstant, StringParser}
+import definition.typ.{AbstractObjectClass, AllClasses}
 import util.ExportContainer
-import definition.expression.{StringParser,StringConstant,Expression}
-import definition.expression.ParserError
-import definition.typ.{AllClasses,DataType,AbstractObjectClass}
+
+import scala.collection.mutable
 
 class ConvertRule(val oldClassID:Int,val newClassID:Int,val newFields:Seq[(Int,Int)],val childPropFields:Map[Int,Int]) {
   
@@ -21,13 +21,13 @@ class ConvertRule(val oldClassID:Int,val newClassID:Int,val newFields:Seq[(Int,I
 }
 
 object OldDBConvertSettings {
-  lazy val convertRuleInsts=definition.typ.SystemSettings().getCustomSettings("OldDBImport")
+  lazy val convertRuleInsts: IndexedSeq[InstanceData] =definition.typ.SystemSettings().getCustomSettings("OldDBImport")
   
-  lazy val convertRules= collection.mutable.HashMap[Int,Option[ConvertRule]]()
+  lazy val convertRules: mutable.HashMap[Int, Option[ConvertRule]] = collection.mutable.HashMap[Int,Option[ConvertRule]]()
   
   //def hasRule(oldClassID:Int)=convertRuleInsts.exists(_.fieldValue(0).toInt==oldClassID)
   
-  def getRule(oldClassID:Int)= convertRules.getOrElseUpdate(oldClassID,
+  def getRule(oldClassID:Int): Option[ConvertRule] = convertRules.getOrElseUpdate(oldClassID,
       convertRuleInsts.find(_.fieldValue.head.toInt==oldClassID).map(new ConvertRule(_)))
     
   /** checks if it's possible to import an oldDB instance to the given prop field
@@ -60,7 +60,7 @@ else true
                 StringParser.parse(oldText,theClass.fields(newField).typ)match {
                 	case p:ParserError=> //println("in Feld "+theClass.fields(newField).name+
                 	//val fieldTyp=theClass.fields(newField).typ
-                	/*if(fieldTyp==DataType.StringTyp)*/ new StringConstant(oldText) /*else Expression.generateNullConstant(fieldTyp)*/
+                	/*if(fieldTyp==DataType.StringTyp)*/ StringConstant(oldText) /*else Expression.generateNullConstant(fieldTyp)*/
                 	case e:Expression=> e
               })
         }

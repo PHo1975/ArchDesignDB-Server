@@ -15,7 +15,6 @@ import definition.typ._
 import util.Log
 
 import scala.collection.immutable.IndexedSeq
-import scala.collection.mutable
 import scala.swing.Swing
 import scala.util.control.NonFatal
 
@@ -27,20 +26,15 @@ trait StepListReader{
 	def loadStepList(list:Seq[TransStepData]):Unit
 }
 
-/*trait ErrorListener{
-	def printError(errorText:String):Unit
-}*/
 
 object ClientQueryManager {
-	//type InstArrayFunc=(Array[InstanceData])=> Unit
+
 	type UpdateFunc=(NotificationType.Value,IndexedSeq[InstanceData])=>Unit
-	//type PosUpdateFunc=(NotificationType.Value,IndexedSeq[InstanceData],Int)=>Unit
 	
 	type FactUpdateFunc[T<: Referencable]=(NotificationType.Value,IndexedSeq[T])=>Unit
 
   type SearchListener = (AbstractSearchResult) => Unit
 
-  //val errorListeners=new collection.mutable.HashSet[ErrorListener]()
 
   sealed trait Subscriber
 	case class SimpleSubscriber(func: UpdateFunc) extends Subscriber{
@@ -51,7 +45,7 @@ object ClientQueryManager {
 
 	private val queryQueue = new SynchronousQueue[IndexedSeq[InstanceData]](true)	
 	private val factQueryQueue = new SynchronousQueue[IndexedSeq[Referencable]](true)
-	private val queryFactories=mutable.Stack[SubscriptionFactory[_]]()
+	private var queryFactories:List[SubscriptionFactory[_]]=Nil
 	
 	private val newSubscriberQueue=new ArrayBlockingQueue[Subscriber](8,true)
 	private val subscriptionMap=new ConcurrentHashMap[Int,Subscriber]()
@@ -60,7 +54,7 @@ object ClientQueryManager {
 	
 	private val commandResultQueue = new SynchronousQueue[CommandResult](true)
 	private val subscriptionAcceptQueue = new SynchronousQueue[Int](true)
-	//private val pathSubsAcceptQueue=new SynchronousQueue[Int]()
+
 
   private var sock: ClientSocket = _
   val myPool: ExecutorService = Executors.newCachedThreadPool()
@@ -114,7 +108,7 @@ object ClientQueryManager {
 	 */
 	def queryInstanceFact[T <:Referencable](ref:Reference,propertyField:Byte,factory:SubscriptionFactory[T]):IndexedSeq[T] = 	queryFactories.synchronized{		
 		sock.sendData(ClientCommands.factQueryInstance ) {out =>
-		  queryFactories.push(factory)
+		  queryFactories=factory :: queryFactories
 			//System.out.println("Sending Query request "+ref + " "+Thread.currentThread)
 			ref.write(out)
 			out.writeByte(propertyField)
@@ -250,8 +244,7 @@ object ClientQueryManager {
 			out.writeByte(fieldNr)
 			newValue.write(out)
 		}
-		val res=commandResultQueue.take()
-    resultListener(res)
+    resultListener(commandResultQueue.take())
 	}
 	
 	def writeInstancesField(refs:Iterable[Referencable],fieldNr:Byte,newValue:Expression):Unit = runInPool{
@@ -298,7 +291,8 @@ object ClientQueryManager {
 	 * @param checkLinks check link references, if false: WARNING: only for constant instance values, 
 	 *   link references are not checked/created with this command !!!	 * 
 	 */
-	def createInstances(owners:Array[OwnerReference], data:Seq[(Int,Array[Expression])],checkLinks:Boolean=false):Unit = {
+	def createInstances(owners:Array[OwnerReference], data:Seq[(Int,Array[Expression])],checkLinks:Boolean=false,
+											resultListener:CommandResult=>Unit=EmptyResultListener):Unit = {
 	  sock.sendData(ClientCommands.createInstances ) { out =>	    
 	    out.writeInt(owners.length)
 	    for(owner <-owners)
@@ -311,7 +305,7 @@ object ClientQueryManager {
 		    for(f<-fields) f.write(out)
 		  }  
 	  }
-	  commandResultQueue.take()
+	  resultListener(commandResultQueue.take())
 	}
 	
 	
@@ -337,7 +331,6 @@ object ClientQueryManager {
 			case HasError(e)=> throw e
 		}
 	}
-	
 	
 	
 	/** creates a second use for the given instance 
@@ -374,6 +367,23 @@ object ClientQueryManager {
   		}    
 		commandResultQueue.take() 
 	}
+
+
+	def convertInstances(sources:Seq[Reference],targetOwner: OwnerReference,targetType:Int,rule:Array[(Int,Int)]): Unit = runInPool{
+		sock.sendData(ClientCommands.convertInstances) { out =>
+			out.writeInt(sources.size)
+			for(r<-sources)
+				r.write(out)
+			targetOwner.write(out)
+      out.writeInt(targetType)
+			out.writeInt(rule.length)
+			for((f1,f2)<-rule){
+			  out.writeInt(f1)
+				out.writeInt(f2)
+			}
+		}
+    commandResultQueue.take()
+  }
 	
 	/** sends a notification to the server to execute the given action with the given parameters
 	 * @param instList list of instances that should be modified. For a Create Action, the list of parents
@@ -381,7 +391,7 @@ object ClientQueryManager {
 	 * @param params the parameter values for the action	 *
 	 * 
 	 */
-	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit= runInPool{
+	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit= {
     //System.out.println("executeAction owner:"+owner+" instList:"+instList+" action:"+actionName+" p:"+params.mkString)
 	  if(instList.isEmpty) throw new IllegalArgumentException("InstList is empty in action "+actionName+" "+params.mkString("|"))
     runInPool{
@@ -433,21 +443,22 @@ object ClientQueryManager {
 			for(i <- 0 until numData) yield factory.createObject(Reference(in), in)			
 		}
 	
-	private def handleQueryResults(in:DataInputStream) = 	{
+	private def handleQueryResults(in:DataInputStream): Unit = 	{
 		val data=readList(in)
 		//System.out.println("Handling Query result data size:"+data.size+ " "+Thread.currentThread)		
 		queryQueue.put(data)		
 	}
 	
-	private def handleFactQueryResults(in:DataInputStream) = {	  
-	  val factory=queryFactories.pop()
+	private def handleFactQueryResults(in:DataInputStream): Unit = if(queryFactories.nonEmpty){
+	  val factory=queryFactories.head
+		queryFactories=queryFactories.tail
 	  val newFact=factory.asInstanceOf[SubscriptionFactory[ Referencable]]		  
 	  val data=readListWithFactory(in,newFact)	  
 	  factQueryQueue.put(data)
 	}
 	
 	
-	private def handleAcceptSubscription(in:DataInputStream) = {
+	private def handleAcceptSubscription(in:DataInputStream): Unit = {
 		val subsID:Int=in.readInt		
 		val subs:Subscriber=newSubscriberQueue.take()
 		if(subsID> -1)subscriptionMap.put(subsID,subs) else printErrorMessage("Wrong subsID "+subsID+" for subscriber "+subs)
@@ -498,6 +509,9 @@ object ClientQueryManager {
 							val list = readList(in)
 							//System.out.println(" send Data:"+list)
 							runInPool(subscriber.func(nt, list))
+							case NotificationType.parentNotExistend =>
+                val ref = Reference(in)
+                runInPool(subscriber.func(nt,IndexedSeq(new InstanceData(ref, IndexedSeq(), Array(), Seq.empty, false))))
 					}
 				case factSubs: FactSubscriber[_] =>
 					val nt = NotificationType(in.readInt)
@@ -515,13 +529,17 @@ object ClientQueryManager {
 							val list = readListWithFactory(in, factSubs.factory)
 							//System.out.println("  fact send Data:"+list)
 							runInPool(factSubs.func(nt, list))
-					}
+            case NotificationType.parentNotExistend =>
+              val ref = Reference(in)
+              runInPool(factSubs.func(nt,
+                IndexedSeq(factSubs.factory.createEmptyObject(ref)))) // empty instance
+          }
 				case a => util.Log.e("HandleSubsNotification unknown SubscriberType " + a + " class: " + (if (a != null) a.getClass else "Null") + " for Subscription " + substID)
 			}
 		}
   }
 	
-	private def handleCommandResponse(in:DataInputStream ) = {		
+	private def handleCommandResponse(in:DataInputStream ): Unit = {
 		val hasError=in.readBoolean
 		if(hasError) {
 			val error=CommandError.read(in)
@@ -574,12 +592,13 @@ object ClientQueryManager {
       case other: Throwable => util.Log.w(other.toString)
     })
 		isSetup=true
+		println("Notify SetupListeners done")
 	}
 	
 	
 	
 	
-	private[comm] def notifyStoreSettingsListeners() = {
+	private[comm] def notifyStoreSettingsListeners(): Unit = {
 		storeSettingsListenerMap.foreach(a => try { a()} catch {
 			case NonFatal(e)=> util.Log.e(e)
       case other: Throwable => util.Log.e("store settings", other); //System.exit(0)
@@ -624,17 +643,17 @@ object ClientQueryManager {
 			
 	// ************************************ UNDO ********************************************
 	
-	private def lockForUndo(in:DataInputStream ) = {
+	private def lockForUndo(in:DataInputStream ): Unit = {
 		val lockUser=in.readUTF
     util.Log.w("LOCK FOR UNDO by User "+lockUser)
 		for(l<-undoLockListener)Swing.onEDT{l(true,lockUser)} 
 	}
 	
-	private def releaseUndoLock(in:DataInputStream ) = {		
+	private def releaseUndoLock(in:DataInputStream ): Unit = {
 		for(l<-undoLockListener)Swing.onEDT{l(false,"")}
 	}
 	
-	private def sendUndoInformation(in:DataInputStream ) = {		
+	private def sendUndoInformation(in:DataInputStream ): Unit = {
 		val stepListSize=in.readInt
 		//System.out.println("Sending Undo Information "+stepListSize)
 		val stepList=collection.mutable.ArrayBuffer[TransStepData]()

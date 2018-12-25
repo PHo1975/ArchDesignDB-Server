@@ -1,11 +1,10 @@
 package client.calender
 
-import javafx.collections.{FXCollections, ObservableList}
-
 import client.calender.CalendarHelper._
 import client.comm.{ClientQueryManager, UserSettings}
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
+import javafx.collections.{FXCollections, ObservableList}
 
 import scala.collection.JavaConverters._
 

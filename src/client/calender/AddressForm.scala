@@ -1,19 +1,12 @@
 package client.calender
 
-import javafx.scene.layout.HBox
-import javafx.scene.control.Label
-import javafx.scene.control.TextField
 import client.calender.CalendarHelper._
 import client.comm.ClientQueryManager
+import definition.data.{OwnerReference, Reference}
 import definition.expression.StringConstant
-import javafx.scene.layout.VBox
-import javafx.scene.layout.Priority
-import javafx.scene.control.TextInputControl
-import javafx.scene.control.TextArea
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyEvent
-import definition.data.OwnerReference
-import definition.data.Reference
+import javafx.scene.control.{Label, TextArea, TextField, TextInputControl}
+import javafx.scene.input.{KeyCode, KeyEvent}
+import javafx.scene.layout.{HBox, Priority, VBox}
 
 
 trait ActiveInputControl {

@@ -1,22 +1,16 @@
 package client.importer
 
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer,HashMap}
+import java.io.{BufferedReader, File, FileReader}
+
+import client.graphicsView.{FontHandler, HatchHandler, HatchStyle, LineStyleHandler}
 import definition.data.LineStyle
-import java.io.File
-import java.io.BufferedReader
-import java.io.FileReader
-import client.graphicsView.LineStyleHandler
-import client.graphicsView.HatchStyle
-import client.graphicsView.HatchHandler
-import definition.expression.Expression
-import definition.expression.StringConstant
-import definition.expression.DoubleConstant
-import client.graphicsView.FontHandler
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 class UnknownLineStyle(val name:String,val dots:Seq[Float],setting:DXFSettings) {
-  override def toString="("+name+"|"+dots.mkString(",")+")"+
+  override def toString: String ="("+name+"|"+dots.mkString(",")+")"+
     (setting.lineStyleMapping.get(name) match {
     	case Some(ix)=>" => " +LineStyleHandler.stylesList(ix).name
     	case None =>""
@@ -26,7 +20,7 @@ class UnknownLineStyle(val name:String,val dots:Seq[Float],setting:DXFSettings) 
 
 class HatchStylewithUnknownLS (n:String,a1:Double,ls1:Int,d1:Double,a2:Double,ls2:Int,d2:Double,
     val lsName1:Option[String],val lsName2:Option[String]) extends HatchStyle(0,n,a1,ls1,d1,a2,ls2,d2,10) {
-  override def toString= "UKHatch "+n+ " ls1:"+ls1+ " ls2:"+ls2+" lsName1:"+lsName1+ " lsName2:"+lsName2  
+  override def toString: String = "UKHatch "+n+ " ls1:"+ls1+ " ls2:"+ls2+" lsName1:"+lsName1+ " lsName2:"+lsName2
  
 }
    
@@ -37,28 +31,28 @@ class DXFSettings {
   var textYAdjust=0d
   var drawingScaleID:Int=0
   var fontScale:Double=1
-  val drawingLineStyles=ArrayBuffer[LineStyle]()
+  val drawingLineStyles: ArrayBuffer[LineStyle] =ArrayBuffer[LineStyle]()
   val ignoreLabels=Seq("ByLayer","ByBlock")
   
-  val lineStyleMapping=collection.mutable.HashMap[String,Int]()  
-  val unknownLineStyles=ArrayBuffer[UnknownLineStyle]()
-  val hatchStyleMapping=collection.mutable.HashMap[String,Int]()
-  val unknownHatchStyles=ArrayBuffer[HatchStyle]()
-  val unknownFonts=ArrayBuffer[String]()
-  val layers=ArrayBuffer[String]()
+  val lineStyleMapping: mutable.HashMap[String, Int] =collection.mutable.HashMap[String,Int]()
+  val unknownLineStyles: ArrayBuffer[UnknownLineStyle] =ArrayBuffer[UnknownLineStyle]()
+  val hatchStyleMapping: mutable.HashMap[String, Int] =collection.mutable.HashMap[String,Int]()
+  val unknownHatchStyles: ArrayBuffer[HatchStyle] =ArrayBuffer[HatchStyle]()
+  val unknownFonts: ArrayBuffer[String] =ArrayBuffer[String]()
+  val layers: ArrayBuffer[String] =ArrayBuffer[String]()
   var selectedLayers:Seq[Int]=Seq.empty
   var allTextsBlack=true
   var dx:Double=0d
   var dy:Double=0d
   
-  def analyzeFile(file:File)= {
+  def analyzeFile(file:File):Unit = {
      val reader=new BufferedReader(new FileReader(file))
      try {
        readLineStyles(reader)       
      }
      catch {
        case NonFatal(e)=> util.Log.e(e)
-       case other:Throwable =>println(other);System.exit(0);null
+       case other:Throwable =>println(other);System.exit(0)
      }
      finally {
        reader.close()
@@ -116,8 +110,8 @@ class DXFSettings {
     result
   }
   
-  def sToDouble(s:String)=java.lang.Double.parseDouble(s.trim)
-  def sToInt(s:String)=Integer.parseInt(s.trim)
+  def sToDouble(s:String): Double =java.lang.Double.parseDouble(s.trim)
+  def sToInt(s:String): Int =Integer.parseInt(s.trim)
   
   def findUnknownLineStyleName(dots:Seq[Float]):Option[String]=
     unknownLineStyles.find(_.dots==dots).map(_.name)
@@ -193,7 +187,7 @@ class DXFSettings {
         			if(allLineStylesFit) {
         				val hatchStyleID=HatchHandler.findHatchID(angle1,lineStyleIDs.head,distance1,0,-1,0)
         				if(hatchStyleID> -1) hatchStyleMapping(name)=hatchStyleID
-        				else unknownHatchStyles += new HatchStyle(-1,name,angle1,lineStyleIDs.head,distance1,0,-1,0,10)
+        				else unknownHatchStyles += HatchStyle(-1, name, angle1, lineStyleIDs.head, distance1, 0, -1, 0, 10)
         			} 
         			else unknownHatchStyles += new HatchStylewithUnknownLS(name,angle1,-1,distance1,0,-1,0,
         					findUnknownLineStyleName(dotList.head),None)

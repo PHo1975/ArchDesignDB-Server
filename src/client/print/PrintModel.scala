@@ -1,17 +1,12 @@
 package client.print
 
-import definition.data.OutputDefinition
-import definition.data.FormDescription
-import javax.print.attribute.PrintRequestAttributeSet
-import javax.print.attribute.HashPrintRequestAttributeSet
-import javax.print.PrintServiceLookup
-import java.awt.print.PrinterJob
-import javax.print.attribute.standard.Media
-import javax.print.attribute.standard.MediaSizeName
-import javax.print.attribute.standard.MediaPrintableArea
+import java.awt.print.{PageFormat, PrinterJob}
+
+import definition.data.{FormDescription, OutputDefinition}
+import javax.print.{PrintService, PrintServiceLookup}
+import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
+import javax.print.attribute.standard.{Media, MediaPrintableArea, MediaSizeName, MediaTray}
 import javax.swing.DefaultComboBoxModel
-import javax.print.attribute.standard.MediaTray
-import javax.print.PrintService
 
 object PrintModel {
   val myPageable=new MyPageable
@@ -27,6 +22,9 @@ object PrintModel {
   if(printServices==null || printServices.size==0) util.Log.e("no print services found !")
 	var printerName:String=null
 	var theService:javax.print.PrintService= PrintServiceLookup.lookupDefaultPrintService
+	println("before crash")
+	if(theService==null) println("Printservice == null")
+	else if (theService.getDefaultAttributeValue(classOf[Media])==null) println("Default AttributeValue == null")
 	var lastSelectedMedia:MediaSizeWrapper=MediaMap.getMediaSize(theService.getDefaultAttributeValue(classOf[Media]).asInstanceOf[MediaSizeName])
 	val mediaModel=new DefaultComboBoxModel[MediaSizeWrapper]
 	val trayModel=new DefaultComboBoxModel[MediaTrayWrapper]
@@ -37,7 +35,7 @@ object PrintModel {
 	setMediaWrapper(lastSelectedMedia)
 	setPrinterName(getPrintServiceName(theService))
 	
-	def setOutDefs(newList:Seq[OutputDefinition])= {
+	def setOutDefs(newList:Seq[OutputDefinition]): Unit = {
 	  outDefs=newList
 	  for(od<-outDefs;formID=od.formInst )
 			 forms.find(_.inst==formID) match {
@@ -47,26 +45,26 @@ object PrintModel {
 	  PrintQuestionHandler.outdefDialog.loadOutdefs(outDefs)
 	}
 	
-	def changeOutDef(newOutDef:OutputDefinition)= {
+	def changeOutDef(newOutDef:OutputDefinition): Unit = {
 	  outDefs.indexWhere(_.odInst==newOutDef.odInst) match {
 	    case -1 =>
 	    case index => setOutDefs(outDefs.updated(index, newOutDef))
 	  }
 	}
   
-  def readInXML(xmlData:Seq[scala.xml.Node]) = {
+  def readInXML(xmlData:Seq[scala.xml.Node]): Unit = {
     forms=for (f<- xmlData \\ "Form") yield FormDescription.fromXML(f)
     //println("readInXML outdefs "+(xmlData \\"OutDef").mkString)
     setOutDefs(for (f<- xmlData \\ "OutDef") yield OutputDefinition.fromXML(f))
   }
 	
-	def setMediaWrapper(newWrapper:MediaSizeWrapper)= if(newWrapper!=null){
+	def setMediaWrapper(newWrapper:MediaSizeWrapper): Unit = if(newWrapper!=null){
 		pras.remove(classOf[MediaPrintableArea])
 		pras.add(newWrapper.mn)		
 		lastSelectedMedia=newWrapper		
 	}
 	
-	def setMediaTray(mediaTray:MediaTrayWrapper)= if(mediaTray!=null){
+	def setMediaTray(mediaTray:MediaTrayWrapper): AnyVal = if(mediaTray!=null){
 	  if(mediaTray==AutoTray) {
 	  	pras.remove(classOf[MediaTray])
 	  	pras.remove(TrayMap.altClass)
@@ -103,18 +101,18 @@ object PrintModel {
 		(theService,defaultTrayIx)	
 	}
 	
-	def getPrintableArea= {
+	def getPrintableArea: MediaPrintableArea = {
 		val pList=theService.getSupportedAttributeValues(classOf[javax.print.attribute.standard.MediaPrintableArea],
     		null,pras).asInstanceOf[Array[MediaPrintableArea]]	
 		if(pList.isEmpty) throw new IllegalArgumentException("Cant find Supported PrintableArea ")
 		else pList.head
 	}
 	
-	def getPageFormat= {
+	def getPageFormat: PageFormat = {
 		printJob.setPrintService(theService)
 		printJob.getPageFormat(pras)		
 	}
-	def getPrintServiceName(ps:PrintService)={
+	def getPrintServiceName(ps:PrintService): String ={
 	  ps.getAttribute(classOf[javax.print.attribute.standard.PrinterName]).toString
 	}
 

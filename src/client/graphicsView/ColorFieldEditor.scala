@@ -4,10 +4,10 @@
 package client.graphicsView
 
 import java.awt.Color
-import javax.swing.JColorChooser
 
 import client.dialog.{FieldEditor, PanelPart, SidePanelComponent}
 import definition.expression.{Constant, IntConstant}
+import javax.swing.JColorChooser
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{Button, Color, Panel}

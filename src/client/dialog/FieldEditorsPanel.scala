@@ -4,11 +4,11 @@
 package client.dialog
 
 import java.awt.Dimension
-import javax.swing.BorderFactory
 
 import client.dataviewer.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
+import javax.swing.BorderFactory
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

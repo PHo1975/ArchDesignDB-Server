@@ -7,12 +7,12 @@ object Profile {
   @volatile var startTime:Long=0
   @volatile var lastTime:Long=0
 
-  def start()= {
+  def start(): Unit = {
     startTime=System.currentTimeMillis()
     lastTime=startTime
   }
 
-  def measure(st:String)={
+  def measure(st:String): Unit ={
     val ntime=System.currentTimeMillis()
     util.Log.w(">"+st+" "+(ntime-startTime)+" d:"+(ntime-lastTime))
     lastTime=ntime

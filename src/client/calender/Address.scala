@@ -1,13 +1,12 @@
 package client.calender
 
-import javafx.collections.ObservableList
-import javafx.scene.control.TreeItem
-import javafx.util.StringConverter
-
 import client.calender.CalendarHelper._
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
 import definition.data._
+import javafx.collections.ObservableList
+import javafx.scene.control.TreeItem
+import javafx.util.StringConverter
 
 import scala.collection.JavaConverters._
 

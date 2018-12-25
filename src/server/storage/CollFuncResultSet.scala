@@ -2,8 +2,8 @@ package server.storage
 
 import java.io.{DataInput, DataOutput}
 
-import definition.data.{CollFuncResult, ListCollFuncResult, Referencable, Reference, SingleCollFuncResult}
-import definition.expression.{CollectingFuncCall, Constant, EMPTY_EX, Expression, FunctionManager, ListCollFunction, SingleCollFunction}
+import definition.data._
+import definition.expression._
 import definition.typ.AllClasses
 import transaction.handling.ActionList
 

@@ -1,12 +1,8 @@
 package util
 
+import javax.swing.{AbstractListModel, ComboBoxModel, JComboBox, JComponent}
+
 import scala.swing._
-import javax.swing.JComboBox
-import javax.swing.ComboBoxModel
-import javax.swing.AbstractListModel
-import javax.swing.JComponent
-import javax.swing.ListCellRenderer
-import javax.swing.JList
 class MyComboBox[A](items: Seq[A]) extends Component with Publisher {
   def nitems:ComboBoxModel[A]=newConstantModel(items)
   override lazy val peer: JComboBox[A] = new JComboBox(nitems) with SuperMixin

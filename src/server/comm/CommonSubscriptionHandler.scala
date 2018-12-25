@@ -131,7 +131,7 @@ object CommonSubscriptionHandler {
 	
 	def pauseSubscription(id:Int): Unit =	removeSubscription(id)
 	
-	private def doRemove(id:Int) = 	subscriptionList.get(id) match {
+	private def doRemove(id:Int): Unit = 	subscriptionList.get(id) match {
 		case Some(p:PathSubscription) =>
 			for (el <-p.path)
 				classHandlerMap(el.typ ).removeSubscription(p)

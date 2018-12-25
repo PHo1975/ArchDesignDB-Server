@@ -1,20 +1,24 @@
 package client.calender
 
+import client.comm.ClientQueryManager
+import definition.data.OwnerReference
+import definition.expression.{DateConstant, IntConstant}
+import definition.typ.SystemSettings
 import javafx.beans.property.{SimpleIntegerProperty, SimpleObjectProperty}
+import javafx.collections.ObservableList
 import javafx.event.EventHandler
 import javafx.geometry.{HPos, Pos}
+import javafx.scene.Node
 import javafx.scene.control.{Button, Tooltip}
 import javafx.scene.input.{MouseEvent, TransferMode}
 import javafx.scene.layout.{ColumnConstraints, GridPane, HBox, VBox}
 import javafx.scene.paint.Color
 import javafx.scene.shape.{Line, Rectangle}
 import javafx.scene.text.{Text, TextAlignment}
+import util.{Log, StrToInt}
 
-import client.comm.ClientQueryManager
-import definition.data.OwnerReference
-import definition.expression.{DateConstant, IntConstant}
-import definition.typ.SystemSettings
-import util.StrToInt
+import scala.collection.JavaConverters._
+import scala.collection.immutable
 
 class AltCalendarComponent(mod:CalendarModel) extends VBox {
   import client.calender.CalendarHelper._
@@ -25,7 +29,7 @@ class AltCalendarComponent(mod:CalendarModel) extends VBox {
   val yearProperty=new SimpleIntegerProperty  
   val highlightWeekProperty= new SimpleIntegerProperty    
   var todayDay=0
-  var firstDay:DateConstant=null
+  var firstDay:DateConstant=_
   var firstDayColumn=0
   var holidays:Map[DateConstant,String]=Map.empty
   var theseHolidays:Map[Int,String]=Map.empty
@@ -37,8 +41,8 @@ class AltCalendarComponent(mod:CalendarModel) extends VBox {
   onChanged[Number](highlightWeekProperty,(o,n)=>update())
   
   val t=new Text
-  val wochenTage=Array[String]("Mo","Di","Mi","Do","Fr","Sa","So")
-  getStyleClass().add("calender")  
+  val wochenTage: Array[String] =Array[String]("Mo","Di","Mi","Do","Fr","Sa","So")
+  getStyleClass.add("calender")
   setMinWidth(228)
   setMaxWidth(228)
   val titleLabel=new Text
@@ -49,53 +53,57 @@ class AltCalendarComponent(mod:CalendarModel) extends VBox {
   grid.setVgap(3)
   grid.setAlignment(Pos.CENTER)  
   //grid.setGridLinesVisible(true)
-  val gridChildren=grid.getChildren
-  val daysOfWeekTx=for(i<-wochenTage.indices;w=wochenTage(i)) yield{
+  val gridChildren: ObservableList[Node] =grid.getChildren
+  val daysOfWeekTx: immutable.IndexedSeq[Text] =for(i<-wochenTage.indices; w=wochenTage(i)) yield{
     val tx=new Text(w)
-    tx.getStyleClass().add("dayOfWeek")    
+    tx.getStyleClass.add("dayOfWeek")
     GridPane.setConstraints(tx, i+2, 0)
     gridChildren.add(tx)
     tx
   }
   grid.setOnDragOver(handleEvent(e=>{
-    if( e.getDragboard().hasContent(CalendarDragFormat)) e.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
+    if( e.getDragboard.hasContent(CalendarDragFormat)) e.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
+    else Log.e("Drag has no Calendar content"+e.getDragboard.getContentTypes.asScala.mkString(","))
     e.consume()
   }))
   
-  grid.setOnDragDropped(handleEvent(e=>{
-    if( e.getDragboard().hasContent(CalendarDragFormat)) {
+  grid.setOnDragDropped(e => {
+    if( e.getDragboard.hasContent(CalendarDragFormat)) {
       e.getDragboard.getContent(CalendarDragFormat) match {
-        case ce:CalendarEvent =>                 
+        case ce:CalendarEvent =>
+           //println("CalendarEvent "+ce)
            e.getTarget match {
              case t:Text if t.getId.length > 0 => t.getId match{
                case StrToInt(julian)=>
                  val newDate=DateConstant.asJulian(julian)
                  mod.projectList.findProject(ce.projID) match {
                    case Some(project)=>
-                  	 e.getTransferMode() match {
+                  	 e.getTransferMode match {
                   	 	case TransferMode.MOVE=>
-                        ClientQueryManager.writeInstanceField(ce.ref, 0, new IntConstant(newDate.day))
+                        ClientQueryManager.writeInstanceField(ce.ref, 0, IntConstant(newDate.day))
                         if(newDate.month!=ce.day.month||newDate.year!=ce.day.year) {
 	                  	 	  ClientQueryManager.moveInstances(List(ce.ref),new OwnerReference(0, project.getMonthParentRef(ce.day)),
 	                  	 	      new OwnerReference(0,project.getMonthParentRef(newDate)), -1)
                   	 	  }
-                      case TransferMode.COPY=>
+                        e.setDropCompleted(true)
+                        e.consume()
+                      case TransferMode.COPY=> println("Copy Mode")
                       case _=>
                   	 }
-                   case _=>
+                   case None=> Log.e("No Project for "+newDate+" prID:"+ce.projID)
                  }
-               case _=>
+               case o=> Log.e("Other string "+o)
              }                     
-             case _=>
+             case other=> Log.e("Other target "+other)
            }       
-        case _=>
+        case otherc => Log.e("Other content "+otherc)
       }  
     }
-  }))
+  })
   
   val constraints=new ColumnConstraints
   constraints.setHalignment(HPos.CENTER)
-  for(i<-0 until 9) grid.getColumnConstraints().add(constraints)  
+  for(i<-0 until 9) grid.getColumnConstraints.add(constraints)
   
   getChildren.addAll(titleLabel,grid)
   val currWeekRect=new Rectangle(weekRectWidth,weekRectHeight)
@@ -103,30 +111,29 @@ class AltCalendarComponent(mod:CalendarModel) extends VBox {
   currWeekRect.setStroke(Color.BLACK)
   currWeekRect.setId("curr")
    
-  def setRectListener(nl:EventHandler[MouseEvent])=  setOnMouseReleased(nl)     
+  def setRectListener(nl:EventHandler[MouseEvent]): Unit =  setOnMouseReleased(nl)
   
-  def monthUp()= {
+  def monthUp(): Unit = {
     monthProperty.set(if(monthProperty.get==12) {
       yearProperty.set(yearProperty.get+1)
       1
     } else monthProperty.get+1)    
   }
   
-  def monthDown()= {
+  def monthDown(): Unit = {
     monthProperty.set(if(monthProperty.get==1) {
       yearProperty.set(yearProperty.get-1)
       12
     } else monthProperty.get-1)   
   }    
   
-  def showMonth(d:DateConstant)= {   
+  def showMonth(d:DateConstant): Unit = {
     
     monthProperty.set(d.month)
     yearProperty.set(d.year)        
   }  
    
-  def update(lastYear:Int= -1):Unit= {
-    if(monthProperty.get()>12||monthProperty.get<1) return
+  def update(lastYear:Int= -1):Unit= if(monthProperty.get()<=12&&monthProperty.get>=1) {
     if(lastYear> -1) { // year updated      
       holidays=SystemSettings().getHolidays(yearProperty.get)      
     }
@@ -167,7 +174,7 @@ class AltCalendarComponent(mod:CalendarModel) extends VBox {
       val rect=if(weekNumber==highlightWeekProperty.get) currWeekRect        
       else {
         val r= new Rectangle(weekRectWidth,weekRectHeight)
-        r.getStyleClass().add("weekRect")
+        r.getStyleClass.add("weekRect")
         weekRects=r::weekRects        
         r
       }
@@ -215,7 +222,7 @@ class CalendarGroup(mod:CalendarModel) extends HBox{
   activateDate(today)
   
   val rectListener=handleEvent[MouseEvent](e=>{
-    e.getTarget() match {
+    e.getTarget match {
       case r:Rectangle=>
         r.parentProperty().get().parentProperty().get() match {
           case c:AltCalendarComponent=>

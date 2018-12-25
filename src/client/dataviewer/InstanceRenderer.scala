@@ -4,11 +4,11 @@
 package client.dataviewer
 
 import java.awt.Color
-import javax.swing.border.Border
-import javax.swing.{JLabel, UIManager}
 
 import definition.expression._
 import definition.typ._
+import javax.swing.border.Border
+import javax.swing.{JLabel, UIManager}
 import util.{JavaUtils, Log}
 
 import scala.swing._

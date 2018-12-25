@@ -45,9 +45,9 @@ abstract class EditingTableCell[R, D](receiver:CellInfoReceiver[D]) extends Tabl
 	var oldView:Parent=_
 
   EditingTableCell.this.setOnDragEntered(handleEvent(e => {
-    receiver.setCurrentItem(getItem())
-    receiver.setMouseOverColumn(getTableColumn())
-    receiver.setMouseOverRow(getIndex())
+    receiver.setCurrentItem(getItem)
+    receiver.setMouseOverColumn(getTableColumn)
+    receiver.setMouseOverRow(getIndex)
 	}))
 
 	def convertToEditString(data:D):String	
@@ -58,11 +58,8 @@ abstract class EditingTableCell[R, D](receiver:CellInfoReceiver[D]) extends Tabl
 	def commit():Unit= if(textField!=null) {
 	 setTableEditing(false) 
    if(textField.getText()!=null) {
-     if(getItem!=null && convertToEditString(getItem)== textField.getText()) {        
-       cancelEdit()
-       return
-     }     
-     commitEdit( createItem(textField.getText()))      
+     if(getItem!=null && convertToEditString(getItem)== textField.getText()) cancelEdit()
+     else commitEdit( createItem(textField.getText()))
    }
 	 else cancelEdit()
 	}
@@ -104,31 +101,32 @@ abstract class EditingTableCell[R, D](receiver:CellInfoReceiver[D]) extends Tabl
     ret
   }
 	
-	@inline def selectModel: TableViewSelectionModel[R] = getTableView().getSelectionModel()
+	@inline def selectModel: TableViewSelectionModel[R] = getTableView.getSelectionModel
 	
 		
-	def getString: String = if(getItem() == null) ""  else convertToEditString(getItem())
+	def getString: String = if(getItem == null) ""  else convertToEditString(getItem)
 	
-	override def startEdit():Unit= {	
-	  if(getItem()!=null&& !isEditable(getItem())) return
-	  super.startEdit()	  
-	  if (textField == null) {
+	override def startEdit():Unit=
+	  if(getItem==null || isEditable(getItem))  {
+      super.startEdit()
+      if (textField == null) {
         textField = createTextField
-    } else println(Thread.currentThread.getStackTrace.drop(2).mkString("\n  "))
-    textField.setText(getString)    
-    setText(null)
-    setGraphic(textField)    
-    //textField.selectAll()
-    setTableEditing(true)
-    runInFx{
-      textField.requestFocus()      
+      } else println(Thread.currentThread.getStackTrace.drop(2).mkString("\n  "))
+      textField.setText(getString)
+      setText(null)
+      setGraphic(textField)
+      //textField.selectAll()
+      setTableEditing(true)
       runInFx{
-        val text=textField.getText()
-        //println("Text:"+text+" "+textField.getLength()+" "+textField.isFocused())
-        textField.end()
+        textField.requestFocus()
+        runInFx{
+          val text=textField.getText()
+          //println("Text:"+text+" "+textField.getLength()+" "+textField.isFocused())
+          textField.end()
+        }
       }
-    }    
-	}
+    }
+
 	
 	
 	override def cancelEdit(): Unit = {
@@ -157,7 +155,7 @@ abstract class EditingTableCell[R, D](receiver:CellInfoReceiver[D]) extends Tabl
 	    setText(null)
       setGraphic(null)
     }	//else println("UpdateItem "+item+" empty:"+empty+" edit:"+isEditing)
-	  if (isEditing()) {
+	  if (isEditing) {
 	      if (textField != null) {
 	          textField.setText(getString)
 	      }

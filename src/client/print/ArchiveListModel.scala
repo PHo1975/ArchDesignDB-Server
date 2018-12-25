@@ -3,9 +3,9 @@
  */
 package client.print
 
-import javax.swing.AbstractListModel
-import definition.data.Reference
 import client.comm.ClientQueryManager
+import definition.data.Reference
+import javax.swing.AbstractListModel
 
 /**
  * 
@@ -15,7 +15,7 @@ class ArchiveListModel extends AbstractListModel[ArchivePageable] {
 	var archiveList:Seq[ArchivePageable]= Seq.empty
 	
 	
-	def load(outDefRef:Reference) = {
+	def load(outDefRef:Reference): Unit = {
 	  val data=ClientQueryManager.queryInstance(outDefRef,1)
 	  println("Load Archive "+data.mkString("|"))
 		archiveList=data.map(new ArchivePageable(_))
@@ -23,7 +23,7 @@ class ArchiveListModel extends AbstractListModel[ArchivePageable] {
 		fireContentsChanged(this,0,archiveList.size-1)
 	}
 	
-	def clear()={
+	def clear(): Unit ={
 		archiveList=Seq.empty
 		fireIntervalRemoved(this,0,0)
 	}
@@ -33,8 +33,8 @@ class ArchiveListModel extends AbstractListModel[ArchivePageable] {
 	
 	
 	
-  def getSize(): Int = { archiveList.size }
+  def getSize: Int = { archiveList.size }
 
-  def getElementAt(index: Int)= { archiveList(index) }
+  def getElementAt(index: Int): ArchivePageable = { archiveList(index) }
 
 }

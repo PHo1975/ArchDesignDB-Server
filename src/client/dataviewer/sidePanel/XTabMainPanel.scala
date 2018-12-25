@@ -4,6 +4,7 @@
 package client.dataviewer.sidePanel
 
 import java.awt.Dimension
+
 import javax.swing.JViewport
 
 import scala.swing._
@@ -12,7 +13,7 @@ import scala.swing._
  * 
  */
 class XTabMainPanel(table:Table) extends Component with Container  {
-   override lazy val peer=new JViewport with SuperMixin{
+   override lazy val peer:JViewport=new JViewport with SuperMixin{
      override def getPreferredSize: Dimension = getView.getPreferredSize
 
      override def getMaximumSize: Dimension = getView.getPreferredSize

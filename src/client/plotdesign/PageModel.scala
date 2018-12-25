@@ -1,29 +1,17 @@
 package client.plotdesign
-import definition.data.Reference
-import client.comm.ClientQueryManager
-import definition.comm.NotificationType
-import javax.print.PrintService
-import javax.print.PrintServiceLookup
-import definition.expression.StringConstant
-import javax.swing.DefaultComboBoxModel
-import javax.print.attribute.HashPrintRequestAttributeSet
-import client.print.{MediaSizeWrapper,MediaMap,AutoTray}
-import javax.print.attribute.PrintRequestAttributeSet
-import javax.print.attribute.standard.MediaPrintableArea
-import javax.print.attribute.standard.Media
-import javax.print.attribute.standard.MediaSizeName
-import client.print.{MediaTrayWrapper,TrayMap}
-import javax.print.attribute.standard.MediaTray
-import javax.print.attribute.standard.MediaName
-import javax.print.attribute.standard.OrientationRequested
-import definition.expression.BoolConstant
 import java.awt.geom.Rectangle2D
-import definition.data.FormDescription
-import definition.data.InstanceData
-import definition.data.OutputDefinition
-import definition.data.OwnerReference
+
+import client.comm.ClientQueryManager
+import client.print._
+import definition.comm.NotificationType
+import definition.data.{InstanceData, OutputDefinition, OwnerReference, Reference}
+import definition.expression.{BoolConstant, IntConstant, StringConstant}
 import definition.typ.SystemSettings
-import definition.expression.IntConstant
+import javax.print.{PrintService, PrintServiceLookup}
+import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
+import javax.print.attribute.standard._
+import javax.swing.DefaultComboBoxModel
+
 import scala.swing.Swing
 
 class PageModel(val controller:PlotDesignController) {
@@ -31,12 +19,12 @@ class PageModel(val controller:PlotDesignController) {
   var portrait:Boolean=false
   var printer:String=_
   var pageSettings:String=_  
-  var thisSubsID= -1
-  var odefSubsID= -1
+  var thisSubsID: Int = -1
+  var odefSubsID: Int = -1
   var odefRef:Option[Reference]=None
   var currentService:Option[PrintService]=None
   val emptyAttributeSet=new HashPrintRequestAttributeSet()
-  val defaultPrinter= PrintServiceLookup.lookupDefaultPrintService
+  val defaultPrinter: PrintService = PrintServiceLookup.lookupDefaultPrintService
   var selectedMedia:MediaSizeWrapper=MediaMap.getMediaSize(defaultPrinter.getDefaultAttributeValue(classOf[Media]).asInstanceOf[MediaSizeName])
   var selectedTray:Option[MediaTrayWrapper]=None
   var printableArea:Option[MediaPrintableArea]=None
@@ -51,7 +39,7 @@ class PageModel(val controller:PlotDesignController) {
  
   @volatile private var ignoreMessages=false
   
-  lazy val printServices=PrintServiceLookup.lookupPrintServices( null,null)
+  lazy val printServices: Array[PrintService] =PrintServiceLookup.lookupPrintServices( null,null)
   
   var pras:PrintRequestAttributeSet  = new HashPrintRequestAttributeSet()
 
@@ -64,12 +52,12 @@ class PageModel(val controller:PlotDesignController) {
     else printServices.map(_.getName)
   }
   
-  def borderLeft=printableArea.fold(0f)(_.getX(MediaPrintableArea.MM))
-  def borderTop=printableArea.fold(0f)(_.getY(MediaPrintableArea.MM))
-  def printableWidth=printableArea.fold(pageWidth)(_.getWidth(MediaPrintableArea.MM))
-  def printableHeight=printableArea.fold(pageHeight)(_.getHeight(MediaPrintableArea.MM))
+  def borderLeft: Float =printableArea.fold(0f)(_.getX(MediaPrintableArea.MM))
+  def borderTop: Float =printableArea.fold(0f)(_.getY(MediaPrintableArea.MM))
+  def printableWidth: Float =printableArea.fold(pageWidth)(_.getWidth(MediaPrintableArea.MM))
+  def printableHeight: Float =printableArea.fold(pageHeight)(_.getHeight(MediaPrintableArea.MM))
   
-  def load(ref:Reference,doneListener:()=>Unit) = {
+  def load(ref:Reference,doneListener:()=>Unit): Unit = {
     //var firstLoad=true
     odefRef=None
     thisSubsID=ClientQueryManager.createSubscription(ref,-1){(command,data) => listLock.synchronized {Swing.onEDT{
@@ -99,7 +87,7 @@ class PageModel(val controller:PlotDesignController) {
     }      
   }
   
-  private def createOdef(thisRef:Reference)= {
+  private def createOdef(thisRef:Reference): Unit = {
     //println("createOdef "+thisRef)
     ignoreChangesAfterCreating=3
     val oInst=ClientQueryManager.createInstance(OutputDefinition.odefType,Array(new OwnerReference(0.toByte,thisRef)))
@@ -121,7 +109,7 @@ class PageModel(val controller:PlotDesignController) {
     //println("Create done")
   }
   
-  private def loadOdef(data:Seq[InstanceData])= {
+  private def loadOdef(data:Seq[InstanceData]): Unit = {
     //println("load odef "+data.mkString(",")+" "+Thread.currentThread().getName()+"\n"+Thread.currentThread.getStackTrace().drop(2).take(3).mkString("\n")+"\n")
   	for(inst <-data.headOption) {             
   		ignoreMessages=true  
@@ -188,14 +176,14 @@ class PageModel(val controller:PlotDesignController) {
     
   }
   
-  def getPrintServiceWithName(name:String)={
+  def getPrintServiceWithName(name:String): PrintService ={
     printServices find(_.getName==name ) match {
       case Some(service)=>service
       case None => defaultPrinter
     }
   }
   
-  def getPrintServiceIndex(name:String)= {
+  def getPrintServiceIndex(name:String): Int = {
     //println("get printerservice index:"+ name+" default:"+defaultPrinter.getName()+" "+printServices.map(_.getName).mkString(" "))
     val ix=  printServices.indexWhere(_.getName==name )
     if(ix<0) printServices.indexWhere(_ ==defaultPrinter)
@@ -203,19 +191,19 @@ class PageModel(val controller:PlotDesignController) {
   }
   
   
-  def setPrinter( ix:Int)= if(ix>=0 && !ignoreMessages) listLock.synchronized{   
+  def setPrinter( ix:Int):Unit= if(ix>=0 && !ignoreMessages) listLock.synchronized{
     val service=printServices(ix)
     currentService=Some(service)
     //println("set printer :"+ix+" "+service.getName())
     for(ref<-odefRef)
-    	ClientQueryManager.writeInstanceField(ref,1,new StringConstant(service.getName))				
+    	ClientQueryManager.writeInstanceField(ref,1,StringConstant(service.getName))
     adaptLastSelected(service,updateMediaLists(service))
   }
   
-  def setForm(inst:Int)= listLock.synchronized {
+  def setForm(inst:Int): Unit = listLock.synchronized {
     for(ref<-odefRef){
      // println("Set form inst:"+inst+" oref:"+ref)
-      ClientQueryManager.writeInstanceField(ref,0,new IntConstant(inst))
+      ClientQueryManager.writeInstanceField(ref,0,IntConstant(inst))
     }
       
   }
@@ -256,20 +244,20 @@ class PageModel(val controller:PlotDesignController) {
 		}
   }
   
-  def setMediaWrapper(newWrapper:MediaSizeWrapper) = if(!ignoreMessages){
+  def setMediaWrapper(newWrapper:MediaSizeWrapper): Unit = if(!ignoreMessages){
     //println("Set Media Wrapper "+newWrapper+" "+Thread.currentThread().getStackTrace().drop(1).mkString("\n"))
     internSetMediaWrapper(newWrapper)    
     storeMedia()
   }
   
-  private def storeMedia()= for(ref<-odefRef){
+  private def storeMedia(): Unit = for(ref<-odefRef){
     val paperSettings=selectedMedia.mn.toString+(selectedTray match {case Some(tray)=>"|"+tray.mt.toString;case None =>"" })
     //println("Store Media:"+paperSettings)
     ClientQueryManager.writeInstanceField(ref,2,new StringConstant(paperSettings))	
   }
   
   
-  private def internSetMediaWrapper(newWrapper:MediaSizeWrapper)= listLock.synchronized{
+  private def internSetMediaWrapper(newWrapper:MediaSizeWrapper): Unit = listLock.synchronized{
 		pras.remove(classOf[MediaPrintableArea])
 		pras.remove(classOf[MediaSizeName])
 		pras.add(newWrapper.mn)		
@@ -286,12 +274,12 @@ class PageModel(val controller:PlotDesignController) {
 		controller.calcAllBounds()
   }
   
-  def setMediaTray(newWrapper:MediaTrayWrapper) =  if(!ignoreMessages){
+  def setMediaTray(newWrapper:MediaTrayWrapper): Unit =  if(!ignoreMessages){
     internSetMediaTray(newWrapper)    
     storeMedia()
   }
   
-  private def internSetMediaTray(newWrapper:MediaTrayWrapper) = {    
+  private def internSetMediaTray(newWrapper:MediaTrayWrapper): Unit = {
   	if(newWrapper==AutoTray) {
   		pras.remove(classOf[MediaTray])
   		pras.remove(TrayMap.altClass)
@@ -300,20 +288,20 @@ class PageModel(val controller:PlotDesignController) {
   	selectedTray=Some(newWrapper)
   }
   
-  def setOrientation(portrait:Boolean) =  if(!ignoreMessages){
+  def setOrientation(portrait:Boolean): Unit =  if(!ignoreMessages){
     internSetOrientation(portrait)   
     for(ref<-odefRef)
       ClientQueryManager.writeInstanceField(ref,3,new BoolConstant(portrait))    
   }
   
-  def internSetOrientation(portrait:Boolean ) = {
+  def internSetOrientation(portrait:Boolean ): Unit = {
     pras.remove(classOf[OrientationRequested])
     pras.add(if(portrait) OrientationRequested.PORTRAIT else OrientationRequested.LANDSCAPE )
     internSetMediaWrapper(selectedMedia)
   }
   
   
-  private def calcClipBounds()= {
+  private def calcClipBounds(): Unit = {
     val rightBorder=pageWidth-borderLeft-printableWidth
     val bottomBorder=pageWidth-borderTop-printableHeight
     //println("PW:"+pageWidth+" PH:"+pageHeight+" borderLeft:"+borderLeft+" borderTop:"+borderTop)
@@ -330,7 +318,7 @@ class PageModel(val controller:PlotDesignController) {
     clipBounds.height=if(portrait)printableHeight/1000f else printableWidth/1000f    
   }
   
-  def calcPageBounds()= {
+  def calcPageBounds(): Unit = {
     bounds.x=0f
     bounds.y=0f
     bounds.width=pageWidth/1000f
@@ -340,15 +328,15 @@ class PageModel(val controller:PlotDesignController) {
 
 class FormInfo(val name:String,val id:Int) {
   def this(data:InstanceData)= this(data.fieldValue.head.toString,data.ref.instance)
-  override def toString=name
+  override def toString: String =name
 }
 
 object PrintFormInfo{
-  lazy val folderType=SystemSettings().systemTypes("Folder")
-	lazy val formType=SystemSettings().systemTypes("PrintForm")
-	lazy val formFolders= SystemSettings().getCustomSettings("PrintForms").filter(_.ref.typ==folderType)	
-  lazy val plotDesignType=SystemSettings().systemTypes("PlotDesign")	
-	lazy val plotDesignForms=getFormsForType(plotDesignType)
+  lazy val folderType: Int =SystemSettings().systemTypes("Folder")
+	lazy val formType: Int =SystemSettings().systemTypes("PrintForm")
+	lazy val formFolders: IndexedSeq[InstanceData] = SystemSettings().getCustomSettings("PrintForms").filter(_.ref.typ==folderType)
+  lazy val plotDesignType: Int =SystemSettings().systemTypes("PlotDesign")
+	lazy val plotDesignForms: Seq[FormInfo] =getFormsForType(plotDesignType)
 	  
 	def getFormsForType(atype:Int):Seq[FormInfo]= {
     formFolders.find(_.fieldValue.head.toInt==atype) match {

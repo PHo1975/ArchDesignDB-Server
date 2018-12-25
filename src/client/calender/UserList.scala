@@ -1,12 +1,11 @@
 package client.calender
 
-import javafx.collections.{FXCollections, ObservableList}
-
 import client.comm.{ClientQueryManager, UserSettings}
 import definition.comm.UserInfo
+import javafx.collections.{FXCollections, ObservableList}
+import javafx.scene.control.ListCell
 
 import scala.collection.JavaConverters._
-import javafx.scene.control.ListCell
 
 
 

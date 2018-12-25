@@ -2,12 +2,12 @@ package client.plotdesign
 
 
 import java.awt.Color
-import javax.swing.BorderFactory
 
 import client.dataviewer.ViewConstants
 import client.dialog._
 import client.graphicsView.ScaleModel
 import definition.expression.{Constant, IntConstant}
+import javax.swing.BorderFactory
 
 import scala.swing.{BoxPanel, Label, Orientation, Swing}
 

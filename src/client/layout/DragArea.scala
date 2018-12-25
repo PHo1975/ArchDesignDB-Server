@@ -3,16 +3,18 @@
  */
 package client.layout
 
+import java.awt.{Cursor, Point}
+
+import javax.swing.SwingUtilities
+
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Point,Color,Cursor}
-import javax.swing.SwingUtilities
 /**
  * 
  */
 class DragArea(isHorizontal:Boolean,stripe:ConnectorStripe) extends Component {
 	listenTo(mouse.clicks,mouse.moves)
-	var dragStartPoint:Point=null
+	var dragStartPoint:Point=_
 
 	reactions += {
 		case e:MousePressed =>

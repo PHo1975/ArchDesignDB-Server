@@ -6,7 +6,6 @@ package client.graphicsView
 import java.awt.MouseInfo
 import java.awt.event.{ComponentAdapter, ComponentEvent}
 import java.awt.geom.Rectangle2D.{Double => Rect2DDouble}
-import javax.swing.{JComponent, JLayeredPane}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.TitlePopupMenu
@@ -16,6 +15,8 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression._
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
+import javax.swing.{JComponent, JLayeredPane, SwingUtilities}
+import util.Log
 
 import scala.collection.mutable.ArrayBuffer
 import scala.swing._
@@ -58,20 +59,24 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   
   layerPane.panel.add(canvas.peer,new java.lang.Integer(1))  
   
-  ClientQueryManager.runInPool{
+  def createIPEPane():Unit=ClientQueryManager.runInPool{
      ipePane=new InplaceEditPanel(this)
      Swing.onEDT{
        ipePane.setup()       
-       //println("ipe:"+ipePane+" peer:"+ipePane.peer)
+       Log.w("ipe:"+ipePane+" peer:"+ipePane.peer)
        ipePane.visible=false
        layerPane.panel.add(ipePane.peer,new java.lang.Integer(2))
        //System.out.println("setup IPE "+layerPane.peer.getSize())
        ipePane.peer.setSize(layerPane.size)
        ipePane.setPaneSize(layerPane.size)
+			 ipePane.pause()
      }
-  }  
+  }
+
+	createIPEPane()
+
 	
-	val canvasPanel=new BorderPanel {
+	val canvasPanel: BorderPanel =new BorderPanel {
 		add(layerPane,BorderPanel.Position.Center)
 		add(scalePanel,BorderPanel.Position.North)
 	} 
@@ -82,8 +87,9 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	    val si=layerPane.size
 	    canvas.peer.setSize(si)
       if(ipePane!=null) {
-  	    ipePane.peer.setSize(si)
-  	    ipePane.setPaneSize(si)
+				//Log.w("IPE Set site")
+				ipePane.resume()
+				ipePane.updatePaneSize(si)
       }
 			scaleModel.viewSize=canvas.size		
 	  } 
@@ -101,7 +107,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  //println("graphElem added:"+elem+" numcr:"+numCreatedElements+" cas:"+hasCreateActionStarted)
 	  if(hasCreateActionStarted) {
 	    numCreatedElements-= 1
-      selectModel.addSelection(Seq((lay,List(elem))),false)
+      selectModel.addSelection(Seq((lay,List(elem))),toggle = false)
 	    if(numCreatedElements<1){
 	      casReceived()	    	
 	    }
@@ -138,18 +144,11 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	
 	// will be called when the DataViewController has another selection	
   def getAllBounds: Rect2DDouble = layerModel.calcAllLayerBounds()
-	
-	
-	/*private def pointsInRect(points:TraversableOnce[VectorConstant],minX:Double,minY:Double,maxX:Double,maxY:Double):Boolean=
-	  points.exists(p=> p.x>=minX && p.x<=maxX && p.y>=minY && p.y<=maxY)*/
 
 	
 	/** finds the elements that are in the given rectangle and selects them 
 	 * in the select model
-	 * 
-	 * @param startPoint
-	 * @param endPoint
-	 * @param add
+	 *
 	 */
 	def checkSelection(minX:Double,minY:Double,maxX:Double,maxY:Double,onlyInside:Boolean,control:Boolean):Unit= {
 	  lastHittedElements=Nil		
@@ -179,13 +178,28 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  }
 	}
 	
-	
+	override def findCrossPoint(clickPosX:Double,clickPosY:Double):Option[VectorConstant]= {
+    val lcd=getCurrentLineCatchDistance
+    val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(false, (el) ⇒ el.ref.typ==GraphElemConst.lineClassID &&
+      el.hits(this,clickPosX,clickPosY,lcd)).flatMap(_._2)
+    if (lines.size>1) {
+      val firstLine=lines.head.asInstanceOf[LineElement]
+      val firstLineDelta=firstLine.delta
+      val iter=lines.iterator
+      iter.next()
+      iter.find{case el:LineElement ⇒ !el.delta.isLinearyDependentFrom(firstLineDelta);case _ ⇒ false } match {
+        case Some(secondLine:LineElement)⇒ Some(firstLine.toLine3D.intersectionWith(secondLine.toLine3D))
+        case _ ⇒ None
+      }
+    }
+    else None
+	}
 	
 	
 	def getChoosableElements(onlyEdible:Boolean,clickPosX:Double,clickPosY:Double):Iterable[GraphElem]={
 	  val lcd=getCurrentLineCatchDistance
 	  if(objSelectMode==ObjectSelectMode.TempObject) 
-	     layerModel.newElemLayer.filterSelection(false,_.hits(/*layerModel.newElemLayer*/this,clickPosX,clickPosY,lcd)) 
+	     layerModel.newElemLayer.filterSelection(onlyEdible = false,filterFunc = _.hits(this, clickPosX, clickPosY, lcd))
 	  else if(objSelectClassConstraints==null) {
       util.Log.e("ObjSelectClassConstraints == null")
 			    Nil
@@ -199,32 +213,34 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   def filterSelection(clickPosX: Double, clickPosY: Double, lcd: Double): Iterable[(AbstractLayer, Iterable[GraphElem])] =
     layerModel.filterLayersSelection(true, (el) => el.hits(this, clickPosX, clickPosY, lcd))
 	
-	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit = {
+	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit =
 	  //println("processElementClick "+hittedElements.mkString(", "))
-	  try {
-	  objSelectMode match {
-	    case ObjectSelectMode.TempObject =>
-				for(o<-objSelectListener) o.tempObjectSelected(hittedElements.head.ref.instance)
-				clearNewElements()
-			case ObjectSelectMode.EdgeAndPoint =>
-				val hPoint=new VectorConstant(clickPosX,clickPosY,0)
-				for(o<-objSelectListener) o.objectsSelectedWithPoint(ObjectReference(hittedElements.head.ref),hPoint,editable)
-				//Swing.onEDT{changeViewportState(ViewportState.SelectState)} // execute after seconnd question is loaded
-			case ObjectSelectMode.SegmentPart => if(editable){
-	  	  //println("segment part :"+editable)
-	  		val hPoint=new VectorConstant(clickPosX,clickPosY,0)
-	  		layerModel.getSegmentPart(hittedElements.head,hPoint) match {
-	  			case Some((p1,p2))=>for(o<-objSelectListener)
-						o.segmentPartSelected(ObjectReference(hittedElements.head.ref),p1,p2)
-					case None => //DialogManager.reset
-	  		}
-	  	}
-	  	case ObjectSelectMode.SingleObject|ObjectSelectMode.SingleObjectNotSelected =>
-				for(o<-objSelectListener) o.objectsSelected(ObjectReference(hittedElements.head.ref),editable)
-		}
-	  } catch {case NonFatal(e)=> ClientQueryManager.printErrorMessage(e.toString())
-		case other:Throwable =>println(other);System.exit(0)}
-	}
+    try
+      objSelectMode match {
+        case ObjectSelectMode.TempObject =>
+          for (o <- objSelectListener) o.tempObjectSelected(hittedElements.head.ref.instance)
+          clearNewElements()
+        case ObjectSelectMode.EdgeAndPoint =>
+          val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
+          for (o <- objSelectListener) o.objectsSelectedWithPoint(ObjectReference(hittedElements.head.ref), hPoint, editable)
+        //Swing.onEDT{changeViewportState(ViewportState.SelectState)} // execute after seconnd question is loaded
+        case ObjectSelectMode.SegmentPart => if (editable) {
+          //println("segment part :"+editable)
+          val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
+          layerModel.getSegmentPart(hittedElements.head, hPoint) match {
+            case Some((p1, p2)) => for (o <- objSelectListener)
+              o.segmentPartSelected(ObjectReference(hittedElements.head.ref), p1, p2)
+            case None => //DialogManager.reset
+          }
+        }
+        case ObjectSelectMode.SingleObject | ObjectSelectMode.SingleObjectNotSelected =>
+          for (o <- objSelectListener) o.objectsSelected(ObjectReference(hittedElements.head.ref), editable)
+      }
+    catch {
+      case NonFatal(e) => ClientQueryManager.printErrorMessage(e.toString())
+      case other: Throwable => println(other); System.exit(0)
+    }
+
 	
 	
 	def getFirstHittedElement(hittedElements:Iterable[(AbstractLayer,Iterable[GraphElem])]):(AbstractLayer,Iterable[GraphElem])={
@@ -309,8 +325,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	}
 
   def showCreatePopup(): Unit = {
-    val mousePos = MouseInfo.getPointerInfo().getLocation()
-    val canvasPos = theCanvas.getLocationOnScreen()
+    val mousePos = MouseInfo.getPointerInfo.getLocation
+    val canvasPos = theCanvas.getLocationOnScreen
 		requestFocus()
     //println("Show Create "+NewButtonsList.actionButtons.map(_.commandName).mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     val buttons = layerModel.getActiveLayer match {
@@ -382,15 +398,20 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	   }
 	 }
 
-  def startIPEMode(el: GraphElem, listener: Option[(String) => Unit]): Unit = if (ipePane != null) {
-	   //println("start IPE Mode:"+el+" listener:"+listener)
+  def startIPEMode(el: GraphElem, listener: Option[(String) => Unit]): Unit =  {
+	   //Log.w("start IPE Mode:"+el+" listener:"+listener+" vps:"+viewportState)
 	   if(_viewportState==ViewportState.InPlaceEdit) stopIPEMode()
 	   else  el match {
 	  	 case tel:TextElement=>
 				 inplaceTextElement=Some(tel)
 				 inplaceEditFinishListener=listener
-				 ipePane.visible=true
-				 ipePane.setValues(tel,scaleModel)
+				 if (ipePane != null) {
+					 ipePane.resume()
+					 ipePane.runLater{
+						 ipePane.visible = true
+						 ipePane.setValues(tel, scaleModel)
+					 }
+				 }
 				 changeViewportState(ViewportState.InPlaceEdit)
 			 case _ =>
 				 inplaceTextElement=None
@@ -424,6 +445,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   override def cleanUpIPEMode(): Unit = {
 	   //println("Cleanup IPE")
 	   ipePane.visible=false
+		 ipePane.pause()
 	   inplaceTextElement=None
 	   inplaceEditFinishListener=None
 	   super.cleanUpIPEMode()	   
@@ -453,6 +475,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 
   def openFilterDialog(): Unit = {
 	   val dialog=new SelectionFilterDialog(ClientApp.top,this)
+		 SwingUtilities.updateComponentTreeUI(dialog.peer)
 	   dialog.setLocationRelativeTo(scalePanel.filterBut)
 	   dialog.visible=true
 	 }

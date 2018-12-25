@@ -1,21 +1,14 @@
 package client.importer
-import definition.data.InstanceData
-import definition.data.Reference
-import java.awt.Point
-
-import scala.swing.Window
-import definition.typ.AllClasses
-import definition.data.OwnerReference
+import java.awt.{Point, Toolkit}
+import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.File
+
+import definition.data.{InstanceData, OwnerReference}
+import definition.typ.AllClasses
 import javax.swing.SwingWorker
 
-import scala.collection.JavaConverters._
-import java.beans.PropertyChangeListener
-import java.beans.PropertyChangeEvent
-import java.awt.Toolkit
-import java.awt.Dimension
-
 import scala.collection.Map
+import scala.swing.Window
 
 class DescriptorHolder(val className:String,id:Int) {
   def createDescriptor: FileImportDescriptor = {
@@ -40,6 +33,7 @@ object FileImportManager {
    */
   def canImport(fileNames:Seq[File],targetType:Int,droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean = {
     if(descriptorMap.contains(targetType)) {
+      println("canimport "+targetType)
       val descriptor=descriptorMap(targetType).descriptor
       descriptor.canImport(fileNames,droppedTarget,ownerRef)
     }
@@ -63,7 +57,7 @@ object FileImportManager {
           override def doInBackground(): Boolean = {
             val accFiles = files.filter(descriptor.acceptFile)
             for (ix <- accFiles.indices; currFile = accFiles(ix)) {
-              if (isCancelled()) {
+              if (isCancelled) {
                 //println("Cancelled")
                 return false
               }
@@ -72,7 +66,7 @@ object FileImportManager {
               descriptor.importFile(currFile, baseObject, settings, (i) => {
                 setProgress(i)
                 //if(isCancelled) println("Callback cancelled "+i)
-                isCancelled()
+                isCancelled
               })
             }
             //println("Loop end ")

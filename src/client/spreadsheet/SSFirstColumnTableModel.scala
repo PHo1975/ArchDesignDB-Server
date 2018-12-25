@@ -1,10 +1,8 @@
 package client.spreadsheet
-import javax.swing.table.AbstractTableModel
-import javax.swing.table.DefaultTableColumnModel
-import javax.swing.table.TableColumn
+import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 
 class SSFirstColumnTableModel(controller:SpreadSheetController) extends AbstractTableModel  {
-  def mainTableModel=controller.tableModel
+  def mainTableModel: SpreadSheetTableModel =controller.tableModel
   
   val columnModel=new DefaultTableColumnModel
   val firstColumn=new TableColumn(0,40)
@@ -12,9 +10,9 @@ class SSFirstColumnTableModel(controller:SpreadSheetController) extends Abstract
   firstColumn.setResizable(false)
   columnModel.addColumn(firstColumn)
   
-  def getRowCount(): Int = mainTableModel.getRowCount()
+  def getRowCount: Int = mainTableModel.getRowCount()
 
-  def getColumnCount(): Int = 1
+  def getColumnCount: Int = 1
   
   def getValueAt(row: Int, col: Int): Object = (row+1).toString 
   

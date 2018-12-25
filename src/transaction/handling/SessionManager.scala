@@ -7,10 +7,10 @@ package transaction.handling
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, GregorianCalendar, Timer}
-import javax.swing.JOptionPane
 
 import definition.expression.DateConstant
 import definition.typ.{AllClasses, SystemSettings}
+import javax.swing.JOptionPane
 import management.databrowser.ConsolePanel
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.server._
@@ -30,6 +30,9 @@ import scala.util.control.NonFatal
  */
 object SessionManager {
   System.setProperty("jdk.tls.ephemeralDHKeySize", "2048")
+  System.setProperty("org.eclipse.jetty.util.log.class","server.webserver.MyLogger")
+  System.setProperty("org.eclipse.jetty.servlet.LEVEL","INFO")
+  System.setProperty("org.eclipse.jetty.LEVEL","WARN")
   var scl: ServerClassList = _
   var isSetup=false
   val setupListeners: ArrayBuffer[() => Unit] = collection.mutable.ArrayBuffer[() => Unit]()
@@ -53,12 +56,20 @@ object SessionManager {
       val xmlData = xml.XML.loadFile(FSPaths.configDir + "types.xml")
       scl = new ServerClassList(xmlData)
       AllClasses.set(scl)
+      //println("All Classes set")
       UserList.fromXML(xml.XML.loadFile(FSPaths.configDir + "users.xml"))
+      //println("Userlist read")
       StorageManager.init(scl.classList)
+      //println("StorageManager Init")
       ActionNameMap.read()
+      //println("ActionNames read")
       SystemSettings.settings = new ServerSystemSettings(FSPaths.settingsObjectRef)
-      for (li <- setupListeners)
+      //println("Server System Settings")
+      //println("Setup Listeners "+setupListeners.size)
+      for (li <- setupListeners) {
         li() // call listeners
+        //println("SetupListener done")
+      }
       isSetup = true
       Runtime.getRuntime.addShutdownHook(new Thread {
         override def run(): Unit = {
@@ -68,6 +79,7 @@ object SessionManager {
       })
 
       MainServerSocket.start()
+      //println("Socket startet")
       val now = new Date()
       val thisDate =DateConstant()
       val gc = new GregorianCalendar
@@ -76,19 +88,20 @@ object SessionManager {
       gc.set(Calendar.MINUTE, 59)
       gc.set(Calendar.SECOND, 50)
       //gc.add(Calendar.DAY_OF_MONTH, 1)
-
+      //println("Backup")
       backupTask.backupDoneListener = Some(UsageStatFileHandler.updateStatistics _)
       if (isBackupDue(thisDate)) backupTask.run()
       backupTimer.scheduleAtFixedRate(backupTask, gc.getTime(), 1000 * 60 * 60 * 24)
       //UsageStatFileHandler.updateStatistics()
-      util.Log.w("Max Trans:" + TransLogHandler.getTransID)
+      util.Log.i("Max Trans:" + TransLogHandler.getTransID)
       WebServer.setLogConsole(logConsole)
+      println("ssl:"+ management.databrowser.MainWindow.webSocketSSL)
       if (management.databrowser.MainWindow.webSocketSSL) {
         try {
-          //println("Start SSL")
+          println("Start SSL")
           val http_config = new HttpConfiguration()
           http_config.setSecureScheme("https")
-          http_config.setSecurePort(443)
+          http_config.setSecurePort(FSPaths.webServerPortSSL )
           http_config.setSendServerVersion(false)
           http_config.addCustomizer(new SecureRequestCustomizer())
 
@@ -101,33 +114,38 @@ object SessionManager {
           sslContextFactory.setKeyStorePassword("Pitpass1#")
           sslContextFactory.setCertAlias("1")
           sslContextFactory.setRenegotiationAllowed(false)
-          util.Log.w("exclude:" + sslContextFactory.getExcludeCipherSuites.mkString(" | "))
-          util.Log.w("Include:" + sslContextFactory.getIncludeCipherSuites.mkString(" | "))
           sslContextFactory.addExcludeCipherSuites("TLS_DHE.*", "TLS_EDH.*")
           sslContextFactory.setIncludeCipherSuites("TLS_ECDHE.*")
 
           val httpConnector = new ServerConnector(WebServer, new HttpConnectionFactory(http_config))
-          httpConnector.setPort(80)
+          httpConnector.setPort(FSPaths.webServerPortNoSSL)
           val sslConnector = new ServerConnector(WebServer, new SslConnectionFactory(sslContextFactory,
             HttpVersion.HTTP_1_1.asString), new HttpConnectionFactory(https_config))
-          sslConnector.setPort(443)
+          sslConnector.setPort(FSPaths.webServerPortSSL)
           WebServer.setConnectors(Array(httpConnector, sslConnector))
           WebServer.setup()
           WebServer.start()
+          println("WebServer mit ssl gestartet")
         } catch {
-          case NonFatal(e) => util.Log.e("fehler:" + e.getMessage, e)
+          case NonFatal(e) => util.Log.e("Fehler beim Serverstart:" + e.getMessage, e)
         }
 
-      } else {
+      } else  try {
         val connector = new ServerConnector(WebServer)
-        connector.setPort(FSPaths.webServerPort)
+        connector.setPort(FSPaths.webServerPortNoSSL)
+        println("Webserver Port:"+ FSPaths.webServerPortNoSSL)
         WebServer.setConnectors(Array(connector))
 
         WebServer.setup()
         WebServer.start()
+        println("WebServer gestartet")
+      } catch {
+        case NonFatal(e) => util.Log.e("fehler webserver:" + e.getMessage, e)
       }
-      util.Log.w("Init done !")
-    }  catch { case NonFatal(e)=> util.Log.e("init",e)}
+
+    }  catch {
+      case NonFatal(e)=> util.Log.e("init",e);println("e:"+e)
+      case g:Throwable=> println("Fatal "+g)}
   }
 
   def inputMissingData(): Unit = Swing.onEDT {

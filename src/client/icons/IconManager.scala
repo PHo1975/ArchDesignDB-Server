@@ -5,9 +5,9 @@ import java.awt.image.ImageObserver
 import java.io.File
 import java.net.{URL, URLDecoder}
 import java.util.jar.JarFile
-import javax.swing.ImageIcon
 
 import client.dataviewer.ViewConstants
+import javax.swing.ImageIcon
 
 import scala.collection.JavaConverters._
 
@@ -23,11 +23,13 @@ object IconManager extends ImageObserver {
     val jarFileN = URLDecoder.decode(iconResource.getFile(),"UTF-8")
     val jarFileName = jarFileN.substring(5,jarFileN.indexOf("!"))
     val jf=new JarFile(jarFileName)    
-     (for(entry<-jf.entries.asScala;eName=entry.getName()
-          if !entry.isDirectory() && eName.startsWith(startPath);
-     parts= eName.split('.')
-          if parts.last.equalsIgnoreCase(ending);
-     splits=namePart(parts.head).split('$')
+     (for( entry<-jf.entries.asScala;
+           eName=entry.getName()
+           if !entry.isDirectory() && eName.startsWith(startPath);
+           parts= eName.split('.')
+           if parts.last.equalsIgnoreCase(ending);
+           splits=namePart(parts.head).split('$')
+           if splits.size > 1
      ) yield (splits(0), splits(1)) -> new ImageIcon(cl.getResource(entry.getName()))).toMap
     
   }else {

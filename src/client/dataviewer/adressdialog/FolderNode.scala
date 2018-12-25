@@ -1,12 +1,11 @@
 package client.dataviewer.adressdialog
 
-import javax.swing.tree.{DefaultMutableTreeNode, DefaultTreeModel, TreePath}
-
 import client.calender.{Address, CalendarHelper, Callbackable, Folder}
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression.StringConstant
+import javax.swing.tree.{DefaultMutableTreeNode, DefaultTreeModel, TreePath}
 
 import scala.collection.JavaConverters._
 import scala.swing.Swing

@@ -1,12 +1,11 @@
 package client.graphicsView
 
-import javax.swing.AbstractListModel
-
 import client.comm.ClientQueryManager
 import client.dialog.FieldEditor
 import definition.data.Referencable
 import definition.expression.IntConstant
 import definition.typ.SelectGroup
+import javax.swing.AbstractListModel
 
 import scala.swing.BorderPanel
 

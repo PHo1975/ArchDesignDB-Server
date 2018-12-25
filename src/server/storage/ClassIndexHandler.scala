@@ -17,18 +17,78 @@ trait RecordListener {
  def nextRecord(inst:Int,dataPos:Long,dataLen:Int,propPos:Long,propLen:Int,linkPos:Long,linkLen:Int,collPos:Long,collLen:Int): Unit
 }
 
+
+object ClassIndexHandler {
+  final val recordSize: Int = 8 * 4 + 4 * 5
+  val appendBufferSize=10    
+  val appendInBuffer: Array[Byte] =Array.fill[Byte](recordSize*appendBufferSize)(0.toByte)
+  val appendInStream=new UnsyncBAInputStream(appendInBuffer)
+  val appendDataIn=new DataInputStream(appendInStream)
+  val appendOutStream=new MyByteStream(recordSize*appendBufferSize)
+  val appendDataOut=new DataOutputStream(appendOutStream)
+
+
+  protected def readTailSpace(theFile:RandomAccessFile): Int = {
+    if(theFile.length() >=recordSize*appendBufferSize){
+      theFile.seek(theFile.length()-recordSize*appendBufferSize)
+      theFile.read(appendInBuffer)
+      appendInStream.reset()
+      var line= -1
+      for(i<-0 until appendBufferSize; if line == -1) {
+        val inst = appendDataIn.readInt
+        if(inst== -1 || inst== 0) line =i
+        appendDataIn.readLong;  appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt;
+          appendDataIn.readLong; appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt
+      }
+      if(line == -1 ) 0
+      else if (line< appendBufferSize) {
+        //println("TailSpace line:"+line)
+        appendBufferSize - line
+      }
+      else throw new IllegalArgumentException("Wrong tail number "+line)
+    } else 0
+  }
+  
+  def addTail(theFile:RandomAccessFile,b:Array[Byte]): Unit = {
+    //println("add Tail ")
+    theFile.seek(theFile.length)
+    appendOutStream.reset()
+    appendOutStream.write(b,0,recordSize)
+    for(i <-0 until appendBufferSize-1) {
+      appendDataOut.writeInt(-1)
+      appendDataOut.writeLong(-1);  appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
+      appendDataOut.writeLong(0); appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
+    }
+    theFile.write(appendOutStream.buffer,0,appendOutStream.buffer.length)
+  }
+
+}
+
 /** Manages the index file for a certain class
  * 
  */
 
 class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".idx") {
+  import ClassIndexHandler._
 	val fileName=new File(FSPaths.dataDir+theClass.name+extension)	
-	var theFile= new RandomAccessFile(fileName,"rwd")
-  final val recordSize: Int = 8 * 4 + 4 * 5
-	var numRecords:Int=(theFile.length/recordSize).toInt
-	//System.out.println("Typ: "+theClass.id+" numRecords:"+numRecords)
-  var firstID: Int = if (numRecords > 0) readIxInst(0) else 0
-	var lastID:Int= if(numRecords>0) readIxInst(numRecords-1) else 0	
+	protected var theFile= new RandomAccessFile(fileName,"rw")
+
+  var tailSpace: Int =readTailSpace(theFile)
+
+	protected var numRecords:Int=(theFile.length/recordSize).toInt
+	//System.out.println("Typ: "+theClass.id+" numRecords:"+numRecords+" tailspace:"+tailSpace)
+  protected var firstID: Int = if (numRecords > 0) readIxInst(0) else 0
+	protected var lastID:Int= if(numRecords>0) readIxInst(numRecords-1-tailSpace) else 0
+  //if(tailSpace>0 ) System.out.println("Class "+theClass.name+" firstid:"+firstID+" LastID:"+lastID)
+
+	val benchmarkBuffer: Array[Int] =Array.fill(50)(0)
+	var currentBenchPos=0
+	protected def writeBench(value:Int): Unit ={
+		benchmarkBuffer(currentBenchPos)=value
+		currentBenchPos=if(currentBenchPos<benchmarkBuffer.length-1) currentBenchPos+1 else 0
+	}
+
+
 	
 	var lastReadID:Int= -2	
 	var lastSeekID:Int = -2
@@ -51,14 +111,30 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	//val propCache=new Cache[InstanceProperties](theClass.id)
 	
 	var counter=0
+
+	def flush():Unit= theFile.getChannel.force(true)
+
+  def append(b:Array[Byte]):Unit = {
+    resetLastReadID()
+		//println("append "+tailSpace)
+    if(tailSpace>0) {
+      //println("Tailspace "+theClass.name+" :"+tailSpace)
+      theFile.seek(theFile.length-tailSpace*recordSize)
+      theFile.write(b,0,recordSize)
+      tailSpace -= 1
+    } else {
+      addTail(theFile,b)
+      numRecords+=appendBufferSize
+      tailSpace= appendBufferSize -1
+			//println("tailspace="+tailSpace)
+    }
+  }
 	
 	
 	// stores Information about the instance data in the index
 	
 	def createInstance():Int =	{
-		val inst=lastID+1		
-		theFile.seek(theFile.length)
-		resetLastReadID()
+		val inst=lastID+1
 		bufferStream.reset()
 		outStream.writeInt(inst)
 		outStream.writeLong(0)
@@ -69,21 +145,36 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 		outStream.writeInt(0)
 		outStream.writeLong(0)
 		outStream.writeInt(0)
-		theFile.write(bufferStream.buffer,0,recordSize)
-		numRecords+=1
+		//TransactionManager.logStep("in Buffer")
+		append(bufferStream.buffer)
+		//TransactionManager.logStep("index written")
+
 		lastID=inst		
 		inst
 	}
 
-  def resetLastReadID(): Unit = if (lastReadID != -2) lastReadID = -2
+  def resetLastReadID(): Unit = /*if (lastReadID != -2)*/ lastReadID = -2
 
 
   def writeData(inst: Int, dataPos: Long, dataLength: Int, created: Boolean, withLog: Boolean = true): Unit = {
+		//println("write Data "+inst)
 	  internalWrite(inst,dataPos,dataLength,0) 
-	  if(withLog){
-	  	if(created) TransLogHandler.dataChanged(TransType.created,theClass.id,inst,dataPos,dataLength) 
-	  	else        TransLogHandler.dataChanged(TransType.dataChanged,theClass.id,inst,dataPos,dataLength)
-	  }
+	  if(withLog)
+	  	 TransLogHandler.dataChanged(if(created) TransType.created else TransType.dataChanged,theClass.id,inst,dataPos,dataLength)
+	}
+
+	def writeAllFields(inst: Int, dataPos: Long, dataLen: Int, propPos: Long, propLen: Int, linkPos: Long, linkLen: Int, collPos: Long, collLen: Int,created:Boolean):Unit={
+		resetLastReadID()
+		if(inst>lastID)  // create new Instance
+			throw new IllegalArgumentException("Storing wrong instance" +inst+ " in class "+theClass.name)
+		theFile.seek(findIxRecord(inst)*recordSize)
+		reorgWriteRecord(inst,dataPos,dataLen,propPos,propLen,linkPos,linkLen,collPos,collLen)
+		TransLogHandler.startCombiWrite()
+		TransLogHandler.dataChanged(if(created)TransType.created else TransType.dataChanged, theClass.id,inst,dataPos,dataLen,writeInstant = false)
+		if(propLen!=0) TransLogHandler.dataChanged(TransType.propertyChanged ,theClass.id,inst,propPos,propLen,writeInstant=false)
+		if(linkLen!=0) TransLogHandler.dataChanged(TransType.linksChanged ,theClass.id,inst,linkPos,linkLen,writeInstant = false)
+		if(collLen!=0) TransLogHandler.dataChanged(TransType.collFuncChanged ,theClass.id,inst,collPos,collLen,writeInstant = false)
+		TransLogHandler.flushCombiWrite()
 	}
 
 
@@ -103,7 +194,7 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	
 	
 	private def internalWrite(inst:Int,dataPos:Long,dataLength:Int,
-	                          ixOffset:Int ) = { // Offset position in the index record	
+	                          ixOffset:Int ): Unit = { // Offset position in the index record
 		if(inst>lastID)  // create new Instance
 	  	throw new IllegalArgumentException("Storing wrong instance" +inst+ " in class "+theClass.name)
 	  
@@ -138,7 +229,7 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 
   def foreachInstance(listener: RecordListener): Unit = {
 	  theFile.seek(0)
-		for(i <-0 until numRecords) {
+		for(i <-0 until numRecords-tailSpace) {
 	    theFile.read(readBuffer,0,recordSize)
 	    inBufferStream.reset()
 	    val inst=dataInStream.readInt
@@ -148,7 +239,7 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	  }
 	}
 
-  def getInstancesRefs: Array[Reference] = readFully.filter(_.dataPos >= 0).map(record => new Reference(theClass.id, record.inst))
+  def getInstancesRefs: Array[Reference] = readFully().filter(_.dataPos >= 0).map(record => new Reference(theClass.id, record.inst))
 
 
   def deleteInstance(inst: Int, withLog: Boolean = true): Unit = {
@@ -158,15 +249,19 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	
 	
 	// does the specified instance exist ?
-	def instanceExists(inst:Int):Boolean = if(inst<firstID||inst>lastID) false
-	  else {	  
+	def instanceExists(inst:Int):Boolean = {
+		//println("Exist  "+inst+" first:"+firstID+" last:"+lastID)
+		if(inst<firstID||inst>lastID) false
+		else {
 			resetLastReadID()
-			for(i<-internFindIxRecord(inst)){
-			   val r=getInstanceRecord(inst)		   
-		     return r.dataPos > -1 && r.dataLength != 0
+			internFindIxRecord(inst) match {
+				case sp @ Some(pos) =>
+					val r=getInstanceRecord(inst,sp)
+					r.dataPos > -1 && r.dataLength != 0
+				case None=> false
 			}
-			false
-	  }
+		}
+	}
 	
 	
 	
@@ -228,10 +323,13 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
     ((readBuffer(pos+3) & 255) << 0)
 	
 	
-	 def getInstanceRecord (inst:Int):IndexRecord =	{	
+	 def getInstanceRecord (inst:Int,pos:Option[Int]=None):IndexRecord =	{
 		 //System.out.println("getinstance Record inst"+inst+" lastReadID:"+lastReadID)
 		if(lastReadID!=(inst-1)) // optimize: if this call is the subsequent inst of the last call, try not to seek
-			theFile.seek(findIxRecord(inst)*recordSize)
+			theFile.seek((pos match {
+        case Some(npos)=>npos
+        case None => findIxRecord(inst)
+      }) * recordSize)
 		//else print("o ")
 		lastReadID=inst
 		theFile.read(readBuffer,0,recordSize)
@@ -257,31 +355,42 @@ class ClassIndexHandler(val theClass:ServerObjectClass,val extension:String=".id
 	// internal routines
 	
 	// gets the Position of the given Instance in the index file
-	private def internFindIxRecord(inst:Int):Option[Int] =	{
-		if(inst==lastSeekID) lastSeekPos
+	private def internFindIxRecord(inst:Int):Option[Int] =
+		if(inst==lastSeekID) { writeBench(-1); lastSeekPos}
 		else {			
-		  if(numRecords==0||inst<firstID||inst>lastID) return None
-		  if(inst==lastID) return Some(numRecords-1)		  
-		  lastSeekID=inst		  		
-		  // binary search
-			@tailrec
-			def finder(lower:Int,upper:Int):Option[Int] =  {
-		  	if (upper<lower) return None
-		  	val mid = (upper + lower) / 2
-		  	val instAtMid=readIxInst(mid)		  	
-		  	if (instAtMid > inst)finder(lower, mid-1)
-		  		else if (instAtMid < inst)finder( mid+1, upper)
-		  	else Some(mid)
-		  }
-		  lastSeekPos=finder(0,numRecords)
-		  lastSeekPos
+		  if(numRecords==0||inst<firstID||inst>lastID)  None
+      else if(inst==lastID){
+        writeBench(-2)
+        //println("found last ID "+lastID+" numRecords:"+numRecords+" tailSpace:"+tailSpace)
+        Some(numRecords-1-tailSpace)
+      }
+      else {
+        lastSeekID = inst
+        // binary search
+        var seektime = 0
+
+        @tailrec
+        def finder(lower: Int, upper: Int): Option[Int] = {
+          seektime += 1
+          if (upper < lower) return None
+          val mid = (upper + lower) / 2
+          val instAtMid: Int = readIxInst(mid)
+          if (instAtMid > inst) finder(lower, mid - 1)
+          else if (instAtMid < inst) finder(mid + 1, upper)
+          else Some(mid)
+        }
+
+        lastSeekPos = finder(0, numRecords - tailSpace)
+        writeBench(seektime)
+        lastSeekPos
+      }
 		}				
-	}
+
 	
 	private def findIxRecord(inst:Int):Int =	{
     resetLastReadID()
 		internFindIxRecord(inst) match		{ 
-			case Some(v)=>v ;
+			case Some(v)=>v
 			case None => throw new IllegalArgumentException("Instance "+inst+" not found in class "+theClass.name )
 		}
 	}

@@ -7,7 +7,7 @@ import java.io.ByteArrayInputStream
  */
 class UnsyncBAInputStream(nbuf:Array[Byte]) extends ByteArrayInputStream(nbuf){
 
-  override def read():Int= if (pos < count)  (buf ( { pos += 1; pos - 1 }) & 0xff) else - 1
+  override def read():Int= if (pos < count)  buf ( { pos += 1; pos - 1 }) & 0xff else - 1
 
 
 
@@ -29,6 +29,6 @@ class UnsyncBAInputStream(nbuf:Array[Byte]) extends ByteArrayInputStream(nbuf){
 
   override def available:Int= count - pos
 
-  override def reset:Unit=  pos = mark
+  override def reset():Unit=  pos = mark
 
 }

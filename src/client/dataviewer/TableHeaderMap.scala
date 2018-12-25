@@ -3,12 +3,11 @@
  */
 package client.dataviewer
 
-import javax.swing.JComboBox
-import javax.swing.table._
-
 import client.comm.{UserSettings, _}
 import client.dialog.{ComboBoxEditor, EditorFactory}
 import definition.typ._
+import javax.swing.JComboBox
+import javax.swing.table._
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable

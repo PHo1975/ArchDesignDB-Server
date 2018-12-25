@@ -1,14 +1,13 @@
 package client.dialog.form
 
 
+import definition.data.InstanceData
+import definition.typ.AbstractObjectClass
 import definition.typ.form.FormDataField
 
 import scala.swing.Button
-import definition.data.InstanceData
 import scala.swing.event.ButtonClicked
-import definition.typ.AbstractObjectClass
 import scala.util.control.NonFatal
-import util.XMLUtils._
 
 trait FormButtonListener{
   def formButtonClicked(text:String,data:InstanceData)

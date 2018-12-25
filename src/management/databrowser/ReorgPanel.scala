@@ -1,9 +1,8 @@
 package management.databrowser
 
-import javax.swing.SwingWorker
-
 import client.dataviewer.ViewConstants
 import definition.data.{OwnerReference, Reference}
+import javax.swing.SwingWorker
 import server.storage.StorageManager
 import transaction.handling.TransactionManager
 

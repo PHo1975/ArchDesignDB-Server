@@ -4,21 +4,19 @@
 package client.dialog.form
 
 import java.awt.Color
-import javax.swing.event.{CaretEvent, CaretListener, DocumentEvent, DocumentListener, UndoableEditEvent, UndoableEditListener}
-import javax.swing.undo.{CannotUndoException, UndoManager}
 
 import definition.data.InstanceData
-import definition.expression.{DoubleConstant, EMPTY_EX, Expression, ParserError, VectorConstant}
-import definition.typ.{AbstractObjectClass, DataType, FieldSetting, HorAlign}
+import definition.expression.{EMPTY_EX, Expression, ParserError}
 import definition.typ.form.FormDataField
+import definition.typ.{AbstractObjectClass, DataType, FieldSetting, HorAlign}
+import javax.swing.event._
+import javax.swing.undo.{CannotUndoException, UndoManager}
 import util.Log
 
-import scala.swing.{Alignment, BorderPanel, BoxPanel, Component, Orientation, ScrollPane, Swing, TextArea, TextComponent, TextField}
 import scala.swing.event.{ButtonClicked, EditDone, FocusGained, FocusLost}
-import scala.xml.Node
-import util.XMLUtils._
-
+import scala.swing.{Alignment, BorderPanel, BoxPanel, Component, Orientation, ScrollPane, Swing, TextArea, TextComponent, TextField}
 import scala.util.control.NonFatal
+import scala.xml.Node
 
 
 
@@ -38,18 +36,18 @@ trait AbstractFormTextField extends FormDataField with FormElement{
 	listenTo(editComponent)
 	
 	editComponent.peer.getDocument.addDocumentListener(new DocumentListener {
-		def insertUpdate(e:DocumentEvent ) = if(!dirty) setDirty(true)
-    def removeUpdate(e:DocumentEvent ) = if(!dirty) setDirty(true)
-    def changedUpdate(e:DocumentEvent )={} //System.out.println("change "+e)
+		def insertUpdate(e:DocumentEvent ): Unit = if(!dirty) setDirty(true)
+    def removeUpdate(e:DocumentEvent ): Unit = if(!dirty) setDirty(true)
+    def changedUpdate(e:DocumentEvent ): Unit ={} //System.out.println("change "+e)
 	})
   
-	def setDirty(newValue:Boolean)= {
+	def setDirty(newValue:Boolean): Unit = {
     //System.out.println("\nfield "+fieldNr+"set dirty "+newValue+" "+Thread.currentThread().getStackTrace().drop(1).take(3).mkString("\n"))
 		dirty=newValue
 		editComponent.background= if(dirty)FormElement.editColor else Color.white
 	}
   
-  def saveOnExit()= if(!shuttedDown&&dirty) 
+  def saveOnExit(): Unit = if(!shuttedDown&&dirty)
 		for (l<-listener) 
 			if(editComponent.text!=oldText){
 			  l.parseValue(fieldNr, editComponent.text) match {
@@ -90,7 +88,7 @@ trait AbstractFormTextField extends FormDataField with FormElement{
   
   def alignRight()
   
-  def getRenderedText ={
+  def getRenderedText: String ={
     val value=expr.getValue
     if(value==null || value==EMPTY_EX) ""
     else value.getType match {
@@ -112,7 +110,7 @@ trait AbstractFormTextField extends FormDataField with FormElement{
 
 
   
-  def setDataValue(dvalue:InstanceData,nclass:AbstractObjectClass) = {
+  def setDataValue(dvalue:InstanceData,nclass:AbstractObjectClass): Unit = {
     editComponent.editable= !nclass.fieldSetting(fieldNr).readOnly
   	expr=dvalue.fieldData(fieldNr)
   	fieldFormat=nclass.fieldSettingMap.get(fieldNr)  	
@@ -126,19 +124,19 @@ trait AbstractFormTextField extends FormDataField with FormElement{
 
 class FormTextField (val minWidth:Int,val maxWidth:Int,val minHeight:Int,val maxHeight:Int, 
 	val align:HorAlign.Value,val fieldNr:Byte,ctext:FormCreateContext) extends TextField with AbstractFormTextField {
-  def context=ctext
+  def context: FormCreateContext =ctext
   horizontalAlignment=FormElement.horAlignToScala(align)
   reactions += {
 		case e:EditDone=> saveOnExit() 
   }
-  def editComponent=this
+  def editComponent =this
   
   def makeCopy=new FormTextField(minWidth,maxWidth,minHeight,maxHeight,align,fieldNr,context)
-  def alignRight()=horizontalAlignment=Alignment.Right
+  def alignRight(): Unit =horizontalAlignment=Alignment.Right
   def toXML: Node = {  
   	<TextField iw={minWidth.toString} aw={maxWidth.toString} ih={minHeight.toString} ah={maxHeight.toString} align={align.id.toString} field={fieldNr.toString}/>
   }
-  override def toString() = "TextField F"+fieldNr
+  override def toString(): String = "TextField F"+fieldNr
 }
 
 class FormTextArea( val minWidth:Int,val maxWidth:Int,val minHeight:Int,val maxHeight:Int, 
@@ -175,22 +173,20 @@ class FormTextArea( val minWidth:Int,val maxWidth:Int,val minHeight:Int,val maxH
   	<TextArea iw={minWidth.toString} aw={maxWidth.toString} ih={minHeight.toString} ah={maxHeight.toString}
   	field={fieldNr.toString} printBut={if(showPrintBut)"1" else "0"}/>  	
   }
-  def undo()=try {
+  def undo(): Unit =try {
     if (undoManager.canUndo) undoManager.undo()
     updateUndoButtons()
   } catch {case e:CannotUndoException=>  Log.e("undo",e)  }
-  def redo()=try {
+  def redo(): Unit =try {
     if (undoManager.canRedo) undoManager.redo()
     updateUndoButtons()
   } catch {case e:CannotUndoException=>  Log.e("redo",e)  }
-  override def toString() = "TextArea F"+fieldNr
+  override def toString(): String = "TextArea F"+fieldNr
   
-  editComponent.peer.addCaretListener(new CaretListener(){
-    def caretUpdate(e:CaretEvent){
-       val textSelected=e.getDot!=e.getMark
-       cutBut.enabled=textSelected
-       copyBut.enabled=textSelected
-    }
+  editComponent.peer.addCaretListener((e: CaretEvent) => {
+    val textSelected = e.getDot != e.getMark
+    cutBut.enabled = textSelected
+    copyBut.enabled = textSelected
   })
   
   listenTo(saveBut,undoBut,redoBut,copyBut,pasteBut,maxBut,cutBut,printBut)
@@ -206,26 +202,23 @@ class FormTextArea( val minWidth:Int,val maxWidth:Int,val minHeight:Int,val maxH
     case ButtonClicked(`pasteBut`)=>editComponent.paste()
   } 
 	editComponent.peer.getDocument.addUndoableEditListener(new UndoableEditListener() {
-	    override def undoableEditHappened(e:UndoableEditEvent)={
+	    override def undoableEditHappened(e:UndoableEditEvent): Unit ={
 	      undoManager.addEdit(e.getEdit)
 	      updateUndoButtons()
 	    }     
 	})
 	
-	override def setDataValue(dvalue:InstanceData,nclass:AbstractObjectClass) = {
+	override def setDataValue(dvalue:InstanceData,nclass:AbstractObjectClass): Unit = {
 	  super.setDataValue(dvalue,nclass)
 	  undoManager.discardAllEdits()
 	  updateUndoButtons()
 	  for(l<-listener) l.flipMaximizeWindow(maxBut.selected)
 	}
 	
-	def updateUndoButtons()={	  
+	def updateUndoButtons(): Unit ={
 	  undoBut.enabled=undoManager.canUndo
 	  redoBut.enabled=undoManager.canRedo
 	}
 	
-	override def setDirty(newValue:Boolean)={
-	  super.setDirty(newValue)	  
-	}
-
+	override def setDirty(newValue:Boolean): Unit =  super.setDirty(newValue)
 }

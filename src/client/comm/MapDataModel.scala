@@ -1,15 +1,9 @@
 package client.comm
-import definition.data.InstanceData
-import definition.data.Reference
 import definition.comm.{KeyAble, NotificationType}
-import definition.data.Referencable
+import definition.data.{InstanceData, Reference}
+
 import scala.collection.immutable.TreeMap
 import scala.swing.Swing
-import javax.swing.table.TableModel
-import javax.swing.event.TableModelListener
-import scala.collection.mutable.ArrayBuffer
-import javax.swing.ListModel
-import javax.swing.event.ListDataListener
 
 
 
@@ -18,7 +12,7 @@ abstract class MapDataModel[K,T <:KeyAble[K]] {
   val lock=new Object
   var theMap:Map[K,T]=emptyMap()
   
-  def shutDown()= {
+  def shutDown(): Unit = {
     if(subsID> -1 ) {      
       ClientQueryManager.removeSubscription(subsID)
       theMap=emptyMap()
@@ -28,12 +22,12 @@ abstract class MapDataModel[K,T <:KeyAble[K]] {
   
   def emptyMap():Map[K,T]=collection.immutable.HashMap.empty
   
-  def dataToMap(data:IndexedSeq[InstanceData])=data.map(id=>{
+  def dataToMap(data:IndexedSeq[InstanceData]): Map[K, T] =data.map(id=>{
     		    val elem=elemFactory(id)
     		    (elem.key,elem)
     		  }).toMap
   
-  def load(superRef:Reference,propField:Int)={
+  def load(superRef:Reference,propField:Int): Unit ={
     shutDown() 
     //println("MapDataModel load "+superRef+" propField:"+propField)
     subsID=ClientQueryManager.createSubscription(superRef,propField.toByte)((command,data)=> Swing.onEDT{
@@ -91,6 +85,6 @@ abstract class MapDataModel[K,T <:KeyAble[K]] {
 }
 
 abstract class TreeMapDataModel[K,T <:KeyAble[K]](implicit val ord:Ordering[K]) extends MapDataModel[K,T] {
-  override def emptyMap()=TreeMap[K,T]()  
+  override def emptyMap(): TreeMap[K, T] =TreeMap[K,T]()
 }
 

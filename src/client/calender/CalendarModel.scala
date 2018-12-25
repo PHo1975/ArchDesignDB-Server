@@ -1,19 +1,16 @@
 package client.calender
 
-import definition.data.Reference
 import definition.typ.SystemSettings
-import javafx.scene.Scene
-import javafx.scene.control.Tab
-import javafx.scene.control.TabPane
+import javafx.scene.control.{Tab, TabPane}
 
 
 class CalendarModel(val window:CalendarWindow) {
-  var folderType= -1
-  var projectType= -1
-  var monthDataType= -1
-  var calEventType= -1
-  var addressType = -1  
-  var dayReportType = -1
+  var folderType: Int = -1
+  var projectType: Int = -1
+  var monthDataType: Int = -1
+  var calEventType: Int = -1
+  var addressType: Int = -1
+  var dayReportType: Int = -1
  
   
   val projectList=new ProjectList(this)
@@ -24,7 +21,7 @@ class CalendarModel(val window:CalendarWindow) {
   lazy val eventForm=new EventForm(this)
   lazy val reportForm=new DayReportForm(this)
   
-  def load()= {   
+  def load(): Unit = {
     folderType=SystemSettings().systemTypes("Folder")
     projectType=SystemSettings().systemTypes("Project")
     monthDataType=SystemSettings().systemTypes("CalendarMonthData")
@@ -34,7 +31,7 @@ class CalendarModel(val window:CalendarWindow) {
     projectList.load()   
   }
   
-  def shutDown() = {
+  def shutDown(): Unit = {
     projectList.shutDown()
     weekTableModel.shutDown()
   }

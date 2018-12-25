@@ -71,7 +71,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
     Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal)
     if (sess.getUpgradeRequest.getUserPrincipal != null) {
-      val userName = sess.getUpgradeRequest.getUserPrincipal().getName()
+      val userName = sess.getUpgradeRequest.getUserPrincipal.getName
       UserList.getUserByName(userName) match {
         case Some(u) => userEntry = u
         case None => Log.e("Login unknown user " + userName); userEntry = null; return;
@@ -79,7 +79,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       mySession = Some(sess)
       removePinger()
       pinger = Some(WebClientSocket.startRepeated {
-        val remote = getRemote()
+        val remote = getRemote
         if (remote != null) remote.sendPing(WebClientSocket.byteBuffer)
         else throw new IllegalArgumentException("ping connection closed")
       })
@@ -105,25 +105,22 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     case _ => false
   }
 
-  /*override def onWebSocketBinary(array:Array[Byte],offset:Int,len:Int)= {
-    super.onWebSocketBinary(array,offset,len)
-    println("binary:"+array.mkString("\\|")+"off:"+offset+" len:"+len)
-  }*/
 
-  private def removePinger()= for(p<-pinger){
+  private def removePinger(): Unit = for(p<-pinger){
     //println("removing old pinger")
     WebClientSocket.executor.remove(p)
   }
 
-  private def cleanup()={
+  private def cleanup(): Unit =
     if(userEntry!=null){
       removePinger()
       mySession=None
       pinger=None
-      UserList.removeConnection(userEntry.id,this)
+      val uid=userEntry.id
       userEntry=null
+      UserList.removeConnection(uid,this)
     }
-  }
+
 
   override def onWebSocketClose(statusCode: Int, reason: String): Unit = {
     Log.w("Sock user:" + userEntry.name + " adress:" + getRemoteAddress + " closed status:" + statusCode + " reason:" + reason)
@@ -137,6 +134,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       case Array(command,data)=> command match {
         case "CreateSubscription"=> initSubscription(data)
         case "RemoveSubscription"=> removeSubscription(data)
+        case "LoadData"=>loadData(data)
         case "ChangeRef"=>
         case "SubscribePath"=>subscribePath(data)
         //case "Query"=> queryInstances(data)
@@ -165,7 +163,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
   override def shutDown(): Unit =
     if(userEntry!=null) {
-      Log.w("shut down name:" + userEntry + " adress:" + mySession.get.getRemoteAddress)
+      Log.w("shut down name:" + userEntry + (if(mySession.isDefined) " adress:" + mySession.get.getRemoteAddress else ""))
       cleanup()
       val session=this.getSession
       if(session!=null) session.close()
@@ -176,7 +174,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
   override def tellToQuit(): Unit = shutDown()
 
-  override def getRemoteAddress: String = mySession match {case Some(s) => s.getRemoteAddress.toString(); case _ => ""}
+  override def getRemoteAddress: String = mySession match {case Some(s) => s.getRemoteAddress.toString; case _ => ""}
 
   override def sendUndoLockInfo(undoName: String): Unit = {}
 
@@ -198,9 +196,12 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       //output.flush()
       //println("send command " + command + " " + buffer.byteStream.size() + " bytes buffering:"+ActionList.isBufferingUpdates)
       if(!ActionList.isBufferingUpdates) {
-        val remote = getRemote()
+        val remote = getRemote
         if (remote != null) remote.sendBytesByFuture(java.nio.ByteBuffer.wrap(buffer.byteStream.toByteArray))
-        else util.Log.e("senddata getRemote == null")
+        else {
+          util.Log.e("senddata "+command+" datasize:"+buffer.byteStream.size()+" getRemote == null")
+          shutDown()
+        }
       }
     }
     } catch {
@@ -261,6 +262,14 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
           Log.e("ref " + ref + " not allowed for " + userEntry)
         };
     }
+
+  protected def loadData(data:String):Unit = data.split("\\|") match {
+    case Array(Reference(parentRef),StrToInt(propertyField))=>
+      userSocket.sendData(ServerCommands.sendQueryResponse ) {out=>
+        sendQueryData(out,parentRef,propertyField.toByte)
+      }
+    case o=> Log.e("Wrong format load data "+o)
+  }
 
 
   protected def removeSubscription(data:String): Unit =data match {
@@ -391,7 +400,6 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
   def askEnquiry(question:ParamQuestion,continuation:(JavaClientSocket,Seq[(String,Constant)])=>Unit):Unit={
-
   }
 
   protected def createInstance(data:String): Unit =
@@ -446,18 +454,18 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       case _=> Log.e("create wrong syntax:"+data)
     }
 
-  def getTransBuffers: TransBuffers =transBuffers match {
-    case Some(b)=>b
-    case None=> val b=new TransBuffers()
-      transBuffers=Some(b)
-      b
+  def getTransBuffers: TransBuffers =transBuffers.getOrElse({
+    val b=new TransBuffers()
+    transBuffers=Some(b)
+    b
+  })
 
-  }
+
 
   def flushTransactionBuffers():Unit={
     //println("flush "+userEntry.name)
     for(buffer<-transBuffers){
-      val remote = getRemote()
+      val remote = getRemote
       if (remote != null) remote.sendBytesByFuture(java.nio.ByteBuffer.wrap(buffer.byteStream.toByteArray))
       else util.Log.e("senddata flush getRemote == null")
     }

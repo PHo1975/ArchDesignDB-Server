@@ -3,13 +3,13 @@
  */
 package server.test
 
-import definition.typ._
-import server.storage._
+import definition.comm.ClientCommands
 import definition.data._
 import definition.expression._
+import definition.typ._
 import server.comm.{AbstractUserSocket, JavaClientSocket}
+import server.storage._
 import transaction.handling.TransactionManager
-import definition.comm.ClientCommands
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
@@ -23,20 +23,20 @@ class Vokabel(val deutsch:String,val englisch:String,val dg:Int,val eg:Int,val r
  * 
  */
 class VokabelGroupModule extends ActionModule {
-  var vokabelTyp= -1  
-  val lernAlleDeutsch=new ActionImpl("Lerne Deutsch",None,doLerneDeutsch(0,true))
-  val vertiefeDeutsch=new ActionImpl("Vertiefe Deutsch",None,doLerneDeutsch(1,true))
-  val lernAlleEnglisch=new ActionImpl("Lerne Englisch",None,doLerneDeutsch(0,false))
-  val vertiefeEnglisch=new ActionImpl("Vertiefe Englisch",None,doLerneDeutsch(1,false))
+  var vokabelTyp: Int = -1
+  val lernAlleDeutsch=new ActionImpl("Lerne Deutsch",None,doLerneDeutsch(0,de_Richtung = true))
+  val vertiefeDeutsch=new ActionImpl("Vertiefe Deutsch",None,doLerneDeutsch(1,de_Richtung = true))
+  val lernAlleEnglisch=new ActionImpl("Lerne Englisch",None,doLerneDeutsch(0,de_Richtung = false))
+  val vertiefeEnglisch=new ActionImpl("Vertiefe Englisch",None,doLerneDeutsch(1,de_Richtung = false))
   val sortiere=new ActionImpl("Sortieren",None,doSortiere)
   
-  val aQuestion=new DialogQuestion("was heisst",Seq(new AnswerDefinition("Was Heisst :",DataType.StringTyp,None)))
+  val aQuestion=DialogQuestion("was heisst", Seq(new AnswerDefinition("Was Heisst :", DataType.StringTyp, None)))
   
   val actions=List(lernAlleDeutsch,vertiefeDeutsch,lernAlleEnglisch,vertiefeEnglisch,sortiere) 
   
   def setObjectType(typeID: Int): Unit = {}
   
-  def init()= {
+  def init(): Unit = {
   	if(vokabelTyp== -1)vokabelTyp =AllClasses.get.getClassIDByName("Vokabel")
   }
   
@@ -62,7 +62,7 @@ class VokabelGroupModule extends ActionModule {
   		val head=vokListe.head
   		var dw=if(de_Richtung) head.deutsch else head.englisch
   		var level=if(de_Richtung)head.dg else head.eg
-  		while((dw.length==0||level<nurLevel)&& vokListe.size>1) {
+  		while((dw.length==0||level<nurLevel)&& vokListe.lengthCompare(1) > 0) {
   			vokListe=vokListe.drop(1)
   			val head=vokListe.head
   			dw=if(de_Richtung) head.deutsch else head.englisch
@@ -82,7 +82,7 @@ class VokabelGroupModule extends ActionModule {
 		var deutschWert=getNextDeutschWert
   	if(deutschWert.length==0) return true
   	
-		val question= new DialogQuestion("Vokabeln lernen. Bitte eingeben ->",Seq(new AnswerDefinition("Was heisst '"+deutschWert+"' ?",DataType.StringTyp,None)))
+		val question= DialogQuestion("Vokabeln lernen. Bitte eingeben ->", Seq(new AnswerDefinition("Was heisst '" + deutschWert + "' ?", DataType.StringTyp, None)))
 		u.askEnquiry(question,handleAnswer)
 		
 		def handleAnswer(u:JavaClientSocket, params:Seq[(String,Constant)]):Unit= {
@@ -105,11 +105,11 @@ class VokabelGroupModule extends ActionModule {
 				vokListe=vokListe.drop(1)
 				deutschWert=getNextDeutschWert
 				if(deutschWert.length==0){
-					u.askEnquiry(new DialogQuestion(response,Seq(new AnswerDefinition("Alle "+numVoks+" Vokabeln gelernt",DataType.EnumTyp,None,"Fertig"))),
+					u.askEnquiry(DialogQuestion(response, Seq(new AnswerDefinition("Alle " + numVoks + " Vokabeln gelernt", DataType.EnumTyp, None, "Fertig"))),
 						(a,b)=>{})
 				}
 				else {
-					val question= new DialogQuestion(response,Seq(new AnswerDefinition("Was heißt '"+deutschWert+"' ?",DataType.StringTyp,None)))
+					val question= DialogQuestion(response, Seq(new AnswerDefinition("Was heißt '" + deutschWert + "' ?", DataType.StringTyp, None)))
 					u.askEnquiry(question,handleAnswer)
 				}
 			}
@@ -121,9 +121,9 @@ class VokabelGroupModule extends ActionModule {
     false
   }
   
-  def writeLevel(user:AbstractUserSocket,ref:Reference,fieldNr:Byte,newValue:Int)= {
-  	TransactionManager.doTransaction(user.userEntry.id ,ClientCommands.writeField.id.toShort,ref,false,-1,{
-  		TransactionManager.tryWriteInstanceField(ref,fieldNr,new IntConstant(newValue))
+  def writeLevel(user:AbstractUserSocket,ref:Reference,fieldNr:Byte,newValue:Int): Option[Exception] = {
+  	TransactionManager.doTransaction(user.userID ,ClientCommands.writeField.id.toShort,ref,false,-1,{
+  		TransactionManager.tryWriteInstanceField(ref,fieldNr,IntConstant(newValue))
   	})
   }
   

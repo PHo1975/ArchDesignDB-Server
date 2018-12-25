@@ -1,17 +1,17 @@
 package client.plotdesign
 
 import java.awt.{Color, Insets}
-import javax.print.attribute.standard.{MediaSizeName, MediaTray}
-import javax.swing.BorderFactory
 
 import client.dataviewer.ViewConstants
 import client.graphicsView.ScalePanel
 import client.print.{MediaSizeWrapper, MediaTrayWrapper, PrintOutDialog}
 import client.ui.ClientApp
+import javax.print.attribute.standard.{MediaSizeName, MediaTray}
+import javax.swing.BorderFactory
 import util.MyComboBox
 
-import scala.swing.{BoxPanel, Button, ButtonGroup, Label, Orientation, RadioButton, Swing, TextField, ToggleButton}
 import scala.swing.event.{ButtonClicked, SelectionChanged}
+import scala.swing.{BoxPanel, Button, ButtonGroup, Label, Orientation, RadioButton, Swing, TextField, ToggleButton}
 
 
 class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.swing.Orientation.Vertical) {  
@@ -29,6 +29,7 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   var combosAdjusting=false
   val printBut=new Button("")
   val archiveBut=new Button("")
+  val versionBut=new Button("Ver.")
   val theGroupName="PlotDesignHeader"
   
   printBut.icon=PrintOutDialog.printerIcon
@@ -44,6 +45,9 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   archiveBut.icon=PrintOutDialog.archiveIcon
   archiveBut.tooltip="Archiv öffnen ..."
   archiveBut.margin=miniInsets
+  versionBut.tooltip="Versionen verwalten"
+  versionBut.margin=miniInsets
+
   val printerBox=new MyComboBox[String](controller.pageModel.printServiceNames)
   val maxComboSize=new java.awt.Dimension(90,40)
   printerBox.maximumSize=maxComboSize
@@ -79,14 +83,14 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   contents+=firstLine+=secondLine+=ClientApp.createHLine
   firstLine.xLayoutAlignment=0f
   secondLine.xLayoutAlignment=0f
-	firstLine.contents+=designNameLabel+=Swing.HStrut(10)+=printBut+=archiveBut+=Swing.HStrut(10)+=Swing.Glue+=formCombo+=printerBox
+	firstLine.contents+=designNameLabel+=Swing.HStrut(10)+=printBut+=archiveBut+=Swing.HStrut(10)+=versionBut+=Swing.Glue+=formCombo+=printerBox
 	secondLine.contents+=zoomAllBut+=zoomInBut+=zoomOutBut+=Swing.HStrut(10)+=scaleEdit+=Swing.HStrut(10)+=Swing.HGlue+=
 	  sizeBox+=trayCombo+=Swing.HStrut(10)+=portraitBut+=landscapeBut
   firstLine.contents foreach(_.font=ViewConstants.smallFont)
   secondLine.contents foreach(_.font=ViewConstants.smallFont)
   designNameLabel.font=ViewConstants.tableFont
   
-  listenTo(portraitBut,landscapeBut,zoomAllBut,zoomInBut,zoomOutBut,printerBox.selection,trayCombo.selection,sizeBox.selection,printBut,archiveBut,formCombo.selection)
+  listenTo(portraitBut,landscapeBut,zoomAllBut,zoomInBut,zoomOutBut,printerBox.selection,trayCombo.selection,sizeBox.selection,printBut,archiveBut,versionBut,formCombo.selection)
   
   reactions+= {
     case SelectionChanged(`printerBox`)=> if(!combosAdjusting){
@@ -120,10 +124,11 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
       combosAdjusting=false
     }
     case ButtonClicked(`zoomAllBut`) => controller.zoomAll()
-    case ButtonClicked(`zoomInBut`) => controller.zoomInClicked()
+    case ButtonClicked(`zoomInBut`) => controller.scaleModel.zoomPlus(0.5,0.5)
     case ButtonClicked(`zoomOutBut`) => controller.zoomOut()
     case ButtonClicked(`printBut`) => controller.print()
     case ButtonClicked(`archiveBut`)=> controller.showArchive()
+    case ButtonClicked(`versionBut` )=> controller.showVersions()
     
   }
   

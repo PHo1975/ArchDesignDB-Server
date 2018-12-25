@@ -3,13 +3,10 @@
  */
 package client.dataviewer.sidePanel
 
-import javax.swing._
-import definition.data._
-import definition.typ.AllClasses
-import java.awt.datatransfer._
-import java.io.Serializable
-import client.comm.ClientQueryManager
 import client.dataviewer.InstanceSelection
+import definition.data._
+import javax.swing._
+
 import scala.util.control.NonFatal
 
 /**

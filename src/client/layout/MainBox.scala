@@ -78,6 +78,7 @@ class MainBox extends Panel with ViewboxHolder {
 		  box.storeSettings(newGroup)
 		  counter+=1
 		})
+		//Log.w("Settings:"+groupList.mkString(" , "))
 		pGroup.addProperty(new ListValue[PropertyGroup]("boxes",groupList.toIndexedSeq))
 	}
 	
@@ -85,15 +86,16 @@ class MainBox extends Panel with ViewboxHolder {
     //val now=System.currentTimeMillis()
 	  val groupStack= prGroup match {
 	    case Some(pGroup)=>
-				val groupList=pGroup.getListProperty[PropertyGroup]("boxes")
-				new collection.mutable.Stack[PropertyGroup]()++groupList
-			case None => collection.mutable.Stack[PropertyGroup]()
+				pGroup.getListProperty[PropertyGroup]("boxes").toList
+			case None => Nil
 	  }
-	  
+	  //Log.w("Groupstack "+groupStack.mkString(" , "))
 	  centerBox=new Viewbox(this,false,this)
+		//Log.w("Viewbox created")
     //println("restoreSettings "+(System.currentTimeMillis()-now))
 		//println("start Restore "+groupStack.mkString("\n"))
-	  centerBox.restoreSettings(groupStack,readyListener)
+	  centerBox.restoreSettings(groupStack,(_)=>readyListener())
+		//Log.w("Centerbox loaded")
 	  revalidate()
 	  repaint()
 	  //System.out.println("Box List:"+groupList.map(_.name))

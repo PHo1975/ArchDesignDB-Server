@@ -5,18 +5,18 @@ package client.dataviewer
 
 import java.awt.event.{InputEvent, KeyEvent}
 import java.awt.{Color, Dimension, Font, Insets}
-import javax.swing._
-import javax.swing.border.Border
-import javax.swing.event._
-import javax.swing.table.{AbstractTableModel, JTableHeader, TableCellEditor}
 
-import client.comm.{ClientObjectClass, ClientQueryManager, HasError, KeyStrokeManager}
+import client.comm._
 import client.dataviewer.sidePanel.{ControllerContainer, SPControllerList, SidePanelController}
 import client.dialog.{ActionPanel, EditorFactory, Toast}
 import client.ui.ClientApp
 import definition.data.{InstanceData, Reference}
 import definition.expression._
 import definition.typ.{AllClasses, DataType, EnumData}
+import javax.swing._
+import javax.swing.border.Border
+import javax.swing.event._
+import javax.swing.table.{AbstractTableModel, JTableHeader, TableCellEditor}
 
 import scala.Option.option2Iterable
 import scala.swing.event.{ListSelectionEvent => _, _}
@@ -368,12 +368,12 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			}
 	}
 	
-	private def showEmptyHeaderPanel() = {
+	private def showEmptyHeaderPanel(): Unit = {
 			sideBarPanel.contents.clear()
 			emptyHeaderPanel.contents.clear()
 			//println("showEmptyPanel :"+sideControllerList.size)
 			for (c<-sideControllerList;if c.parentsFits(this, propMod.mainController.ref)) {
-				val but=new Button("")
+				val but=new Button(" ")
 				but.name=c.panelName
 				but.peer.putClientProperty("JComponent.sizeVariant", "mini")
         but.peer.updateUI()
@@ -426,7 +426,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		removeSideBar()
 	}
 	
-	private def removeSideBar() = {
+	private def removeSideBar(): Unit = {
 		for(c <- currentSideBarController)
 			c.closePanel()
 		currentSideBarController=None
@@ -602,7 +602,22 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	}
 
 	override def setValueAt(aValue: Object, rowIndex: Int, columnIndex: Int): Unit =		
-		if(dataList!=null&& columnIndex >0)  listLock.synchronized {  
+		if(dataList!=null&& columnIndex >0)  listLock.synchronized {
+			def showError(res:CommandResult): Unit = res match {
+				case HasError(err: Exception) =>
+					Swing.onEDT({
+						//println("col:"+columnIndex)
+						table.peer.editCellAt(rowIndex, table.peer.convertColumnIndexToView(columnIndex))
+						Swing.onEDT({
+							if (aValue != null)
+								table.peer.getEditorComponent match {
+									case m: JTextArea => m.setText(aValue.toString); new Toast(err.getMessage, table.peer.getEditorComponent.asInstanceOf[JComponent], ClientApp.top).visible = true
+									case o => util.Log.e("Other Editor:" + o + " " + o.getClass)
+								}
+						})
+					})
+				case _ =>
+			}
 			
 			val expr= if(objClass.enumFields.exists(_._1==columnIndex-1)) 
 				IntConstant(if(aValue==null) 0 else aValue.asInstanceOf[EnumData].id) // enumeration 
@@ -611,31 +626,19 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				  case err:ParserError =>
 						ClientQueryManager.printErrorMessage(err.message)
 						util.Log.e("nach fehler "+err)
-						new Toast(err.message,table.peer.getEditorComponent().asInstanceOf[JComponent],ClientApp.top).visible=true
+						new Toast(err.message,table.peer.getEditorComponent.asInstanceOf[JComponent],ClientApp.top).visible=true
 						return
 			}
 			//println("Expr:"+expr)
-			val ref= if(rowIndex==dataList.size) { // create new
+			if(rowIndex==dataList.size) { // create new
 				selfAdded=true
-				val id=ClientQueryManager.createInstance(typ,Array(propMod.getOwnerRef))				
-				Reference(typ,id)											
+				ClientQueryManager.createInstances(Array(propMod.getOwnerRef),Seq((typ,objClass.emptyFieldListWithSingleField(columnIndex-1,expr))),checkLinks = true)
 			}
-			else dataList(rowIndex).ref				
-			ClientQueryManager.writeInstanceField(ref,(columnIndex-1).toByte,expr, {
-        case HasError(err: Exception) =>
-					Swing.onEDT({
-            //println("col:"+columnIndex)
-            table.peer.editCellAt(rowIndex, table.peer.convertColumnIndexToView(columnIndex))
-            Swing.onEDT({
-              if (aValue != null)
-                table.peer.getEditorComponent() match {
-                  case m: JTextArea => m.setText(aValue.toString); new Toast(err.getMessage(), table.peer.getEditorComponent().asInstanceOf[JComponent], ClientApp.top).visible = true
-                  case o => util.Log.e("Other Editor:" + o + " " + o.getClass)
-                }
-            })
-          })
-				case _ =>
-      }) 			
+			else{
+				val ref= dataList(rowIndex).ref
+				ClientQueryManager.writeInstanceField(ref,(columnIndex-1).toByte,expr, showError)
+			}
+
 		}  	
 
 
@@ -661,7 +664,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				if (objClass.fields(columnIndex-1).typ==DataType.StringTyp)	{
 						StringParser.parse( value.toString) match {
 						  case ex:Expression => ex
-							case _: ParserError => new StringConstant(value.toString)
+							case _: ParserError => StringConstant(value.toString)
 						} 
 					}					
 				else StringParser.parse( value.toString) // throw exception when fail
@@ -758,6 +761,12 @@ object ViewConstants {
 	var pointCatchDistance = 8
 	var dragTreshold = 8
 	var fontScale = 100
+	var polyLineTo= 1
+	var showToast=1
+	var showHitPoints=1
+	var antialias=1
+	var stopFX=0
+	var imagePath=""
 
 	def label(text: String = ""): Label = {
 		val res = new Label(text)

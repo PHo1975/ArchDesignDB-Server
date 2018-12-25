@@ -3,24 +3,22 @@
  */
 package client.graphicsView
 
-import java.awt.Color
-
 /** color table for AUTOCAD DXF files
  * 
  */
 
 
 object AcadColor {
-	def convertColor(r:Int,g:Int,b:Int) = {
+	def convertColor(r:Int,g:Int,b:Int): Int = {
 		((r & 0xFF) << 16) |
 		((g & 0xFF) << 8)  |
 		((b & 0xFF) << 0)  
 	}
 	
-	val defaultColor= convertColor(0,0,0)
-	val whiteColor=defaultColor	
+	val defaultColor: Int = convertColor(0,0,0)
+	val whiteColor: Int =defaultColor
 	
-	def getColor(ix:Int)=table.getOrElse(ix,0)
+	def getColor(ix:Int): Int =table.getOrElse(ix,0)
 	
 	private val table=collection.immutable.HashMap[Int,Int](			
 			0 -> convertColor(0, 0, 0),
@@ -281,8 +279,8 @@ object AcadColor {
 			255 -> defaultColor	// defaultcolor
 	)
 	
-	lazy val reverseTable=table.map(_.swap)
+	lazy val reverseTable: Map[Int, Int] =table.map(_.swap)
 	
-	def toAcad(color:Int)=reverseTable.getOrElse(color,0)
+	def toAcad(color:Int): Int =if(color==0) 0 else reverseTable.getOrElse(color,0)
 }
 

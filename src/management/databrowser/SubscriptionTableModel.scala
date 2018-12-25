@@ -1,9 +1,8 @@
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-
 import client.dataviewer.{FieldColumnModel, ViewConstants}
 import definition.typ.AllClasses
+import javax.swing.table.AbstractTableModel
 import server.comm._
 
 import scala.swing.event.ButtonClicked

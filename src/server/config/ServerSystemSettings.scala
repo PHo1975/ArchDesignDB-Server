@@ -19,8 +19,11 @@ import scala.util.control.NonFatal
 class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	val _systemTypes: mutable.Map[String, Int] = collection.mutable.Map[String, Int]()
 	
-	var userFolders:Map[String,Reference]= StorageManager.getInstPropList(FSPaths.userRootRef, 1).map(
-      ref =>  (StorageManager.getInstanceData(ref).fieldValue.head.toString, ref)).toMap
+	var userFolders:Map[String,Reference]= if(StorageManager.instanceExists(FSPaths.userRootRef.typ,FSPaths.userRootRef.instance)) StorageManager.getInstPropList(FSPaths.userRootRef, 1).map(
+      ref =>  (StorageManager.getInstanceData(ref).fieldValue.head.toString, ref)).toMap else {
+		Log.e("User root not found "+FSPaths.userRootRef)
+		Map.empty
+	}
 
 	var enums: mutable.LinkedHashMap[String, EnumDefinition] = collection.mutable.LinkedHashMap[String, EnumDefinition]("Undefined" -> NOENUM)
 	var enumByID: Map[Int, EnumDefinition] = collection.Map[Int, EnumDefinition]()
@@ -79,6 +82,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 
 
 	def write(out: DataOutput): Unit = {
+		println("write settings")
 		out.writeInt(_systemTypes.size)
 		for(t<-_systemTypes) {
 			out.writeUTF(t._1)

@@ -3,12 +3,11 @@
  */
 package server.storage
 
-import javax.swing.JComponent
-
 import client.dialog.form.{FormBox, FormCreateContext}
-import definition.data.{InstanceData, InstanceProperties, OwnerReference, PropertyFieldData, Reference}
+import definition.data._
 import definition.expression.{EMPTY_EX, Expression}
 import definition.typ._
+import javax.swing.JComponent
 import server.config.AutoCreateInfo
 import util.StrToInt
 import util.XMLUtils.{optText, readOptString}
@@ -94,7 +93,7 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
 		theClone		
 	}
 	
-	def setAutoCreateInfo(aci:Seq[AutoCreateInfo])= {
+	def setAutoCreateInfo(aci:Seq[AutoCreateInfo]): ServerObjectClass = {
 		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,/*theActions,theCreateActions,*/
 		superClasses,moduleName,actionModule,shortFormat,longFormat,resultFormat,formBox,customInstanceEditor,aci,importDescriptor)
 		theClone.resolveSuperFields()
@@ -116,7 +115,8 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
   				if (sv.isNullConstant) Expression.generateNullConstant(fields(i).typ )
   				else fieldSetting(i).startValue.generate  		
   			}
-  			else Expression.generateNullConstant(fields(i).typ ) 
+  			else Expression.generateNullConstant(fields(i).typ )
+		//TransactionManager.logStep("Generated")
   	new InstanceData(ref,fieldExpressions,owner,Seq.empty,false)
   }
   
@@ -126,16 +126,16 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
    * @return the new Property object
    */
   def createInstanceProperty(ref:Reference):InstanceProperties =  {
-  	val pArray=(for(i <- 0 until propFields.size) 
+  	val pArray=(for(i <- propFields.indices)
   		yield new PropertyFieldData(propFields(i).single,IndexedSeq.empty)).toArray
   	new InstanceProperties(ref,pArray)
   }
   
-  def getEmpty=EMPTY_EX
+  def getEmpty: EMPTY_EX.type =EMPTY_EX
   
-  def getNumOwnFields=ownFields.size
+  def getNumOwnFields: Int =ownFields.size
   
-  def getNumOwnPropFields=ownPropFields.size
+  def getNumOwnPropFields: Int =ownPropFields.size
 
 }
 
@@ -156,7 +156,7 @@ object ServerObjectClass {
 	  }
   }
   
-  def createCCDFromXML(node: scala.xml.Node)= {
+  def createCCDFromXML(node: scala.xml.Node): ServerCCD = {
     val editor=readOptString(node , "@e")
 	  val childClass=(node \ "@cID").text match {
 			case StrToInt(i)=> i

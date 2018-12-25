@@ -2,15 +2,15 @@ package client.dialog
 
 import java.awt.Color
 import java.awt.event.HierarchyEvent
-import javax.swing.{BorderFactory, KeyStroke}
 
 import client.comm.{KeyStrokeManager, KeyStrokeReceiver}
 import client.dataviewer.ViewConstants
 import client.icons.IconManager
 import definition.typ.{ActionTrait, _}
+import javax.swing.{BorderFactory, KeyStroke}
 
-import scala.swing.{AbstractButton, Button, MenuItem, ToggleButton}
 import scala.swing.event.ButtonClicked
+import scala.swing.{AbstractButton, Button, MenuItem, ToggleButton}
 
 trait StrokableButton extends AbstractButton with KeyStrokeReceiver {   
     focusable=false

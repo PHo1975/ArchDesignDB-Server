@@ -3,11 +3,10 @@
  */
 package client.model
 
-import javax.swing.AbstractListModel
-
 import client.comm._
 import definition.comm._
 import definition.data._
+import javax.swing.AbstractListModel
 
 import scala.collection.immutable.IndexedSeq
 import scala.swing.Swing
@@ -84,7 +83,7 @@ class PathModel extends AbstractListModel[InstanceData] {
 			fireContentsChanged(this,0,dataList.size)
 		}		
 		
-  def getSize(): Int = if(dataList.isEmpty) 0 else dataList.size-1
+  def getSize: Int = if(dataList.isEmpty) 0 else dataList.size-1
   
 
   def getElementAt(index: Int): InstanceData = getInstanceAt(index)

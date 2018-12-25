@@ -3,12 +3,11 @@
  */
 package client.dialog
 
-import javax.swing.BorderFactory
-
 import client.comm.{ClientQueryManager, KeyStrokeManager}
 import client.dataviewer.ViewConstants
 import definition.expression._
 import definition.typ._
+import javax.swing.BorderFactory
 import util.Log
 
 import scala.swing._
@@ -130,7 +129,7 @@ class StringAnswerPanel extends  AnswerPanel {
 
   def editDone(): Unit = {
 		//System.out.println("Edit done "+this.getClass)	  
-		func(ansParm,parse(textField.text))
+		func(ansParm,StringConstant(textField.text))
     reset()
 	}
 

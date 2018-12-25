@@ -2,12 +2,12 @@ package client.spreadsheet
 
 import java.awt.font.{LineMetrics, TextAttribute, TextLayout}
 import java.awt.{Color, Dimension, Font, Graphics, Graphics2D}
-import javax.swing.border.{Border, MatteBorder}
-import javax.swing.{JComponent, UIManager}
 
 import client.dataviewer.ViewConstants
 import client.graphicsView.LineStyleHandler
 import definition.expression.{CurrencyConstant, Expression}
+import javax.swing.border.{Border, MatteBorder}
+import javax.swing.{JComponent, UIManager}
 import util.StringUtils
 
 import scala.swing.{Component, Table}
@@ -71,7 +71,11 @@ class SpreadSheetRenderer(controller:SpreadSheetController) extends  Component  
 	def textFromExpression(expression:Expression,formats:List[SpreadSheetFormatRange]):String= {
     if (expression == null || expression.isNullConstant || !SpreadSheetFormat.boolFromFormats(formats, _.visible)) ""
     else {
-      if (SpreadSheetFormat.boolFromFormats(formats, _.showFormula)) expression.getTerm
+      if (SpreadSheetFormat.boolFromFormats(formats, _.showFormula))
+				SpreadSheetFormat.valueFromFormatList(formats,_.numberFormat) match {
+					case Some(formatString)=> expression.getReadableTerm(formatString)
+						case None => expression.getReadableTerm
+				}
   		else { // show value  		  
   			val value=expression.getValue
   			import definition.typ.DataType._

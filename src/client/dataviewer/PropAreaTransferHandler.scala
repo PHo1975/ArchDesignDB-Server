@@ -3,12 +3,11 @@
  */
 package client.dataviewer
 
-import javax.swing._
+import client.comm.ClientQueryManager
 import definition.data._
 import definition.typ.AllClasses
-import java.awt.datatransfer._
-import java.io.Serializable
-import client.comm.ClientQueryManager
+import javax.swing._
+
 import scala.util.control.NonFatal
 /**
  * 

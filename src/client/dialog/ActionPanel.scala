@@ -3,12 +3,11 @@
  */
 package client.dialog
 
-import javax.swing.BorderFactory
-
 import client.comm.{ClientObjectClass, KeyStrokeManager}
 import client.dataviewer.{TitlePopupMenu, ViewConstants}
 import definition.data.Referencable
 import definition.typ.{ActionDescription, AllClasses, SelectGroup}
+import javax.swing.BorderFactory
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{AbstractButton, BoxPanel, Component, Insets, MenuItem, Point, Swing}

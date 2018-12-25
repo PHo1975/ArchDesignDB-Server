@@ -1,11 +1,8 @@
 package client.graphicsView
-import scala.swing.{Label,BoxPanel,Orientation}
-import definition.expression.Constant
-import definition.expression.IntConstant
-import client.dialog.SidePanelDoubleTextField
-import client.dialog.FieldEditor
-import client.dialog.SidePanelComboBox
-import client.dialog.RenderComponent
+import client.dialog.{FieldEditor, RenderComponent, SidePanelComboBox, SidePanelDoubleTextField}
+import definition.expression.{Constant, IntConstant}
+
+import scala.swing.{BoxPanel, Label, Orientation}
 
 class DimLineFieldEditor extends FieldEditor {
   
@@ -13,16 +10,16 @@ class DimLineFieldEditor extends FieldEditor {
   def allowedClassNames=Seq(className)
   
   val styleRenderer= new Label with RenderComponent[DimLineStyle] {
-	  def setStyle(style:DimLineStyle)= text=style.name
-	  def setEmpty()= text=""
+	  def setStyle(style:DimLineStyle): Unit = text=style.name
+	  def setEmpty(): Unit = text=""
 	}	
   
-  lazy val styleList=DimLineStyleHandler.getStyleSeq
+  lazy val styleList: Seq[DimLineStyle] =DimLineStyleHandler.getStyleSeq
   
   lazy val styleCombo=new SidePanelComboBox(styleList,styleRenderer,this,Map(className -> 2)){
-    val defaultValue=DimLineStyleHandler.defaultStyle
-    def getConstant(value:DimLineStyle):Constant=new IntConstant(value.id)  
-    def valueFromConstant(c:Constant)=DimLineStyleHandler.getStyle(c.toInt)
+    val defaultValue: DimLineStyle =DimLineStyleHandler.defaultStyle
+    def getConstant(value:DimLineStyle):Constant=IntConstant(value.id)
+    def valueFromConstant(c:Constant): DimLineStyle =DimLineStyleHandler.getStyle(c.toInt)
     override def setValue(newWidth:Option[DimLineStyle]):Unit= {	    
 	    super.setValue(newWidth)
 	    selfSelected=true
@@ -47,6 +44,6 @@ class DimLineFieldEditor extends FieldEditor {
     contents += getPanelPart("Stil:",styleCombo) += getPanelPart("Winkel:",angleEditor)			
   }   
   
-  def getPanel=panel  
+  def getPanel =panel
 
 }

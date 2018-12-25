@@ -54,6 +54,7 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   	active=true
   	//System.out.println("set Active "+answerDesc.name)
   	if(AnswerPanelsData.currentViewController!=null) {
+      FollowMouseToast.showToast(DialogManager.questionField.puretext+" "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
   	  answerDesc match {
   	    case tm:TempChooseAnswerDef =>
   	      AnswerPanelsData.currentViewController.chooseTempObject(this,tm.elements)
@@ -61,13 +62,13 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
           //System.out.println("AnswerPanel constraint:"+answerDesc.constraint)
           AnswerPanelsData.currentViewController.askForObjectSelection(this,answerDesc.constraint)
       }
-  		  		
   	}  		
   }
 
 
   override def reset(): Unit = {
   	//System.out.println("Refpanel reset "+active)
+    FollowMouseToast.reset()
   	super.reset()
   	if(active) {  		
   		active=false

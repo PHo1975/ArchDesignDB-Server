@@ -1,11 +1,11 @@
 package client.comm
-import java.io.DataInput
-import javax.swing.KeyStroke
-import java.io.DataOutput
 import java.awt.event.KeyEvent
-import scala.swing.Component
 import java.beans.PropertyChangeListener
-import javax.swing.JComponent
+import java.io.{DataInput, DataOutput}
+
+import javax.swing.{JComponent, KeyStroke}
+
+import scala.swing.Component
 
 trait KeyStrokeReceiver extends javax.swing.Action {
   var _enabled=true

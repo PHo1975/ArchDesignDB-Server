@@ -1,12 +1,11 @@
 package management.databrowser
 
-import javax.swing.border.TitledBorder
-import javax.swing.table.AbstractTableModel
-import javax.swing.{BorderFactory, JOptionPane}
-
 import client.dataviewer.FieldColumnModel
 import definition.data.Reference
 import definition.typ.SystemSettings
+import javax.swing.border.TitledBorder
+import javax.swing.table.AbstractTableModel
+import javax.swing.{BorderFactory, JOptionPane}
 import server.comm.{UserInfo, UserList}
 import server.config.ServerSystemSettings
 import util.{StrToInt, StringUtils}
@@ -20,8 +19,7 @@ class UserTableModel extends AbstractTableModel {
   def getRowCount: Int = UserList.userIterator.foldLeft(0)((sum, user) =>
     sum+user.flattenSize)
 
-  def getValueAt(row:Int,col:Int):Object = {
-    if(row>=getRowCount) return null
+  def getValueAt(row:Int,col:Int):Object = if(row>=getRowCount) null else {
     val (userID,connectionID)=UserList.findConnection(row)
     col match {
       case 0=> userID.id.toString

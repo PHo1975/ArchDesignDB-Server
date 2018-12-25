@@ -1,25 +1,13 @@
 package client.graphicsView.symbol
 
-import definition.data.Reference
-import definition.typ.DataType
-import definition.expression.{Constant,FieldReference}
 import client.comm.ClientQueryManager
-import definition.data.InstanceData
-import definition.expression.Expression
-import java.io.DataOutput
-import client.graphicsView.GraphElem
-import client.graphicsView.GraphElemConst
-import client.graphicsView.LineElement
-import scala.collection.mutable
-import scala.collection.mutable.LinkedHashMap
-import definition.data.Referencable
+import client.graphicsView._
+import definition.data.{InstanceData, Referencable, Reference}
+import definition.expression._
+import definition.typ.DataType
+
 import scala.collection.immutable.Map
-import client.graphicsView.ArcElement
-import client.graphicsView.EllipseElement
-import definition.expression.VectorConstant
-import client.graphicsView.ElemContainer
-import definition.expression.StringParser
-import definition.expression.ParserError
+import scala.collection.mutable
 
 
 case class SymbolParam(ref:Reference,name:String,typ:DataType.Value,defaultValue:Constant){
@@ -105,7 +93,7 @@ object StampPool {
         translator(data.fieldData(8)).toDouble)
   } 
   
-  private def getNone(data:InstanceData,translator:Expression=>Constant)= None
+  //private def getNone(data:InstanceData,translator:Expression=>Constant)= None
   
   def generateElement(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant)
     :Option[GraphElem]=

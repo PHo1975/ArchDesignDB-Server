@@ -1,6 +1,7 @@
 package client.plotdesign
 
 import java.awt._
+import java.awt.event.MouseWheelEvent
 import java.awt.geom.Rectangle2D
 
 import client.dataviewer.ViewConstants
@@ -21,6 +22,7 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 	var dragToPoint: Point = _
 	var currentMousePos: Point = _
 	var pointHitPos: MatchingScreenPoints = _
+	var oldSwipePoint: Point = _
 	
 	val selectColor=new Color(255,50,50)	
 	val multiSelectColor=new Color(180,50,50)
@@ -36,7 +38,15 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
   background=Color.green
   preferredSize=new java.awt.Dimension(Int.MaxValue,Int.MaxValue)
   focusable=true
-  cursor=dotCurs	
+  cursor=dotCurs
+
+	peer.addMouseWheelListener((e: MouseWheelEvent) => {
+		val b = bounds
+		val ratiox = e.getPoint.getX / b.width.toDouble
+		val ratioy = e.getPoint.getY / b.height.toDouble
+		if (e.getWheelRotation > 0) controller.scaleModel.zoomMinus(ratiox, ratioy)
+		else controller.scaleModel.zoomPlus(ratiox, ratioy)
+	})
   
   listenTo(mouse.clicks,mouse.moves,keys,this)
   
@@ -47,6 +57,8 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 			dragStartPoint=e.point
 			dragToPoint=null
 			cursor=Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)
+			val middleButton= (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON2_DOWN_MASK) > 0
+			if (middleButton) oldSwipePoint = e.point
 		case e:MouseEntered =>
 			currentMousePos=null //e.point
 			dragToPoint=null
@@ -60,18 +72,27 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 				middleButton&&control&&(!controller.isZoomingIn)){
 				controller.isZoomingIn=true
 			}
-			if(dragToPoint!=null) drawDragGraphics()
-			else repaint()
-			dragToPoint=e.point
-			drawDragGraphics()
+			if(middleButton) {
+				val dx = e.point.x - oldSwipePoint.x
+				val dy = e.point.y - oldSwipePoint.y
+				controller.scaleModel.move(-dx, -dy)
+				oldSwipePoint = e.point
+			} else if(!rightButton) {
+				if (dragToPoint != null) drawDragGraphics()
+				else repaint()
+				dragToPoint = e.point
+				drawDragGraphics()
+			}
 
 		case e:MouseReleased =>
 			val control=(e.modifiers & Key.Modifier.Control)>0
 			val shift=(e.modifiers & Key.Modifier.Shift)>0
 			val middleButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON2
 			val rightButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON3
-			if (dragToPoint != null && !inDistance(dragStartPoint, dragToPoint, ViewConstants.dragTreshold))
-			{ // it was dragged
+			if(middleButton) {
+
+			}
+			else if (dragToPoint != null && !inDistance(dragStartPoint, dragToPoint, ViewConstants.dragTreshold)){ // it was dragged
 				controller.dragCompleted(dragStartPoint,dragToPoint,control,shift,rightButton,middleButton)
 				dragStartPoint=null
 			} else { // it was NOT dragged

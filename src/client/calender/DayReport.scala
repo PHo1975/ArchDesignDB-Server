@@ -1,15 +1,14 @@
 package client.calender
 
+import client.comm.ClientQueryManager
+import definition.data.{EMPTY_REFERENCE, InstanceData, OwnerReference, Reference}
+import definition.expression.{DateConstant, Expression, IntConstant, StringConstant}
 import javafx.collections.{FXCollections, ObservableList}
 import javafx.geometry.{HPos, Insets, VPos}
 import javafx.scene.control._
 import javafx.scene.image.ImageView
 import javafx.scene.input.{KeyCode, KeyEvent, TransferMode}
 import javafx.scene.layout.{ColumnConstraints, GridPane, HBox, Priority}
-
-import client.comm.ClientQueryManager
-import definition.data.{EMPTY_REFERENCE, InstanceData, OwnerReference, Reference}
-import definition.expression.{DateConstant, Expression, IntConstant, StringConstant}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq

@@ -3,18 +3,15 @@
  */
 package client.dataviewer
 
-import javax.swing._
-import javax.swing.table._
-import javax.swing.text._
-import javax.swing.event._
-
-import definition.expression._
-import definition.typ.DataType
-import java.awt.{BorderLayout, Color, Dimension, Insets, Point}
 import java.awt.event._
+import java.awt.{Color, Dimension, Point}
 import java.util.EventObject
 
 import client.comm.KeyStrokeManager
+import javax.swing._
+import javax.swing.event._
+import javax.swing.table._
+import javax.swing.text._
 
 import scala.swing.Swing
 /**
@@ -35,7 +32,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	val editColor=new Color(255,255,230)
 	val document=new PlainDocument
 	val maxEditorHeight=300
-	var editingColumn= -1
+	var editingColumn: Int = -1
 	val minWidth=150
 	var ownHide=false
 
@@ -52,7 +49,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
     setBackground(editColor)
 		override protected def processKeyBinding( ks: KeyStroke,e: KeyEvent, condition:Int , pressed:Boolean):Boolean ={
 			//println("Edit process Key Bindings:"+ks+" condition:"+condition)
-			if (textArea.hasFocus()) super.processKeyBinding(ks, e, condition, pressed)
+			if (textArea.hasFocus) super.processKeyBinding(ks, e, condition, pressed)
 			else {
 			  if(e.getKeyCode==KeyEvent.VK_DELETE) e.consume()
 				else Swing.onEDT{
@@ -67,33 +64,33 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 			}
 		}
     addAncestorListener(new AncestorListener(){
-    	def ancestorAdded(e:AncestorEvent ) = {	}
-    	def ancestorMoved(e:AncestorEvent ) = {
+    	def ancestorAdded(e:AncestorEvent ): Unit = {	}
+    	def ancestorMoved(e:AncestorEvent ): Unit = {
     		val newPoint:Point=e.getComponent.getLocation
     		//System.out.println("Moved oldPos:"+oldPos+" newPos:"+newPoint)
     	  setPopupLocation(newPoint)
     	}
-    	def ancestorRemoved(e:AncestorEvent) = {
+    	def ancestorRemoved(e:AncestorEvent): Unit = {
     		if(popupContent.isVisible) stopCellEditing()
     	}
     })
     addFocusListener(new FocusListener(){
-    	 def focusGained(e:FocusEvent)= textArea.requestFocus()
-    	 def focusLost(e:FocusEvent)= {}
+    	 def focusGained(e:FocusEvent): Unit = textArea.requestFocus()
+    	 def focusLost(e:FocusEvent): Unit = {}
     })
 
 	}
 
 	val popupContent=new PopupContent
-	var rootPane:JRootPane=null
-	var layeredPane:JLayeredPane=null
+	var rootPane:JRootPane=_
+	var layeredPane:JLayeredPane=_
 
 	textArea.addKeyListener(new KeyAdapter () {
-		override def keyPressed(e:KeyEvent) = {
+		override def keyPressed(e:KeyEvent): Unit = {
 			e.getKeyCode match {
 				case KeyEvent.VK_ENTER =>
 					if(e.isControlDown) {
-						textArea.insert("\n",textArea.getCaretPosition())
+						textArea.insert("\n",textArea.getCaretPosition)
             e.consume()
 					}
 					else {
@@ -108,7 +105,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	})
 
 	textArea.addFocusListener(new FocusAdapter() {
-		 override def focusLost(e:FocusEvent)= if(!ownHide&& e.getOppositeComponent!=component){
+		 override def focusLost(e:FocusEvent): Unit = if(!ownHide&& e.getOppositeComponent!=component){
 			 stopCellEditing()
 		 }
 	})
@@ -116,10 +113,10 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 
 
 	document.addDocumentListener(new DocumentListener {
-		def insertUpdate(e:DocumentEvent)= update()
-    def removeUpdate(e:DocumentEvent )= update()
-    def changedUpdate(e:DocumentEvent ) = update()
-    def update()= Swing.onEDT { updateEditorHeight()}
+		def insertUpdate(e:DocumentEvent): Unit = update()
+    def removeUpdate(e:DocumentEvent ): Unit = update()
+    def changedUpdate(e:DocumentEvent ): Unit = update()
+    def update(): Unit = Swing.onEDT { updateEditorHeight()}
 	})
 
 	usedActionKeyStrokes.foreach(registerAction)
@@ -127,7 +124,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 
 	override def shouldSelectCell( e:EventObject  )=true
 
-	override def cancelCellEditing()= {
+	override def cancelCellEditing(): Unit = {
 		ownHide=true
 		super.cancelCellEditing()
 		hidePopup()
@@ -135,19 +132,23 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 
 	override def stopCellEditing():Boolean = {
 		//System.out.println("stop ")
+		var validated=false
 	  for(v<-validator;ix<- v.validate(textArea.getText, editingColumn)) {
 	    textArea.setCaretPosition(ix)
 	    //val tix=if(ix>=textArea.getText.length-1) textArea.getText.length-2 else ix
 	    textArea.setSelectionStart(ix)
 	    textArea.setSelectionEnd(ix+1)
-	    return false
+	    validated=true
 	  }
-		val ret=super.stopCellEditing
-		hidePopup()
-		ret
+		if(validated) false
+		else {
+			val ret = super.stopCellEditing
+			hidePopup()
+			ret
+		}
 	}
 
-	def hidePopup()= {
+	def hidePopup(): Unit = {
 	  KeyStrokeManager.enableBindings()
 		ownHide=true
 
@@ -159,12 +160,12 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 		}
 	}
 
-	def setPopupLocation(pos:Point) = if(layeredPane!=null) {
+	def setPopupLocation(pos:Point): Unit = if(layeredPane!=null) {
 		val newPos=SwingUtilities.convertPoint(theTable,pos,layeredPane)
 		popupContent.setLocation(newPos)
 	}
 
-	def getTableCellEditorComponent(table:JTable,value: Object, isSelected:Boolean,rowIndex: Int, vColIndex:Int) ={
+	def getTableCellEditorComponent(table:JTable,value: Object, isSelected:Boolean,rowIndex: Int, vColIndex:Int): JTextArea ={
 	  editingColumn=vColIndex
 	  KeyStrokeManager.disableBindings()
 	  val bounds=table.getCellRect(rowIndex,vColIndex,true)
@@ -190,7 +191,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 
 	def setEditorValue(value:Object):String
 
-	def updateEditorHeight()= {
+	def updateEditorHeight(): Unit = {
 		val size:Dimension=popupContent.getSize
 		var wishHeight=math.max(textArea.getPreferredSize.height+4,size.height)
 		//print("Updateheight size:"+size+" WishHeight "+wishHeight)
@@ -205,34 +206,34 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	  }
 	}
 
-	def getCellEditorValue():Object ={
+	def getCellEditorValue:Object ={
 		component.getText()
 	}
 
-	override def removeCellEditorListener(l:CellEditorListener) = {
+	override def removeCellEditorListener(l:CellEditorListener): Unit = {
 		if(popupContent.isVisible) hidePopup()
 		super.removeCellEditorListener(l)
 	}
 
 	override def isCellEditable(evt:EventObject ):Boolean =	evt match {
       case event: MouseEvent =>
-        event.getClickCount() >= 2
+        event.getClickCount >= 2
       case _ => true
     }
 
-	private def registerAction(keyStroke:KeyStroke) = {		
+	private def registerAction(keyStroke:KeyStroke): Unit = {
 		val actionName=theTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).
 			get(keyStroke)
 		if(actionName!=null) {
 		  textArea.getInputMap(JComponent.WHEN_FOCUSED).put(keyStroke, actionName)
-		  val action=theTable.getActionMap().get(actionName)
+		  val action=theTable.getActionMap.get(actionName)
 		  //System.out.println("instEdit install action :"+actionName +" => "+action)
-		  if(action!=null) textArea.getActionMap().put(actionName,new ActionWrapper(action))
+		  if(action!=null) textArea.getActionMap.put(actionName,new ActionWrapper(action))
 		}	
 	}
 	
 	class ActionWrapper(oldAction:Action) extends AbstractAction {	  
-		def actionPerformed(e:ActionEvent) = {
+		def actionPerformed(e:ActionEvent): Unit = {
 			//System.out.println("wrapper actionPerformed "+e+" oldaction:"+oldAction)
 			val newEvent=new ActionEvent(theTable,e.getID,e.getActionCommand,e.getWhen,e.getModifiers)
 			oldAction.actionPerformed(newEvent)

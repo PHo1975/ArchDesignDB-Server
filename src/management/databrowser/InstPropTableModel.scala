@@ -3,12 +3,9 @@
  */
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-import definition.typ._
 import definition.data._
-import server.storage._
-import definition.expression.StringParser
-import transaction.handling._
+import definition.typ._
+import javax.swing.table.AbstractTableModel
 
 /** Table Model for showing the property field values of an instance
  * 

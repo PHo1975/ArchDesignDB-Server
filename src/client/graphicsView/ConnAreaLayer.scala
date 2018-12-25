@@ -1,9 +1,9 @@
 package client.graphicsView
-import definition.data.{Reference,InstanceData,OwnerReference}
-import definition.expression.{VectorConstant,Polygon,NULLVECTOR}
-import java.awt.geom.{Rectangle2D,Area}
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.NULLVECTOR
+
 import scala.swing.Swing
 
 

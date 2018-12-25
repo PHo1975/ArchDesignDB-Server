@@ -1,17 +1,16 @@
 package client.calender
 
+import client.calender.CalendarHelper._
+import client.comm.ClientQueryManager
+import definition.comm.NotificationType
+import definition.data.{EMPTY_REFERENCE, OwnerReference, Reference}
+import definition.expression.{BoolConstant, StringConstant}
 import javafx.collections.{FXCollections, ObservableList}
 import javafx.geometry.{HPos, Insets}
 import javafx.scene.control._
 import javafx.scene.control.cell.TextFieldListCell
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.{ColumnConstraints, GridPane, Priority}
-
-import client.calender.CalendarHelper._
-import client.comm.ClientQueryManager
-import definition.comm.NotificationType
-import definition.data.{EMPTY_REFERENCE, OwnerReference, Reference}
-import definition.expression.{BoolConstant, StringConstant}
 
 import scala.collection.JavaConverters._
 

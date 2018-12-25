@@ -4,9 +4,6 @@
 package client.dialog
 
 import java.awt.Dimension
-import javax.swing.event.{DocumentEvent, DocumentListener}
-import javax.swing.table.TableCellEditor
-import javax.swing.{JSpinner, SpinnerNumberModel}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.ViewConstants
@@ -14,6 +11,9 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression._
 import definition.typ.{AllClasses, DataType, SelectGroup}
+import javax.swing.event.{DocumentEvent, DocumentListener}
+import javax.swing.table.TableCellEditor
+import javax.swing.{JSpinner, SpinnerNumberModel}
 
 import scala.swing.event.{EditDone, SelectionChanged}
 import scala.swing.{Alignment, BorderPanel, ComboBox, Component, Label, ListView, Panel, Swing, Table, TextArea, TextComponent, TextField}
@@ -51,6 +51,7 @@ trait FieldEditor extends AbstractFieldEditor {
 	  allowedClassIds=allowedClassNames.map(a => a -> AllClasses.get.getClassIDByName(a) ).toMap
 	  for(f<-fieldComponents)
 	    f.createFieldMap(allowedClassIds)
+      println("Fieldeditor settings done")
   })
   }
 
@@ -393,6 +394,8 @@ class MultiLineLabel extends Label() {
   font=ViewConstants.questionFont
   //preferredSize=new Dimension(DialogManager.sidePanelWidth-30,40)
   maximumSize = new Dimension(ViewConstants.sidePanelWidth - 30, Short.MaxValue)
+
+  def puretext: String =text.substring(14,text.length-7).split("<br>").head
 }
 
 

@@ -20,13 +20,9 @@ abstract class SubscriptionFactory [T <: Referencable] {
 
   def registerClass(typID: Int, createFunc: (Reference, DataInput) => T): Unit = typeMap(typID) = createFunc
   
-  def createObject(nref:Reference,in:DataInput):T ={
-    //print("creating "+nref.sToString())
+  def createObject(nref:Reference,in:DataInput):T =
 	  if(typeMap.contains(nref.typ))  typeMap(nref.typ)(nref,in)
 	  else throw new IllegalArgumentException("Unknown Factory Element "+nref)
-	  //print("| ")
-	  //res
-	}
   
 	 
   def createEmptyObject(nref:Reference):T = emptyFunc(nref)
@@ -44,6 +40,3 @@ abstract class SubscriptionFactory [T <: Referencable] {
 	}
 }
 
-/*trait ReadableClass {
-	def ref:Reference	
-}*/

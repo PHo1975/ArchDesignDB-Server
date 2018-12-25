@@ -4,13 +4,12 @@
 package client.layout
 
 import java.awt.Color
-import javax.swing.BorderFactory
 
 import client.dataviewer.ViewConstants
 import client.model.TableViewbox
 import definition.comm.{IntValue, PropertyGroup, StringValue}
+import javax.swing.BorderFactory
 
-import scala.collection.mutable
 import scala.swing.event._
 import scala.swing.{BorderPanel, _}
 import scala.util.control.NonFatal
@@ -28,9 +27,9 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 	//val start=System.currentTimeMillis()
 	val rightEdge = BoxEdge(this, new ExpandStripe(false, this))
 	val bottomEdge = BoxEdge(this, new ExpandStripe(true, this))
-	var content: ViewboxContent /*#CompType*/ = _
   val header = new ViewboxHeader(this)
 	val scaleFactor=1000000
+	var content: ViewboxContent /*#CompType*/ = _
 	var minimizeHeaderCallBack: () => Unit = _
 	var rightFirstExpanded=false
 	
@@ -130,14 +129,15 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 		mainbox.repaint()
 	}
 	
+	def isDoubleConnected: Boolean = rightEdge.isExpanded && bottomEdge.isExpanded
+	
 	def shutDown():Unit = {
 	  if(content!=null)
 	  content.close()
 	  content=null
 	  mainbox.remove(this)
 	}
-	
-	
+
 	def storeSettings(pgroup:PropertyGroup ):Unit = {
 	  if(rightEdge.isExpanded)
 			pgroup.addProperty(IntValue("W", (rightEdge.connectorStripe.get.scaleValue * scaleFactor).toInt))
@@ -149,43 +149,47 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 		content.storeSettings(pgroup)
 	}
 
+	def getBoxCode: Int = if (rightEdge.isExpanded) {
+	  if(bottomEdge.isExpanded) 4 else 2
+	 } else if(bottomEdge.isExpanded) 1 else 0
+
 	def createStandardBox(): TableViewbox = new TableViewbox
 
-
-	def restoreSettings(groupStack: mutable.Stack[PropertyGroup], readyListener: () => Unit): Unit =
+	def restoreSettings(groupStack: List[PropertyGroup], readyListener: (List[PropertyGroup]) => Unit): Unit =
 		try {
 			if(groupStack.isEmpty) {
-				println("groupstack is empty, holder:" + content)
+				//println("groupstack is empty, holder:" + content)
 				Thread.dumpStack()
 				val ncontent = createStandardBox()
 				addContent(ncontent)
-				ncontent.open(() => {readyListener()}, Seq.empty)
+				ncontent.open(() => {readyListener(Nil)}, Seq.empty)
 				  revalidate()
 			} else {
-				//println("groupstack "+groupStack.mkString("|"))
-				val pGroup=groupStack.pop()
+				//println("restore groupstack "+groupStack.mkString("|"))
+				val pGroup=groupStack.head
 				val ctype=pGroup.getStringProperty("T")
 				if(ctype=="") {
           util.Log.e("CType not found, loading standard box")
 					val content= createStandardBox()
 				  addContent(content)
-				  content.open(()=>{readyListener()},Seq.empty)
+				  content.open(()=>{readyListener(Nil)},Seq.empty)
 					revalidate()
-				}	
+				}
 				val boxCode=pGroup.getIntProperty("B")
 				var rightOpen=false
 				var bottomOpen=false
-        
+
 				def contentRestored():Unit = {
-						if(rightEdge.isExpanded) rightEdge.getConnectedBox.restoreSettings(groupStack,rightRestored _)
-						else rightRestored()
+					//println("Content Restored")
+					if(rightEdge.isExpanded) rightEdge.getConnectedBox.restoreSettings(groupStack.tail,rightRestored _)
+						else rightRestored(groupStack.tail)
 				}
 
-				def rightRestored():Unit = {
-            //println("box "+pGroup+" Right restored "+(System.currentTimeMillis()-start))
-						if(bottomEdge.isExpanded) bottomEdge.getConnectedBox.restoreSettings(groupStack,readyListener)
-						else readyListener()
-				}	
+				def rightRestored(restStack:List[PropertyGroup]):Unit = {
+					  //println("box "+pGroup+" Right restored ")
+						if(bottomEdge.isExpanded) bottomEdge.getConnectedBox.restoreSettings(restStack,readyListener)
+						else readyListener(restStack)
+				}
 
 				boxCode match {
 					case 1 => bottomOpen=true
@@ -193,40 +197,38 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 					case 4 => bottomOpen=true;rightOpen=true
 					case  _ =>
 				}
+				//println("RO:"+rightOpen+" bo:"+bottomOpen)
 				if(rightOpen) {
 					val newBox=new Viewbox(mainbox,true,rightEdge)
-					rightEdge.connectBox(newBox,false)
-					rightEdge.connectorStripe.get.scaleValue= pGroup.getIntProperty("W").toDouble/scaleFactor	    
+					//println("Right new Box created")
+					rightEdge.connectBox(newBox,revalidate = false)
+					rightEdge.connectorStripe.get.scaleValue= pGroup.getIntProperty("W").toDouble/scaleFactor
 				}
 				if(bottomOpen) {
 					val newBox=new Viewbox(mainbox,true,bottomEdge)
-					bottomEdge.connectBox(newBox,false)
-					bottomEdge.connectorStripe.get.scaleValue= pGroup.getIntProperty("H").toDouble/scaleFactor	    
+					//println("Bottom new Box created")
+					bottomEdge.connectBox(newBox,revalidate = false)
+					bottomEdge.connectorStripe.get.scaleValue= pGroup.getIntProperty("H").toDouble/scaleFactor
 				}
 
 				ViewboxContentTypeList.getType(ctype) match {
 					case Some(cnt) =>
 						//println("set viewboxContent "+cnt+" "+ctype)
-						addContent( cnt.factory()/*,false*/)
-						//println("after content "+(System.currentTimeMillis()-start)+" c:"+content)
+						addContent( cnt.factory())
+						//println("after content "+content)
 						try {
-						content.restoreSettings(pGroup,contentRestored _)
+							if(content!=null)	content.restoreSettings(pGroup,contentRestored _)
+							else util.Log.e("content == null")
 						} catch {case NonFatal(e)=> util.Log.e("Content restore: ",e)
 						case other: Throwable => util.Log.e("restore", other)
 						}
 					case None => util.Log.e("Content type '"+ctype +"' not found\nproperties:"+pGroup.properties.mkString(" | "));contentRestored()
 				}
+				//println("restore done")
 		  }
-		} catch {case NonFatal(e) => util.Log.e("Error at Viewbox:restoreSettings",e );readyListener()
-		case other: Throwable => util.Log.e(other); readyListener()
+		} catch {case NonFatal(e) => util.Log.e("Error at Viewbox:restoreSettings",e );readyListener(Nil)
+		case other: Throwable => util.Log.e("fehler bei restore",other); readyListener(Nil)
 		}
-
-
-	def getBoxCode: Int = if (rightEdge.isExpanded) {
-	  if(bottomEdge.isExpanded) 4 else 2
-	 } else if(bottomEdge.isExpanded) 1 else 0
-
-	def isDoubleConnected: Boolean = rightEdge.isExpanded && bottomEdge.isExpanded
 
 	def setTitle(title: String): Unit = header.setTitle(title)
 
@@ -304,10 +306,8 @@ case class BoxEdge(sourceBox: Viewbox, expandStripe: ExpandStripe) extends Viewb
 	//var currentStripe:Stripe.StripeType=expandStripe
 	sourceBox.add(expandStripe,getEdgePos)
 
-	def isExpanded: Boolean = expanded
-	
 	/** builds a new connection
-	 * 
+	 *
 	 */
 	def connectTo(settings: Option[PropertyGroup], content: ViewboxContent): Unit = {
 		val newBox=new Viewbox(sourceBox.mainbox,true,this)
@@ -319,13 +319,8 @@ case class BoxEdge(sourceBox: Viewbox, expandStripe: ExpandStripe) extends Viewb
 		connectBox(newBox)
 	}
 
-	def getCurrentComponent: BoxPanel with Stripe = connectorStripe match {
-		case Some(cs)=>cs
-		case None=>expandStripe
-	}
-
 	def connectBox(newBox: Viewbox, revalidate: Boolean = true): Unit = {
-		val conn=new ConnectorStripe(isHorizontal,sourceBox,newBox)		
+		val conn=new ConnectorStripe(isHorizontal,sourceBox,newBox)
 		if(!expanded && !conn.isHorizontal && !sourceBox.bottomEdge .expanded) sourceBox.rightFirstExpanded=true
 		connectorStripe=Some(conn)
 		sourceBox.add(conn,getEdgePos)
@@ -333,17 +328,10 @@ case class BoxEdge(sourceBox: Viewbox, expandStripe: ExpandStripe) extends Viewb
 		if(revalidate) sourceBox.mainbox.revalidate()
 	}
 
-	def disconnect(): Unit = if (expanded) {
-		if(!expandStripe.isHorizontal) sourceBox.rightFirstExpanded=false
-		connectorStripe=None
-	  sourceBox.add(expandStripe,getEdgePos)	
-		expanded=false
+	def getCurrentComponent: BoxPanel with Stripe = connectorStripe match {
+		case Some(cs)=>cs
+		case None=>expandStripe
 	}
-
-	def isHorizontal: Boolean = expandStripe.isHorizontal
-
-	def getEdgePos: BorderPanel.Position.Value = if (isHorizontal)
-		BorderPanel.Position.South else BorderPanel.Position.East
 
 	def getConnectedBox: Viewbox = connectorStripe.get.connectedBox
 
@@ -359,6 +347,20 @@ case class BoxEdge(sourceBox: Viewbox, expandStripe: ExpandStripe) extends Viewb
 	    	true
 			}	else false
 	}
+
+	def isExpanded: Boolean = expanded
+
+	def disconnect(): Unit = if (expanded) {
+		if(!expandStripe.isHorizontal) sourceBox.rightFirstExpanded=false
+		connectorStripe=None
+	  sourceBox.add(expandStripe,getEdgePos)
+		expanded=false
+	}
+
+	def getEdgePos: BorderPanel.Position.Value = if (isHorizontal)
+		BorderPanel.Position.South else BorderPanel.Position.East
+
+	def isHorizontal: Boolean = expandStripe.isHorizontal
 }
 
 

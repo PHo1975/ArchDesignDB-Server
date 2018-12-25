@@ -1,14 +1,13 @@
 package client.plotdesign
 import java.awt.geom.Rectangle2D
-import client.graphicsView.GraphElem
-import definition.data.Reference
+
 import client.comm.ClientQueryManager
+import client.graphicsView.{ElemContainer, GraphElem, GraphElemFactory}
 import definition.comm.NotificationType
-import client.graphicsView.GraphElemConst
+import definition.data.Reference
+
 import scala.collection.mutable.ArrayBuffer
-import client.graphicsView.ElemContainer
 import scala.swing.Swing
-import client.graphicsView.GraphElemFactory
 
 
 class ExtraGraphicsList(controller:PlotDesignController) extends ElemContainer {

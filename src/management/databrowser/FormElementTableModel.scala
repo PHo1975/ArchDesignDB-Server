@@ -3,10 +3,9 @@
  */
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-import client.dialog.form.FormElement
-import client.dialog.form.FormCreateContext
+import client.dialog.form.{FormCreateContext, FormElement}
 import definition.typ.form.AbstractFormElement
+import javax.swing.table.AbstractTableModel
 
 /**
  * 

@@ -6,8 +6,8 @@ import client.dataviewer.ViewConstants
 import client.dialog._
 import definition.expression.{Constant, IntConstant, StringConstant}
 
-import scala.swing.{BoxPanel, ButtonGroup, GridPanel, Orientation, RadioButton, ToggleButton}
 import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, ButtonGroup, GridPanel, Orientation, RadioButton, ToggleButton}
 
 
 

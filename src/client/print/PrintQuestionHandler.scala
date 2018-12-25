@@ -4,16 +4,16 @@
 package client.print
 
 import java.io.DataInput
-import util.Log
 import java.util.Date
-import javax.print.attribute.standard.PageRanges
 
 import client.comm.GenDataReceiver
 import client.dialog.{ActionPanel, CustomQuestionHandler, DialogManager, FocusContainer}
 import client.ui.ClientApp
 import definition.data.{FormDescription, PageData}
 import definition.expression._
-import definition.typ.{XMLQuestion, ParamQuestion}
+import definition.typ.{ParamQuestion, XMLQuestion}
+import javax.print.attribute.standard.PageRanges
+import util.Log
 
 import scala.swing.Swing
 
@@ -31,7 +31,7 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
     //System.out.print("Load Question Handler "+Thread.currentThread().getName())
 		question match {
 			case x:XMLQuestion => PrintModel.readInXML(x.customData)
-				case o=> Log.e("wrong question type "+o)
+			case o=> Log.e("wrong question type "+o)
 		}
   	//System.out.print("readInXML")
   	newDialog.loadForms( PrintModel.forms)

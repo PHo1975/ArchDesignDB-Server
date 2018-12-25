@@ -50,6 +50,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   val ellCheckBox=new CheckBox("Ellipsen")
   val textCheckBox=new CheckBox("Text")
   val colorPenCouplingBox=new CheckBox("Farb-Stift-Kopplung")
+
   
   lineCheckBox.selected=true
   arcCheckBox.selected=true

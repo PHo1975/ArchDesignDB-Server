@@ -5,8 +5,8 @@ package server.comm
 
 import java.io.IOException
 import java.net.{BindException, ServerSocket, SocketException}
-import javax.swing.JOptionPane
 
+import javax.swing.JOptionPane
 import server.config.FSPaths
 
 import scala.swing.Swing

@@ -9,7 +9,6 @@ import definition.typ.form.FormDataField
 import definition.typ.{AbstractObjectClass, DataType, HorAlign}
 
 import scala.swing.Label
-import util.XMLUtils._
 
 /**
  * 

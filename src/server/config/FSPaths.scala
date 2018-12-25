@@ -30,9 +30,12 @@ object FSPaths
 
   def deployDir: String = checkSeparator(dirNode.get("DeployDir", "deploy"))
 
+  lazy val imageDir: String = checkSeparator(dirNode.get("ImageDir","."))
+
   def serverPort: Int = setupNode.getInt("ServerPort", 9000)
 
-  def webServerPort: Int = setupNode.getInt("WebServerPort", 80)
+  def webServerPortNoSSL: Int = setupNode.getInt("WebServerPortNoSSL", 80)
+  def webServerPortSSL: Int = setupNode.getInt("WebServerPortSSL", 443)
 
   def certDomain: String = setupNode.get("CertDomain", "")
 
@@ -74,8 +77,9 @@ object FSPaths
 
   def setServerPort(newPort: Int): Unit = setupNode.putInt("ServerPort", newPort)
 
-  def setWebServerPort(newPort: Int): Unit = setupNode.putInt("WebServerPort", newPort)
-  //def setBackupHour(newTime:Int)=setupNode.putInt("BackupHour",newTime)
+  def setWebServerPortNoSSL(newPort: Int): Unit = setupNode.putInt("WebServerPortNoSSL", newPort)
+  def setWebServerPortSSL(newPort: Int): Unit = setupNode.putInt("WebServerPortSSL", newPort)
+
   def setSettingsRef(name: String, newRef: Reference): Unit = setupNode.put(name, newRef.sToString)
 
   def setLastBackup(time: Long): Unit = setupNode.putLong("LastBackup", time)
@@ -89,5 +93,7 @@ object FSPaths
   def setCertRootFolder(n: String): Unit = setupNode.put("CertRootFolder", n)
 
   def setCertEmail(n: String): Unit = setupNode.put("CertEmail", n)
+
+  def setImageDir(dir:String):Unit= dirNode.put("ImageDir",dir)
 
 }

@@ -1,9 +1,6 @@
 package client.dataviewer.adressdialog
 
 import java.awt.Dimension
-import javax.swing.JTree
-import javax.swing.event.{TreeSelectionEvent, TreeSelectionListener}
-import javax.swing.tree.{DefaultMutableTreeNode, TreeNode, TreePath, TreeSelectionModel}
 
 import client.calender.{AdTreeNode, Address, Folder}
 import client.comm.ClientQueryManager
@@ -13,6 +10,9 @@ import client.ui.ClientApp
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.StringConstant
 import definition.typ.SystemSettings
+import javax.swing.JTree
+import javax.swing.event.{TreeSelectionEvent, TreeSelectionListener}
+import javax.swing.tree.{DefaultMutableTreeNode, TreeNode, TreePath, TreeSelectionModel}
 
 import scala.collection.JavaConverters._
 import scala.swing.Table.{ElementMode, IntervalMode}
@@ -48,27 +48,26 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   
   val folderTree=new Component {
   	override lazy val peer = new JTree()
-  	peer.getSelectionModel().setSelectionMode (TreeSelectionModel.SINGLE_TREE_SELECTION)
+  	peer.getSelectionModel.setSelectionMode (TreeSelectionModel.SINGLE_TREE_SELECTION)
   	peer.setExpandsSelectedPaths(true)
   	peer.setEditable(true)
   	peer.addTreeSelectionListener(new TreeSelectionListener(){
   	  def valueChanged(e:TreeSelectionEvent):Unit={
-  	    peer.getLastSelectedPathComponent() match {
-  	      case dn:DefaultMutableTreeNode=> dn.getUserObject() match {
+  	    peer.getLastSelectedPathComponent match {
+  	      case dn:DefaultMutableTreeNode=> dn.getUserObject match {
   	        case ad:Address=>
               tableModel.setAddress(ad)
               chooseBut.enabled=true
               table.enabled=true
-              peer.getSelectionRows() match {
-                case rows:Array[Int]=>if (rows.nonEmpty&&rows(0)==1){
+              peer.getSelectionRows match {
+                case rows:Array[Int] if rows.nonEmpty&&rows(0)==1 =>
                   addFolderBut.enabled=false
                   addAddressBut.enabled=false
-                  return
-                }
                 case _=>
+                  addFolderBut.enabled=true
+                  addAddressBut.enabled=true
               }
-              addFolderBut.enabled=true
-              addAddressBut.enabled=true
+
             case _=> disableAdress()
   	      }
   	      case _=> addFolderBut.enabled=false
@@ -79,8 +78,8 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   }
   
   
-  def getSelectedTreeNode:Option[(DefaultMutableTreeNode,AdTreeNode)]=folderTree.peer.getLastSelectedPathComponent() match {
-    case dn:DefaultMutableTreeNode=> dn.getUserObject() match {
+  def getSelectedTreeNode:Option[(DefaultMutableTreeNode,AdTreeNode)]=folderTree.peer.getLastSelectedPathComponent match {
+    case dn:DefaultMutableTreeNode=> dn.getUserObject match {
       case ad:AdTreeNode=>Some((dn,ad))
       case o=>util.Log.e("Other "+o+" "+o.getClass); None
     }
@@ -96,12 +95,12 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   	addAddressBut.enabled=true
   }
     
-  val treeScroller=new ScrollPane{
+  val treeScroller:ScrollPane=new ScrollPane{
     viewportView=folderTree
     preferredSize=new Dimension(AdressLinkDialog.treeWidth,20)
   }
   
-  val table=new Table{    
+  val table:Table=new Table{
     selection.intervalMode=IntervalMode.Single
     selection.elementMode=ElementMode.Cell
     rowHeight=ViewConstants.defaultRowHeight
@@ -109,21 +108,21 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   }
   val tableModel=new AddressTableModel(table)
   table.model=tableModel
-  table.peer.getColumnModel().getColumn(0).setMaxWidth(120)
-  table.peer.getColumnModel().getColumn(0).setWidth(120)
+  table.peer.getColumnModel.getColumn(0).setMaxWidth(120)
+  table.peer.getColumnModel.getColumn(0).setWidth(120)
   
-  val tableScroller=new ScrollPane{
+  val tableScroller:ScrollPane= new ScrollPane{
     viewportView=table
   }
     
-  val leftPanel=new BorderPanel{
+  val leftPanel:BorderPanel=new BorderPanel{
     add(ViewConstants.label("Adress-Ordner:"), BorderPanel.Position.North)
     add(treeScroller,BorderPanel.Position.Center)
     add(new BoxPanel(Orientation.Horizontal){
       contents+=addFolderBut+=editFolderBut
     },BorderPanel.Position.South)
   }
-  val rightPanel=new BorderPanel{
+  val rightPanel:BorderPanel=new BorderPanel{
     add(ViewConstants.label("Adresse:"), BorderPanel.Position.North)
     add(tableScroller,BorderPanel.Position.Center)
     add(new BoxPanel(Orientation.Horizontal){
@@ -182,26 +181,30 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   }
 
   
-  def addAddress():Unit={    
+  def addAddress():Unit=
     getSelectedTreeNode match {
       case Some((node,obj))=>
-        if(node.isInstanceOf[ProjectNode]||node.isInstanceOf[VirtualNode]) return
-        val parentFolder= getParentFolder(node,obj)
-        val inst=ClientQueryManager.createInstance(AdressLinkDialog.addressType,Array(new OwnerReference(1.toByte,parentFolder.ref)))
-        val ref=new Reference(AdressLinkDialog.addressType,inst)
-        ClientQueryManager.writeInstanceField(ref,1,StringConstant("Neu"))
-        ClientQueryManager.runInPool{
-        	val newInstance=ClientQueryManager.queryInstance(ref,-1).head
-        	Swing.onEDT{ tableModel.setAddress(new Address(newInstance)) ;table.enabled=true}
+        if(!(node.isInstanceOf[ProjectNode]||node.isInstanceOf[VirtualNode])) {
+          val parentFolder: Folder = getParentFolder(node, obj)
+          val inst = ClientQueryManager.createInstance(AdressLinkDialog.addressType, Array(new OwnerReference(1.toByte, parentFolder.ref)))
+          val ref = new Reference(AdressLinkDialog.addressType, inst)
+          ClientQueryManager.writeInstanceField(ref, 1, StringConstant("Neu"))
+          ClientQueryManager.runInPool {
+            val newInstance = ClientQueryManager.queryInstance(ref, -1).head
+            Swing.onEDT {
+              tableModel.setAddress(new Address(newInstance));
+              table.enabled = true
+            }
+          }
         }
       case _=> 
     }
-  }
+
   
   private def getParentFolder(node:DefaultMutableTreeNode,obj:AdTreeNode)=  obj match {
     case aFolder:Folder=>aFolder
-    case _:Address=> node.getParent().asInstanceOf[DefaultMutableTreeNode].
-    	getUserObject()match {
+    case _:Address=> node.getParent.asInstanceOf[DefaultMutableTreeNode].
+      getUserObject match {
       case aFolder:Folder =>aFolder            
     }
   }
@@ -209,13 +212,12 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   override def closeOperation(): Unit =shutDown()
 	
   def expandAll( parent:TreePath): Unit = {
-    val  node =  parent.getLastPathComponent().asInstanceOf[TreeNode]
-    if (node.getChildCount() >= 0) {
+    val  node =  parent.getLastPathComponent.asInstanceOf[TreeNode]
+    if (node.getChildCount >= 0)
       for (e@(_e:TreeNode)<- node.children().asScala) {
         val path = parent.pathByAddingChild(e)
         expandAll( path)
       }
-    }
     folderTree.peer.expandPath(parent)   
   }
   
@@ -246,10 +248,10 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
           case p:ProjectNode =>return
           case v:VirtualNode => v
           case onode:DefaultMutableTreeNode=>
-            (onode.getUserObject() match {
-              case aFolder:Folder=> onode
-               case addr:Address=> node.getParent()
-            }).getParent()
+            (onode.getUserObject match {
+              case _: Folder => onode
+              case _: Address => node.getParent
+            }).getParent
         }
         vnode match {
           case v:VirtualNode =>
@@ -266,7 +268,7 @@ class AdressLinkDialog (w:Window) extends Dialog(w){
   
   def editFolder():Unit= for((node,obj)<-getSelectedTreeNode) {
       if(node.isInstanceOf[ProjectNode]||node.isInstanceOf[VirtualNode]) return
-      folderTree.peer.startEditingAtPath(folderTree.peer.getSelectionPath())
+      folderTree.peer.startEditingAtPath(folderTree.peer.getSelectionPath)
     }
 
   

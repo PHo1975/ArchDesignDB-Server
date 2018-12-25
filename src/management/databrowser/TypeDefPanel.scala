@@ -5,13 +5,13 @@ package management.databrowser
 
 import java.awt.event.MouseWheelListener
 import java.awt.{Color, Dimension}
-import javax.swing.border._
-import javax.swing.table._
-import javax.swing._
 
 import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
 import client.dialog.{ComboBoxEditor, ReactiveTextField}
 import definition.typ._
+import javax.swing._
+import javax.swing.border._
+import javax.swing.table._
 import server.config.FSPaths
 import server.storage._
 import transaction.handling.{SessionManager, TransactionManager}

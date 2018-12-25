@@ -1,12 +1,12 @@
 package client.plotdesign
-import definition.data.Reference
-import client.comm.ClientQueryManager
-import definition.comm.NotificationType
 import java.awt.geom.Rectangle2D
+
+import client.comm.ClientQueryManager
+import client.graphicsView.{AbstractLayerModel, ElemContainer, Formatable, HatchHandler}
+import definition.comm.NotificationType
+import definition.data.Reference
 import definition.expression.VectorConstant
-import client.graphicsView.Formatable
-import client.graphicsView.{AbstractLayerModel,ElemContainer}
-import client.graphicsView.HatchHandler
+
 import scala.swing.Swing
 
 class LayerRefList(controller:PlotDesignController) extends AbstractLayerModel {

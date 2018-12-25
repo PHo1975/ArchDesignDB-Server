@@ -1,31 +1,31 @@
 package client.graphicsView
+import java.awt.{Color, Graphics2D}
+
 import definition.data.Reference
-import definition.expression.VectorConstant
-import java.awt.Color
-import java.awt.Graphics2D
-import definition.expression.{Polygon,PointList}
-import definition.expression.NULLVECTOR
+import definition.expression.{NULLVECTOR, PointList, Polygon, VectorConstant}
+
+import scala.collection.immutable
 
 
 
 class TierLine(val p1:VectorConstant,val p2:VectorConstant,val tierDef:TierDef){
-  var e1=p1 // endpoints
-  var e2=p2
-  lazy val dist=e2-e1
-  var hatchPoly:Polygon=null
-  def createHatch(lastLine:TierLine)= {
+  var e1: VectorConstant =p1 // endpoints
+  var e2: VectorConstant =p2
+  lazy val dist: VectorConstant =e2-e1
+  var hatchPoly:Polygon=_
+  def createHatch(lastLine:TierLine): Unit = {
     hatchPoly=SectionLineElement.createHatchPoly(e1,e2,lastLine.e2,lastLine.e1)
   }
-  def intersectTo(otherLine:TierLine,isP1:Boolean) = for(ip<-VectorConstant.intersection2D(p1,p2,otherLine.p1,otherLine.p2)){    
+  def intersectTo(otherLine:TierLine,isP1:Boolean): Unit = for(ip<-VectorConstant.intersection2D(p1,p2,otherLine.p1,otherLine.p2)){
     if(isP1) e1=ip
     else e2=ip
   }
   
-  override def toString="p1:"+p2+" p2:"+p2
+  override def toString: String ="p1:"+p2+" p2:"+p2
 }
 
 class LineConnection(val otherLine:SectionLineElement,val isP1:Boolean){ 
-  override def toString=" LC "+otherLine.ref+" "+(if(isP1)"p1" else "p2")
+  override def toString: String =" LC "+otherLine.ref+" "+(if(isP1)"p1" else "p2")
 }
 
 case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoint:VectorConstant,dir:VectorConstant,material:Int,offset:Double,connAreaRef:Reference) extends 
@@ -35,35 +35,35 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
    var p1RightConnection:Option[LineConnection]=None
    var p2RightConnection:Option[LineConnection]=None
    
-   def getP1RightConn=if(p1RightConnection.isDefined)p1RightConnection else if(p1LeftConnection.isDefined) p1LeftConnection else None
-   def getP2RightConn=if(p2RightConnection.isDefined)p2RightConnection else if(p2LeftConnection.isDefined) p2LeftConnection else None
+   def getP1RightConn: Option[LineConnection] =if(p1RightConnection.isDefined)p1RightConnection else if(p1LeftConnection.isDefined) p1LeftConnection else None
+   def getP2RightConn: Option[LineConnection] =if(p2RightConnection.isDefined)p2RightConnection else if(p2LeftConnection.isDefined) p2LeftConnection else None
    
-   lazy val p12vect=endPoint-startPoint
-   lazy val p21vect=startPoint-endPoint
+   lazy val p12vect: VectorConstant =endPoint-startPoint
+   lazy val p21vect: VectorConstant =startPoint-endPoint
    
-   lazy val dirPointsLeft=VectorConstant.pointLocation2D(startPoint,endPoint,startPoint+dir)>0
-   val middle=(startPoint+endPoint)*0.5
-   val dirEnd=middle+dir
+   lazy val dirPointsLeft: Boolean =VectorConstant.pointLocation2D(startPoint,endPoint,startPoint+dir)>0
+   val middle: VectorConstant =(startPoint+endPoint)*0.5
+   val dirEnd: VectorConstant =middle+dir
    val dotStyle=6
    val startWidth=30
-   val compos=CompositionHandler.quickGetComposition(material)
+   val compos: Composition =CompositionHandler.quickGetComposition(material)
    
-   val dist1=dir*offset
-   val startLine=new TierLine(nstartPoint+dist1,endPoint+dist1,if(compos.tiers.isEmpty)CompositionHandler.undefinedTier else compos.tiers.head)
-   val tierLines= compos.tiers.foldLeft((offset, List(startLine)))(createTierLine)._2
+   val dist1: VectorConstant =dir*offset
+   val startLine: TierLine =new TierLine(nstartPoint+dist1,endPoint+dist1,if(compos.tiers.isEmpty)CompositionHandler.undefinedTier else compos.tiers.head)
+   val tierLines: List[TierLine] = compos.tiers.foldLeft((offset, List(startLine)))(createTierLine)._2
    //println("SL "+nref+" comp:"+compos+" Lines:"+tierLines.mkString(";"))
    
-   val numTierLines=tierLines.size-1
+   val numTierLines: Int =tierLines.size-1
    
-   val firstConstrTierIx=tierLines.indexWhere(_.tierDef.role==SectionLineElement.constructionTierType)
-   val lastConstrTierIx=tierLines.lastIndexWhere(_.tierDef.role==SectionLineElement.constructionTierType)+1
+   val firstConstrTierIx: Int =tierLines.indexWhere(_.tierDef.role==SectionLineElement.constructionTierType)
+   val lastConstrTierIx: Int =tierLines.lastIndexWhere(_.tierDef.role==SectionLineElement.constructionTierType)+1
    
-   val firstOutTiers=if(firstConstrTierIx== -1)tierLines.toSeq else (0 to firstConstrTierIx) map tierLines
-   val lastOutTiers=if(lastConstrTierIx== -1)Seq.empty else (tierLines.size-1 to lastConstrTierIx by -1) map tierLines
-   val firstCheckOutTiers=if(lastConstrTierIx== -1)Seq.empty else (0 to lastConstrTierIx) map tierLines
-   val lastCheckOutTiers=if(firstConstrTierIx== -1)Seq.empty else (tierLines.size-1 to firstConstrTierIx+1 by -1) map (ix=>{val tl=tierLines(ix);new TierLine(tl.p1,tl.p2,tierLines(ix-1).tierDef)})
+   val firstOutTiers: immutable.Seq[TierLine] =if(firstConstrTierIx== -1)tierLines.toSeq else (0 to firstConstrTierIx) map tierLines
+   val lastOutTiers: Seq[TierLine] =if(lastConstrTierIx== -1)Seq.empty else (tierLines.size-1 to lastConstrTierIx by -1) map tierLines
+   val firstCheckOutTiers: Seq[TierLine] =if(lastConstrTierIx== -1)Seq.empty else (0 to lastConstrTierIx) map tierLines
+   val lastCheckOutTiers: Seq[TierLine] =if(firstConstrTierIx== -1)Seq.empty else (tierLines.size-1 to firstConstrTierIx+1 by -1) map (ix=>{val tl=tierLines(ix);new TierLine(tl.p1,tl.p2,tierLines(ix-1).tierDef)})
   
-   override def draw(g:Graphics2D,sm:Scaler,selectColor:Color=null)={
+   override def draw(g:Graphics2D,sm:Scaler,selectColor:Color=null): Unit ={
     val col=if(selectColor==null) ColorMap.getColor(color)else selectColor    
     //val connStr=" "+(if(p1LeftConnection.isDefined)"1L ")+(if(p1RightConnection.isDefined)"1R ")+(if(p2LeftConnection.isDefined)"2L ")+(if(p2RightConnection.isDefined)"2R ")
 		val connStr=nref.sToString+(if(dirPointsLeft)" L"else " R")+lastConstrTierIx
@@ -126,7 +126,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
     }
     
 	 
-		def intDrawLine(n1:VectorConstant,n2:VectorConstant)= 
+		def intDrawLine(n1:VectorConstant,n2:VectorConstant): Unit =
 				GraphElemConst.drawLineFloat(g,sm.xToScreen(n1.x) ,sm.yToScreen(n1.y) ,sm.xToScreen(n2.x),sm.yToScreen(n2.y))
 	}
    
@@ -140,7 +140,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
     (curr._1+tierDef.thickness,nl::curr._2)
   }
   
-  private def intersectTiers(ri:(LineConnection,Boolean),thisIterator:Iterator	[TierLine],isP1:Boolean)= {
+  private def intersectTiers(ri:(LineConnection,Boolean),thisIterator:Iterator	[TierLine],isP1:Boolean): Unit = {
   		 val otherIter=if(ri._2) ri._1.otherLine.firstCheckOutTiers.iterator else ri._1.otherLine.lastCheckOutTiers.iterator
   		 if(otherIter.hasNext&&thisIterator.hasNext) {
   			 var currentOther=otherIter.next()
@@ -160,7 +160,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
   
   
   
-  def adaptLineLengths() = if(tierLines.size>1){   
+  def adaptLineLengths(): Unit = if(tierLines.size>1){
     val p1RightInfo=for(rightConn1<-getP1RightConn) yield (rightConn1,rightConn1.otherLine.dirPointsLeft^rightConn1.isP1)     
     //val rightMostP1Tier=for(rightConn1<-getP1RightConn) yield if(rightConn1.otherLine.dirPointsLeft^rightConn1.isP1)rightConn1.otherLine.tierLines.first else rightConn1.otherLine.tierLines.last
     val p1LeftInfo=for(leftConn1<-p1LeftConnection) yield (leftConn1,!(leftConn1.otherLine.dirPointsLeft^leftConn1.isP1))
@@ -170,33 +170,27 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
     val p2LeftInfo=for(leftConn2<-p2LeftConnection) yield (leftConn2,!(leftConn2.otherLine.dirPointsLeft^leftConn2.isP1))
     //val leftMostP2Tier=for(leftConn2<-p2LeftConnection) yield if(leftConn2.otherLine.dirPointsLeft^leftConn2.isP1)leftConn2.otherLine.tierLines.last else leftConn2.otherLine.tierLines.first
     if(dirPointsLeft) { // start this by first      
-      for(ri<-p1RightInfo) intersectTiers(ri,firstOutTiers.iterator,true)     
-      for(ri<-p1LeftInfo) intersectTiers(ri,lastOutTiers.iterator,true)
-      //for(lm<-leftMostP1Tier) tierLines.last.intersectTo(lm,true)
-      for(ri<-p2RightInfo) intersectTiers(ri,lastOutTiers.iterator,false)
-      //for(rm<-rightMostP2Tier) tierLines.last.intersectTo(rm,false)
-      for(ri<-p2LeftInfo) intersectTiers(ri,firstOutTiers.iterator,false)
-      //for(lm<-leftMostP2Tier) tierLines.first.intersectTo(lm,false)
+      for(ri<-p1RightInfo) intersectTiers(ri,firstOutTiers.iterator,isP1 = true)
+      for(ri<-p1LeftInfo) intersectTiers(ri,lastOutTiers.iterator,isP1 = true)
+      for(ri<-p2RightInfo) intersectTiers(ri,lastOutTiers.iterator,isP1 = false)
+      for(ri<-p2LeftInfo) intersectTiers(ri,firstOutTiers.iterator,isP1 = false)
     }
     else { // start this by last            
-    	for(ri<-p1RightInfo) intersectTiers(ri,lastOutTiers.iterator,true)   	               
-      for(ri<-p1LeftInfo) intersectTiers(ri,firstOutTiers.iterator,true)
-    	//for(lm<-leftMostP1Tier ) tierLines.first.intersectTo(lm,true)
-      for(ri<-p2RightInfo) intersectTiers(ri,firstOutTiers.iterator,false)
-      //for(rm<-rightMostP2Tier) tierLines.first.intersectTo(rm,false)
-      for(ri<-p2LeftInfo) intersectTiers(ri,lastOutTiers.iterator,false)
-    	//for(lm<-leftMostP2Tier ) tierLines.last.intersectTo(lm,false)     	
+    	for(ri<-p1RightInfo) intersectTiers(ri,lastOutTiers.iterator,isP1 = true)
+      for(ri<-p1LeftInfo) intersectTiers(ri,firstOutTiers.iterator,isP1 = true)
+      for(ri<-p2RightInfo) intersectTiers(ri,firstOutTiers.iterator,isP1 = false)
+      for(ri<-p2LeftInfo) intersectTiers(ri,lastOutTiers.iterator,isP1 = false)
     }
   }
   
-  def updateHatches() = {
+  def updateHatches(): Unit = {
     for(i<- 0 until tierLines.size-1;next=tierLines(i+1);that=tierLines(i))
       that.createHatch(next)
   }
   
   def createClone=new SectionLineElement(nref,nstartPoint,nendPoint,dir,material,offset,connAreaRef)
    
-  override def toString= "SLine "+nref.sToString+" ("+startPoint.shortToString+","+endPoint.shortToString+", Offset:"+offset+", mat:"+material+", connRef:"+connAreaRef.sToString+")"
+  override def toString: String = "SLine "+nref.sToString+" ("+startPoint.shortToString+","+endPoint.shortToString+", Offset:"+offset+", mat:"+material+", connRef:"+connAreaRef.sToString+")"
   
   
 }
@@ -211,9 +205,9 @@ object SectionLineElement {
     avect.angleBetweenRad(bvect)*(if(pointLoc > VectorConstant.tolerance)-1 else 1)    
   }
   
-  def roundDouble(d: Double)=(math.round(d*100d)/100d).toString
+  def roundDouble(d: Double): String =(math.round(d*100d)/100d).toString
   
-  def createHatchPoly(p1:VectorConstant,p2:VectorConstant,p3:VectorConstant,p4:VectorConstant) = {
+  def createHatchPoly(p1:VectorConstant,p2:VectorConstant,p3:VectorConstant,p4:VectorConstant): Polygon = {
 		  new Polygon(Seq.empty,Seq(new PointList(Seq(p1,p2,p3,p4))))
 		}
 }

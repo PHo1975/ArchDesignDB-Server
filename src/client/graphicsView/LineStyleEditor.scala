@@ -4,13 +4,13 @@
 package client.graphicsView
 
 import java.awt.{BasicStroke, Color}
-import javax.swing.table.TableCellEditor
-import javax.swing.{DefaultCellEditor, JCheckBox, JComboBox, JTable}
 
 import client.dataviewer.InstanceRenderer
 import client.dialog.{FieldEditor, InplaceFieldEditor, RenderComponent, SidePanelComboBox}
 import definition.data.LineStyle
 import definition.expression.{Constant, Expression, IntConstant}
+import javax.swing.table.TableCellEditor
+import javax.swing.{DefaultCellEditor, JCheckBox, JComboBox, JTable}
 import util.{MyComboBox, MyListView}
 
 import scala.swing.{Button, CheckBox, Color, Component, Dimension, Graphics2D, GridPanel, Label, Panel, Table}
@@ -77,7 +77,7 @@ class LineStyleEditor extends FieldEditor {
 
 	lazy val widthCombo = new SidePanelComboBox(widthList, new LineWidthRenderer(), this, (allowedClassNames.map((_, widthFieldNr)) :+ (("AreaPolygon", 2.toByte)) :+ (("Wohnfläche", 2.toByte))).toMap) {
 	  val defaultValue=0
-
+    maximumRowCount=20
 		def getConstant(value: Int): Constant = IntConstant(value)
 
 		def valueFromConstant(c: Constant): Int = c.toInt
@@ -97,6 +97,7 @@ class LineStyleEditor extends FieldEditor {
 	lazy val styleCombo=new SidePanelComboBox(LineStyleHandler.styles.map(_.ix),new StylePreviewPan,this,
 	    (allowedClassNames.map((_,styleFieldNr)):+(("AreaPolygon",3.toByte))).toMap) {
 		val defaultValue: Int = LineStyleHandler.undefinedStyle.ix
+		maximumRowCount=30
 
 		def getConstant(value: Int) = IntConstant(value)
 

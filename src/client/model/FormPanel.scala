@@ -4,8 +4,6 @@
 package client.model
 
 import java.awt.{Color, Dimension}
-import javax.swing.BorderFactory
-import javax.swing.border.MatteBorder
 
 import client.comm.ClientQueryManager
 import client.dataviewer.DataViewController
@@ -13,6 +11,8 @@ import client.dialog.form.FormBox
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
 import definition.typ.CustomInstanceEditor
+import javax.swing.BorderFactory
+import javax.swing.border.MatteBorder
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, Button, Component, Orientation, Swing}

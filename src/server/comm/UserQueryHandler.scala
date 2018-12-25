@@ -43,6 +43,14 @@ trait AbstractQueryHandler{
 			ref.write(out)
 		}
 
+  def notifyParentDeleted(subs:SubscriptionInfo,ref:Reference): Unit =
+    userSocket.sendData(ServerCommands.sendSubscriptionNotification ) { out =>
+      out.writeInt(subs.id)
+      out.writeInt(NotificationType.parentNotExistend.id )
+      ref.write(out)
+    }
+
+
 	def refreshSubscription(subs:SubscriptionInfo): Unit = try{
 		//System.out.println("refreshing subscription "+subs)
 		subs match {
@@ -324,7 +332,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 
 	
 
-	private def handleQuery(in:DataInputStream) = {
+	private def handleQuery(in:DataInputStream): Unit = {
 		val parentRef:Reference=Reference(in)
 		val propertyField:Byte= in.readByte		
 		userSocket.sendData(ServerCommands.sendQueryResponse ) {out=>
@@ -332,7 +340,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		}		
 	}
 	
-	private def sendNextParentOfType(in:DataInputStream) = {
+	private def sendNextParentOfType(in:DataInputStream): Unit = {
 		val childRef:Reference=Reference(in)
 		val parentType= in.readInt		
 		userSocket.sendData(ServerCommands.sendQueryResponse ) {out=> try{
@@ -350,7 +358,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		}
 	}
 	
-	private def handleFactQuery(in:DataInputStream) = {
+	private def handleFactQuery(in:DataInputStream): Unit = {
 		val parentRef:Reference=Reference(in)
 		val propertyField:Byte= in.readByte		
 		userSocket.sendData(ServerCommands.sendFactQueryResponse ) {out=>
@@ -358,13 +366,13 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		}		
 	}
 	
-	private def newSubscription(in:DataInputStream) = {
+	private def newSubscription(in:DataInputStream): Unit = {
 		val parentRef:Reference=Reference(in)
 		val propertyField:Byte= in.readByte	
 		createSubscription(parentRef,propertyField,userSocket.connectionEntry)
 	}
 	
-	private def changeSubscription(in:DataInputStream ) = {
+	private def changeSubscription(in:DataInputStream ): Unit = {
 		val subsID=in.readInt
 		val newRef=Reference(in)
 		val newPropField=in.readByte
@@ -378,14 +386,14 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	}
 	
 	
-	private def newPathSubscription(in:DataInputStream) = {
+	private def newPathSubscription(in:DataInputStream): Unit = {
 		val count=in.readInt
 		val pathList=for(i <-0 until count) yield Reference(in)
 		val corrList=pathList.filter(ref=> StorageManager.instanceExists(ref.typ, ref.instance))
 		createPathSubscription(corrList,userSocket.connectionEntry)
 	}
 	
-	private def pathSubs_openChild(in:DataInputStream) = {
+	private def pathSubs_openChild(in:DataInputStream): Unit = {
 		val subsID=in.readInt
 		val newRef=Reference(in)
 		openChild(subsID,newRef)
@@ -397,7 +405,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 		CommonSubscriptionHandler.jumpUp(subsID,newPos)
 	}
 	
-	private def pathSubs_changePath(in:DataInputStream) = {
+	private def pathSubs_changePath(in:DataInputStream): Unit = {
 		val subsID=in.readInt
 		val count=in.readInt
 		val pathList=for(i <-0 until count) yield Reference(in)

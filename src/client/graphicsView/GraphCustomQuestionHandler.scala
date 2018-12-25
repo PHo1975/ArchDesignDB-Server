@@ -1,9 +1,10 @@
 package client.graphicsView
 
-import java.awt.Graphics2D
 import java.awt.geom.{AffineTransform, Arc2D, Area}
+import java.awt.{BasicStroke, Graphics2D}
 
 import client.comm.ClientQueryManager
+import client.dataviewer.ViewConstants
 import client.dialog._
 import client.dialog.symbolbrowser.SymbolBrowserController
 import definition.data.{EMPTY_REFERENCE, Reference, StyleService}
@@ -21,10 +22,12 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   val polyToText="Polygon zeichnen"
   val dimHelpLineToText="Hilfslinien bis"
   val lineDistance = 1.3d
+  lazy val polyStroke =new BasicStroke(1f * ViewConstants.polyLineTo.toFloat)
   val funcMap: collection.immutable.HashMap[String, (GraphViewController) => Unit] = collection.immutable.HashMap[String, (GraphViewController) => Unit](
-    "LineTo" -> lineTo(lineToText, true, true), "PolyTo" -> polyTo, "ArcCenter" -> arcCenter, "ArcGeneral" -> arcGeneral,
+    "LineTo" -> lineTo(lineToText, create = true, separateElements = true), "PolyTo" -> polyTo, "ArcCenter" -> arcCenter, "ArcGeneral" -> arcGeneral,
       "Rotate"->rotate,"RotateMulti"->rotateMulti,"Tangent"->tangent,"EllipseCenter"->ellipseCenter,"CreateText"->createText,"CreateDimLine"->createDimLine,
-      "ChangeHelpLines"->lineTo(dimHelpLineToText,false,false),"ChangeRefPoint"->changeDimLineRefPoint,"DelDimPoint"->delDimPoint,"Rectangle"->rectangle,"ParPoly"->parPoly,
+      "ChangeHelpLines"->lineTo(dimHelpLineToText,create = false,separateElements = false,strict=false),"ChangeRefPoint"->changeDimLineRefPoint,"DelDimPoint"->delDimPoint,
+      "Rectangle"->rectangle,"ParPoly"->parPoly,
       "Mirror"->mirror,"Move"->move,"Copy"->copy,"ParLine"->parLine,"CreateSymbol"->SymbolBrowserController.createSymbol,
       "CreateSymbolStamp"->SymbolBrowserController.createSymbolStamp,"CreateSymbolFiller"->SymbolBrowserController.createSymbolFiller,
     "ChangeSymbol" -> SymbolBrowserController.changeSymbol, "OrthoLine" -> orthoLine, "PolyLineTo" -> polyLineTo)
@@ -154,13 +157,13 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   private def getSelElements(selMod:ViewSelectModel)=     
   	if(selMod.numSelected>500) {
   	  val bounds=selMod.selectionBounds()
-      Seq(LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB(), 10, 0,
+      Seq(LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB, 10, 0,
         new VectorConstant(bounds.x, bounds.y, 0), new VectorConstant(bounds.x + bounds.width, bounds.y, 0)),
-        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB(), 10, 0,
+        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB, 10, 0,
           new VectorConstant(bounds.x + bounds.width, bounds.y, 0), new VectorConstant(bounds.x + bounds.width, bounds.y + bounds.height, 0)),
-        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB(), 10, 0,
+        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB, 10, 0,
           new VectorConstant(bounds.x, bounds.y, 0), new VectorConstant(bounds.x, bounds.y + bounds.height, 0)),
-        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB(), 10, 0,
+        LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB, 10, 0,
           new VectorConstant(bounds.x, bounds.y + bounds.height, 0), new VectorConstant(bounds.x + bounds.width, bounds.y + bounds.height, 0)))
   	} else selMod.selectionList.toSeq
 
@@ -177,7 +180,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   def copy(gc:GraphViewController):Unit= {
   	val selMod=gc.selectModel
     
-  	def secondStep(answerList:Seq[ResultElement],multiple:Boolean)= answerList.last.result match{
+  	def secondStep(answerList:Seq[ResultElement],multiple:Boolean): Unit = answerList.last.result match{
   	  case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Kopieren","Delta Y eingeben:"),
             (answerList)=>{finishCopy(gc,multiple)})
       case startP:VectorConstant=>
@@ -199,8 +202,8 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       answerList.head.result match{
         case i: IntConstant => DialogManager.startInterQuestion(
           DialogQuestion("Kopieren<br>Distanz angeben", moveStartAnswers),
-            (nanswerList)=>secondStep(nanswerList,true))
-        case _=> secondStep(answerList,false)  
+            (nanswerList)=>secondStep(nanswerList,multiple = true))
+        case _=> secondStep(answerList,multiple = false)
       } 
     })   
   }
@@ -210,13 +213,14 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 	    new AnswerDefinition("Abstand",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint))
 
 
-  def dirQuestion = DialogQuestion("Parallele in Richtung", Seq(new AnswerDefinition("Richtungspunkt", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT)), false)
+  def dirQuestion = DialogQuestion("Parallele in Richtung", Seq(new AnswerDefinition("Richtungspunkt", DataType.VectorTyp,
+    None, AnswerPanelsData.NOSTRICT_HIT)), repeat = false)
 
 
   def parLine(gc:GraphViewController):Unit= {
     val selMod=gc.selectModel
 
-    def finish(numCopies:Int)={
+    def finish(numCopies:Int): Unit ={
       NewButtonsList.lastContainer match {
         case Some(lc) =>	lc.createActionStarted(numCopies)
         case None => util.Log.e("no last container")
@@ -290,7 +294,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   def lineNextPointQuestion(actionText: String, strict: Boolean = true): DialogQuestion = //     singlePointQuestion(actionText,"bis Punkt",true)
     DialogQuestion(actionText, Seq(new AnswerDefinition("bis Punkt", DataType.VectorTyp, None, if (strict) "" else AnswerPanelsData.NOSTRICT_HIT),
       new AnswerDefinition("dx", DataType.DoubleTyp, None), new AnswerDefinition("dy", DataType.DoubleTyp, None),
-      new AnswerDefinition("Winkel", DataType.DoubleTyp, None)), true)
+      new AnswerDefinition("Winkel", DataType.DoubleTyp, None)), repeat = true)
 
   def lineLengthQuestion(actionText: String) = DialogQuestion(actionText, Seq(new AnswerDefinition("Länge", DataType.DoubleTyp, None), new AnswerDefinition("durch Punkt", DataType.VectorTyp, None)))
 
@@ -301,7 +305,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     //println(" line To "+lineText+" "+Thread.currentThread().getStackTrace().take(5).mkString("\n"))
     var lastPoint: VectorConstant = null
 
-    def lineDragger(pos: VectorConstant, g: Graphics2D) = {
+    def lineDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
       GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
     }
@@ -315,7 +319,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           //println("Answer:"+answerList.mkString(" | "))
           def handlePointAnswer(p: VectorConstant): Unit = {
             if (separateElements) DialogManager.increaseNumCreatedElements()
-            gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, lastPoint, p))
+            gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, lastPoint, p))
             lastPoint = p
             gc.setCustomDragger(lineDragger)
           }
@@ -326,7 +330,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
               case "dx" => handlePointAnswer(lastPoint + new VectorConstant(d.toDouble, 0d, 0d))
               case "dy" => handlePointAnswer(lastPoint + new VectorConstant(0d, d.toDouble, 0d))
               case "Winkel" =>
-                def angleDragger(pos: VectorConstant, g: Graphics2D) = {
+                def angleDragger(pos: VectorConstant, g: Graphics2D): Unit = {
                   val sm = gc.scaleModel
                   val delta = pos - lastPoint
                   val orth = lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
@@ -363,14 +367,14 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 
   lazy val pickLineQuestion = DialogQuestion("Lotlinie zeichnen",
-    Seq(new AnswerDefinition("Lot zu Linie", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString)))
+    Seq(new AnswerDefinition("zu Linie", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString)))
 
   def orthoLine(gc:GraphViewController):Unit={
     DialogManager.startInterQuestion(pickLineQuestion,(answerList)=>{
       gc.getElementByRef(answerList.head.result.toObjectReference) match {
         case Some(elem: LineElement) =>
           val l3d=elem.toLine3D
-          def lineDragger(pos:VectorConstant,g:Graphics2D)= {
+          def lineDragger(pos:VectorConstant,g:Graphics2D): Unit = {
             val sm=gc.scaleModel
             val crossP=l3d.orthProjection(pos)
             val angle=((pos-crossP).XYAngle*180d/Math.PI).toFloat
@@ -378,7 +382,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             GraphElemConst.drawArcFloat(g,sm.xToScreen(crossP.x)-10f,sm.yToScreen(crossP.y)-10f,21f,20f,angle,90f)
           }
           gc.setCustomDragger(lineDragger)
-          DialogManager.startInterQuestion(singlePointQuestion("Lotlinie zeichnen", "Lotline durch Punkt", Some(true)), (answerList) => {
+          DialogManager.startInterQuestion(singlePointQuestion("Lotlinie zeichnen", "durch Punkt", Some(true)), (answerList) => {
             DialogManager.processResults()
           })
         case _ =>
@@ -399,7 +403,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   def rectangle(gc:GraphViewController):Unit={
     DialogManager.startInterQuestion(rectStartQuestion,(answerList)=> {
       val startPoint=answerList.last.result.toVector
-      def diagRectDragger(pos:VectorConstant,g:Graphics2D)= {
+      def diagRectDragger(pos:VectorConstant,g:Graphics2D): Unit = {
   				val sm=gc.scaleModel
   				val scy=sm.yToScreen(startPoint.y)
   				val py=sm.yToScreen(pos.y)
@@ -407,7 +411,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   				val sy=scala.math.min(scy,py)
   				GraphElemConst.drawRectFloat(g,sx,sy,sm.xToScreen(math.max(pos.x,startPoint.x))-sx,math.max(scy,py)-sy)
   			}
-      def lineDragger(pos:VectorConstant,g:Graphics2D)= {
+      def lineDragger(pos:VectorConstant,g:Graphics2D): Unit = {
   				val sm=gc.scaleModel
   				GraphElemConst.drawLineFloat(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
   			}
@@ -421,7 +425,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              DialogManager.processResults()
            case dwidth:DoubleConstant =>
              //println("Breite:"+dwidth.toDouble)
-             def widthDragger(pos:VectorConstant,g:Graphics2D)= {
+             def widthDragger(pos:VectorConstant,g:Graphics2D): Unit = {
             	 val sm=gc.scaleModel
             	 val scy=sm.yToScreen(startPoint.y)
             	 val py=sm.yToScreen(pos.y)
@@ -441,7 +445,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              gc.setCustomDragger(lineDragger)
              DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Endpunkt Achse", None), (answerList2) => {
                 val endPoint=answerList2.last.result.toVector
-                def axisDragger(pos:VectorConstant,g:Graphics2D)= {
+                def axisDragger(pos:VectorConstant,g:Graphics2D): Unit = {
             	    val sm=gc.scaleModel
             	    GraphElemConst.drawLineFloat(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(endPoint.x),sm.yToScreen(endPoint.y))
                   val deltaV = pos - Line3D(startPoint, endPoint - startPoint).orthProjection(pos)
@@ -463,7 +467,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              gc.setCustomDragger(lineDragger)
              DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Randpunkt Kante", None), (answerList2) => {
                 val endPoint=answerList2.last.result.toVector
-                def edgeDragger(pos:VectorConstant,g:Graphics2D)= {
+                def edgeDragger(pos:VectorConstant,g:Graphics2D): Unit = {
                   val sm=gc.scaleModel
                   val deltaV = pos - Line3D(startPoint, endPoint - startPoint).orthProjection(pos)
                   val points=Seq(startPoint,endPoint,endPoint+deltaV,startPoint+deltaV)
@@ -497,9 +501,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           val dist=(arcElem.centerPoint-pos).toDouble
           if(dist!=0&& arcElem.diameter!=0){
             val hyp=math.sqrt(dist*dist-arcElem.diameter*arcElem.diameter)
-            for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,true))
+            for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,dir = true))
               GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
-            for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,false))
+            for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,dir = false))
               GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
           }
         })
@@ -508,10 +512,10 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           val dist=(arcElem.centerPoint-point).toDouble
           if(dist!=0&& arcElem.diameter!=0){
           	val hyp=math.sqrt(dist*dist-arcElem.diameter*arcElem.diameter)
-          	val pointList=Seq(VectorConstant.triangulationPoint2D(point,arcElem.centerPoint,hyp,arcElem.diameter,true),
-          			VectorConstant.triangulationPoint2D(point,arcElem.centerPoint,hyp,arcElem.diameter,false)).flatten
+          	val pointList=Seq(VectorConstant.triangulationPoint2D(point,arcElem.centerPoint,hyp,arcElem.diameter,dir = true),
+          			VectorConstant.triangulationPoint2D(point,arcElem.centerPoint,hyp,arcElem.diameter,dir = false)).flatten
             val lineList=for(ix<-pointList.indices;p=pointList(ix)) yield
-              LineElement(new Reference(0, ix), ColorMap.tempColor.getRGB(), 10, 0, p, point)
+              LineElement(new Reference(0, ix), ColorMap.tempColor.getRGB, 10, 0, p, point)
           	gc.resetCustomDragger()
             DialogManager.startInterQuestion(DialogQuestion("Tangente zeichnen", Seq(new TempChooseAnswerDef("Tangente auswählen", lineList))), (answerList) => {
           	  DialogManager.processResults()
@@ -531,20 +535,22 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     var lastPoint: VectorConstant = null
     var lastPoints = collection.mutable.ArrayBuffer[VectorConstant]()
 
-    def lineDragger(pos: VectorConstant, g: Graphics2D) = {
+    def lineDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
+      sm.getStroke(1f * ViewConstants.fontScale / 100f, 0)
       GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
     }
 
-    def polyDragger(pos: VectorConstant, g: Graphics2D) = {
+    def polyDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
       val newPoly = new Polygon(Nil, List(PointList(lastPoints :+ pos))).toPathTransformed(v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
       val theArea = new Area(newPoly)
-      g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB()))
+      g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB))
+      g.setStroke(sm.getStroke(1f * ViewConstants.fontScale / 100f, 0))
       g.fill(theArea)
     }
 
-    DialogManager.startInterQuestion(lineQuestion(polyToText, true), (answerList) => {
+    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), (answerList) => {
       lastPoint = answerList.head.result.toVector
       lastPoints += lastPoint
       gc.setCustomDragger(lineDragger)
@@ -569,15 +575,16 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       val sm=gc.scaleModel
       GraphElemConst.drawLineFloat(g,sm.xToScreen(lastPoint.x),sm.yToScreen(lastPoint.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
     }*/
-    def polyDragger(pos: VectorConstant, g: Graphics2D) = {
+    def polyDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
       val newPoly = new Polygon(Nil, List(PointList(lastPoints :+ pos))).
         toLinePathTransformed(v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
-      g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB()))
+      g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB))
+      g.setStroke(polyStroke)
       g.draw(newPoly)
     }
 
-    DialogManager.startInterQuestion(lineQuestion(polyToText, true), (answerList) => {
+    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), (answerList) => {
       lastPoint = answerList.head.result.toVector
       lastPoints += lastPoint
       gc.setCustomDragger(polyDragger)
@@ -598,7 +605,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     new AnswerDefinition("", DataType.EnumTyp, None, "Horizontal"),
     new AnswerDefinition("Durch Punkt", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT),
     new AnswerDefinition("wie Linie", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString))
-    , false)
+    , repeat = false)
 
 
   lazy val dimNextQuestion = DialogQuestion("Maßlinie erzeugen", Seq(new AnswerDefinition("Punkt angeben", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT),
@@ -709,13 +716,13 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 
   lazy val endAngleQuestion = DialogQuestion("Bogenausschnitt", List(new AnswerDefinition("DeltaWinkel", DataType.DoubleTyp, None),
-    new AnswerDefinition("Bogen bis Punkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT)), false)
+    new AnswerDefinition("Bogen bis Punkt", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT)), repeat = false)
   lazy val startAngleQuestion = DialogQuestion("Bogenausschnitt", List(new AnswerDefinition("", DataType.EnumTyp, None, "Vollkreis"),
       new AnswerDefinition("StartWinkel",DataType.DoubleTyp,None),
-    new AnswerDefinition("Bogen von Punkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT)), false)
+    new AnswerDefinition("Bogen von Punkt", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT)), repeat = false)
   lazy val radiusQuestion = DialogQuestion("Kreisgröße", List(new AnswerDefinition("Randpunkt des Kreises", DataType.VectorTyp, None),
     new AnswerDefinition("Radius eingeben", DataType.DoubleTyp, None, AnswerDefinition.NonNullConstraint),
-    new AnswerDefinition("Umfang eingeben", DataType.DoubleTyp, None, AnswerDefinition.NonNullConstraint)), false)
+    new AnswerDefinition("Umfang eingeben", DataType.DoubleTyp, None, AnswerDefinition.NonNullConstraint)), repeat = false)
 
   def circleCenterQuestion: DialogQuestion = singlePointQuestion("Mittelpunktkreis erstellen", "Mittelpunkt angeben", None)
 
@@ -739,7 +746,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 				case "Umfang eingeben"=> secAnswer.result.toDouble/(2*math.Pi)
 				case "Radius eingeben" => secAnswer.result.toDouble
 			}
-      gc.addTempElem(ArcElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, center, radius, 0, 360))
+      gc.addTempElem(ArcElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, center, radius, 0, 360))
 			gc.setCustomDragger((pos,g)=>{
 				val sm=gc.scaleModel
 				GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
@@ -774,13 +781,13 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   def elCenterQuestion: DialogQuestion = singlePointQuestion("Ellipse erstellen", "Mittelpunkt angeben", None)
 
   def axis1Question = DialogQuestion("Ellipsenachse 1", List(new AnswerDefinition("Achse 1 bis Punkt", DataType.VectorTyp, None),
-      new AnswerDefinition("Achsenlänge",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint)),false)
+      new AnswerDefinition("Achsenlänge",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint)),repeat = false)
 
   def axis1AngleQuestion = DialogQuestion("Neigung Ellipsenachse 1", List(new AnswerDefinition("Achse durch Punkt", DataType.VectorTyp, None),
-      new AnswerDefinition("Achsenwinkel",DataType.DoubleTyp,None)),false)
+      new AnswerDefinition("Achsenwinkel",DataType.DoubleTyp,None)),repeat = false)
 
   def axis2Question = DialogQuestion("Ellipsenachse 2", List(new AnswerDefinition("Ellipse durch Punkt", DataType.VectorTyp, None),
-      new AnswerDefinition("Länge Achse 2",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint)),false)
+      new AnswerDefinition("Länge Achse 2",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint)),repeat = false)
 
 
   def ellipseCenter(gc:GraphViewController):Unit= {
@@ -821,7 +828,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			  val mAngle=mainAngle*math.Pi/180d
 			  val axis1=new VectorConstant(math.cos(mAngle),math.sin(mAngle),0)
 			  val axis2=new VectorConstant(-math.sin(mAngle),math.cos(mAngle),0)
-        gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, center,
+        gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, center,
           new VectorConstant(center.x + math.cos(mAngle) * axis1Len, center.y + math.sin(mAngle) * axis1Len, 0)))
 			  		gc.setCustomDragger((pos,g)=>{
 			  			val sm=gc.scaleModel
@@ -852,7 +859,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             case d:DoubleConstant => d.toDouble
 			    }
 
-          val tempEllipse = EllipseElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, center, axis1Len, axis2Len, mainAngle, 0, 360)
+          val tempEllipse = EllipseElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, center, axis1Len, axis2Len, mainAngle, 0, 360)
 			    gc.clearNewElements()
 			    gc.addTempElem(tempEllipse)
 			    gc.setCustomDragger((pos,g)=>{
@@ -954,7 +961,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       distances map (norm* _)
     }
 
-    def reactStartPoint(v:VectorConstant)= {
+    def reactStartPoint(v:VectorConstant): Unit = {
       startPoint=v
       lastPoint=startPoint
       //println("Distances:"+distances.mkString(", "))
@@ -982,7 +989,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                                                nv = normVectors(i)) yield
                 Line3D(lp + ov, od).intersectionWith(Line3D(lastPoint + nv, nd))
               for(i<-newIntersectionPoints.indices; op=lastIntersectionPoints(i);np=newIntersectionPoints(i))
-                gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, op, np))
+                gc.addTempElem(LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, op, np))
               lastIntersectionPoints=newIntersectionPoints
               DialogManager.increaseNumCreatedElements(distances.size)
               //intersectionPoints+=

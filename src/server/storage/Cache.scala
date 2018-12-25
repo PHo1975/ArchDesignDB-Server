@@ -3,10 +3,9 @@
  */
 package server.storage
 
-import scala.collection.mutable.ArraySeq
-import scala.reflect.Manifest
-
 import definition.data.Referencable
+
+import scala.reflect.Manifest
 
 
 /** caches the Instances of a Type
@@ -24,12 +23,21 @@ class Cache[T >: Null <: Referencable](val typ:Int)(implicit m: Manifest[T]) {
   var added=0
 	
   def getInstanceData (inst:Int):Option[T] = if(!used)None else {
-  		for(i <- 0 until cacheSize;c=cache(i);if c != null && c.ref.instance == inst) {
-  			cacheHit +=1
-  			return Some(c)
-  		}
-  	cacheMiss +=1
-  	None
+		var hit:T=null
+		var i=0
+		while (i<cacheSize&& hit==null) {
+			val c=cache(i)
+			if(c != null && c.ref.instance == inst) {
+				hit=c
+				cacheHit +=1
+			}
+			i+=1
+		}
+		if(hit!=null) Some(hit)
+  	else {
+			cacheMiss += 1
+			None
+		}
   }
 	
 	def putInstanceData(inst:T):Unit = {
@@ -51,13 +59,13 @@ class Cache[T >: Null <: Referencable](val typ:Int)(implicit m: Manifest[T]) {
   		}
 	}
 
-	def clear()= if(used ){
+	def clear(): Unit = if(used ){
 		for(i<-0 until cacheSize)cache(i)= null
-		pointer=0;
-		used=false;
+		pointer=0
+		used=false
 	}
 	
-	override def toString() = m.toString+ "-Cache for type "+typ+" miss:"+cacheMiss+" hit:"+cacheHit+ " add:"+added+" P:"+pointer
+	override def toString(): String = m.toString+ "-Cache for type "+typ+" miss:"+cacheMiss+" hit:"+cacheHit+ " add:"+added+" P:"+pointer
 	
 }
 

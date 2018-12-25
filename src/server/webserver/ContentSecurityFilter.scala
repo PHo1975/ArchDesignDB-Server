@@ -14,8 +14,8 @@ object ContentSecurityFilter {
   def changeHeaders(hr: HttpServletResponse): Unit = {
     val contentSecurityPolicy = "default-src 'none' " +
       " ; connect-src 'self' wss://db.holzer-architektur.de; script-src 'self' " + allowedDomains.mkString(" ") +
-      "; style-src 'self' " +
-      allowedStyleDomains.mkString(" ") + " ; img-src 'self'; font-src " + allowedDomains.mkString(" ") + " ;"
+      "; style-src 'unsafe-inline' 'self' " +
+      allowedStyleDomains.mkString(" ") + " ; frame-ancestors 'none'; form-action 'self'; img-src 'self' ; base-uri 'self' ; manifest-src 'self' ; font-src " + allowedDomains.mkString(" ") + " ;"
     addHeader(hr, "Content-Security-Policy", contentSecurityPolicy)
     addHeader(hr, "Referrer-Policy", "no-referrer")
     addHeader(hr, "X-Frame-Options", "SAMEORIGIN")

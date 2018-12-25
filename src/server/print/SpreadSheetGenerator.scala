@@ -92,7 +92,7 @@ class SpreadSheetGenerator extends CustomGenerator {
 	      for(f<-formatSet(6)) if(f.bold.get) style+= 128          
 	      for(f<-formatSet(7)) if(f.italic.get) style+= 256  
 	      for(f<-formatSet(8)) if(f.underline.get) style+= 512
-	      val text= if(formatSet(13).fold(false)(_.showFormula.getOrElse(false))) expression.getTerm else {
+	      val text= if(formatSet(13).fold(false)(_.showFormula.getOrElse(false))) expression.getReadableTerm else {
 	        val value=expression.getValue  			
 	  			if(value==null) "" else (value.getType match {
 		  				case IntTyp | LongTyp =>val formString=formatSet(3).fold("")(_.numberFormat.getOrElse(""))

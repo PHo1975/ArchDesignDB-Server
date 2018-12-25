@@ -20,12 +20,12 @@ import scala.swing.event._
  * 
  */
 class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientation.Horizontal ) {
-  val firstLabel: Label = ViewConstants.label("")
-  val resultLabel: Label = ViewConstants.label("")
+  val firstLabel: Label = ViewConstants.label()
+  val resultLabel: Label = ViewConstants.label()
 
 		firstLabel.yLayoutAlignment=0d
 		resultLabel.yLayoutAlignment=0d
-		val glue=Swing.Glue
+		val glue: Component =Swing.Glue
 		glue.yLayoutAlignment=0d
   maximumSize = new Dimension(Short.MaxValue, 21 * ViewConstants.fontScale / 100)
 		contents+=firstLabel+=glue+=resultLabel		
@@ -66,7 +66,8 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 	def lineHeight=24	
 	private var oldIndex= -1	
 	private val renderPrototype=new PathLineRenderer(Some(model))
-	private var sizeChangeListeners= collection.mutable.HashSet[(Int)=>Unit]()			
+	private var sizeChangeListeners= collection.mutable.HashSet[(Int)=>Unit]()
+	protected var _withCustomEditor:Boolean=true
 	
 	view.focusable=false
 	view.peer.setModel(model)
@@ -105,7 +106,7 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 			} else None			
 			oldIndex=newPos
 			// notify listener
-			listener.openData(model.getInstanceAt(newPos).ref,selectRef,newPos,None)			
+			listener.openData(model.getInstanceAt(newPos).ref,selectRef,newPos,None,true)
 		}		
 		notifySizeListeners()
 	}
@@ -121,7 +122,8 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 			notifySizeListeners()
       //doneListener()
       //if(selectRef.isEmpty)
-      listener.openData(sendPath.last, selectRef, sendPath.size - 1, if (firstTime) Some(doneListener) else None)
+      listener.openData(sendPath.last, selectRef, sendPath.size - 1, if (firstTime) Some(doneListener) else None,_withCustomEditor)
+			_withCustomEditor=true
       //else if(firstTime) doneListener
       if (firstTime) firstTime = false
     }
@@ -135,8 +137,9 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 	
 	/** adds a new element to the path
 	 */
-  def addPathElement(newElement: Reference): Unit = lock.synchronized {
+  def addPathElement(newElement: Reference,withCustomEditor:Boolean=true): Unit = lock.synchronized {
 		oldIndex+=1
+		_withCustomEditor=withCustomEditor
 		model.addPathElement(newElement)
 		notifySizeListeners()		 
 	}
@@ -148,7 +151,7 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
   def registerSizeChangeListener(func: (Int) => Unit): Unit = sizeChangeListeners += func
 	
 	
-	private def notifySizeListeners() = {		
+	private def notifySizeListeners(): Unit = {
 		val size=oldIndex//model.getSize
 		for(func <-sizeChangeListeners) func(size)
 	}	

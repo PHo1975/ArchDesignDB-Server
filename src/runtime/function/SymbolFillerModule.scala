@@ -1,18 +1,13 @@
 package runtime.function
 
-import transaction.handling.TransactionManager
-import server.storage.CreateActionImpl
-import server.storage.ActionIterator
-import definition.expression.VectorConstant
-import server.comm.{AbstractUserSocket, JavaClientSocket}
+import definition.data.{InstanceData, OwnerReference}
+import definition.expression.{Constant, VectorConstant}
 import definition.typ.CommandQuestion
-import definition.data.OwnerReference
-import definition.data.InstanceData
-import definition.expression.Constant
-import server.storage.ActionModule
+import server.comm.AbstractUserSocket
+import server.storage.{ActionIterator, ActionModule, CreateActionImpl}
+import transaction.handling.TransactionManager
 
 class SymbolFillerModule extends ActionModule with GraphActionModule {
-  import runtime.function.GraphElemModule._
   
   override val createActions=List(createSymbolAction) 
   val actions=Seq(replaceAction)

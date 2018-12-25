@@ -1,11 +1,10 @@
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-import definition.data.TransStepData
-import server.storage.TransDetailLogHandler
 import java.util.Date
-import definition.expression.DateConstant
-import server.comm.UserList
+
+import definition.data.TransStepData
+import javax.swing.table.AbstractTableModel
+import server.storage.TransDetailLogHandler
 
 import scala.swing.Swing
 

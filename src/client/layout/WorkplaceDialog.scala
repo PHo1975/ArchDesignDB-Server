@@ -1,11 +1,12 @@
 package client.layout
 
 
-import definition.comm.{PropertyGroup, PropertyValue}
 import client.comm.UserSettings
-import scala.swing._
-import scala.swing.event.{ButtonClicked,MouseClicked}
 import client.ui.ClientApp
+import definition.comm.{PropertyGroup, PropertyValue}
+
+import scala.swing._
+import scala.swing.event.{ButtonClicked, MouseClicked}
 
 
 

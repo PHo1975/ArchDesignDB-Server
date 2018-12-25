@@ -4,11 +4,11 @@
 package server.print
 
 import java.io.DataOutput
-import definition.data.FormDescription
-import definition.data.PageData
-import definition.data.PrintElement
+
+import definition.data.{FormDescription, PageData, PrintElType, PrintElement}
 import definition.expression.Constant
-import definition.data.PrintElType
+
+import scala.collection.mutable.ArrayBuffer
 /**
  * 
  */
@@ -18,7 +18,7 @@ trait YPosHolder{
   var pageStartYPos:Float=0f
   var usablePageHeight:Float=0f
   var intRestHeight:Float=0f
-  def copyFrom(other:YPosHolder)={
+  def copyFrom(other:YPosHolder): Unit ={
     currentYPos=other.currentYPos
     pageStartYPos=other.pageStartYPos
     usablePageHeight=other.usablePageHeight
@@ -48,7 +48,7 @@ class DataEater extends YPosHolder {
   var hasPrintElements:Boolean=false
   var currentContext:PrintContext=_
   
-  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Seq[(String,Constant)])= {
+  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Seq[(String,Constant)]): Unit = {
   	pageWidth=pWidth
   	pageHeight=pHeight
   	paramValues=nvalues
@@ -65,7 +65,7 @@ class DataEater extends YPosHolder {
   	//initPage()
   }
   
-  def addPage(withInit:Boolean=true) = if(hasPrintElements){
+  def addPage(withInit:Boolean=true): Unit = if(hasPrintElements){
     //println("Add Page "+(pagesList.size+1)+" withInit:"+withInit+" "+Thread.currentThread.getStackTrace().drop(2).take(10).mkString("\n")+"\n")
   	pagesList +=new PageData(pagesList.size+1,elementList)  	
   	if(withInit) initPage() 	
@@ -75,14 +75,15 @@ class DataEater extends YPosHolder {
   	}
   }
   
-  def getCurrPageNum=pagesList.size
+  def getCurrPageNum: Int =pagesList.size
   
-  def initSection() = {
+  def initSection(): Unit = {
+    //println("init section "+hasPrintElements)
   	if(hasPrintElements)addPage()
   	else initPage()
   }
   
-  def initPage() = {
+  def initPage(): Unit = {
     //println("init page "+pagesList.size+" has:"+hasPrintElements)
   	currentXPos=form.left
   	currentYPos=form.top
@@ -110,27 +111,28 @@ class DataEater extends YPosHolder {
   	hasPrintElements=false
   }
   
-  def restHeight=pageHeight-currentYPos-form.bottom-(currentFooter match {
+  def restHeight: Float =pageHeight-currentYPos-form.bottom-(currentFooter match {
   	case Some(f)=>f.minHeight
   	case _=> 0})
-  def restWidth=pageWidth-currentXPos -form.right
+
+  def restWidth: Float =pageWidth-currentXPos -form.right
   
-	def addStamp(stamp:StampBox,horDirection:Boolean)= {    
+	def addStamp(stamp:StampBox,horDirection:Boolean): Unit = {
   	if(!hasPrintElements)hasPrintElements=true
   	intRestHeight=restHeight
 		if(horDirection) {
 		  //println("Add Stamp hor:"+horDirection+" ")
 		  val tempYPos=currentYPos		  
-		  stamp.getPrintElements(currentXPos,this,restWidth,intRestHeight,true)
+		  stamp.getPrintElements(currentXPos,this,restWidth,intRestHeight,measure = true)
 		  currentYPos=tempYPos
-			if(stamp.minWidth>restWidth) {addPage(true);hasPrintElements=true}
-			elementList++= stamp.getPrintElements(currentXPos,this,restWidth,restHeight,false)
+			if(stamp.minWidth>restWidth) {addPage();hasPrintElements=true}
+			elementList++= stamp.getPrintElements(currentXPos,this,restWidth,restHeight,measure = false)
 			currentXPos+=stamp.minWidth
 		}
 		else {		  
 		  val tempYPos=currentYPos // save YPos
 		  val theRestWidth=restWidth
-		  stamp.getPrintElements(currentXPos,this,theRestWidth,restHeight,true) // measure !!!
+		  stamp.getPrintElements(currentXPos,this,theRestWidth,restHeight,measure = true) // measure !!!
 		  currentYPos=tempYPos // restore YPos
 		  //println("Add Stamp hor:"+horDirection+" y:"+currentYPos+" restHeight "+restHeight+" stamp.minHeight:"+stamp.minHeight)
 		  val stampMinHeight=stamp.minHeight
@@ -142,13 +144,13 @@ class DataEater extends YPosHolder {
 			    //println("cutelement "+stamp.inst)
 		      val sendRestHeight=if(stampMinHeight-theRestHeight>PrintEngine.widowTreshold)theRestHeight 
 		      		else theRestHeight-PrintEngine.widowTreshold 
-			    val elList=stamp.getPrintElements(currentXPos,this,theRestWidth,sendRestHeight,false)
+			    val elList=stamp.getPrintElements(currentXPos,this,theRestWidth,sendRestHeight,measure = false)
 			    val tempYPos=currentYPos
 			    if(tempYPos>0) util.Log.e("Eater TempPos= falsch " +tempYPos)
 			    for(el<-elList){
 			      if(el.getElementType==PrintElType.PageBreak){
 			        //println("Pagebreak")
-			        addPage(true)
+			        addPage()
 			        hasPrintElements=true
 			      }
 			      else elementList+=el
@@ -156,21 +158,21 @@ class DataEater extends YPosHolder {
 			    currentYPos= -tempYPos
 		    } else {	      
 		      //println("uncutted overrun "+stamp.inst)
-		      addPage(true)
+		      addPage()
 					hasPrintElements=true
-		      elementList++= stamp.getPrintElements(currentXPos,this,theRestWidth,restHeight,false)
+		      elementList++= stamp.getPrintElements(currentXPos,this,theRestWidth,restHeight,measure = false)
 		    } 
-		  } else elementList++= stamp.getPrintElements(currentXPos,this,theRestWidth,theRestHeight,false)  
+		  } else elementList++= stamp.getPrintElements(currentXPos,this,theRestWidth,theRestHeight,measure = false)
 		  			
 		}
 	}
   
   
-  def addCustomBlock(elList:Seq[PrintElement])= {
+  def addCustomBlock(elList:Seq[PrintElement]): Unit = {
     for(el<-elList){      
       if(el.getElementType==PrintElType.PageBreak){
         val tempYPos= currentYPos
-        addPage(true)
+        addPage()
         currentYPos=tempYPos
         hasPrintElements=true
       }
@@ -178,17 +180,17 @@ class DataEater extends YPosHolder {
     }			    
   }
   
-  def addPrintElements(newElems:Seq[PrintElement])= if(newElems.nonEmpty){
+  def addPrintElements(newElems:Seq[PrintElement]):Unit = if(newElems.nonEmpty){
     if(!hasPrintElements)hasPrintElements=true    
     elementList++=newElems
   }
   
-  def addPrintElement(newElem:PrintElement)= {
+  def addPrintElement(newElem:PrintElement): ArrayBuffer[PrintElement] = {
     if(!hasPrintElements)hasPrintElements=true
     elementList += newElem
   }
   
-  def getPagesData = {
+  def getPagesData: ArrayBuffer[PageData] = {
     //System.out.println("getPagesData :"+hasPrintElements+" "+elementList.size)
     //if(!elementList.isEmpty) hasPrintElements=true
   	if (hasPrintElements ) {
@@ -198,7 +200,7 @@ class DataEater extends YPosHolder {
   }
   
   
-  def write(out:DataOutput)= DataEater.this.synchronized{
+  def write(out:DataOutput): Unit = DataEater.this.synchronized{
   	getPagesData  	
   	out.writeInt(pagesList.size)
   	pagesList.foreach(_.write(out))

@@ -3,8 +3,7 @@
  */
 package client.layout
 
-import java.awt.{LayoutManager,Component,Dimension,Container,GridLayout,Insets}
-import javax.swing.BoxLayout
+import java.awt.{Component, Container, Dimension, LayoutManager}
 
 
 /**

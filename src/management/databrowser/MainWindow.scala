@@ -1,18 +1,18 @@
 /** Author: Peter Started:26.07.2010
- */
+  */
 package management.databrowser
 
 import java.awt.event.{MouseAdapter, WindowAdapter}
 import java.awt.{Image, SystemTray, Toolkit, TrayIcon}
-import javax.swing.table.{DefaultTableModel, TableRowSorter}
-import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 
 import client.dataviewer.ViewConstants
 import com.sun.jna.{Native, NativeLong, WString}
 import definition.typ.AllClasses
+import javax.swing.table.{DefaultTableModel, TableRowSorter}
+import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 import management.databrowser.stat.StatPanel
 import server.comm.MainServerSocket
-import server.storage.{ServerObjectClass, StorageManager}
+import server.storage.{ServerObjectClass, StorageManager, TransLogHandler}
 import transaction.handling.SessionManager
 import util.Log
 
@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
 //import java.swing.JTable
 
 /**
- */
+  */
 
 trait ClassListListener {
   def classListChanged(classList: Seq[(Int, String)]): Unit
@@ -54,20 +54,20 @@ object MainWindow extends SimpleSwingApplication {
   lazy val consolePanel = new ConsolePanel(debug)
   lazy val borderPanel = new BorderPanel
   lazy val certPanel = new CertPanel
-  
+
   val accordion=new AccordionComponent
   val statPanel=new StatPanel
   @native def SetCurrentProcessExplicitAppUserModelID(appID:WString):NativeLong
   if(System.getProperty("os.name").contains("Windows")) {
     val versID=System.getProperty("os.version").toFloat
     if (versID >= 6.1f) {
-	    val appID="DBServer"
-		  Native.register("shell32")	  
-		  if (SetCurrentProcessExplicitAppUserModelID(new WString(appID)).longValue() != 0)
-		      throw new RuntimeException("unable to set current process explicit AppUserModelID to: " + appID)
+      val appID="DBServer"
+      Native.register("shell32")
+      if (SetCurrentProcessExplicitAppUserModelID(new WString(appID)).longValue() != 0)
+        throw new RuntimeException("unable to set current process explicit AppUserModelID to: " + appID)
     } else Log.w("Windows version " + versID)
-  } 
-  
+  }
+
   val classTable = new Table {
     override lazy val peer: JTable = new JTable with SuperMixin
     peer.setAutoResizeMode(Table.AutoResizeMode.LastColumn.id)
@@ -76,25 +76,28 @@ object MainWindow extends SimpleSwingApplication {
 
 
   def dataInit(): Unit = {
+    //println("Datainit")
     generateDataList()
-      theModel = new DefaultTableModel(dataList, Array[Object]("ID", "Name", "Description")) {
-        override def getColumnClass(col: Int): Class[_] = {
-          col match {
-            case 0 => classOf[java.lang.Integer]
-            case _ => classOf[String]
-          }
+    theModel = new DefaultTableModel(dataList, Array[Object]("ID", "Name", "Description")) {
+      override def getColumnClass(col: Int): Class[_] = {
+        col match {
+          case 0 => classOf[java.lang.Integer]
+          case _ => classOf[String]
         }
       }
-      val sorter = new TableRowSorter[DefaultTableModel](theModel)
-    sorter.setSortKeys(List(new RowSorter.SortKey(0, SortOrder.ASCENDING)).asJava)
-      classTable.peer.setModel(theModel)
-      classTable.peer.setRowSorter(sorter)
-      val col = classTable.peer.getColumnModel.getColumn(0)
-      col.setMaxWidth(40)
-      col.setResizable(false)
-      usedIDs.clear
-      usedIDs ++= dataList.map(_(0).asInstanceOf[java.lang.Integer].intValue)
     }
+    val sorter = new TableRowSorter[DefaultTableModel](theModel)
+    sorter.setSortKeys(List(new RowSorter.SortKey(0, SortOrder.ASCENDING)).asJava)
+    classTable.peer.setModel(theModel)
+    classTable.peer.setRowSorter(sorter)
+    val col = classTable.peer.getColumnModel.getColumn(0)
+    col.setMaxWidth(40)
+    col.setResizable(false)
+    usedIDs.clear
+    usedIDs ++= dataList.map(_(0).asInstanceOf[java.lang.Integer].intValue)
+    //println("Datainit done ")
+
+  }
 
   def generateDataList(): Unit = {
     def classListIterator = AllClasses.get.getClassList.valuesIterator
@@ -105,14 +108,14 @@ object MainWindow extends SimpleSwingApplication {
     classListListener.foreach(_.classListChanged(shortClassList))
   }
 
-  
+
 
   class MyBorderPanel extends BorderPanel {
     def addIt(c: Component, l: Constraints): Unit = {
       super.add(c, l)
     }
   }
-  
+
   val rightPanel = new MyBorderPanel
 
 
@@ -146,17 +149,19 @@ object MainWindow extends SimpleSwingApplication {
       val showConsoleBut: Button = createBut("Console")
       val reorgBut: Button = createBut("Reorganize")
       val refreshBut: Button = createBut("Refresh Undo")
+      val setTransLogBut:Button= createBut("Set TransLog to End")
       val createCertBut: Button = createBut("Create Certificate")
 
-      contents += backupBut += shutDownBut += showTransBut += showConsoleBut += reorgBut += refreshBut += createCertBut
-      listenTo(backupBut, shutDownBut, showTransBut, showConsoleBut, reorgBut, refreshBut, createCertBut)
+      contents += backupBut += shutDownBut += showTransBut += showConsoleBut += reorgBut += refreshBut+=setTransLogBut += createCertBut
+      listenTo(backupBut, shutDownBut, showTransBut, showConsoleBut, reorgBut, refreshBut, createCertBut,setTransLogBut)
       reactions += {
         case ButtonClicked(`backupBut`)   => showBackupDialog()
-      	case ButtonClicked(`showTransBut`)   => showTransData()
-      	case ButtonClicked(`showConsoleBut`) => showConsole()
-      	case ButtonClicked(`refreshBut`)=>
+        case ButtonClicked(`showTransBut`)   => showTransData()
+        case ButtonClicked(`showConsoleBut`) => showConsole()
+        case ButtonClicked(`refreshBut`)=>
           server.comm.CommonSubscriptionHandler.refreshAfterUndo()
           Log.w("refresh done")
+        case ButtonClicked(`setTransLogBut` )=> setTransLogToEnd()
         case ButtonClicked(`reorgBut`) => reorg()
         case ButtonClicked(`createCertBut`) => createCert()
       }
@@ -164,7 +169,7 @@ object MainWindow extends SimpleSwingApplication {
     contents += manButPanel
   }
 
-  val classPanel = new BorderPanel() {
+  val classPanel: BorderPanel = new BorderPanel() {
     add(ViewConstants.label("Class-List"), BorderPanel.Position.North)
     add(new ScrollPane() {
       viewportView = classTable
@@ -187,9 +192,9 @@ object MainWindow extends SimpleSwingApplication {
 
   val basicSettingsPanel = new BasicSettingsPanel()
   val userPanel = new UserPanel()
-  lazy val theIconImage: Image = Toolkit.getDefaultToolkit().getImage(getClass.getResource("Server128.png"))
+  lazy val theIconImage: Image = Toolkit.getDefaultToolkit.getImage(getClass.getResource("Server128.png"))
 
-  val mainPanel = new BorderPanel() { // main panel
+  val mainPanel: BorderPanel = new BorderPanel() { // main panel
     add(accordion,BorderPanel.Position.West)
     accordion.preferredSize=new Dimension(380,10)
     accordion.addPanel("DB Management",managementPanel)
@@ -203,39 +208,33 @@ object MainWindow extends SimpleSwingApplication {
   } // main Panel
 
   lazy val top: MainFrame = new MainFrame {
-    SessionManager.init(consolePanel)
-    SessionManager.registerSetupListener(() => {
-      dataInit()
-    }) 
-    
-    title = "Datenbank Management"
-    contents = mainPanel
-    iconImage= theIconImage
-    bounds = new Rectangle(10, 200, 1250, 900)
-    peer.addWindowListener(new WindowAdapter() {
-      override def windowClosing(e: java.awt.event.WindowEvent): Unit = {
-        if (hidden) removeTray()
+    try {
+      SessionManager.init(consolePanel)
+      SessionManager.registerSetupListener(() => {
+        dataInit()
+      })
 
-      }
-      override def windowIconified(e: java.awt.event.WindowEvent): Unit = {
-        //System.out.println("Iconified")
-        hideFenster()
-      }
-      override def windowOpened(e: java.awt.event.WindowEvent): Unit =
-        if (firstopen) {
-          firstopen = false
-          if(showWindowMinimized) hideFenster()
-          //hideFenster();
-        }
-    })
+      title = "Datenbank Management"
+      contents = mainPanel
+      iconImage = theIconImage
+      bounds = new Rectangle(10, 200, 1250, 900)
 
-    initTray()
-    if(!debug) Swing.onEDT{
-      //LogOutputStream.registerListener(consolePanel)
+      peer.addWindowListener(new WindowAdapter() {
+        override def windowClosing(e: java.awt.event.WindowEvent): Unit = if (hidden) removeTray()
 
-    }
-    showConsole()
-    //java.lang.System.setOut(LogOutputStream.ps)
+        override def windowIconified(e: java.awt.event.WindowEvent): Unit =            hideFenster()
+
+
+        override def windowOpened(e: java.awt.event.WindowEvent): Unit =
+          if (firstopen) {
+            firstopen = false
+            if (showWindowMinimized) hideFenster()
+          }
+      })
+
+      initTray()
+      showConsole()
+    } catch { case NonFatal(e)=> println("top init:"+e);println(e.getStackTrace.mkString("\n  "))}
 
   }
 
@@ -261,7 +260,7 @@ object MainWindow extends SimpleSwingApplication {
     if (classTable.selection.rows.nonEmpty) {
       val typ = getSelectedType
       //System.out.println("editClass "+typ+" "+SessionManager.scl)
-      TypeDefPanel.setClass(SessionManager.scl.getClassByID(typ), false)
+      TypeDefPanel.setClass(SessionManager.scl.getClassByID(typ), create = false)
       rightPanel.addIt(TypeDefPanel, BorderPanel.Position.Center)
       mainPanel.peer.invalidate()
       rightPanel.peer.invalidate()
@@ -272,7 +271,7 @@ object MainWindow extends SimpleSwingApplication {
 
   def createClass(): Unit = {
     newClass = new ServerObjectClass("", 0)
-    TypeDefPanel.setClass(newClass, true)
+    TypeDefPanel.setClass(newClass, create = true)
     rightPanel.addIt(TypeDefPanel, BorderPanel.Position.Center)
     mainPanel.peer.invalidate()
     rightPanel.peer.invalidate()
@@ -292,9 +291,9 @@ object MainWindow extends SimpleSwingApplication {
     rightPanel.addIt(consolePanel, BorderPanel.Position.Center)
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
-    rightPanel.repaint    
+    rightPanel.repaint
   }
-  
+
   def showBackupDialog():Unit = {
     backupDialog.setLocationRelativeTo(managementPanel)
     backupDialog.showDialog()
@@ -312,9 +311,10 @@ object MainWindow extends SimpleSwingApplication {
 
 
   def initTray(): Unit = {
-    if (SystemTray.isSupported()) {
+    //println("init tray")
+    if (SystemTray.isSupported) {
       // load an image
-      
+
       trayIcon = new TrayIcon(theIconImage, "Neue DB")
       trayIcon.setImageAutoSize(true)
       //System.out.println("tray "+trayIcon)
@@ -329,7 +329,7 @@ object MainWindow extends SimpleSwingApplication {
   }
 
   def addTray(): Unit = {
-    val tray = SystemTray.getSystemTray()
+    val tray = SystemTray.getSystemTray
     try {
       tray.add(trayIcon)
     } catch {
@@ -339,7 +339,6 @@ object MainWindow extends SimpleSwingApplication {
   }
 
   def hideFenster(): Unit = {
-    //System.out.println("hide")
     top.visible = false
     addTray()
     hidden = true
@@ -353,7 +352,7 @@ object MainWindow extends SimpleSwingApplication {
   }
 
   def removeTray(): Unit = {
-    SystemTray.getSystemTray().remove(trayIcon)
+    SystemTray.getSystemTray.remove(trayIcon)
   }
 
   def reorg(): Unit = {
@@ -361,7 +360,10 @@ object MainWindow extends SimpleSwingApplication {
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
     rightPanel.repaint()
-    
+  }
+
+  def setTransLogToEnd():Unit= {
+    TransLogHandler.setInsertPosToEnd()
   }
 
   def createCert(): Unit = Swing.onEDT {
@@ -373,11 +375,11 @@ object MainWindow extends SimpleSwingApplication {
   }
 
   def runSw(func: => Unit): Unit =
-		Swing.onEDT{ func }
+    Swing.onEDT{ func }
 
   def runAsThread(a: => Unit): Unit = {
     val tr = new Thread {override def run(): Unit = a}
-		tr.start()
-	}
+    tr.start()
+  }
 
 }

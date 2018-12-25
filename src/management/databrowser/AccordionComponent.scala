@@ -1,14 +1,8 @@
 package management.databrowser
 
-import scala.swing.BorderPanel
-import scala.swing.BoxPanel
-import scala.swing.ToggleButton
-import scala.swing.Orientation
-import scala.swing.Component
 import scala.collection.mutable.ArrayBuffer
+import scala.swing.{BorderPanel, BoxPanel, Component, Orientation, Swing, ToggleButton}
 import scala.swing.event.ButtonClicked
-import scala.swing.Swing
-import scala.swing.Component
 
 class MyButton(label:String,val index:Int,val panel:Component) extends ToggleButton(label) {
   focusable=false  

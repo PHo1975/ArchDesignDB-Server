@@ -4,7 +4,6 @@
 package client.dialog
 
 import java.awt.{Color, Dimension}
-import javax.swing.{BorderFactory, KeyStroke}
 
 import client.comm.{ClientQueryManager, KeyStrokeManager, KeyStrokeReceiver}
 import client.dataviewer._
@@ -14,6 +13,7 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression.Constant
 import definition.typ._
+import javax.swing.{BorderFactory, KeyStroke}
 import util.Log
 
 import scala.collection.mutable
@@ -47,7 +47,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	var actionGroups:Iterable[SelectGroup[_<:Referencable]] = _	
 	var currentQuestion:Option[ParamQuestion]= None
 	protected var repeatQuestion: Option[DialogQuestion] = None
-	var customAnswerListener: mutable.Stack[((Seq[ResultElement]) => Unit, Option[ParamQuestion])] = collection.mutable.Stack[((Seq[ResultElement]) => Unit, Option[ParamQuestion])]()
+	var customAnswerListener: List[((Seq[ResultElement]) => Unit, Option[ParamQuestion])] = Nil
 	 // in field paramquestion is the current question stored, when its only a temporary answerlistener that should not be stored
 	 // so that the current question can be restored after the temporary question is answered
 	//
@@ -182,7 +182,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 			repeatQuestion=None	
       propField=0
       actionGroups=Seq.empty
-      customAnswerListener.clear()
+      customAnswerListener=Nil
       isQuestionRepeating=false
       currentAction=None      
 			answerList.clear()
@@ -219,7 +219,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	 * storeAnswer: should the answer be stored on the answer stack or is is just a temporary question from the point panel
 	 */
 	def startInterQuestion(question:ParamQuestion,listener:(Seq[ResultElement]) => Unit,storeAnswer:Boolean=true):Unit= {
-	  customAnswerListener.push((listener,if(!storeAnswer)currentQuestion else None))
+	  customAnswerListener=(listener,if(!storeAnswer)currentQuestion else None) :: customAnswerListener
 	  sidePanelDialogStart()
     dialogIsActive=true
 	  loadQuestion(question)
@@ -267,7 +267,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	def startEnquiryDialog(question:ParamQuestion):Unit = lock.synchronized{
 	  //println("Start EnquiryDialog:"+question+" active:"+dialogIsActive)
 		if(dialogIsActive)reset()
-		customAnswerListener.clear()
+		customAnswerListener=Nil
 		isServerEnquiry=true
 		repeatQuestion=None
 		isQuestionRepeating=false
@@ -285,10 +285,10 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	}
 	
 	
-	private def initAction()={
+	private def initAction(): Unit ={
 	  createdNewElements=0
 	  isServerEnquiry=false	
-	  customAnswerListener.clear()
+	  customAnswerListener=Nil
 	  answerList.clear()	  
 	  isQuestionRepeating=false 
 	  sidePanelDialogStart()	  		
@@ -303,7 +303,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		answerArea.loadAnswerDefinitions(q)
 	}
 	
-	private def loadQuestion(question:ParamQuestion) = {    
+	private def loadQuestion(question:ParamQuestion): Unit = {
 	  // println("Load Question "+question)
 	  errorField.text=""	  
 		currentQuestion=Some(question)
@@ -352,7 +352,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
             repeatQuestion match {
               case Some(rQuestion) =>
 								isQuestionRepeating=true
-								loadQuestion(repeatQuestion.get) // if repeatquestion was changed by a custom listener
+								loadQuestion(rQuestion) // if repeatquestion was changed by a custom listener
 							case None=>  // action is done
 								processResults()
 						}
@@ -369,7 +369,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 								}
 								listener(answerList)
               case None=>
-								customAnswerListener.pop()
+								customAnswerListener=customAnswerListener.tail
 								lastQuestion match {
                   case Some(lquestion)=>
 										answerList.remove(answerList.size-1)
@@ -453,5 +453,6 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 				case NonFatal(e) => util.Log.e("trying to instantiate CustomQuestionHandler module:'"+m+"' \n",e)
 			}
 		}
+		println("Dialog settings done")
 	}
 }

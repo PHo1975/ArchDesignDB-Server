@@ -5,14 +5,14 @@ package client.dataviewer
 
 import java.awt.Color
 import java.awt.event.InputEvent
-import javax.swing.border._
-import javax.swing.{BorderFactory, JComponent, JPopupMenu}
 
 import client.comm._
 import client.dialog.{CreateActionMenuButton, CreateMenuButton, NewButtonsList}
 import definition.comm._
 import definition.data._
 import definition.typ._
+import javax.swing.border._
+import javax.swing.{BorderFactory, JComponent, JPopupMenu}
 
 import scala.collection.mutable
 import scala.swing._

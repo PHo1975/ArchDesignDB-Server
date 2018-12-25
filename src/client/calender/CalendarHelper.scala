@@ -1,6 +1,12 @@
 package client.calender
 
 import java.util.concurrent.SynchronousQueue
+
+import client.comm.ClientQueryManager
+import com.sun.jna.{Native, NativeLong, WString}
+import definition.comm.NotificationType
+import definition.data.{InstanceData, Referencable}
+import definition.expression.DateConstant
 import javafx.application.{Platform, Application => FxApplication}
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.ListChangeListener.Change
@@ -14,12 +20,6 @@ import javafx.scene.input.DataFormat
 import javafx.scene.layout.ColumnConstraints
 import javafx.scene.paint.Color
 import javafx.util.Callback
-
-import client.comm.ClientQueryManager
-import com.sun.jna.{Native, NativeLong, WString}
-import definition.comm.NotificationType
-import definition.data.{InstanceData, Referencable}
-import definition.expression.DateConstant
 
 import scala.collection.JavaConverters._
 import scala.swing.Swing
@@ -48,7 +48,8 @@ object CalendarHelper  {
 	    columnConstraint.setHalignment(HPos.LEFT)
   
   def main(args:Array[String]): Unit = {
-    if(System.getProperty("os.name").contains("Windows 7") || System.getProperty("os.name").contains("Windows 8")) {
+    val osName=System.getProperty("os.name")
+    if(osName.contains("Windows 7") || osName.contains("Windows 8")|| osName.contains("Windows 10")) {
     val appID="Kalender"
 	  Native.register("shell32")	  
 	  if (CalendarHelper.SetCurrentProcessExplicitAppUserModelID(new WString(appID)).longValue() != 0)
@@ -62,9 +63,7 @@ object CalendarHelper  {
   def runInFx(func: =>Unit): Unit = Platform.runLater(Swing.Runnable( func))
   
   def handleEvent[T<:javafx.event.Event](func:(T)=>Unit): EventHandler[T] = {
-    new EventHandler[T]() {
-      def handle(e:T): Unit = func(e)
-    }
+    (e: T) => func(e)
   }
   
   def onChanged[T](source:ObservableValue[T],func:(T,T)=>Unit): Unit = {
@@ -79,25 +78,23 @@ object CalendarHelper  {
   })
   }
   
-  def callback[T,S](func:(T)=>S) = new Callback[T,S] {
-    def call(p:T): S =func(p)
-   }
+  def callback[T,S](func:(T)=>S):Callback[T,S] = (p: T) => func(p)
   
   def cellDataFactory[T,S](func:CellDataFeatures[T,S]=>ObservableValue[S]): Callback[CellDataFeatures[T, S], ObservableValue[S]] =
     callback[CellDataFeatures[T,S],ObservableValue[S]](func)
     
   // runs each element in the list in a callback chain
   def callBackLoop(list:List[Callbackable],readyListener:()=>Unit):Unit= {
-    if(list.isEmpty) {readyListener();return;}
-    list.head.run( ()=>{callBackLoop(list.tail,readyListener)})
+    if(list.isEmpty) readyListener()
+    else list.head.run( ()=>{callBackLoop(list.tail,readyListener)})
   } 
   
   
   
   // runs the given callback function for each element in list, in a callback chain
   def uniCallBackLoop[T](list:List[T],func:(T, ()=>Unit )=>Unit):Unit = {
-    if(list.isEmpty) return
-    func(list.head,()=>{uniCallBackLoop(list.tail,func)})
+    if(list.nonEmpty)
+      func(list.head,()=>{uniCallBackLoop(list.tail,func)})
   }
   
   def uniCallBackMap[T,O](list:List[T],func:(T, (O)=>Unit )=>Unit):List[O] = {
@@ -111,8 +108,8 @@ object CalendarHelper  {
   }
   
   def keepSelectedAddress(func: =>Unit): Unit = if(addressTreeView!=null){
-    val mod=addressTreeView.getSelectionModel()
-    val selection=mod.getSelectedIndex()
+    val mod=addressTreeView.getSelectionModel
+    val selection=mod.getSelectedIndex
     //print("KSA "+selection)
     func
     //println("KSA "+ selection+" curr:"+ addressTreeView.getSelectionModel.getSelectedItem())

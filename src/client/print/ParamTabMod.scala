@@ -3,14 +3,13 @@
  */
 package client.print
 
-import javax.swing.table.AbstractTableModel
-
 import client.comm.ClientQueryManager
 import client.dialog.Toast
 import client.ui.ClientApp
 import definition.data.{FormDescription, ParameterDescription}
-import definition.expression.{BoolConstant, Constant, EMPTY_EX, Expression, ParserError, StringConstant, StringParser}
+import definition.expression._
 import definition.typ.DataType
+import javax.swing.table.AbstractTableModel
 
 
 /**
@@ -22,17 +21,17 @@ class ParamTabMod extends AbstractTableModel  {
 	var currentForm:FormDescription= _	
 	var currentParentType:Int = _
 	
-	def getEmptyValue(name:String)=paramValues.find(_._1 == name) match {
+	def getEmptyValue(name:String): Constant =paramValues.find(_._1 == name) match {
 	  case Some(paramV)=> paramV._3
 	  case None => EMPTY_EX;
 	}
 	
-	def setParamValue(name:String,desc:String,value:Constant)= paramValues.indexWhere(_._1== name) match {
+	def setParamValue(name:String,desc:String,value:Constant): Unit = paramValues.indexWhere(_._1== name) match {
 	  case -1=> paramValues.append((name,desc,value))
 	  case ix=> paramValues(ix)=(name,desc,value)
 	}
 	
-	def loadForm(newForm:FormDescription,getValueFunc:(String)=>Constant= getEmptyValue) = {
+	def loadForm(newForm:FormDescription,getValueFunc:(String)=>Constant= getEmptyValue): Unit = {
 	  //System.out.println("load Form newParams:"+newForm.params.mkString(", "))
 		val newParams=newForm.params	
 		if(paramDefs!=null) // remove unused params in list			
@@ -58,9 +57,9 @@ class ParamTabMod extends AbstractTableModel  {
 		fireTableDataChanged()
 	}
 	
-	def getRowCount(): Int =  paramValues.size
+	def getRowCount: Int =  paramValues.size
 
-  def getColumnCount(): Int =  2
+  def getColumnCount: Int =  2
 
   def getValueAt(rowIndex: Int, columnIndex: Int): Object =
   	columnIndex match {
@@ -70,7 +69,7 @@ class ParamTabMod extends AbstractTableModel  {
   	}  
 
   
-  def convertToType(ex:Constant,dtype:Int)= 	ex.convertTo(dtype match {
+  def convertToType(ex:Constant,dtype:Int): Constant = 	ex.convertTo(dtype match {
 			case 1 => DataType.IntTyp
 			case 2 => DataType.DoubleTyp
 			case 3 => DataType.CurrencyTyp
@@ -83,13 +82,13 @@ class ParamTabMod extends AbstractTableModel  {
 
   
   
-  override def setValueAt(value:Object,row: Int, col: Int) = if(col==2){    
+  override def setValueAt(value:Object,row: Int, col: Int): Unit = if(col==2){
   	val oldV=paramValues(row)
   	val dataType=paramDefs.find(_.name ==oldV._1) match {
   		case Some(pd)=> pd.dataType 
   		case _ => if(paramValues(row)._1 == PrintQuestionHandler.dateParamKey)6 else throw new IllegalArgumentException("cant find Datatype for "+oldV._1)
   	}
-  	val dat:Constant= if(dataType==4) new StringConstant(value.toString) else 
+  	val dat:Constant= if(dataType==4) StringConstant(value.toString) else
   	  value match {
   	  case st:String =>
 				convertToType((StringParser.parse(value.toString) match {
@@ -99,7 +98,7 @@ class ParamTabMod extends AbstractTableModel  {
 						new Toast(err.message, null, ClientApp.top)
 						throw new IllegalArgumentException(err.message)
 				}).getValue,dataType)
-			case b:java.lang.Boolean=> new BoolConstant(b)
+			case b:java.lang.Boolean=> BoolConstant(b)
   	}
   	  
   	//println("set Value "+dat+" "+dat.getType)
@@ -107,7 +106,7 @@ class ParamTabMod extends AbstractTableModel  {
   	fireTableDataChanged()
   }
   
-  override def getColumnClass(col:Int)= {
+  override def getColumnClass(col:Int): Class[_ >: String <: Object] = {
     super.getColumnClass(col)
   	col match {
   		case 0 => classOf[String]
@@ -116,7 +115,7 @@ class ParamTabMod extends AbstractTableModel  {
   	}
   }
   
-  override def isCellEditable(row:Int,col:Int)= {
+  override def isCellEditable(row:Int,col:Int): Boolean = {
   	col==2
   }
   

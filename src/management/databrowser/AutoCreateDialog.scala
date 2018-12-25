@@ -3,13 +3,13 @@
  */
 package management.databrowser
 import java.awt.Color
-import javax.swing.{BorderFactory, JComboBox}
-import javax.swing.table.{AbstractTableModel, TableCellEditor}
 
 import client.dataviewer.FieldColumnModel
 import client.dialog.ComboBoxEditor
 import definition.expression.{EMPTY_EX, Expression, StringParser}
 import definition.typ._
+import javax.swing.table.{AbstractTableModel, TableCellEditor}
+import javax.swing.{BorderFactory, JComboBox}
 import server.config.AutoCreateInfo
 import server.storage.ServerObjectClass
 

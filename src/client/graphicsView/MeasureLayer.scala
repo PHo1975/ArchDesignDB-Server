@@ -22,13 +22,13 @@ class MeasureLayer(ncontroller: GraphViewController, nref: Reference, npath: Arr
   def id="Mess"
 
   def createElement(inst: InstanceData): Option[LinearElement with Named] = {
-    if (inst.ref.typ == GraphElemConst.AreaPolyClassID || inst.ref.typ == GraphElemConst.wohnflaechenClassID) {
+    if (inst.ref.typ == MeasureElemFactory.AreaPolyClassID || inst.ref.typ == MeasureElemFactory.wohnflaechenClassID) {
       val hatch=inst.fieldValue(6).toInt
     Some(new AreaPolyElement(inst.ref,inst.fieldValue(1).toInt,inst.fieldValue(2).toInt,inst.fieldValue(3).toInt,
         inst.fieldValue(5).toInt,HatchHandler.getHatch(math.abs(hatch)),hatch<0,inst.fieldValue(4).toPolygon,
         inst.fieldValue(7).toVector,inst.fieldValue(8).toDouble,inst.fieldValue(9).toString))
     }
-    else if (inst.ref.typ == GraphElemConst.measureLineClassID) {
+    else if (inst.ref.typ == MeasureElemFactory.measureLineClassID) {
       val hatch = inst.fieldValue(8).toInt
       Some(new MeasureLineElement(inst.ref, inst.fieldValue(1).toInt, inst.fieldValue(2).toInt, inst.fieldValue(3).toInt,
         inst.fieldValue(4).toPolygon, inst.fieldValue(5).toDouble, inst.fieldValue(6).toDouble, inst.fieldValue(7).toDouble,

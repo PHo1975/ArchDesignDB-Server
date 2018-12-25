@@ -3,11 +3,9 @@
  */
 package management.databrowser
 
-import javax.swing.table.AbstractTableModel
-import definition.typ._
 import definition.data._
+import javax.swing.table.AbstractTableModel
 import server.storage._
-import transaction.handling._
 
 /**
  * 
@@ -15,50 +13,48 @@ import transaction.handling._
 object CollFuncTableModel extends AbstractTableModel{
 	var collData:Option[CollFuncResultSet]=None
 	
-	def setCollData(data:Option[CollFuncResultSet]) = {
+	def setCollData(data:Option[CollFuncResultSet]): Unit = {
 		collData=data
 		fireTableStructureChanged()
 	}
 	
-	def getRowCount():Int =
-  {
-		for (a<-collData)
-		{
-			return a.callResultList.size
-		}
-		0
-  }
+	def getRowCount:Int = collData match {
+			 case Some(a) => a.callResultList.size
+			 case None => 0
+		 }
 	
-	def getColumnCount():Int = 6
+	def getColumnCount:Int = 6
 	
-	def getValueAt(row:Int,column:Int):java.lang.Object = {
-		for (a<-collData)
-		{
+	def getValueAt(row:Int,column:Int):java.lang.Object =
+		collData match {
+			case Some(a)=>
 			a.callResultList(row) match {
 				case s:SingleCollFuncResult =>
 					column match {
-						case 0 => return s.funcName
-						case 1 => return s.childType.toString
-						case 2 => return s.childField.toString
-						case 3 => return s.parentField.toString
-						case 4 => return s.parentPropField.toString
-						case 5 => return s.resultValue.toString
+						case 0 => s.funcName
+						case 1 => s.childType.toString
+						case 2 => s.childField.toString
+						case 3 => s.parentField.toString
+						case 4 => s.parentPropField.toString
+						case 5 => s.resultValue.toString
 					}
 				case l:ListCollFuncResult =>
 					column match {
-						case 0 => return l.funcName
-						case 1 => return l.childType.toString
-						case 2 => return l.childField.toString
-						case 3 => return l.parentField.toString
-						case 4 => return l.parentPropField.toString
-						case 5 => return l.resultList.mkString(",")
+						case 0 => l.funcName
+						case 1 => l.childType.toString
+						case 2 => l.childField.toString
+						case 3 => l.parentField.toString
+						case 4 => l.parentPropField.toString
+						case 5 => l.resultList.mkString(",")
 					}
-			}			
+					case _ => null
+			}
+			case None=> null
 		}
-		null
-	}
+
+
 	
-	override def getColumnName(column:Int) =   {
+	override def getColumnName(column:Int): String =   {
 		column match {
 			case 0=> "funkName"
 			case 1=> "childType"

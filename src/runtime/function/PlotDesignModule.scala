@@ -3,8 +3,8 @@ package runtime.function
 import definition.data.{InstanceData, OwnerReference}
 import definition.expression.Constant
 import definition.typ.ActionTrait
-import server.comm.{AbstractUserSocket, JavaClientSocket}
-import server.storage.{StorageManager, ActionIterator, ActionModule}
+import server.comm.AbstractUserSocket
+import server.storage.{ActionIterator, ActionModule, StorageManager}
 import transaction.handling.TransactionManager
 import util.Log
 

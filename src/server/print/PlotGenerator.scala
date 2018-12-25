@@ -3,13 +3,14 @@ package server.print
 import java.awt.Color
 import java.awt.geom.{Point2D, Rectangle2D}
 import java.io.File
-import javax.imageio.{ImageIO, ImageReader}
 
 import definition.data._
 import definition.expression.{BlobConstant, VectorConstant}
 import definition.typ.{AllClasses, EnumFieldDefinition, SystemSettings}
+import javax.imageio.{ImageIO, ImageReader}
+import server.config.FSPaths
 import server.storage.{ServerObjectClass, StorageManager}
-import util.CollUtils
+import util.{CollUtils, Log}
 
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
@@ -28,38 +29,41 @@ class PlotGenerator extends CustomGenerator {
 	val textType: Int =AllClasses.get.getClassIDByName("TextElem")
 	val dimLineTyp: Int =AllClasses.get.getClassIDByName("DimLineElem")
 	val areaPolyTyp: Int =AllClasses.get.getClassIDByName("AreaPolygon")
+  val wohnFLTyp:Int =AllClasses.get.getClassIDByName("Wohnfläche")
+  val measureLineType: Int = AllClasses.get.getClassIDByName("MeasurePolyLine")
   val symbolType: Int =AllClasses.get.getClassIDByName("SymbolElem")
   val symbolFillerType: Int =AllClasses.get.getClassIDByName("SymbolFiller")
   val bitmapType: Int =AllClasses.get.getClassIDByName("BitmapElem")
 	val scales: Map[Int, Double] = SystemSettings().enumByID(cl.fields(2).asInstanceOf[EnumFieldDefinition].enumID).
 	enumValues.map((v)=>(v._2,stringToScale(v._1))).toMap
-	
-	
-	def fillPlotPage(dataParent:InstanceData,dataEater:DataEater,generator:SinglePageGenerator):Unit= this.synchronized{	  
+
+  val numberFormat="%,.2f"
+
+
+	def fillPlotPage(dataParent:InstanceData,dataEater:DataEater,generator:SinglePageGenerator):Unit= this.synchronized{
 	 val ph=dataEater.pageHeight	
    StorageManager.getInstanceProperties(dataParent.ref) match {
      case Some(props) =>
-       val (withoutClip,withClip)=(for (layRef <- props.propertyFields(1).propertyList; if StorageManager.instanceExists(layRef.typ, layRef.instance) )
-         yield StorageManager.getInstanceData(layRef))partition(_.fieldValue(5).toDouble==0d) // split in layers without clip and layers with clip
+       val (withoutClip: Seq[InstanceData],withClip: Seq[InstanceData])=(
+         for (layRef <- props.propertyFields(1).propertyList; if StorageManager.instanceExists(layRef.typ, layRef.instance) )
+           yield StorageManager.getInstanceData(layRef)).partition(_.fieldValue(5).toDouble==0d) // split in layers without clip and layers with clip
        for(layRefInst<- withoutClip++withClip) {
          //val layRefInst = StorageManager.getInstanceData(layRef)
          val refScale = layRefInst.fieldValue(1).toInt
+         val plotAngle:Double=layRefInst.fieldValue(2).toDouble*Math.PI/180d
          val textScale = if (layRefInst.fieldData(10).isNullConstant) 1d else layRefInst.fieldValue(10).toDouble
          def bx: Double = layRefInst.fieldValue(3).toDouble
          def by: Double = layRefInst.fieldValue(4).toDouble
          def bw: Double = layRefInst.fieldValue(5).toDouble
          def bh: Double = layRefInst.fieldValue(6).toDouble
+         val px: Float = layRefInst.fieldValue(7).toFloat * 1000f
+         val py: Float = layRefInst.fieldValue(8).toFloat * 1000f
          val theLayerRef = layRefInst.fieldValue.head.toObjectReference
          if (StorageManager.instanceExists(theLayerRef.typ, theLayerRef.instance)) {
            val theLayerInst = StorageManager.getInstanceData(theLayerRef)
            //val layerID=theLayerInst.fieldValue(2).toString
            val fieldOffset = if (theLayerRef.typ == measureLayerType) 1 else 0
-           val layerName = theLayerInst.fieldValue(1 + fieldOffset).toString
            val layerScale = scales(if (refScale > 0) refScale else theLayerInst.fieldValue(2 + fieldOffset).toInt)
-           //System.out.println("Layer "+layerName+" scale:"+layerScale)
-           val px = layRefInst.fieldValue(7).toFloat * 1000f
-           val py = layRefInst.fieldValue(8).toFloat * 1000f
-           //println("print Layer "+layerName+" scale:"+layerScale+" px:"+px+ " py:"+py+" pageHeight:"+ph)
 
            def vectorToPoint(p: VectorConstant): Point2D.Float =
              new Point2D.Float((px + p.x * layerScale.toFloat).toFloat, (ph - py - p.y * layerScale.toFloat).toFloat)
@@ -69,7 +73,6 @@ class PlotGenerator extends CustomGenerator {
            def createLine(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
              val start = vectorToPoint(data.fieldValue(3).toVector)
              val end = vectorToPoint(data.fieldValue(4).toVector)
-             //println("Create Line start:"+start+" end:"+end+" w:"+lineWidth+" c:"+color)
              LinePrintElement(new Rectangle2D.Float(start.x, start.y, end.x - start.x, end.y - start.y),
                lineWidth, lineStyle.toByte, color)
            }
@@ -105,7 +108,8 @@ class PlotGenerator extends CustomGenerator {
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle)
            }
            def createAreaPoly(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
-             val points = data.fieldValue(4).toPolygon.transform(vectorToVector)
+             val area=data.fieldValue(4).toPolygon
+             val points = area.transform(vectorToVector)
              val fillColor = new Color(data.fieldValue(5).toInt)
              val hatch = data.fieldValue(6).toInt
              val startPoint = data.fieldValue(7).toVector
@@ -113,7 +117,24 @@ class PlotGenerator extends CustomGenerator {
              val name = data.fieldValue(9).getValue.toString
              //System.out.println("create Area "+name)
              PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
-               if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle, name)
+               if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle,
+               name+"\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")
+           }
+
+           def createWohnflaeche (data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
+             val area=data.fieldValue(4).toPolygon
+             val points = area.transform(vectorToVector)
+             val fillColor = new Color(data.fieldValue(5).toInt)
+             val hatch = data.fieldValue(6).toInt
+             val startPoint = data.fieldValue(7).toVector
+             val angle = data.fieldValue(8).toDouble
+             val name = data.fieldValue(9).getValue.toString
+             val nr: Double =data.fieldValue(12).getValue.toDouble
+
+             PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
+               if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle,
+               (if(nr==0d) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr) + ". "+name)+
+               "\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")
            }
 
            def createText(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
@@ -168,6 +189,8 @@ class PlotGenerator extends CustomGenerator {
                endPoint, code, val1, val2)
            }
 
+
+
            def getImageSize(file:File):(Int,Int)= {
              var ret=(0,0)
              CollUtils.tryWith(ImageIO.createImageInputStream(file))(ins=>{
@@ -186,9 +209,9 @@ class PlotGenerator extends CustomGenerator {
              ret
            }
 
-           def createBitmap(data:InstanceData,color: Color, lineWidth: Float, lineStyle: Int)= {
+           def createBitmap(data:InstanceData,color: Color, lineWidth: Float, lineStyle: Int): GraphBitmapPrintElement = {
              val link=data.fieldValue(1).toString
-             val file=new File(link)
+             val file=new File(util.JavaUtils.restoreDelimiters(util.JavaUtils.resolveImagePath(FSPaths.imageDir,link)))
              val (width,height)=getImageSize(file)
              val dpi = data.fieldValue(2).toDouble
              val scale = data.fieldValue(3).toDouble
@@ -205,7 +228,7 @@ class PlotGenerator extends CustomGenerator {
 
 
            val elemFactory = collection.immutable.Map[Int, (InstanceData, Color, Float, Int) => PrintElement](lineType -> createLine, arcType -> createArc,
-             ellType -> createEll, polyType -> createPoly, textType -> createText, dimLineTyp -> createDimLine, areaPolyTyp -> createAreaPoly,
+             ellType -> createEll, polyType -> createPoly, textType -> createText, dimLineTyp -> createDimLine, areaPolyTyp -> createAreaPoly, wohnFLTyp->createWohnflaeche,
              symbolType -> createSymbol, symbolFillerType ->createSymbolFiller,bitmapType -> createBitmap)
 
            def createPrintElement(ref: Reference): PrintElement = {
@@ -216,24 +239,89 @@ class PlotGenerator extends CustomGenerator {
 
              if (elemFactory.contains(ref.typ))
                elemFactory(ref.typ)(data, color, lineWidth, lineStyle)
-             else null
+             else {
+               Log.e("unknown Printelement type :"+ref.typ)
+               null
+             }
            }
-           if (bw > 0d) {
-             val p1 = vectorToPoint(new VectorConstant(bx, by, 0))
-             val p2 = vectorToPoint(new VectorConstant(bx + bw, by + bh, 0))
-             val clipRect = new Rectangle2D.Float(p1.x, p2.y, p2.x - p1.x, p1.y - p2.y)
-             dataEater.addPrintElement(new ClipPrintElement(clipRect))
-           }
-
            StorageManager.getInstanceProperties(theLayerRef) match {
              case Some(grProps) =>
+               if(plotAngle!=0f) dataEater.addPrintElement(new RotationPrintElement(px,ph-py,plotAngle.toFloat))
+               if (bw > 0d) {
+                 val p1 = vectorToPoint(new VectorConstant(bx, by, 0))
+                 val p2 = vectorToPoint(new VectorConstant(bx + bw, by + bh, 0))
+                 val clipRect = new Rectangle2D.Float(p1.x, p2.y, p2.x - p1.x, p1.y - p2.y)
+                 dataEater.addPrintElement(new ClipPrintElement(clipRect))
+               }
                dataEater.addPrintElements(grProps.propertyFields(0).propertyList.map(createPrintElement).filter(_ != null))
+
+               if (bw > 0d) dataEater.addPrintElement(new RestoreClipPrintElement)
+               if( plotAngle!=0f) dataEater.addPrintElement(RotationEndPrintElement)
+
              case None =>
            }
-           if (bw > 0d) {
-             dataEater.addPrintElement(new RestoreClipPrintElement)
-           }
          } else util.Log.e("cant find Layer :" + theLayerRef)
+       }
+
+       val smallFont = generator.form.fonts.getStyle("Klein")
+       val standardFont = generator.form.fonts.standardStyle
+       val tableWidth=102
+       val startX=dataEater.pageWidth - tableWidth-generator.form.left
+       val lineHeight=smallFont.height*1.7f
+       var lastY=dataEater.pageHeight-60
+
+       val notesString=dataEater.paramValues.find(_._1=="Bemerkungen") match {case Some((_,value))=>value.toString.trim;case _=>""}
+       if(notesString.length>0) {
+         val notes=notesString.split("\n")
+         dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.size+1f)*lineHeight+1, 0f, standardFont.height),
+           "Hinweise:", standardFont.fontName, 0, 0f, 0f, Color.black, 0f))
+         for(ix<-notes.indices;note=notes(ix)){
+           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.size-ix)*lineHeight+2f, 0f, smallFont.height*0.9f),
+             note, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+         }
+         lastY-=(notes.length+2)*lineHeight
+       }
+
+       if(dataEater.paramValues.find(_._1=="Versionstabelle") match {case Some((_,value))=>value.toBoolean;case _=>false}) {
+         // Print Versionstabelle
+          val versions=props.propertyFields(3).propertyList.map(StorageManager.getInstanceData)
+         if(versions.nonEmpty) {
+           val numLines=versions.foldLeft(0)((v,el)=>v+el.fieldValue(2).toString.split('\n').length)
+           val recty=lastY-(numLines+2)*lineHeight-1
+           val rect=new Rectangle2D.Float(startX-1,recty,tableWidth+.1f,dataEater.pageHeight-60f-recty+1f)
+           dataEater.addPrintElement(FillPrintElement(rect,Color.black,0,Color.white))
+           dataEater.addPrintElement(RectPrintElement(rect,0.5f,0,Color.gray))
+           val columns=Array(7,17,26)
+           //val firstY=lastY-(versions.size+1)*lineHeight
+           if(notesString.length>0)
+             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,lastY+1,tableWidth,0),1f,0, Color.black ))
+           var currentY=lastY
+           for(ix<-versions.indices.reverse;version=versions(ix)){
+             val lines=version.fieldValue(2).toString.split("\n")
+             val numLines=lines.size
+             for(lix<-lines.indices;line=lines(lix)) {
+               dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(2), currentY - (numLines-lix-1) * lineHeight, 0f, smallFont.height*0.9f),
+                 line, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+             }
+             currentY-= numLines*lineHeight
+             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,currentY+0.5f,tableWidth,0),if(ix==0)1f else 0.5f,0,if(ix==0) Color.black else Color.gray))
+             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY + lineHeight, 0f, smallFont.height*0.9f),
+               version.fieldValue(0).toString, smallFont.fontName, if(ix==versions.size-1)FontStyle.boldStyle else 0, 0f, 0f, Color.black, 0f))
+             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(0), currentY + lineHeight, 0f, smallFont.height*0.9f),
+               version.fieldValue(1).toString, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(1), currentY + lineHeight, 0f, smallFont.height*0.9f),
+               version.fieldValue(3).toString, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+           }
+           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY-lineHeight-1f, 0f, standardFont.height),
+             "Überarbeitungen", standardFont.fontName, 0, 0f, 0f, Color.black, 0f))
+           /*dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY-.9f, 0f, smallFont.height*0.9f),
+             "V.", smallFont.fontName, 0, 0f, 0f, Color.black, 0f))*/
+           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(0), currentY-1.5f, 0f, smallFont.height*0.9f),
+             "Datum", smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(2), currentY-1.5f, 0f, smallFont.height*0.9f),
+             "Änderungen", smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+
+         }
        }
      case None =>
 		}

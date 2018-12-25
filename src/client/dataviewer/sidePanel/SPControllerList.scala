@@ -7,11 +7,8 @@ package client.dataviewer.sidePanel
  * 
  */
 
-import scala.swing._
-import scala.collection.mutable.HashSet
-import definition.typ.SystemSettings
-import definition.data.Reference
-import definition.typ.AbstractObjectClass
+import definition.typ.{AbstractObjectClass, SystemSettings}
+
 import scala.util.control.NonFatal
 
 object SPControllerList {  

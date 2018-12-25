@@ -26,8 +26,9 @@ class PrintActionModule extends ActionModule {
 	val actions=List(outputAction)	
 	 
 	
-	def doOutputWindow(u:AbstractUserSocket, parent:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]):Boolean = {
-		if(data.isEmpty)return false
+	def doOutputWindow(u:AbstractUserSocket, parent:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]):Boolean =
+		if(data.isEmpty) false
+		else {
 		val outDefs= getOutDefs(data.head.ref)		
 		
 		val formsList=PrintFormsHandler.loadFormsForType(data.head.ref.typ)
@@ -56,7 +57,7 @@ class PrintActionModule extends ActionModule {
 					val pageWidth=returnData(4)._2.toInt
 					val pageHeight=returnData(5)._2.toInt
 					//println("new Outdef "+printForm.name)
-					TransactionManager.doTransaction(u.userEntry.id, ActionNameMap.getActionID("AusgabeDef erzeugen"),data.head.ref, false, outDefType,{
+					TransactionManager.doTransaction(u.userID, ActionNameMap.getActionID("AusgabeDef erzeugen"),data.head.ref, false, outDefType,{
 					  var outDefInst=TransactionManager.tryCreateInstance(outDefType, Array(new OwnerReference(0,data.head.ref)), true, -1, true, true)
 					  outDefInst=outDefInst.setField(0,IntConstant(printForm.inst))
 					  outDefInst=outDefInst.setField(1,printer)
@@ -80,7 +81,7 @@ class PrintActionModule extends ActionModule {
 				case "DeleteOutDef" => // delete definition
 					val outDefInst=returnData.head._2.toInt
 					val outDefRef=new Reference(outDefType,outDefInst)
-					TransactionManager.doTransaction(u.userEntry.id, ActionNameMap.getActionID("AusgabeDef löschen"),outDefRef, false, -1,{
+					TransactionManager.doTransaction(u.userID, ActionNameMap.getActionID("AusgabeDef löschen"),outDefRef, false, -1,{
 						TransactionManager.tryDeleteInstance(outDefRef,Some(new OwnerReference(0,data.head.ref)),None)
 					})
 				case "ChoseOutDef" => // delete definition
@@ -108,7 +109,7 @@ class PrintActionModule extends ActionModule {
 					val pageHeight=returnData(6)._2.toInt
 					val odRef=new Reference(outDefType,odInst)
 					//println("change outdef "+printForm.name)
-					TransactionManager.doTransaction(u.userEntry.id, ActionNameMap.getActionID("AusgabeDef ändern"),data.head.ref, false, -1,{
+					TransactionManager.doTransaction(u.userID, ActionNameMap.getActionID("AusgabeDef ändern"),data.head.ref, false, -1,{
 					  var outDefInst=ActionList.getInstanceData(odRef)
 					  outDefInst=outDefInst.setField(0,IntConstant(printForm.inst))
 					  outDefInst=outDefInst.setField(1,printer)

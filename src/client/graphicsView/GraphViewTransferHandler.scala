@@ -1,20 +1,19 @@
 package client.graphicsView
 
 
-import client.dialog.DragDropListener
-import client.dataviewer.InstanceSelection
-import java.awt.Point
-import javax.swing.TransferHandler
-import java.awt.datatransfer.Transferable
-import java.awt.datatransfer.DataFlavor
-import client.spreadsheet.SpreadSheetTransferable
-import definition.data.Reference
-import java.awt.datatransfer.UnsupportedFlavorException
+import java.awt.datatransfer.{DataFlavor, Transferable, UnsupportedFlavorException}
 import java.io._
-import client.print.PrintQuestionHandler
 import java.util.Date
 
-import definition.expression.DateConstant
+import client.dataviewer.InstanceSelection
+import client.dialog.DragDropListener
+import client.spreadsheet.SpreadSheetTransferable
+import definition.data.Reference
+import javax.swing.TransferHandler
+import util.Log
+
+import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
 
 class GraphViewDDListener(controller:GraphViewController) extends DragDropListener[GraphElemTransferable] {  
   def sourceActions:Int={
@@ -76,46 +75,31 @@ class GraphViewDDListener(controller:GraphViewController) extends DragDropListen
   
 }
 
+
+
 @SerialVersionUID(42752002L) class LayerTransferable extends Serializable{
-  var layerRef:Reference=null
+  var layerRef:Reference=_
   var graphElems:Array[Reference]=Array[Reference]()
-  var name:String=null
-  @transient private  var nativeElems:Iterable[GraphElem]=null
-  def this(nlayRef:Reference,nname:String,nelems:Iterable[GraphElem])= {
+  var name:String=_
+  var scale:Double= _
+  @transient private  var nativeElems:Iterable[GraphElem]=_
+  def this(nlayRef:Reference,nname:String,nelems:Iterable[GraphElem],nscale:Double)= {
     this()
     layerRef=nlayRef;graphElems=nelems.map(_.ref).toArray 
     nativeElems=nelems
     name=nname
+    scale=nscale
   }
-  
-  def createFile(dir:File): File = {
-    val wishFileName=dir.getAbsolutePath()+File.separatorChar+ name.replace(" ","_")+"_"+util.JavaUtils.shortDateFormat.format(new Date())+".dxf"
-    val wishFile=new File(wishFileName)
-    if(wishFile.exists)wishFile.delete()    
-    val outBuffer=new PrintWriter(new BufferedWriter(new FileWriter(wishFile)))
 
-    appendStream("header.dat",outBuffer)
-    var handleNr=45
-    val layerName="0"
+  def createDXFData(handleHolder:HandleHolder,buffer:ArrayBuffer[String]):Unit= {
     for(l<-nativeElems) {
-      val outputString=l.getDXFString(handleNr.toHexString,layerName)
+      val outputString=l.getDXFString(handleHolder,name)
       if(outputString.length>0) {
-        outBuffer.println(outputString)
-        handleNr+=1
-      }      
+        buffer.append(outputString)
+      }
     }
-    appendStream("footer.dat",outBuffer)
-    outBuffer.close()
-    wishFile
   }
-  
 
-  def appendStream(fileName:String,writer:PrintWriter): Unit = {
-    val reader=new BufferedReader(new InputStreamReader(this.getClass.getResourceAsStream(fileName)))
-    while (reader.ready())
-      writer.println(reader.readLine)
-    reader.close()
-  }
   
   
 }
@@ -129,7 +113,7 @@ class GraphElemTransferable extends Transferable with Serializable{
     layerList=nLayerList    
   }
   
-  def getTransferDataFlavors()= InstanceSelection.graphElemFlavorArray
+  def getTransferDataFlavors: Array[DataFlavor] = InstanceSelection.graphElemFlavorArray
   
   def isDataFlavorSupported(flavor:DataFlavor):Boolean = flavor match {
     case InstanceSelection.graphElemFlavor=>true
@@ -140,17 +124,52 @@ class GraphElemTransferable extends Transferable with Serializable{
   def getTransferData(flavor:DataFlavor ) = flavor match {
     case InstanceSelection.graphElemFlavor=> this
     case DataFlavor.javaFileListFlavor=> if(fileList==null) createFilesList else fileList
-    case _=>throw new UnsupportedFlavorException(flavor);
+    case _=>throw new UnsupportedFlavorException(flavor)
 	}
   
   def createFilesList:java.util.ArrayList[File]={
     fileList=new java.util.ArrayList[File]()
     val tempDir=new File(System.getProperty("java.io.tmpdir"))
-    for(lay<-layerList) {
-      fileList.add(lay.createFile(tempDir))
-    }
-    
+    fileList.add(createFile(tempDir))
     fileList
   }
+
+  def createFile(dir:File): File =  try {
+    val wishFileName=dir.getAbsolutePath+File.separatorChar+ layerList.head.name.replace(" ","_")+"_"+util.JavaUtils.shortDateFormat.format(new Date())+".dxf"
+    val wishFile=new File(wishFileName)
+    println("WishFile "+wishFile)
+    if(wishFile.exists)wishFile.delete()
+    val outBuffer=new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(wishFile),"windows-1252")))
+
+    appendStream("header1.dat",outBuffer)
+
+    val handleHolder=new HandleHolder
+    val buffer=new ArrayBuffer[String]()
+    for(l<-layerList) {
+      l.createDXFData(handleHolder,buffer)
+    }
+    println("lines out "+buffer.size )
+    val lineStyles=handleHolder.createLineStyleTable(layerList.head.scale)
+    if(lineStyles.length>0)
+      outBuffer.println(lineStyles)
+    appendStream("header2.dat",outBuffer)
+    println("header 2")
+    for(line ← buffer) outBuffer.println(line)
+    appendStream("footer.dat",outBuffer)
+    println("ready out")
+    outBuffer.close()
+    wishFile
+  } catch {
+    case NonFatal(er) ⇒ Log.e("create DXF File ",er);null
+  }
+
+
+  def appendStream(fileName:String,writer:PrintWriter): Unit = {
+    val reader=new BufferedReader(new InputStreamReader(this.getClass.getResourceAsStream(fileName)))
+    while (reader.ready())
+      writer.println(reader.readLine)
+    reader.close()
+  }
+
   
 }

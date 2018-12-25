@@ -3,10 +3,7 @@
  */
 package runtime.function
 
-import scala.collection.mutable.ArrayBuffer
 import definition.expression.CommonFuncMan
-import transaction.handling.SessionManager
-import definition.expression.VariableResolver
 /**
  * 
  */

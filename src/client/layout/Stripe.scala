@@ -4,13 +4,14 @@
 package client.layout
 
 
+import java.awt.Color
+import java.awt.event.InputEvent
+
+import client.dataviewer.ViewConstants
 import definition.comm.PropertyGroup
 
 import scala.swing._
 import scala.swing.event._
-import java.awt.{Font,Color}
-import client.dataviewer.ViewConstants
-import java.awt.event.InputEvent
 /**
  * 
  */

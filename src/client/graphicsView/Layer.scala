@@ -227,6 +227,7 @@ object Layer {
 	ClientQueryManager.registerSetupListener(()=>{
 	  //println("AllowedDisplayListTypes "+allowedDisplayListClasses.map(AllClasses.get.getClassIDByName(_)))
 		allowedDisplayListTypes=allowedDisplayListClasses.map(AllClasses.get.getClassIDByName)
+		println("Layers setup done")
 	})
 
   def createLayer(controller: GraphViewController, nref: Reference, visible: Boolean, edible: Boolean, path: Array[String]): AbstractLayer = {

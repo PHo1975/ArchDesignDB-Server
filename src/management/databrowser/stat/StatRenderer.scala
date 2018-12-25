@@ -1,10 +1,10 @@
 package management.databrowser.stat
 
 import java.awt.{Color, Font, Graphics, Graphics2D}
-import javax.swing.{JComponent, JTable}
-import javax.swing.table.TableCellRenderer
 
 import client.dataviewer.ViewConstants
+import javax.swing.table.TableCellRenderer
+import javax.swing.{JComponent, JTable}
 
 class StatRenderer extends JComponent with TableCellRenderer {
   override def invalidate(): Unit = {}

@@ -3,7 +3,7 @@
  */
 package server.storage
 
-import java.io.{ByteArrayInputStream, DataInputStream, DataOutputStream, File, RandomAccessFile}
+import java.io.{DataInputStream, DataOutputStream, File, RandomAccessFile}
 
 import definition.data.{InstanceData, Reference, TransStepData}
 import server.comm.UserList
@@ -18,15 +18,16 @@ import scala.util.control.NonFatal
 object TransDetailLogHandler {
 	//var lastLoggedTime:Int=0
 	private var lastLoggedID:Int= -1
-	val fileName=FSPaths.dataDir+"TransDetailIndex.log"
-	var theFile= new RandomAccessFile(fileName,"rwd")
+	val fileName: String =FSPaths.dataDir+"TransDetailIndex.log"
+	var theFile= new RandomAccessFile(fileName,"rw")
 	private var insertPos:Int =0
 	val recordSize=27
-	val readBuffer= Array.ofDim[Byte](recordSize)
+	val readBuffer: Array[Byte] = Array.ofDim[Byte](recordSize)
 	val inBufferStream=new UnsyncBAInputStream(readBuffer)
 	val dataInStream=new DataInputStream(inBufferStream)
 	val bufferStream=new MyByteStream(recordSize)
 	val outStream=new DataOutputStream(bufferStream)
+	var untouched:Boolean=false
 	
 	if(theFile.length>0) {
 		insertPos=theFile.readInt// ((theFile.length-4)/recordSize).toInt
@@ -43,13 +44,13 @@ object TransDetailLogHandler {
     }
 	
 	
-	def filePosToIndex(pos:Int) = 4+pos*recordSize 
+	def filePosToIndex(pos:Int): Int = 4+pos*recordSize
   
-  def getInsertPos= insertPos
-  def getLastLoggedID = lastLoggedID
+  def getInsertPos: Int = insertPos
+  def getLastLoggedID: Int = lastLoggedID
 	
-	def log(trID:Int,userID:Int,firstInst:Reference,multiInst:Boolean,action:Short,createType:Int ) = {
-    theFile.seek(filePosToIndex(insertPos))
+	def log(trID:Int,userID:Int,firstInst:Reference,multiInst:Boolean,action:Short,createType:Int ): Unit = {
+    if(! untouched) theFile.seek(filePosToIndex(insertPos))
 		val time=(System.currentTimeMillis/60000).toInt
 		lastLoggedID=trID
 		//System.out.println("timediff:"+(time-lastLoggedTime))
@@ -64,20 +65,24 @@ object TransDetailLogHandler {
 	  outStream.writeInt(createType)
 	  theFile.write(bufferStream.buffer,0,recordSize)	  
 	  insertPos +=1
-    flush()
+		untouched=true
+    //flush()
 	}
   
-  def flush()={
+  def flush(): Unit ={
     theFile.seek(0)
     theFile.writeInt(insertPos)
-    theFile.getChannel().force(false)
+    theFile.getChannel.force(true)
+		untouched=false
   }
 	
-	def shutDown() = {		
+	def shutDown(): Unit = {
+    flush()
 		theFile.close()
 	}
 	
 	private def readTransStepData(trID:Int):Option[TransStepData] = {
+		untouched=false
 	  //val startTime=System.currentTimeMillis()
 		if (trID>lastLoggedID){
 			System.out.println("TRID>lastLoggedID  trID:"+trID+" lastLoggedID"+lastLoggedID)
@@ -100,6 +105,7 @@ object TransDetailLogHandler {
 	}
   
   private def internRead(removeZombies:Boolean):Option[TransStepData]={
+		untouched=false
     theFile.read(readBuffer,0,recordSize)
     inBufferStream.reset()
     val ntrID=dataInStream.readInt        
@@ -122,6 +128,7 @@ object TransDetailLogHandler {
   
 	
 	def readTransStepData(fromID:Int,toID:Int):Seq[TransStepData] = {
+		untouched=false
     println("read transstep from:"+fromID+" to:"+toID)
 	  //val startTime=System.currentTimeMillis()
 	  val rtoID=if(toID<2) 2 else toID
@@ -135,6 +142,7 @@ object TransDetailLogHandler {
 	}
   
   def loop(startTransID:Int,endTransID:Int,callBack: (Long,Short,Reference)=>Unit):Unit = {
+		untouched=false
     val firstID=lastLoggedID-insertPos
     val start =if(startTransID<firstID) 0 else insertPos-(lastLoggedID-startTransID)-1 //startTransID-firstID
 		println("startID:"+startTransID+" endID:"+endTransID+" firstID:"+firstID+" start:"+
@@ -159,34 +167,10 @@ object TransDetailLogHandler {
 		} while(trID<endTransID&& trID<lastLoggedID)
 		//println("|")
   }
-  
-  /*private def loopAll(callBack: (Long,Short,Reference)=>Unit)= {
-    println("loop size "+((theFile.length-4)/recordSize).toInt)
-    theFile.seek(4)
-    for (i <-0 until ((theFile.length-4)/recordSize).toInt){
-      //try {                         
-        theFile.read(readBuffer,0,recordSize)
-        inBufferStream.reset()
-        val trID=dataInStream.readInt
-        print(" "+trID)
-        val time=dataInStream.readInt
-        val userID=dataInStream.readInt.toShort
-        val ref=Reference(dataInStream.readInt,dataInStream.readInt)
-        val multi=dataInStream.readBoolean
-        val action=dataInStream.readShort
-        val ct=dataInStream.readInt
-        if(StorageManager.instanceExists(ref.typ, ref.instance))
-          callBack(time*60000l,userID,ref)
-        else print(" nope "+ref+" ")
-      //} finally readFinished()  
-    }
-  }*/
-	
-	/*private def readFinished() = {
-		theFile.seek(filePosToIndex(insertPos))
-	}*/
+
 	
 	def readFully:IndexedSeq[TransStepData] = {
+		untouched=false
 		System.out.println("readfully "+(theFile.length-4)/recordSize)
 		theFile.seek(4)
 		val ret=for (i <-0 until ((theFile.length-4)/recordSize).toInt) 
@@ -197,14 +181,16 @@ object TransDetailLogHandler {
 		ret.flatten
 	}	
 	
-	def undoLastStep()= {
+	def undoLastStep(): Unit = {
+		untouched=false
 	  insertPos -=1
 	  lastLoggedID-=1
     flush()
 	  //readFinished()	
 	}
 	
-	def deleteLogFile()={
+	def deleteLogFile(): Unit ={
+		untouched=false
 	  theFile.close()
 		new File(fileName).delete
 	  theFile=new RandomAccessFile(fileName,"rwd")

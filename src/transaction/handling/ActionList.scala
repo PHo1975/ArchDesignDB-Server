@@ -63,8 +63,8 @@ object ActionList extends DataRetriever {
       for(trans <- theList.valuesIterator)
         trans match {
           case CreateAction(_,instData,propData,linkData,collData,cmi) => // Instances get created during the Try-Phase of the transaction
-            for (data <-instData) {
-              StorageManager.writeInstance(data,true) // if instdata is defined, write
+            val (dataPos,dataLength)=instData match {
+              case Some(data)=>
               val sendData =if(propData.isDefined && propData.get.hasChildren !=data.hasChildren) data.setHasChildren(propData.get.hasChildren)
                  else data
               cmi match {
@@ -72,24 +72,38 @@ object ActionList extends DataRetriever {
                    case _ => for(owner <-data.owners) // in all other cases notify owners
                                 CommonSubscriptionHandler.instanceCreated(owner,sendData)
                  }
-              //if(!cmi.isDefined || ! cmi.get.isInstanceOf[AddDontNotifyOwners.type] )
+              StorageManager.writeInstance(data,created = true,writeIndex = false) // if instdata is defined, write
+              case None => throw new IllegalArgumentException("No Data for Creation")
             }
-            for (pdata <-propData){
-              StorageManager.writeInstanceProperties(pdata) // if propdata is defined, write
+
+            val (propPos,propSize)=propData match {
+              case Some(pdata)=>
+              StorageManager.writeInstanceProperties(pdata,writeIndex = false) // if propdata is defined, write
+              case None => (0l,0)
             }
-            for (c <- collData) StorageManager.writeCollectingFuncData(c)
-            for(l <- linkData) StorageManager.writeReferencingLinks(l)
+            val (collPos,collSize)=collData match {
+              case Some(c)=>  StorageManager.writeCollectingFuncData (c,writeIndex = false)
+              case None => (0l,0)
+            }
+            val (linkPos,linkSize)=linkData match {
+              case Some(l)=>  StorageManager.writeReferencingLinks(l,writeIndex = false)
+              case None => (0L,0)
+            }
+            for(d<-instData)
+            StorageManager.ixHandler(d.ref.typ).writeAllFields(d.ref.instance,dataPos,dataLength,propPos,propSize,linkPos,linkSize,collPos,collSize,created = true)
+
 
           case DataChangeAction(instData,propData,linkData,collData,cmi,deleteFromUser) =>
             for(i <- instData){
-              StorageManager.writeInstance(i,false); // if instance is defined, write
               val sendData = if(propData.isDefined && propData.get.hasChildren !=i.hasChildren) i.setHasChildren(propData.get.hasChildren)
                  else i
               cmi match {
                    case Some(ChangeDontNotifyOwners) =>
                    case _ => CommonSubscriptionHandler.instanceChanged(sendData)
                  }
+              StorageManager.writeInstance(i,created = false); // if instance is defined, write
             }
+            //println("change commit prop:"+propData+" coll:"+collData+" link:"+linkData)
             for(p <- propData){
               StorageManager.writeInstanceProperties(p) // if properties ...
                // child was copied or moved here

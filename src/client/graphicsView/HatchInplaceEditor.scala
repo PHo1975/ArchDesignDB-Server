@@ -1,16 +1,14 @@
 package client.graphicsView
 
-import client.dialog.InplaceFieldEditor
-import scala.swing.ComboBox
-import javax.swing.DefaultCellEditor
-import javax.swing.JTable
-import definition.expression.{Expression,Constant}
-import scala.swing.Table
-import util.MyListView
-import client.dataviewer.InstanceRenderer
 import java.awt.Color
-import util.MyComboBox
-import javax.swing.JComboBox
+
+import client.dataviewer.InstanceRenderer
+import client.dialog.InplaceFieldEditor
+import definition.expression.{Constant, Expression}
+import javax.swing.{DefaultCellEditor, JTable}
+import util.{MyComboBox, MyListView}
+
+import scala.swing.Table
 
 
 class HatchInplaceEditor() extends InplaceFieldEditor{

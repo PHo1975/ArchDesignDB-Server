@@ -1,23 +1,12 @@
 package client.graphicsView.symbol
 
-import definition.expression.ParserError
-import definition.expression.VectorConstant
-import definition.expression.EMPTY_EX
-import client.plotdesign.LayerRef
-import definition.expression.IntConstant
-import client.graphicsView.Scaler
-import java.awt.Graphics2D
-import client.graphicsView.GraphElem
-import definition.expression.StringParser
-import client.graphicsView.ElemContainer
-import definition.expression.NULLVECTOR
-import definition.expression.Constant
+import java.awt.{Color, Graphics2D}
 import java.awt.geom.Rectangle2D
-import definition.expression.Expression
+
+import client.graphicsView.{ElemContainer, GraphElem, Scaler}
+import client.plotdesign.LayerRef
 import definition.data.Reference
-import definition.expression.DoubleConstant
-import java.awt.Color
-import definition.typ.DataType
+import definition.expression._
 
 object SymbolOrient extends Enumeration {
   val Undefined=Value("Undefined")

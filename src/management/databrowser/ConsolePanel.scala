@@ -6,9 +6,9 @@ package management.databrowser
 import java.io.{OutputStream, PrintStream}
 import java.text.SimpleDateFormat
 import java.util.Date
-import javax.swing.text.Document
 
 import client.dataviewer.ViewConstants
+import javax.swing.text.Document
 
 import scala.swing._
 
@@ -25,24 +25,22 @@ class ConsolePanel(debug: Boolean) extends BorderPanel {
 	add(new ScrollPane {
 		viewportView=textArea
 	},BorderPanel.Position.Center)
-  util.Log.addLogListener((st) => printError(st + "\n"))
+  util.Log.addLogListener((st:String,error:Boolean) => printWithTimeStamp(st+"\n",error))
 
-  def printError(errorText: String): Unit = Swing.onEDT {
-    textArea.append(timeFormat.format(new Date()) + errorText)
-    //println("print error "+errorText)
-	}
+  def printError(errorText: String): Unit = printWithTimeStamp(errorText,true)
 
-  def printWithTimeStamp(text: String, error: Boolean): Unit = {
-    //if (error) println(text + "::" + Thread.currentThread().getStackTrace.drop(2).mkString("\n "))
-    Swing.onEDT {
-    textArea.append( timeFormat.format(new Date()) + (if (error) "Error: " else "") + text)
+  def printWithTimeStamp(text: String, error: Boolean): Unit =  Swing.onEDT {
+    textArea.append( timeFormat.format(new Date()) + (if (error) " Error: " else " ") + text)
   }
-	}
+
+	def printWithoutTimeStamp(text:String): Unit = textArea.append(text)
+
+
 	class MyStream(error:Boolean) extends OutputStream {
     override def write(b: Int): Unit = printError(String.valueOf(b.toChar))
 
-    override def write(b: Array[Byte], off: Int, len: Int): Unit = if (len == 2 && b(1) == '\n') printError("\n")
-    		else printWithTimeStamp(new String(b, off, len),error)
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = if (len == 2 && b(1) == '\n') {}
+    		else printWithTimeStamp(new String(b, off, len)+"\n",error)
 
     override def write(b: Array[Byte]): Unit = write(b, 0, b.length)
 	}

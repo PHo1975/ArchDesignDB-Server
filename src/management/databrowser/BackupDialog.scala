@@ -1,28 +1,15 @@
 package management.databrowser
 
-import scala.swing.Dialog
-import scala.swing.Window
 import java.awt.Dimension
-import scala.swing.event.ButtonClicked
-import scala.swing.BoxPanel
-import scala.swing.Button
-import scala.swing.Orientation
+import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.File
-import server.config.FSPaths
-import scala.swing.ProgressBar
+
 import javax.swing.SwingWorker
-import java.util.GregorianCalendar
-import java.util.zip.ZipOutputStream
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.io.FileInputStream
-import java.beans.PropertyChangeListener
-import java.beans.PropertyChangeEvent
-import definition.expression.DateConstant
-import java.text.SimpleDateFormat
-import transaction.handling.SessionManager
-import transaction.handling.BackupTask
+import server.config.FSPaths
 import transaction.handling.BackupThread
+
+import scala.swing.{BoxPanel, Button, Dialog, Orientation, ProgressBar, Window}
+import scala.swing.event.ButtonClicked
 
 class BackupDialog(w:Window) extends Dialog(w){
   title="Backup"

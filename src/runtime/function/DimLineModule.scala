@@ -1,56 +1,41 @@
 package runtime.function
-import server.storage.ActionModule
-import server.storage.ActionIterator
-import server.storage.ActionImpl
-import server.storage.CreateActionImpl
-import definition.data.InstanceData
-import definition.expression.VectorConstant
-import definition.expression.DoubleConstant
-import definition.expression.StringConstant
-import definition.data.OwnerReference
-import definition.expression.Constant
-import server.comm.{AbstractUserSocket, JavaClientSocket}
-import definition.typ.{DataType,AnswerDefinition}
-import definition.expression.Line3D
-import definition.expression.Edge
-import definition.expression.BlobConstant
+import client.dialog.AnswerPanelsData
+import definition.data.{DimensionPoint, InstanceData, OwnerReference, Reference}
+import definition.expression._
+import definition.typ.{AnswerDefinition, CommandQuestion, DataType, DialogQuestion}
+import server.comm.AbstractUserSocket
+import server.storage._
 import transaction.handling.TransactionManager
-import definition.typ.DialogQuestion
-import definition.typ.CommandQuestion
-import definition.data.DimensionPoint
-import definition.data.Reference
-import definition.expression.ObjectReference
-import server.storage.StorageManager
 
 class DimLineModule extends ActionModule with GraphActionModule {
   import runtime.function.GraphElemModule._
   override val createActions=List(createDimLineAction)	
   val actions=List(moveMainLineAction,changeHelpLines,addDimPoint,delDimPoint,changeRefPoint,setMainRefPoint)
 	
-	lazy val moveMainLineAction=new ActionIterator("Linie verschieben",mvQuestion("Linie verschieben"),doMoveMainLine)
+	lazy val moveMainLineAction=new ActionIterator("Linie verschieben",mvQuestion("Linie verschieben",false),doMoveMainLine)
 	
-  lazy val changeHelpLines=new ActionIterator("Hilfslinien ändern",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"ChangeHelpLines")),doChangeHelpLines)
+  lazy val changeHelpLines=new ActionIterator("Hilfslinien ändern",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ChangeHelpLines")),doChangeHelpLines)
   
-  lazy val changeRefPoint=new ActionImpl("Referenzpunkt ändern",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"ChangeRefPoint")),doChangeRefPoint)
+  lazy val changeRefPoint=new ActionImpl("Referenzpunkt ändern",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "ChangeRefPoint")),doChangeRefPoint)
   
-  lazy val addDimPoint=new ActionIterator("Maßpunkt hinzufügen",Some( new DialogQuestion("Masspunkt<br>hinzufügen",Seq(
-      new AnswerDefinition("Punkt angeben",DataType.VectorTyp,Some(new DialogQuestion("Hilfslinie bis",Seq(
-          new AnswerDefinition("Punkt angeben",DataType.VectorTyp,None)))))))),doAddDimPoint,true)
+  lazy val addDimPoint=new ActionIterator("Maßpunkt hinzufügen",Some( DialogQuestion("Masspunkt<br>hinzufügen", Seq(
+    new AnswerDefinition("Punkt angeben", DataType.VectorTyp, Some(DialogQuestion("Hilfslinie bis", Seq(
+      new AnswerDefinition("Punkt angeben", DataType.VectorTyp, None,AnswerPanelsData.NOSTRICT_HIT)))))))),doAddDimPoint,true)
   
-  lazy val delDimPoint=new ActionIterator("Maßpunkt löschen",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"DelDimPoint")),doDelDimPoint)
+  lazy val delDimPoint=new ActionIterator("Maßpunkt löschen",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "DelDimPoint")),doDelDimPoint)
   
-	lazy val setMainRefPoint=new ActionIterator("HauptReferenz setzen",Some(new DialogQuestion("HauptReferenz setzen",
-	    Seq(new AnswerDefinition("Nullpunkt auswählen",DataType.VectorTyp,Some(new DialogQuestion("Wert bei Nullpunkt",
-	        Seq(new AnswerDefinition("Delta-Wert:",DataType.DoubleTyp,None)))))))),doSetMainRef) 
+	lazy val setMainRefPoint=new ActionIterator("HauptReferenz setzen",Some(DialogQuestion("HauptReferenz setzen",
+    Seq(new AnswerDefinition("Nullpunkt auswählen", DataType.VectorTyp, Some(DialogQuestion("Wert bei Nullpunkt",
+      Seq(new AnswerDefinition("Delta-Wert:", DataType.DoubleTyp, None)))))))),doSetMainRef)
   
-	def createDimLineAction=new CreateActionImpl("Maßlinie",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-	"CreateDimLine")),doCreateDimLine)
+	def createDimLineAction=new CreateActionImpl("Maßlinie",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+    "CreateDimLine")),doCreateDimLine)
 	
-	def doCreateDimLine(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
-    if(param.size<4) return false
+	def doCreateDimLine(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean=
+    if(param.size<4) false else {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
 		//println("DimLine params:"+param.mkString("\n"))
 		val position=param.head._2.toVector
@@ -129,8 +114,8 @@ class DimLineModule extends ActionModule with GraphActionModule {
   }
   
   
-  def doChangeHelpLines(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
-    if(param.size<2) return false    
+  def doChangeHelpLines(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+    if(param.size<2) false else {
     val helpPolyPoints=param map (_._2.toVector)
     val polyEdges=(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
     //println("Change Helplines "+polyEdges.mkString(" \n "))
@@ -188,7 +173,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
 		}		
 	}
   
-  def copyElement(elem:InstanceData,delta:VectorConstant) = {
+  def copyElement(elem:InstanceData,delta:VectorConstant): InstanceData = {
 		val retel=elem.setField(1,elem.fieldValue(1).toVector+delta)		
 		elem.fieldValue(4).getValue match {
 		  case blob:BlobConstant =>
@@ -238,7 +223,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
 		}
 	}
 	
-	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]) = {
+	override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]): Unit = {
 	  val p1=elem.fieldValue(1).toVector
 	  if(chPoints.contains(p1)) TransactionManager.tryWriteInstanceField(elem.ref,1,p1+delta)
 	  var blobChanged=false
@@ -272,7 +257,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
    * @param func  a function(ObjReference,StartPoint,MainDir,HelpDir,DimList)
    * 
    */
-  private def updateDimList(data:Seq[InstanceData],func:(Reference,VectorConstant,VectorConstant,VectorConstant,Seq[DimensionPoint])=>Unit)= {
+  private def updateDimList(data:Seq[InstanceData],func:(Reference,VectorConstant,VectorConstant,VectorConstant,Seq[DimensionPoint])=>Unit): Unit = {
     for (d<-data;if d.ref.typ == theTypeID) {
       val position=d.fieldValue(1).toVector
       val angle=d.fieldValue(3).toDouble
@@ -287,13 +272,13 @@ class DimLineModule extends ActionModule with GraphActionModule {
     }
   }
   
-  def doAddDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
-    if(param.size!=2) return false
+  def doAddDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+    if(param.size!=2) false else {
     val newPoint=param.head._2.toVector
     val helpPoint=param(1)._2.toVector
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
-      val mline=new Line3D(position,mainLineVect)
-      val hline=new Line3D(newPoint,hdirVect)
+      val mline=Line3D(position, mainLineVect)
+      val hline=Line3D(newPoint, hdirVect)
       val iPoint=mline.intersectionWith(hline)
       val lpoint=hline.orthProjection(helpPoint)
       val dist=lpoint-newPoint
@@ -308,8 +293,8 @@ class DimLineModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doDelDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
-    if(param.size!=2) return false
+  def doDelDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+    if(param.size!=2) false else {
     val point=param.head._2.toVector
     val lcd=param(1)._2.toDouble
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
@@ -324,8 +309,8 @@ class DimLineModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doSetMainRef(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
-    if(param.size!=2) return false
+  def doSetMainRef(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+    if(param.size!=2) false else {
     println("Set Main Ref "+param.mkString("| "))
     val point=param.head._2.toVector
     val delta=DoubleConstant(param.last._2.toDouble)

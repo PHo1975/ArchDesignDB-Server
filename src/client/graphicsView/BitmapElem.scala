@@ -1,15 +1,16 @@
 package client.graphicsView
 
-import java.awt.{AlphaComposite, Color, Graphics2D}
 import java.awt.geom.Rectangle2D
+import java.awt.image.BufferedImage
+import java.awt.{AlphaComposite, Color, Graphics2D}
 import java.io.File
-import javax.imageio.ImageIO
 
+import client.dataviewer.ViewConstants
 import definition.data.Reference
 import definition.expression._
-import util.Log
+import javax.imageio.ImageIO
+import util.{JavaUtils, Log}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 /**
@@ -18,15 +19,16 @@ import scala.util.control.NonFatal
 case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale:Double,angle:Double,
                          cscale:Double,pos:VectorConstant) extends GraphElem(nref,ncolor) {
 
-  val file=new File(fileName)
-  lazy val image= if(!file.exists()) {Log.e("cant find bitmap "+fileName); None} else
-    try { Some( ImageIO.read(new File(fileName))) }
-    catch { case NonFatal(e)=>Log.e(e); None
+  val file=new File(JavaUtils.restoreDelimiters(JavaUtils.resolveImagePath(ViewConstants.imagePath,fileName)))
+  //Log.e("load bitmap "+file.toString)
+  lazy val image: Option[BufferedImage] = if(!file.exists()) {Log.e("cant find bitmap "+file.toString); None} else
+    try { Some( ImageIO.read(file)) }
+    catch { case NonFatal(e)=>Log.e("Fehler beim laden der Bitmapdatei "+file.toString,e); None
     case other:Throwable =>println(other);System.exit(0);None}
-  val points=Array.ofDim[VectorConstant] (4)
+  val points: Array[VectorConstant] =Array.ofDim[VectorConstant] (4)
   //var oldScale= -1d
 
-  val _bounds=calcBounds
+  val _bounds: Rectangle2D.Double =calcBounds
 
   def getBounds(container:ElemContainer):Rectangle2D.Double= _bounds
 
@@ -60,15 +62,15 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     bounds
   }
 
-  def pixelsToM(pixels:Double)=pixels/dpi*25.4d/1000d*cscale*scale
+  def pixelsToM(pixels:Double): Double =pixels/dpi*25.4d/1000d*cscale*scale
 
-  override def drawWithOffset(g:Graphics2D,sm:Scaler,selectColor:Color,offSet:VectorConstant)=
+  override def drawWithOffset(g:Graphics2D,sm:Scaler,selectColor:Color,offSet:VectorConstant): Unit =
     internDraw(g,sm,selectColor,0d,pos+offSet,offSet==NULLVECTOR)
 
-  override def drawRotated(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,rotator:VectorConstant=>VectorConstant)=
-    internDraw(g,sm,selectColor,rangle,rotator(pos),false)
+  override def drawRotated(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,rotator:VectorConstant=>VectorConstant): Unit =
+    internDraw(g,sm,selectColor,rangle,rotator(pos),showBitmap = false)
 
-  def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,npos:VectorConstant,showBitmap:Boolean)=for(im<-image) {
+  def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,npos:VectorConstant,showBitmap:Boolean): Unit =for(im<-image) {
     g.setPaint(if (selectColor == null) ColorMap.getColor(color) else selectColor)
     g.setStroke(sm.getStroke(5, 0))
     val x = sm.xToScreen(npos.x).toInt
@@ -79,8 +81,8 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     val outAngle=(rangle+angle)*Math.PI/180d
     if(outAngle!=0d) g.rotate(-outAngle,x,sm.yToScreen(npos.y).toInt)
     val oldComposite=g.getComposite
-    System.out.println("comp: "+oldComposite.asInstanceOf[AlphaComposite].getRule)
-    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,0.9f))
+    //System.out.println("comp: "+oldComposite.asInstanceOf[AlphaComposite].getRule)
+    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,0.6f))
 
     if(showBitmap) g.drawImage(im,x,y,w+x,h+y,0,0,im.getWidth,im.getHeight,null)
     g.drawRect(x, y,w ,h)
@@ -103,8 +105,8 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
   }
 
   override def getFormatFieldValue(fieldNr: Int): Constant = fieldNr match {
-    case 0=> new IntConstant(color)
-    case 1=> new StringConstant(fileName)
+    case 0=> IntConstant(color)
+    case 1=> StringConstant(fileName)
     case 2=> new DoubleConstant(dpi)
     case 3=> new DoubleConstant(scale)
     case 4=> new DoubleConstant(angle)

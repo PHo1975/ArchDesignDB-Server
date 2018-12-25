@@ -1,26 +1,30 @@
 package client.plotdesign
 
-import java.awt.{BasicStroke, Graphics2D}
 import java.awt.geom.{Line2D, Rectangle2D}
+import java.awt.{BasicStroke, Color, Graphics2D}
 
 import client.comm.ClientQueryManager
-import client.graphicsView.{ElemContainer, Formatable, GraphElem, GraphElemConst, GraphElemFactory, LineStyleHandler, PolyElement, ScaleModel, Scaler}
+import client.graphicsView
+import client.graphicsView._
 import definition.comm.NotificationType
 import definition.data.{EMPTY_REFERENCE, InstanceData, OwnerReference, Reference}
 import definition.expression.{Constant, NULLVECTOR, VectorConstant}
 import util.Log
 
+import scala.collection.{immutable, mutable}
 import scala.swing.Swing
 
 
-class DropInfo(data:InstanceData) extends ElemContainer{  
-  def graphElemList=ClientQueryManager.queryInstanceFact(data.ref, 0,GraphElemFactory)
-  val scale=data.fieldValue(2).toInt  
-  val scaleFactor=if(scale== -1) 0.005d else ScaleModel.scales(scale)
-  def scaleRatio=1d/ scaleFactor
-  val worldBounds=LayerRef.calcWorldBounds(graphElemList, this, new Rectangle2D.Double)  
-  val paperWidth=worldBounds.width*scaleFactor
-  val paperHeight=worldBounds.height*scaleFactor  
+class DropInfo(data:InstanceData,controller:PlotDesignController) extends ElemContainer{
+  val measureLayerFieldOffset: Int =if(data.ref.typ==controller.layerTypes(1))1 else 0
+  def graphElemList: immutable.IndexedSeq[GraphElem] =ClientQueryManager.queryInstanceFact(data.ref, 0,
+    if(measureLayerFieldOffset==1) graphicsView.MeasureElemFactory else GraphElemFactory)
+  val scale: Int =data.fieldValue(2+measureLayerFieldOffset).toInt
+  val scaleFactor: Double =if(scale== -1) 0.005d else ScaleModel.scales(scale)
+  def scaleRatio: Double =1d/ scaleFactor
+  val worldBounds: Rectangle2D.Double =LayerRef.calcWorldBounds(graphElemList, this, new Rectangle2D.Double)
+  val paperWidth: Double =worldBounds.width*scaleFactor
+  val paperHeight: Double =worldBounds.height*scaleFactor
 }
 
 
@@ -45,10 +49,11 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   
   def layerRef:Reference=myData.fieldValue.head.toObjectReference
   
-  lazy val fieldOffset=if(layerRef.typ==controller.layerTypes(1))1 else 0  
-  
+  lazy val measureLayerFieldOffset: Int =if(layerRef.typ==controller.layerTypes(1))1 else 0
+
   def scale:Int=myData.fieldValue(1).toInt
   def angle:Double=myData.fieldValue(2).toDouble
+  def radAngle: Double =angle*Math.PI/180d
   def bx:Double=myData.fieldValue(3).toDouble
   def by:Double=myData.fieldValue(4).toDouble
   def bw:Double=myData.fieldValue(5).toDouble
@@ -57,9 +62,9 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   def yPos:Double=myData.fieldValue(8).toDouble
   def filter:Int=myData.fieldValue(9).toInt
   def _textScale:Double=if(myData.fieldData(10).isNullConstant) 1d else myData.fieldValue(10).toDouble
-  
-  
-  def loadLayer(doneListener:()=>Unit) = if(layerSubsID== -1){    
+
+
+  def loadLayer(doneListener:()=>Unit): Unit = if(layerSubsID== -1){
   	if(layerRef==EMPTY_REFERENCE) doneListener()
   	else if(layerSubsID== -1)
   	layerSubsID=ClientQueryManager.createSubscription(layerRef,-1){(command,data)=> listLock.synchronized {
@@ -67,9 +72,9 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   		command match {
   			case NotificationType.sendData|NotificationType.fieldChanged|NotificationType.updateUndo=>
           val inst=data.head
-          layerID=inst.fieldValue(0+fieldOffset).toString
-          layerName=inst.fieldValue(1+fieldOffset).toString
-          setLayerScale(if(scale==0)inst.fieldValue(2+fieldOffset).toInt else scale)
+          layerID=inst.fieldValue(0+measureLayerFieldOffset).toString
+          layerName=inst.fieldValue(1+measureLayerFieldOffset).toString
+          setLayerScale(if(scale==0)inst.fieldValue(2+measureLayerFieldOffset).toInt else scale)
           if(command==NotificationType.sendData)loadGraphElems()
           else {
             calcScreenBounds()
@@ -84,10 +89,12 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   		}
   	}}}
 
-  	def loadGraphElems()=listLock.synchronized{
-  	  //println("load graph Elems lref:"+ref+" layer:"+layerRef)  		
+  	def loadGraphElems(): Unit =listLock.synchronized{
+  	  println("load graph Elems lref:"+ref+" layer:"+layerRef+" measure "+measureLayerFieldOffset)
   		if(graphSubsID== -1)
-  		graphSubsID=ClientQueryManager.createFactSubscription(layerRef,0,GraphElemFactory){(command,data)=>listLock.synchronized {
+  		graphSubsID=ClientQueryManager.createFactSubscription(layerRef,0,
+        if(measureLayerFieldOffset==1) MeasureElemFactory else GraphElemFactory){
+        (command,data)=>listLock.synchronized {
   	  Swing.onEDT{
   			command match {
   				case NotificationType.sendData|NotificationType.updateUndo=>
@@ -116,7 +123,7 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   	}
   }
   
-  def shutDown() = listLock.synchronized {
+  def shutDown(): Unit = listLock.synchronized {
     if(layerSubsID >=0) {
       //println("Layer "+ref+" remove LayerSubs" +layerSubsID)
       ClientQueryManager.removeSubscription(layerSubsID)      
@@ -131,20 +138,25 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
     }
   }
   
-  
- 
-  
-  def setLayerScale(newScale:Int) = {
+  def setLayerScale(newScale:Int): Unit = {
     layerScale=newScale
     scaleFactor=if(layerScale== -1) 0.005d else ScaleModel.scales(layerScale)
     RefScaler.strokeMap.clear()
   }
   
+  def xToPaper(worldx:Double): Float =(worldx*scaleFactor+xPos).toFloat
+
+  def yToPaper(worldy:Double): Float =(worldy*scaleFactor+yPos).toFloat
+
+  def rotate(x:Float,y:Float,cx:Double,cy:Double,angle:Double):VectorConstant= {
+    val dx=x.toDouble-cx
+    val dy=y.toDouble-cy
+    val length=Math.sqrt(dx*dx+dy*dy)
+    val newAngle=Math.atan2(dy,dx)+angle
+    VectorConstant(cx+length*Math.cos(newAngle),cy+length*Math.sin(newAngle),0)
+  }
   
-  def xToPaper(worldx:Double)=(worldx*scaleFactor+xPos).toFloat
-  def yToPaper(worldy:Double)=(worldy*scaleFactor+yPos).toFloat
-  
-  def calcScreenBounds()={   
+  protected def calcScreenBounds(): Rectangle2D.Float ={
     LayerRef.calcWorldBounds(graphElemList,this,worldBounds)    
     if(bw>0)    {
       screenBounds.x=xToPaper(bx)
@@ -158,20 +170,21 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
       screenBounds.width=(worldBounds.width*scaleFactor).toFloat
 	    screenBounds.height=(worldBounds.height*scaleFactor).toFloat
     }
-    p1=new VectorConstant(screenBounds.x,screenBounds.y,0)
-    p2=new VectorConstant(screenBounds.x+screenBounds.width,	screenBounds.y,0)
-		p3=new VectorConstant(p2.x,screenBounds.y+screenBounds.height,0)
-		p4=new VectorConstant(screenBounds.x,p3.y,0)
+    //val dx=new VectorConstant(screenBounds.width*Math.cos(radAngle),screenBounds.width*Math.sin(radAngle),0)
+    //val dy=new VectorConstant(screenBounds.height*Math.sin(radAngle),-screenBounds.height*Math.cos(radAngle),0)
+    p1=rotate(screenBounds.x,screenBounds.y,xPos,yPos,radAngle)
+    p4=rotate(screenBounds.x,screenBounds.y+screenBounds.height,xPos,yPos,radAngle)
+		p3=rotate(screenBounds.x+screenBounds.width,screenBounds.y+screenBounds.height,xPos,yPos,radAngle)
+		p2=rotate(screenBounds.x+screenBounds.width,screenBounds.y,xPos,yPos,radAngle)
     //println("calc Screen bounds:"+screenBounds + " scaleFactor:"+scaleFactor)
     screenBounds
   }
-  
   
  
   /** replaces the old LayerRef with the new one
    * 
    */  
-  def setData(newData:InstanceData)= {
+  def setData(newData:InstanceData): Unit = {
     if(newData.fieldValue.head.toObjectReference!=layerRef) {
       shutDown()
       myData=newData
@@ -194,27 +207,47 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   }
   
   
-  def hits(px:Double,py:Double,dist:Double):Boolean = px >= p1.x && px <= p3.x && py >= p1.y && py <= p3.y
+  def hits(px:Double,py:Double,dist:Double):Boolean = {
+    val p=new VectorConstant(px,py,0)
+    VectorConstant.pointLocation2D(p1,p2,p)>=0 &&
+      VectorConstant.pointLocation2D(p2,p3,p)>=0 &&
+      VectorConstant.pointLocation2D(p3,p4,p)>=0 &&
+      VectorConstant.pointLocation2D(p4,p1,p)>=0
+  }
   
   
-  def drawFrame(g:Graphics2D,offset:VectorConstant)= {
+  def drawFrame(g:Graphics2D,offset:VectorConstant): Unit = {
     def drawLine(pa:VectorConstant,pb:VectorConstant):Unit={
       drawLineObj.x1=controller.scaleModel.xToScreen(pa.x+offset.x)
     	drawLineObj.y1=controller.scaleModel.yToScreen(pa.y+offset.y)
     	drawLineObj.x2=controller.scaleModel.xToScreen(pb.x+offset.x)
     	drawLineObj.y2=controller.scaleModel.yToScreen(pb.y+offset.y)
     	g.draw(drawLineObj)
-    }    
+    }
     drawLine(p1,p2)
     drawLine(p2,p3)
     drawLine(p3,p4)
-    drawLine(p4,p1)    
+    drawLine(p4,p1)
+    val oldTrans=g.getTransform
+    if(angle!= 0d) g.rotate(-radAngle,controller.scaleModel.xToScreen(p1.x+offset.x),controller.scaleModel.yToScreen(p1.y+offset.y))
     g.drawString(if(layerName==null) "Noname" else layerName,controller.scaleModel.xToScreen(p1.x+offset.x),controller.scaleModel.yToScreen(p1.y+offset.y))
+    g.setTransform(oldTrans)
   }
   
-  def draw(g:Graphics2D):Unit={
-    val oldClip=g.getClip()
+  def draw(g:Graphics2D):Unit = {
+    val oldClip=g.getClip
     drawFrame(g,NULLVECTOR)
+
+    val oldTrans=g.getTransform
+    if(angle!= 0d) g.rotate(-radAngle,controller.scaleModel.xToScreen(xPos),controller.scaleModel.yToScreen(yPos))
+
+    g.setColor(Color.green)
+
+    val crossX=controller.scaleModel.xToScreen(xPos).toInt
+    val crossY=controller.scaleModel.yToScreen(yPos).toInt
+    g.drawLine(crossX-20,crossY,crossX+20,crossY)
+    g.drawLine(crossX,crossY-20,crossX,crossY+20)
+    g.setColor(Color.black)
     
     if(bw>0d){
       val ps1x=controller.scaleModel.xToScreen(xToPaper(bx))
@@ -225,6 +258,7 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
     	g.draw(rect)
     	g.clip(rect)
     }
+
     for (el <-graphElemList) el match {
       case pel:PolyElement =>el.draw(g,RefScaler,null)
       case _ =>
@@ -234,13 +268,15 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
       //ase tel:TextElement=> println("Text:"+tel.text);tel.draw(g,RefScaler,null)
       case _ =>el.draw(g,RefScaler,null)
     }
+    g.setTransform(oldTrans)
     if(bw>0d) g.setClip(oldClip)
+
   }
   
-  def scaleRatio=1d/scaleFactor
+  def scaleRatio: Double =1d/scaleFactor
   
   
-  object RefScaler extends Scaler{
+  object RefScaler extends Scaler {
   	controller.scaleModel.registerScaleListener(()=> RefScaler.strokeMap.clear())
   	def xToScreen(wx:Double):Float= controller.scaleModel.xToScreen(wx * scaleFactor + xPos)
   	def yToScreen(wy:Double):Float= controller.scaleModel.yToScreen(wy * scaleFactor + yPos)
@@ -252,12 +288,12 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   	def thicknessScale:Double=controller.scaleModel.thicknessScale*scaleFactor
   	//def getStroke(thick:Int,style:Int):java.awt.BasicStroke=controller.scaleModel.getStroke(thick,style)
 
-  	def relScaleFactor=1/scaleFactor
+  	def relScaleFactor: Double =1/scaleFactor
 
-  	def dotPitch=ScaleModel._dotPitch
-  	val strokeMap=collection.mutable.HashMap[(Int),BasicStroke]()
+  	def dotPitch: Double =ScaleModel._dotPitch
+  	val strokeMap: mutable.HashMap[Int, BasicStroke] =collection.mutable.HashMap[(Int),BasicStroke]()
 
-  	def getStroke(thick:Float,style:Int)={
+  	def getStroke(thick:Float,style:Int): BasicStroke ={
   		//if(thick<0) System.err.println("Stroke thick :"+thick)
   		val key=thick.hashCode+style.toShort*Short.MaxValue	
       strokeMap.getOrElseUpdate(key,LineStyleHandler.createStroke(thicknessToScreen,thick,style))  		
@@ -265,12 +301,12 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   	
   	def isPrintScaler=false
   	val colorsFixed=false		
-  	override def textScale= _textScale
+  	override def textScale: Double = _textScale
   }
   
   def getFormatFieldValue(fieldNr:Int):Constant = null
   
-  override def hitPoint(cont:ElemContainer,px:Double,py:Double,dist:Double)= {		
+  override def hitPoint(cont:ElemContainer,px:Double,py:Double,dist:Double): Seq[(Byte, VectorConstant)] = {
 		//System.out.println("test x:"+(px-startPoint.x)+ " y:"+(py-startPoint.y))
     GraphElemConst.checkHit(px,py,dist,p1) ++ 
     GraphElemConst.checkHit(px,py,dist,p2) ++
@@ -279,18 +315,19 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
 	}
   
   def isPrintScaler=false
-  
 }
+
+
 
 object LayerRef {
   
-  def apply(controller:PlotDesignController,data:InstanceData)= {
+  def apply(controller:PlotDesignController,data:InstanceData): LayerRef = {
     new LayerRef(data.ref,controller,data)/*data.fieldValue(0).toObjectReference,data.fieldValue(1).toDouble,data.fieldValue(2).toDouble,
         data.fieldValue(3).toDouble,data.fieldValue(4).toDouble,data.fieldValue(5).toDouble,data.fieldValue(6).toDouble,
         data.fieldValue(7).toDouble,data.fieldValue(8).toDouble,data.fieldValue(9).toInt)*/
   }
   
-  def calcWorldBounds(graphElemList:Seq[GraphElem],elemContainer:ElemContainer,worldBounds:Rectangle2D.Double)= {
+  def calcWorldBounds(graphElemList:Seq[GraphElem],elemContainer:ElemContainer,worldBounds:Rectangle2D.Double): Rectangle2D.Double = {
 		worldBounds.x=Double.MaxValue
 		worldBounds.y=Double.MaxValue
 		worldBounds.width=Double.MinValue

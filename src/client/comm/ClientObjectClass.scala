@@ -3,12 +3,11 @@
  */
 package client.comm
 
-import javax.swing.JComponent
-
-import client.dialog.form.{FormBox, FormCreateContext}
 import client.dialog._
+import client.dialog.form.{FormBox, FormCreateContext}
 import client.ui.ClientApp
 import definition.typ._
+import javax.swing.JComponent
 import util.XMLUtils.readOptString
 
 import scala.util.control.NonFatal
@@ -63,7 +62,7 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
 }
 
 object ClientObjectClass {
-	val readFormContext=new FormCreateContext {
+	val readFormContext:FormCreateContext=new FormCreateContext {
 	  def getIconableButton(commandName:String,groupName:String,ntooltipText:String)=new IconableButton(commandName,groupName,ntooltipText)
 	  def getIconableToggleButton(commandName:String,groupName:String,ntooltipText:String)=new IconableToggleButton(commandName,groupName,ntooltipText)
 

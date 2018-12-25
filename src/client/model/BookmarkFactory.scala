@@ -3,22 +3,23 @@
  */
 package client.model
 
-import client.comm.UserSettings
+import client.comm.{ClientQueryManager, UserSettings}
 import definition.data._
-import client.comm.ClientQueryManager
+
+import scala.collection.mutable.ArrayBuffer
 //import collection.immutable._
 /** saves the last used paths
  * 
  */
 
 class BMEntry (var name:String,var list:Seq[Reference]){
-	  override def toString= "| "*(list.size-BookmarkFactory.lowestLevel)+name
+	  override def toString: String = "| "*(list.size-BookmarkFactory.lowestLevel)+name
 	}
 
 object BookmarkFactory {	
   var lowestLevel=0
   var hasSetup=false
-  var _pathList= collection.mutable.ArrayBuffer[BMEntry]() 
+  var _pathList: ArrayBuffer[BMEntry] = collection.mutable.ArrayBuffer[BMEntry]()
   //var standardRef:Reference=null
   
   lazy val standardPath:Seq[Reference]=List(UserSettings.rootRef)
@@ -52,17 +53,17 @@ object BookmarkFactory {
   	hasSetup=true
   }
   
-  def addBookmark(nname:String,npath:Seq[Reference])= {
+  def addBookmark(nname:String,npath:Seq[Reference]): Unit = {
     _pathList += new BMEntry(nname,npath)
     updateList()
   }
   
-  private def updateList()={
+  private def updateList(): Unit ={
     _pathList=_pathList.sortWith(comparePath)
     lowestLevel=_pathList.foldLeft(Int.MaxValue)((a,b)=>if(b.list.size<a)b.list.size else a)    
   }
   
-  def deleteBookmark(ix:Int) = {
+  def deleteBookmark(ix:Int): Unit = {
     _pathList.remove(ix)
     updateList()
   }

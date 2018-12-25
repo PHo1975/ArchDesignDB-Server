@@ -4,7 +4,6 @@
 package management.databrowser
 
 import definition.typ._
-import definition.data._
 import server.storage.ServerObjectClass
 
 /** Table Model for showing and setting up the property fields definition of a class

@@ -1,16 +1,11 @@
 package client.model
 
-import scala.swing.Dialog
-import scala.swing.Window
 import java.awt.Dimension
-import scala.swing.Button
-import scala.swing.BorderPanel
-import scala.swing.ScrollPane
-import scala.swing.BoxPanel
-import scala.swing.event.ButtonClicked
-import scala.swing.ListView
+
 import definition.data.Reference
-import scala.swing.event.MouseClicked
+
+import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, ListView, ScrollPane, Window}
+import scala.swing.event.{ButtonClicked, MouseClicked}
 
 class BookmarkDialog(w:Window) extends Dialog(w) {
   val openBut=new Button("öffnen")

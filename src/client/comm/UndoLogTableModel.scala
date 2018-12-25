@@ -2,10 +2,9 @@
  * Author: Peter Started:03.11.2010
  */
 package client.comm
-import javax.swing.table._
-
 import definition.data._
 import definition.typ._
+import javax.swing.table._
 
 /** Table model for showing the undo steps 
  * 

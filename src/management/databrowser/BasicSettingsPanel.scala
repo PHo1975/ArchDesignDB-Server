@@ -4,10 +4,10 @@ import java.awt.Dimension
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
-import javax.swing.JFileChooser
 
 import client.dataviewer.ViewConstants
 import definition.data.Reference
+import javax.swing.JFileChooser
 import server.config.FSPaths
 import transaction.handling.SessionManager
 
@@ -79,23 +79,26 @@ class BasicSettingsPanel extends BoxPanel(Orientation.Vertical) {
     FSPaths.setLogDir(newDir)    
   })+= new PathEditBox("Deploy-Directory",()=>FSPaths.deployDir,(newDir)=> {
     FSPaths.setDeployDir(newDir)
-  })  +=
-    new FormatLine(100,"Server Port",()=>FSPaths.serverPort.toString,(newPort)=>FSPaths.setServerPort(newPort.toInt))+=
-    new FormatLine(100, "WebServer Port", () => FSPaths.webServerPort.toString, (newPort) => FSPaths.setWebServerPort(newPort.toInt)) +=
+  })+= new PathEditBox("Image-Directory",()=>FSPaths.imageDir,(newDir)=> {
+    FSPaths.setImageDir(newDir)
+  }) +=
+    new FormatLine(140,"Server Port",()=>FSPaths.serverPort.toString,(newPort)=>FSPaths.setServerPort(newPort.toInt))+=
+    new FormatLine(140, "Web Port NoSSL", () => FSPaths.webServerPortNoSSL.toString, (newPort) => FSPaths.setWebServerPortNoSSL(newPort.toInt)) +=
+    new FormatLine(140, "Web Port SSL", () => FSPaths.webServerPortSSL.toString, (newPort) => FSPaths.setWebServerPortSSL(newPort.toInt)) +=
     //new FormatLine(100,"Backup Hour",()=>FSPaths.backupHour.toString,(newHour)=>FSPaths.setBackupHour(newHour.toInt))+=
-    new FormatLine(100,"Settings Object",()=>FSPaths.settingsObjectRef.sToString,(newString)=>{
+    new FormatLine(140,"Settings Object",()=>FSPaths.settingsObjectRef.sToString,(newString)=>{
         val ref=Reference(newString)
         FSPaths.setSettingsRef("SettingsObject",ref)
     })+= 
-    new FormatLine(100,"ProjectRoot",()=>FSPaths.projectRootRef.sToString,(newString)=>{
+    new FormatLine(140,"ProjectRoot",()=>FSPaths.projectRootRef.sToString,(newString)=>{
         val ref=Reference(newString)
         FSPaths.setSettingsRef("ProjectRoot",ref)
     })+=
-      new FormatLine(100,"LibraryRoot",()=>FSPaths.libraryRootRef.sToString,(newString)=>{
+      new FormatLine(140,"LibraryRoot",()=>FSPaths.libraryRootRef.sToString,(newString)=>{
         val ref=Reference(newString)
         FSPaths.setSettingsRef("LibraryRoot",ref)
     })+=
-      new FormatLine(100,"UserRoot",()=>FSPaths.userRootRef.sToString,(newString)=>{
+      new FormatLine(140,"UserRoot",()=>FSPaths.userRootRef.sToString,(newString)=>{
         val ref=Reference(newString)
         FSPaths.setSettingsRef("UserRoot",ref)
     })+=Swing.VStrut(10)+= backupDateLabel+=

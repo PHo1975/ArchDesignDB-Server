@@ -3,7 +3,7 @@
  */
 package transaction.handling
 
-import definition.data.{InstanceData, InstanceProperties, OwnerReference, Reference, ReferencingLinks}
+import definition.data._
 import server.storage.CollFuncResultSet
 
 /** Superclass for the different Transaction Types

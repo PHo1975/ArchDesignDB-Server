@@ -13,18 +13,18 @@ object SimpleProfiler {
   var dprint=false
   @scala.volatile var timeList:List[(String,Long)]=Nil
   
-  def startMeasure(label:String) = lock.synchronized{
+  def startMeasure(label:String): Unit = lock.synchronized{
   	if(dprint){
   		println("["+label+" ")  		
   	} else {
-  		if(timeList.nonEmpty )printTimeList
+  		if(timeList.nonEmpty )printTimeList()
   		timeList=(label,0L)::Nil
   	}
   	startTime=System.currentTimeMillis()
 		lastTime=startTime
   }
   
-  def measure(label:String) = lock.synchronized{
+  def measure(label:String): Unit = lock.synchronized{
   	val between=System.currentTimeMillis()
 		if(dprint) {
   		println(label+":"+(between-lastTime)+" ")  		
@@ -32,7 +32,7 @@ object SimpleProfiler {
   	lastTime=between
   }
   
-  def measureEx(label:String) = lock.synchronized{
+  def measureEx(label:String): Unit = lock.synchronized{
   	val between=System.currentTimeMillis()
 		if(dprint) {
   	    val dist= between - lastTime
@@ -42,14 +42,14 @@ object SimpleProfiler {
   	lastTime=between
   }
   
-  def finish(label:String) = lock.synchronized{if(dprint) {
+  def finish(label:String): Unit = lock.synchronized{if(dprint) {
   	measure(label)
   	System.out.println(label+"= "+(lastTime-startTime))  	
-  } else printTimeList}
+  } else printTimeList()}
   
-  def printTimeList() = lock.synchronized{
+  def printTimeList(): Unit = lock.synchronized{
   	println("\n timeList:")
-  	println(timeList.reverseMap((a) => a._1 + " :" + a._2.toString + " ms").mkString("\n"))
+  	println(timeList.reverseMap(a => a._1 + " :" + a._2.toString + " ms").mkString("\n"))
   	println
   	timeList=Nil
   }

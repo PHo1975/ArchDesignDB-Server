@@ -5,8 +5,6 @@ package client.ui
 
 import java.awt.{Color, Font}
 import java.net._
-import javafx.application.Platform
-import javax.swing.{Scrollable, _}
 
 import client.comm._
 import client.dataviewer._
@@ -18,6 +16,8 @@ import client.search.SearchViewbox
 import com.sun.jna.{Native, NativeLong, WString}
 import definition.comm.{PropertyGroup, PropertyValue}
 import definition.typ.{AllClasses, DataType}
+import javafx.application.Platform
+import javax.swing.{Scrollable, _}
 
 import scala.swing._
 import scala.swing.event._
@@ -123,25 +123,13 @@ object ClientApp extends App {
     add(mainBox, BorderPanel.Position.Center)
     add(new BoxPanel(scala.swing.Orientation.Vertical) {
       border = BorderFactory.createEmptyBorder(5, 5, 5, 10)
-      /*peer.addMouseListener(new MouseAdapter {
-        override def mouseClicked(e: java.awt.event.MouseEvent): Unit = {
-          println("prefSize:"+preferredSize+" width:"+peer.getWidth+"\n"+contents.map(el=>el.getClass+" pr:"+el.preferredSize+" w:"+el.peer.getWidth).mkString("\n"))
-        }
-      })*/
-      //maximumSize=new Dimension(ViewConstants.sidePanelWidth+20*ViewConstants.fontScale/100,Short.MaxValue)
-      //workplaceBut.maximumSize=new java.awt.Dimension(ViewConstants.sidePanelWidth-30,30)
       workplaceBut.xLayoutAlignment = 0.5d
-      //undoBut.maximumSize=workplaceBut.maximumSize
       undoBut.xLayoutAlignment = 0.5d
       opaque = true
       background = ViewConstants.leftPanelColor
       contents += Swing.VStrut(10) += DialogManager.selectLabScroller +=
         middleScroller += DialogManager.errorScroller += undoBut += Swing.VStrut(10) += workplaceBut += Swing.VStrut(15) += new BoxPanel(Orientation.Horizontal) {
-        //opaque=true
-        //background=Color.pink
-        contents += hideBut += strokeEditBut += fontEditBut += consoleBut += infoBut //poolBut
-        //maximumSize=new Dimension(ViewConstants.sidePanelWidth+20*ViewConstants.fontScale/100,30*ViewConstants.fontScale/100)
-
+        contents += hideBut += strokeEditBut += fontEditBut += consoleBut += infoBut
       }
     }, BorderPanel.Position.West)
     listenTo(undoBut, hideBut, strokeEditBut, fontEditBut, workplaceBut, consoleBut, infoBut)
@@ -226,7 +214,13 @@ object ClientApp extends App {
     UserSettings.setIntProperty("Fonts", "FontScale", ViewConstants.fontScale)
     UserSettings.setIntProperty("Draw", "LineCatch", ViewConstants.lineCatchDistance)
     UserSettings.setIntProperty("Draw", "PointCatch", ViewConstants.pointCatchDistance)
+    UserSettings.setIntProperty("Draw", "PolyLineTo", ViewConstants.polyLineTo)
     UserSettings.setIntProperty("Draw", "DragTreshold", ViewConstants.dragTreshold)
+    UserSettings.setIntProperty("Draw", "antialias",ViewConstants.antialias)
+    UserSettings.setIntProperty("Draw", "showToast",ViewConstants.showToast)
+    UserSettings.setIntProperty("Draw", "showHitPoints",ViewConstants.showToast)
+    UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
+    //UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
 
     UserSettings.setListProperty[PropertyGroup]("WindowSettings", "Boxes", storeList)
     UserSettings.setIntProperty("WindowSettings", "Width", bounds.width)
@@ -240,12 +234,12 @@ object ClientApp extends App {
 
   startup(args)
 
-  def startup(args: Array[String]): Unit = {
+  def startup(args: Array[String]): Unit = try{
     Platform.setImplicitExit(false)
     if(args.length<3 ) { System.out.println("Usage: ViewTest host portnr name password [hide=1]"); shutDown() }
     val serverName = args(0)
 
-    if (System.getProperty("os.name").contains("Windows 7") || System.getProperty("os.name").contains("Windows 8")) {
+    if (System.getProperty("os.name").contains("Windows")) {
       val appID = "DBClient"
       Native.register("shell32")
       if (SetCurrentProcessExplicitAppUserModelID(new WString(appID)).longValue() != 0)
@@ -279,7 +273,7 @@ object ClientApp extends App {
     })
 
     sock.classesReadListener = () => Swing.onEDT {
-      //println("Classes Read "+(System.currentTimeMillis()-start))
+      println("Classes Read ")
       ClientQueryManager.setClientSocket(sock)
 
       ViewConstants.defaultRowHeight = UserSettings.getIntProperty("Fonts", "RowHeight", 25)
@@ -292,14 +286,28 @@ object ClientApp extends App {
       ViewConstants.defFont = new Font("Arial", 0, UserSettings.getIntProperty("Fonts", "DefaultFont", 16))
       ViewConstants.lineCatchDistance = UserSettings.getIntProperty("Draw", "LineCatch", 6)
       ViewConstants.pointCatchDistance = UserSettings.getIntProperty("Draw", "PointCatch", 4)
+      ViewConstants.polyLineTo = UserSettings.getIntProperty("Draw", "PolyLineTo", 1)
       ViewConstants.dragTreshold = UserSettings.getIntProperty("Draw", "DragTreshold", 8)
-      val defaults = UIManager.getLookAndFeelDefaults()
-      defaults.put("defaultFont", ViewConstants.defFont)
-      defaults.put("Button.font", ViewConstants.defFont)
-      defaults.put("Label.font", ViewConstants.defFont)
-      defaults.put("TextField.font", ViewConstants.tableFont)
-      defaults.put("TextArea.font", ViewConstants.tableFont)
+      ViewConstants.antialias= UserSettings.getIntProperty("Draw", "antialias", 1)
+      ViewConstants.showToast= UserSettings.getIntProperty("Draw", "showToast", 1)
+      ViewConstants.showHitPoints= UserSettings.getIntProperty("Draw", "showHitPoints", 1)
+      ViewConstants.imagePath= UserSettings.getStringProperty("WindowSettings", "imagePath", "")
+      import javax.swing.{UIDefaults, UIManager}
+      UIManager.setLookAndFeel(new javax.swing.plaf.nimbus.NimbusLookAndFeel() {
+        override def getDefaults: UIDefaults = {
+          val defaults = super.getDefaults
+          defaults.put("defaultFont", ViewConstants.defFont)
+          defaults.put("Button.font", ViewConstants.defFont)
+          defaults.put("Label.font", ViewConstants.defFont)
+          defaults.put("TextField.font", ViewConstants.tableFont)
+          defaults.put("TextArea.font", ViewConstants.tableFont)
+          defaults
+        }
+      })
+      //val defaults = UIManager.getLookAndFeelDefaults()
+
       ViewConstants.fontScale = UserSettings.getIntProperty("Fonts", "FontScale", 100)
+      //ViewConstants.stopFX=UserSettings.getIntProperty("Draw", "stopFX",1)
       top.title = "Datenbank [" + args(2) + "]"
       import javax.swing.SwingUtilities
       SwingUtilities.updateComponentTreeUI(top.peer)
@@ -309,6 +317,7 @@ object ClientApp extends App {
       undoBut.font = ViewConstants.defFont
 
       ClientQueryManager.registerSetupListener(() => {
+        println("clientapp setup")
         val windowWidth = UserSettings.getIntProperty("WindowSettings", "Width")
         val windowHeight = UserSettings.getIntProperty("WindowSettings", "Height")
         val windowX = UserSettings.getIntProperty("WindowSettings", "XPos")
@@ -320,7 +329,7 @@ object ClientApp extends App {
         else if (windowWidth > 0 && windowHeight > 0)
           top.bounds = new java.awt.Rectangle(windowX, windowY, windowWidth, windowHeight)
         top.visible = true
-
+        println("Client app setup done")
       })
 
       SelectEventDispatcher.registerSelectListener(ActionPanel)
@@ -342,18 +351,24 @@ object ClientApp extends App {
     }
 
     sock.startupFinishListener += (() => Swing.onEDT {
+      println("startup finished")
       val storeList = UserSettings.getListProperty[PropertyGroup]("WindowSettings", "Boxes")
+      println("storeList loaded "+ storeList.size)
       storeList.find(_.name == "Default") match {
         case Some(group) => mainBox.restoreSettings(Some(group), loadDone _)
         case None => mainBox.restoreSettings(None, loadDone _)
       }
+      println("restore done")
     })
     sock.start()
+    println("Sock gestartet")
+  } catch {
+    case NonFatal(e) => println("Fataler Fehler "+e)
   }
 
 
   def loadDone():Unit = {
-    //System.out.println("Init Loading Done at "+(System.currentTimeMillis()-start))    
+    System.out.println("Init Loading Done ")
   }
 
   def shutDown(): Unit = {

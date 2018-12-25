@@ -4,10 +4,10 @@
 package client.comm
 
 import java.awt.event.{WindowAdapter, WindowEvent}
-import javax.swing.table.TableColumnModel
 
 import client.dataviewer.ViewConstants
 import definition.data.TransStepData
+import javax.swing.table.TableColumnModel
 
 import scala.swing._
 import scala.swing.event._

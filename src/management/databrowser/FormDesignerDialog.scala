@@ -4,13 +4,13 @@
 package management.databrowser
 
 import java.awt.Color
-import javax.swing.table.TableCellEditor
-import javax.swing.{BorderFactory, JComboBox, JPopupMenu}
 
 import client.dialog.ComboBoxEditor
 import client.dialog.form._
 import definition.typ.AbstractObjectClass
-import definition.typ.form.{AbstractFormBox, AbstractFormElement}
+import definition.typ.form.AbstractFormElement
+import javax.swing.table.TableCellEditor
+import javax.swing.{BorderFactory, JComboBox, JPopupMenu}
 import server.storage.ServerObjectClass
 
 import scala.collection.JavaConverters._

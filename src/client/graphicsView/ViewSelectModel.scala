@@ -160,7 +160,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 	
 	def getDragDropSelection:GraphElemTransferable = {
 	  new GraphElemTransferable((for((layer,selGroup)<-elMap;if selGroup.children.nonEmpty)
-	      yield new LayerTransferable(layer.ref,layer.name,selGroup.children)
+	      yield new LayerTransferable(layer.ref,layer.name,selGroup.children,1000d*ScaleModel.scales(layer.scale))
 	    ).toArray)	  
 	}
 

@@ -5,12 +5,12 @@ package client.graphicsView
 
 import java.awt.Color
 import java.awt.datatransfer.Transferable
-import javax.swing.table.TableColumnModel
-import javax.swing.{ImageIcon, JTable, TransferHandler}
 
 import client.dataviewer.{InstanceSelection, OnMoveHandler, ViewConstants}
 import client.dialog._
 import client.icons.IconManager
+import javax.swing.table.TableColumnModel
+import javax.swing.{ImageIcon, JTable, TransferHandler}
 
 import scala.swing._
 import scala.swing.event._
@@ -33,9 +33,9 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
   var lastMousePos:Point = new Point
   val moveHandlerID: Int = InstanceSelection.addOnMoveHandler(new MyMoveHandler(this))
   var lastRow: Int = -1
+  var lastColumn:Int= -1
   	
-  val layerTable:Table=new Table() {		
-  	var lastColumn:Int= -1
+  val layerTable:Table=new Table() {
 		peer.setModel(viewController.layerModel)
 		peer.setTransferHandler(transferHandler)
 		peer.setDragEnabled(true)
@@ -44,7 +44,7 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
 		selection.elementMode=Table.ElementMode.None
 		rowHeight= LayerPanelController.lineHeight
 		focusable=false
-    val colMod: TableColumnModel = peer.getColumnModel()
+    val colMod: TableColumnModel = peer.getColumnModel
     colMod.getColumn(0).setPreferredWidth(45 * ViewConstants.fontScale / 100)
     colMod.getColumn(1).setPreferredWidth(40 * ViewConstants.fontScale / 100)
     colMod.getColumn(2).setPreferredWidth(40 * ViewConstants.fontScale / 100)
@@ -52,19 +52,29 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
     colMod.getColumn(4).setPreferredWidth(260 * ViewConstants.fontScale / 100)
     colMod.getColumn(5).setPreferredWidth(50 * ViewConstants.fontScale / 100)
 		
-		listenTo(mouse.clicks)
+		listenTo(mouse.clicks,mouse.moves)
 		reactions+={  	  
 			case e:MousePressed =>
 				lastColumn= peer.columnAtPoint(e.point)
 				lastRow=peer.rowAtPoint(e.point)
 				lastMousePos=e.point
-			case e:MouseReleased => if(e.clicks ==1) {
-				if(lastColumn==peer.columnAtPoint(e.point)&& lastColumn> -1&&
+        if((lastColumn<3||lastColumn==5)&&lastColumn> -1 && lastRow> -1)tableCellClicked(lastColumn,lastRow)
+        if(lastColumn==3) viewController.layerModel.setActiveLayerIx(lastRow,exclusive = true)
+			case e:MouseReleased =>
+        val col=peer.columnAtPoint(e.point)
+        System.out.println("released lc:"+lastColumn+" lr"+lastRow+" cc:"+peer.columnAtPoint(e.point)+" cr:"+peer.rowAtPoint(e.point)+" c:"+e.clicks)
+        if(e.clicks ==1) {
+
+				  /*if(lastColumn==peer.columnAtPoint(e.point)&& lastColumn> -1&&
 						lastRow==peer.rowAtPoint(e.point)&& lastRow> -1)
-					tableCellClicked(lastColumn,lastRow)
-			} else if(e.clicks==2)
-        if (peer.columnAtPoint(e.point) == 2)
-			     viewController.layerModel.setActiveLayerIx(lastRow,true)
+					tableCellClicked(lastColumn,lastRow)*/
+        } else if(e.clicks==2)
+          if (col == 2)
+             viewController.layerModel.setActiveLayerIx(lastRow,exclusive = true)
+      /*case e:MouseDragged=>
+        val control = (e.modifiers & Key.Modifier.Control) > 0
+        if(peer.columnAtPoint(e.point)>2)
+          transferHandler.exportAsDrag(peer, e.peer, if(control)TransferHandler.COPY else TransferHandler.MOVE)*/
 		}
 
     val eyeRend = new MyRenderer(LayerPanelController.eyeIcon, true)
@@ -111,7 +121,7 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
   def shutDown(): Unit = InstanceSelection.removeOnMoveHandler(moveHandlerID)
   
   def lastSelectedRow():Int = {
-    val ix=(lastMousePos.getY()/LayerPanelController.lineHeight).toInt
+    val ix=(lastMousePos.getY/LayerPanelController.lineHeight).toInt
     if(ix>=viewController.layerModel.layerList.size) viewController.layerModel.layerList.size-1
     else ix
   }
@@ -122,7 +132,7 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
   		case 0 => toggleVisible(row)
   		case 1 => toggleEdible(row)
   		case 2 => toggleActive(row)
-      case 3 => viewController.layerModel.setActiveLayerIx(lastRow, true)
+      case 3 => viewController.layerModel.setActiveLayerIx(lastRow, exclusive = true)
   		case 5 => removeLayer(row) 
   		case _ =>
   	}
@@ -158,10 +168,10 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
   
  // ********************** Drag Drop
   
-  def sourceActions=TransferHandler.COPY_OR_MOVE
+  def sourceActions: Int =TransferHandler.COPY_OR_MOVE
   def DDfactory():InstanceSelection = {
     val selectedIx=lastSelectedRow()
-    if(selectedIx<0) null
+    if(selectedIx<0||lastColumn<4) null
     else {
       val selLayer = viewController.layerModel.layerList(selectedIx)
       val ret = new InstanceSelection(Array.empty, 0, List(selLayer.ref), Array(selLayer.name), 0, Array.empty, Array.empty)

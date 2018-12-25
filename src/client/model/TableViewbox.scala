@@ -5,7 +5,6 @@ package client.model
 
 import java.awt.Color
 import java.awt.event.{ActionEvent, KeyEvent}
-import javax.swing._
 
 import client.dataviewer.DataViewController
 import client.dialog.{NewButtonsList, SelectEventDispatcher}
@@ -14,6 +13,7 @@ import client.ui.ClientApp
 import definition.comm.{ListValue, PropertyGroup}
 import definition.data.{InstanceData, Reference}
 import definition.typ.SelectGroup
+import javax.swing._
 import util.MyListView
 
 import scala.swing.event.ButtonClicked
@@ -123,7 +123,9 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
   }  
   
   def restoreSettings(pgroup:PropertyGroup,listener:()=>Unit): Unit = {
-    val pathList=if(pgroup.containsProperty("path")) pgroup.getListProperty[Reference]("path") else BookmarkFactory.standardPath    
+		println("Table restore settings")
+    val pathList=if(pgroup.containsProperty("path")) pgroup.getListProperty[Reference]("path") else BookmarkFactory.standardPath
+		println("Path list "+pathList.mkString(","))
     try {
       pathController.loadPath(pathList,listener)
 		} catch {

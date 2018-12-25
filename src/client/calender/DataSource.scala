@@ -1,13 +1,10 @@
 package client.calender
 
-import client.comm.ClientQueryManager
-import definition.expression.DateConstant
-import definition.comm.NotificationType
-import definition.data.InstanceData
-import definition.data.Reference
-import definition.expression.IntConstant
-import definition.data.OwnerReference
 import client.calender.CalendarHelper._
+import client.comm.ClientQueryManager
+import definition.comm.NotificationType
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{DateConstant, IntConstant}
 
 
 trait DataSource {

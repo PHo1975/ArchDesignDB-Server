@@ -1,15 +1,14 @@
 package client.dataviewer.export
 
-import java.io.{BufferedWriter, File, FileWriter, PrintWriter}
+import java.io.File
 import java.util.Date
 
 import client.comm.ClientQueryManager
 import client.dataviewer.InstanceSelection
-import definition.data.{InstanceData, Reference}
+import definition.data.InstanceData
 import definition.expression.DateConstant
 import definition.typ.DataType
-import server.storage.StorageManager
-import util.{JavaUtils, Log, StrToInt}
+import util.{JavaUtils, Log}
 
 import scala.xml.{Elem, NodeBuffer, XML}
 
@@ -25,7 +24,7 @@ object GAEB83Module extends ExportModule {
 
   def unitReplace=Map(("Stück","Stck"),("Meter","m"),("pausch","psch"))
 
-  def stripLength(st:String, length: Int) = if(st.length<=length  ) st else st.substring(0,length)
+  def stripLength(st:String, length: Int): String = if(st.length<=length  ) st else st.substring(0,length)
 
   def splitText(text:String): Array[NodeBuffer] =
     for(part<-text.split('\n')) yield <span>{part}</span><br/>

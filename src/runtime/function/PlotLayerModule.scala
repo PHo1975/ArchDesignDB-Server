@@ -3,7 +3,7 @@ package runtime.function
 import definition.data.{InstanceData, OwnerReference}
 import definition.expression.{Constant, DoubleConstant, EMPTY_EX, VectorConstant}
 import definition.typ.{CommandQuestion, DataType, SystemSettings}
-import server.comm.{AbstractUserSocket, JavaClientSocket}
+import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, StorageManager}
 import transaction.handling.TransactionManager
 

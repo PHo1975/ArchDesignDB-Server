@@ -1,48 +1,29 @@
 package client.plotdesign
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
-import java.awt.geom.Point2D
-import java.awt.geom.Rectangle2D
-import java.awt.Point
-import scala.swing.event.Key
-import scala.swing.event.KeyPressed
-import client.comm.ClientObjectClass
+import java.awt.{Color, Graphics2D, Point}
+import java.awt.datatransfer.Transferable
+import java.awt.event.{ComponentAdapter, ComponentEvent}
+import java.awt.geom.{Point2D, Rectangle2D}
+
 import client.comm.ClientQueryManager
 import client.dataviewer.InstanceSelection
-import client.dialog.AbstractViewController
-import client.dialog.CommonTransferHandler
-import client.dialog.DialogManager
-import client.dialog.DragDropListener
-import client.dialog.FocusContainer
-import client.dialog.SelectEventDispatcher
-import client.graphicsView.GraphElem
-import client.graphicsView.MatchingScreenPoints
-import client.graphicsView.ScaleModel
-import client.graphicsView.ViewportState
-import client.print.APageable
-import client.print.PreviewWindow
-import client.print.PrintReceiver
+import client.dialog._
+import client.graphicsView.{GraphElem, MatchingScreenPoints, ScaleModel, ViewportState}
+import client.print.{APageable, PreviewWindow, PrintReceiver}
 import client.ui.ClientApp
-import definition.data.EMPTY_REFERENCE
-import definition.data.OwnerReference
-import definition.data.Reference
-import definition.expression.DoubleConstant
-import definition.expression.ObjectReference
-import definition.typ.AllClasses
+import definition.data.{EMPTY_REFERENCE, OwnerReference, Reference}
+import definition.expression.{DoubleConstant, ObjectReference}
 import definition.typ.SystemSettings
 import javax.print.attribute.standard.PageRanges
-import javax.swing.TransferHandler
-import java.awt.datatransfer.Transferable
+import javax.swing.{JComponent, TransferHandler}
+import util.Log
+
 import scala.swing.Swing
-import client.dialog.NewButtonsList
-import definition.data.InstanceData
-import java.awt.Graphics2D
-import java.awt.Color
+import scala.swing.event.{Key, KeyPressed}
 
 
 
 
-class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] with DragDropListener[InstanceSelection] with PrintReceiver {
+class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewController[LayerRef,LayerRef] with DragDropListener[InstanceSelection] with PrintReceiver {
   
   val scaleModel=new ScaleModel
   val pageModel=new PageModel(this)
@@ -55,9 +36,9 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   val extraGraphicsList=new ExtraGraphicsList(this)
   var layerTypes:Seq[Int]= Seq.empty
   var layerRefType:Int = -1
-  def layerModel=layerRefList   
+  def layerModel: LayerRefList =layerRefList
   val canvas=new PDCanvas(this)
-  def theCanvas=canvas.peer  
+  def theCanvas: JComponent =canvas.peer
   //var createdRef:Option[Reference]=None // latest created LayerRef
 	val createDropPos=new Point2D.Double	
 	val allScreenBounds=new Rectangle2D.Double  
@@ -76,9 +57,11 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   	}
   })
   ClientQueryManager.registerSetupListener(()=>{
+    println("Plot setup")
   	layerTypes=Seq(SystemSettings().systemTypes("Layer"),SystemSettings().systemTypes("MeasureLayer"))
   	layerRefType=SystemSettings().systemTypes("LayerPlotRef")
   	registerContainerListener(NewButtonsList)
+		println("Plot Setup done")
   })
   scaleModel.registerScaleListener(()=>{
   	canvas.repaint()
@@ -90,7 +73,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   def scaleRatio=1d
   
   
-  def load(ref:Reference,loadDoneListener: ()=>Unit) = {
+  def load(ref:Reference,loadDoneListener: ()=>Unit): Unit = {
     //println("PlotDesign load:"+ref)
     for(ref<-loadedRef) shutDown()
     loadedRef=Some(ref)
@@ -112,7 +95,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   }   
   
   
-  def shutDown()= for(ref<-loadedRef){
+  def shutDown(): Unit = for(ref<-loadedRef){
     //println("Controller shutdown ")
     pageModel.shutDown()
     layerRefList.shutDown()
@@ -131,7 +114,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
 	  		eb.width>=minX && eb.x<=maxX && eb.height>=minY && eb.y<=maxY	  	
 	  	})	  
 	  if(control) {	      
-	  	  selectModel.addSelection(elemList,false)
+	  	  selectModel.addSelection(elemList,toggle = false)
 	  } else {
 	  	if (elemList.isEmpty)selectModel.deselect(true)
 	  	else selectModel.setSelection(elemList)
@@ -139,24 +122,24 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
 	}  
    
    
-  def updatePage() = {
+  def updatePage(): Unit = {
     layerRefList.calcBounds()
     zoomAll()
     canvas.repaint()
   } 
   
-  def layerChanged(layerRef:LayerRef)= {    
+  def layerChanged(layerRef:LayerRef): Unit = {
     selectModel.elementChanged(layerRef)
     
     layersChanged()
   }
   
-  def extraGraphicsChanged() = {
+  def extraGraphicsChanged(): Unit = {
     calcAllBounds()
     canvas.repaint()
   }
   
-  def layersChanged() = {
+  def layersChanged(): Unit = {
     //println("LayersChanged pageBounds:"+pageModel.getPageBounds+" clipRect:"+pageModel.clipRect)
     layerRefList.calcBounds()
     
@@ -164,7 +147,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
     canvas.repaint()
   }
   
-  def getAllBounds=allScreenBounds
+  def getAllBounds: Rectangle2D.Double =allScreenBounds
   
   def calcAllBounds():Unit = {
     allScreenBounds.setRect(layerRefList.bounds)
@@ -184,7 +167,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
     }
   }
   
-  def layerCreatedAndLoaded(ncrRef:Reference,middleX:Double,middleY:Double) = /*for(crRef <-createdRef)*/{
+  def layerCreatedAndLoaded(ncrRef:Reference,middleX:Double,middleY:Double): Unit = /*for(crRef <-createdRef)*/{
     //if(ncrRef != crRef) System.out.println("ncrRef:"+ncrRef +" not equal crRef:"+crRef) 
     //else {
     	//System.out.println("Layer created and loaded crRef:"+crRef+" mx:"+middleX+" my:"+middleY)
@@ -195,12 +178,12 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
    
   }
   
-  def layerRemoved(layerRef:LayerRef) = {
+  def layerRemoved(layerRef:LayerRef): Unit = {
     selectModel.elemRemoved(layerRef)
     canvas.repaint()
   }
   
-  def addLayers(layerRefs:Seq[Reference],pos:Point) = if(layerRefs.nonEmpty){
+  def addLayers(layerRefs:Seq[Reference],pos:Point): Unit = if(layerRefs.nonEmpty){
     createDropPos.x=scaleModel.xToWorld(pos.x)
     createDropPos.y=scaleModel.yToWorld(pos.y)
     
@@ -215,7 +198,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   }
   
   
-  def deselectZoomInBut()=headerPanel.zoomInBut.selected=false
+  def deselectZoomInBut(): Unit =headerPanel.zoomInBut.selected=false
 	
 	  
   def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[LayerRef],editable:Boolean):Unit = {
@@ -234,7 +217,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
   
   def getFirstHittedElement(hittedElements:Iterable[LayerRef]):LayerRef= hittedElements.head
 	
-	def keyPressed(e:KeyPressed) = {
+	def keyPressed(e:KeyPressed): Unit = {
 		//System.out.println("key typed "+e)
 	  //resetCAS()
 		_viewportState match {
@@ -259,7 +242,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
 		
 	
 	def containerName="Graph2DEdit"
-	 def containerRef=loadedRef//.getOrElse(EMPTY_REFERENCE)
+	 def containerRef: Option[Reference] =loadedRef//.getOrElse(EMPTY_REFERENCE)
 	 
 	 
 	 def addTempElem( newElem:GraphElem):Unit= {
@@ -277,7 +260,7 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
 		 //pointSelectModel.deselect
 	 }
 	 
-	def clearNewElements() = {
+	def clearNewElements(): Unit = {
 	  extraGraphicsList.clearTempList()
 	}	
 	
@@ -303,52 +286,61 @@ class PlotDesignController extends AbstractViewController[LayerRef,LayerRef] wit
 	  }
 	}
 	
-	def print() = for(ref<-loadedRef){
+	def print(): Unit = for(ref<-loadedRef){
 	  ClientQueryManager.executeAction(new OwnerReference(0,EMPTY_REFERENCE),Seq(ref),"Ausgabe",Seq())
 	}
 	
-	def showArchive() = {
+	def showArchive(): Unit = {
 	  for(r<-loadedRef) {
 	    val odefRef=ClientQueryManager.queryInstance(r,0)
 	    //rintln("show Archive DesignRef:"+r+" odefs:"+odefRef.mkString("| "))
-	    if(odefRef.size>0)
+	    if(odefRef.nonEmpty)
 	    previewDialog.showArchive("Plot-Archiv",odefRef.head.ref,this)  
 	  }
 	  
 	}
+
+	def showVersions(): Unit =
+		for(r<-loadedRef; if editor.pathController!=null)
+			 editor.pathController.addPathElement(r,withCustomEditor = false)
+
 	
 	
 	///  ******************************************    DRAG & DROP
 	
 	
 	def sourceActions:Int = TransferHandler.NONE 
-  def DDfactory()=null
+  def DDfactory() =null
   def canImport(action:Int,data:Transferable,pos:TransferHandler.DropLocation):Boolean = {
 	  data match {
 	    case instData:InstanceSelection=>
 				if(! instData.selection. exists(aref=>layerTypes.contains(aref.typ))) {
-          util.Log.e("no layer type "); false
+          util.Log.e("no layer type ")
+					false
         }
-        else showDrop(instData,pos.getDropPoint())
-				true
-			case other=> ClientQueryManager.printErrorMessage("Falscher DragDrop-Typ "+other);dropRefs=Nil; false
+        else {
+					showDrop(instData,pos.getDropPoint)
+					true
+				}
+
+			case other=> ClientQueryManager.printErrorMessage("Falscher DragDrop-Typ "+other);Log.e("falscher Drop-Typ "+other);dropRefs=Nil; false
 	  }	  
 	}
 	
 	
-	def showDrop(instData:InstanceSelection,mousePos:Point)= {
+	def showDrop(instData:InstanceSelection,mousePos:Point): Unit = {
 	  val layerRefs=instData.selection. filter(aref=>layerTypes.contains(aref.typ)).toSeq	  
 	  dropLayers= if(dropRefs==layerRefs) dropLayers else {
 	    dropRefs=layerRefs	    
 	    dropMousePos=None	    
-	    dropRefs.map(dref=>new DropInfo(ClientQueryManager.queryInstance(dref, -1).head))	    
+	    dropRefs.map(dref=>new DropInfo(ClientQueryManager.queryInstance(dref, -1).head,this))
 	  }	  
 	  for(pos<-dropMousePos) drawDropRects(pos)	  
 	  drawDropRects(mousePos)
 	  dropMousePos=Some(mousePos)
 	}
 	
-	def drawDropRects(pos:Point)={
+	def drawDropRects(pos:Point): Unit ={
 	  val g:Graphics2D=canvas.peer.getGraphics.asInstanceOf[Graphics2D]
 	  g.setXORMode(Color.white)
 		g.setPaint(Color.black)

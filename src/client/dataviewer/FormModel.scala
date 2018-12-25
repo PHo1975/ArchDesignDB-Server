@@ -7,10 +7,9 @@ import client.dialog.DialogManager
 import client.dialog.form.FormBox
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
-import definition.expression.{Expression, ParserError, ParserResult, StringConstant, StringParser}
-import definition.typ.form.{FormDataField, DataChangeListener}
+import definition.expression._
+import definition.typ.form.{DataChangeListener, FormDataField}
 import definition.typ.{AbstractObjectClass, AllClasses, DataType, SelectGroup}
-
 
 import scala.swing.Swing
 import scala.util.control.NonFatal

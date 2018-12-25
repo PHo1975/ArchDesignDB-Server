@@ -6,11 +6,11 @@ package client.print
 import java.awt.Color
 import java.awt.print.{PageFormat, Paper}
 import java.io.{ByteArrayInputStream, DataInputStream}
-import javax.swing.BorderFactory
 
 import client.dataviewer.ViewConstants
 import definition.data.{FontStyleList, InstanceData, PageData, RenderContext}
 import definition.expression.{BlobConstant, DateConstant}
+import javax.swing.BorderFactory
 import util.{Log, MyListView}
 
 import scala.swing.{Alignment, GridPanel, Label}
@@ -27,7 +27,8 @@ class ArchivePageable(data:InstanceData) extends APageable{
 
 		val fontStyleList: FontStyleList = if (data.fieldValue.head.toString.length == 0) new FontStyleList(Seq.empty) else
 		  FontStyleList.fromXML(scala.xml.XML.loadString( data.fieldValue.head.toString) )
-		
+
+		override def resolveImagePath(path: String): String = util.JavaUtils.restoreDelimiters(util.JavaUtils.resolveImagePath(ViewConstants.imagePath,path))
 	}
 	override def context=if(tempContext==null)myContext else tempContext
 

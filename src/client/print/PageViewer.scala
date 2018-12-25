@@ -3,19 +3,12 @@
  */
 package client.print
 
-import scala.swing.Component
-import definition.data.PageData
-import definition.data.FormDescription
-import javax.swing.JComponent
-import java.awt.Dimension
-import java.awt.Color
-import javax.swing.BorderFactory
-import java.awt.Graphics2D
+import java.awt._
+
 import definition.data.RenderContext
-import java.awt.print.PageFormat
-import java.awt.RenderingHints
-import java.awt.geom.Rectangle2D
-import java.awt.Rectangle
+import javax.swing.JComponent
+
+import scala.swing.Component
 
 /**
  * 
@@ -26,21 +19,21 @@ class PageViewer(context:RenderContext) extends Component {
 	var data:APageable=_	
 	var prefSize:Dimension=getPrefSize  
 
-	def setData(nd:APageable) = {
+	def setData(nd:APageable): Unit = {
   	data=nd
   	updateSize()
   }	
 	
-	def updateSize()= {		
+	def updateSize(): Unit = {
 		prefSize=getPrefSize		
 		revalidate()
 		repaint()
 	}
   
   override lazy val peer=new JComponent with SuperMixin with javax.swing.Scrollable {
-  	override def getPreferredSize=prefSize 
-  	override def getMaximumSize=prefSize
-  	override def getMinimumSize=prefSize
+  	override def getPreferredSize: Dimension =prefSize
+  	override def getMaximumSize: Dimension =prefSize
+  	override def getMinimumSize: Dimension =prefSize
   	def getPreferredScrollableViewportSize: Dimension=getPreferredSize
   	def getScrollableTracksViewportHeight: Boolean =false
   	def getScrollableTracksViewportWidth: Boolean=false
@@ -48,7 +41,7 @@ class PageViewer(context:RenderContext) extends Component {
   	def getScrollableUnitIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int= 10
   }
   
-  override def paintComponent(g:Graphics2D)= {
+  override def paintComponent(g:Graphics2D): Unit = {
   	super.paintComponent(g)  	
   	g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
   	g.setColor(Color.white)
@@ -63,6 +56,6 @@ class PageViewer(context:RenderContext) extends Component {
   
   
   
-	def getPrefSize= if(data==null)nullSize 
+	def getPrefSize: Dimension = if(data==null)nullSize
 	  else new Dimension(context.fromMM(data.pageWidth),context.fromMM(data.pageHeight))
 }

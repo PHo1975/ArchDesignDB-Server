@@ -5,6 +5,7 @@ package runtime.function
 
 import java.io.{ByteArrayInputStream, DataInputStream}
 
+import client.dialog.AnswerPanelsData
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression._
 import definition.typ._
@@ -82,16 +83,19 @@ trait GraphActionModule {
   }
 }
 
+
+
 object GraphElemModule{  
   val wrongExtendTreshold=10000d
   val nearNullTreshold=0.00001d
 
   def singlePointQuestion(qname: String, pname: String) = Some(DialogQuestion(qname, Seq(new AnswerDefinition(pname, DataType.VectorTyp, None))))
 
-  def mvQuestion(aName: String) = Some(DialogQuestion(aName + "<br>Distanz angeben",
+  def mvQuestion(aName: String,strict:Boolean=true) = Some(DialogQuestion(aName + "<br>Distanz angeben",
     Seq(new AnswerDefinition("'von Punkt' angeben", DataType.VectorTyp,
       Some(DialogQuestion(aName + "<br>Distanz",
-        Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None))))),
+        Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None,if (strict) "" else AnswerPanelsData.NOSTRICT_HIT)))),
+      if (strict) "" else AnswerPanelsData.NOSTRICT_HIT),
       new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion)
     )))
 
@@ -116,27 +120,36 @@ object GraphElemModule{
 	  }
 
   def cutPointQuestion = Some(DialogQuestion("Point1", Seq(new AnswerDefinition("hitpoint1", DataType.VectorTyp,
-    Some(DialogQuestion("Point2", Seq(new AnswerDefinition("hitpoint2", DataType.VectorTyp, None)), false)))), false))
+    Some(DialogQuestion("Point2", Seq(new AnswerDefinition("hitpoint2", DataType.VectorTyp, None)), repeat = false)))), repeat = false))
 
-  def polygonFromParams(inst: Reference, params: Seq[(String, Constant)]): Polygon = {
-    if (params.size < 2) throw new IllegalArgumentException("Create Polygon wrong number of params:" + params.size + " " + params.mkString(","))
+  private def createPointList(params: Seq[(String, Constant)]): Seq[VectorConstant] = {
+    if (params.lengthCompare(2) < 0) throw new IllegalArgumentException("Create Polygon wrong number of params:" + params.size + " " + params.mkString(","))
     val paramIterator = params.iterator
     val startPoint: VectorConstant = paramIterator.next()._2.toVector
 
-    val plist: Seq[VectorConstant] = paramIterator.scanLeft(startPoint) { case (lastPoint, (name, const)) => const match {
+    paramIterator.scanLeft(startPoint) { case (lastPoint, (name, const)) => const match {
       case v: VectorConstant => v
       case d: DoubleConstant => if (name == "dx") lastPoint + new VectorConstant(d.toDouble, 0d, 0d)
       else lastPoint + new VectorConstant(0d, d.toDouble, 0d)
       case o => throw new IllegalArgumentException("Wrong answer:" + o)
     }
     }.toSeq
+  }
 
-    val pointList = if (plist.size == 2) {
+  def polygonFromParams(inst: Reference, params: Seq[(String, Constant)]): Polygon = {
+    val plist=createPointList(params)
+    val pointList = if (plist.lengthCompare(2) == 0) {
       val p1 = plist.head
       val p2 = plist(1)
       List(p1, new VectorConstant(p1.x, p2.y, p1.z), p2, new VectorConstant(p2.x, p1.y, p2.z))
     } else plist
     new Polygon(Seq(inst), Seq(PointList(pointList).clockWise))
+  }
+
+  def polygonFromParamsToLine(inst: Reference, params: Seq[(String, Constant)]): Polygon = {
+    val plist=createPointList(params)
+    Log.w("mline "+params.mkString+" "+plist.mkString)
+    new Polygon(Seq(inst), Seq(PointList(plist).clockWise))
   }
 
   def groupByOrdered[A, K](t: Traversable[A], f: A => K): mutable.Map[K, List[A]] = {
@@ -152,7 +165,7 @@ object GraphElemModule{
 
 
     val lengths: Seq[Double] = (poly.pathList.headOption match {
-      case Some(pl) if pl.points.size > 1 => {
+      case Some(pl) if pl.points.lengthCompare(1) > 0 =>
         val lastPointIterator = new Iterator[Double] {
           var open = true
 
@@ -162,7 +175,6 @@ object GraphElemModule{
         }
         pl.points.indices.iterator.drop(1).map(i =>
           PolygonDivider.roundValue((pl.points(i) - pl.points(i - 1)).toDouble)) ++ lastPointIterator
-      }
       case _ => Iterator.empty
     }).toSeq
 
@@ -189,7 +201,56 @@ object GraphElemModule{
     }) else EMPTY_EX
   }
 
+  def generateWohnExpression(inst: InstanceData, poly: Polygon): Expression = {
+    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
+    val putz = UnitNumber(inst.fieldValue(13).toDouble, PolygonDivider.meterFraction)
+    val umfang = GraphElemModule.getUmfang(poly, addStartPoint = true)
+    if (areaList.isEmpty) EMPTY_EX else if (putz.value == 0d || umfang.isNullConstant) PolygonDivider.combineExpression(areaList)
+    else BinaryOperation(PolygonDivider.combineExpression(areaList), BinOperator.minusOp,
+      BinaryOperation(putz, BinOperator.getOp('*'), umfang))
+  }
+
+  def generateAreaExpression(inst: InstanceData, poly: Polygon): Expression = {
+    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
+    if (areaList.isEmpty) EMPTY_EX else PolygonDivider.combineExpression(areaList)
+  }
 }
+
+
+
+
+class LinearElemModule extends ActionModule {
+  var graphTypeID:Int= -1
+
+  lazy val allowedClasses: List[Int] =List(TypeInfos.lineElemType,TypeInfos.arcElemType,TypeInfos.ellipseElemType,TypeInfos.polyLineElemType)
+
+  lazy val actions=List(takeOverAction)
+
+  def setObjectType(typeID: Int): Unit = graphTypeID = typeID
+
+
+  val takeOverAction=new ActionIterator("Format Übern",Some(DialogQuestion("Format übernehmen von welchem Objekt",
+    Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,allowedClasses.map(_.toString).mkString(",") )))),doTakeOver,false,-1)
+
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    if(param.size==1) {
+      val otherRef=param.head._2.toObjectReference
+      val oInst=StorageManager.getInstanceData(otherRef)
+      for(elem<-data;if allowedClasses.contains(elem.ref.typ)){
+        TransactionManager.tryWriteInstanceField(elem.ref,0.toByte,oInst.fieldValue(0))
+        TransactionManager.tryWriteInstanceField(elem.ref,1.toByte,oInst.fieldValue(1))
+        TransactionManager.tryWriteInstanceField(elem.ref,2.toByte,oInst.fieldValue(2))
+        if(elem.ref.typ==TypeInfos.polyLineElemType&& oInst.ref.typ==TypeInfos.polyLineElemType)
+          for(i<-4 to 8)
+            TransactionManager.tryWriteInstanceField(elem.ref,i.toByte,oInst.fieldValue(i))
+      }
+      true
+    } else false
+  }
+}
+
+
+
 
 class GraphElemModule extends ActionModule {
   import runtime.function.GraphElemModule._
@@ -257,7 +318,7 @@ class GraphElemModule extends ActionModule {
 					new VectorConstant (param(0+offset)._2.toDouble,param(1+offset)._2.toDouble,0)
 				else throw new IllegalArgumentException(" move wrong parametertype ")	
 		  for(i<-1 to numCopy;theDelta=delta*i;d <-data) {
-				val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,false)
+				val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
 				var newInst=d.clone(createInst.ref,d.owners,Seq.empty)
 				newInst=TypeInfos.moduleMap(d.ref.typ).copyElement(newInst,theDelta)					
 				TransactionManager.tryWriteInstanceData(newInst)
@@ -310,7 +371,7 @@ class GraphElemModule extends ActionModule {
       //val sina=math.sin(rAngle)
       val rotator=GraphUtils.createRotator(center,rAngle)
       for(d<-data) {
-        val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,false)
+        val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
         val newInst = d.clone(createInst.ref, d.owners, Seq.empty)
         TransactionManager.tryWriteInstanceData(newInst)
         TypeInfos.moduleMap(d.ref.typ).rotateElement(newInst, rAngle, rotator)
@@ -330,7 +391,7 @@ class GraphElemModule extends ActionModule {
     val mirrorLine = Line3D(p1, p2 - p1)
 	  for(d<-data){
 	    val inst=if(withCopies) {
-	      val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,false)
+	      val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
 				d.clone(createInst.ref,d.owners,Seq.empty)
 	    } else d
 	    val result=TypeInfos.moduleMap(d.ref.typ).mirrorElement(inst,mirrorLine.mirrorPoint)
@@ -385,11 +446,11 @@ class GraphElemModule extends ActionModule {
     val refPoint=param.head._2.toVector* -1d
     println("refPoint:"+refPoint)
     val name=param(1)._2
-    val symbolInst=TransactionManager.tryCreateInstance(TypeInfos.symbolDefType,owner,false)
+    val symbolInst=TransactionManager.tryCreateInstance(TypeInfos.symbolDefType,owner,notifyRefandColl = false)
     TransactionManager.tryWriteInstanceField(symbolInst.ref, 0, name)
     val sowner=Array(new OwnerReference(0,symbolInst.ref))    
      for(d <-data) {
-        val createInst=TransactionManager.tryCreateInstance(d.ref.typ,sowner,false)
+        val createInst=TransactionManager.tryCreateInstance(d.ref.typ,sowner,notifyRefandColl = false)
         var newInst=d.clone(createInst.ref,sowner,Seq.empty)
         newInst=TypeInfos.moduleMap(d.ref.typ).copyElement(newInst,refPoint)          
         TransactionManager.tryWriteInstanceData(newInst)
@@ -403,7 +464,7 @@ class GraphElemModule extends ActionModule {
 class TextModule extends ActionModule with GraphActionModule {
 	val horizontalText="Horizontal"
   override val createActions=List(createTextAction)
-  val actions = List(editTextAction, replaceAction, alignHor, alignVert, distributeAction)
+  val actions = List(editTextAction, replaceAction, numAction, alignHor, alignVert, distributeAction)
   
   def alignHor=new ActionIterator("Vert.ausrichten",None,doAlignHor)
   def alignVert=new ActionIterator("Hor.ausrichten",None,doAlignVert)
@@ -428,12 +489,13 @@ class TextModule extends ActionModule with GraphActionModule {
   def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
     "CreateText")), doCreateText)
 	
-	def doCreateText(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
-    if(parents.size>1) {Log.e("Multiple parents !");return false}
+	def doCreateText(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
+    if(parents.size>1) {Log.e("Multiple parents !"); false}
+    else {
 	  val (pos,text)=if(param.size==3) (param(1)._2,param(2)._2) else (param.head._2,param(1)._2)
-	  if(text.toString().length>0) {
+	  if(text.toString.length>0) {
 	    //println("create Text params:"+param.mkString("|")+"\nFormatparams:"+formFields.mkString("|"))
-	    val inst=TransactionManager.tryCreateInstance(theTypeID,Array(new OwnerReference(0.toByte,parents.head.ref)),false)
+	    val inst=TransactionManager.tryCreateInstance(theTypeID,Array(new OwnerReference(0.toByte,parents.head.ref)),notifyRefandColl = false)
 	    TransactionManager.tryWriteInstanceField(inst.ref,1,text)
 	  	TransactionManager.tryWriteInstanceField(inst.ref,2,pos)		  	
 	  	writeFormatParams(inst.ref,formFields)	    	    
@@ -452,10 +514,10 @@ class TextModule extends ActionModule with GraphActionModule {
     Seq(new AnswerDefinition("Suche nach", DataType.StringTyp,
       Some(DialogQuestion("Text ersetzen", Seq(new AnswerDefinition("Ersetzen mit", DataType.StringTyp, None)))))))), doReplace)
 	
-	def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
-	  if(param.size!=2) {println("Ersetzen falsche parameter:"+param.mkString(","));return false}
-	  val searchText=param.head._2.toString
-	  val replaceText=param(1)._2.toString
+	def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+	  if(param.size!=2) {Log.e("Ersetzen falsche parameter:"+param.mkString(","));false} else {
+	  val searchText: String =param.head._2.toString
+	  val replaceText: String =param(1)._2.toString
 	  for(d<-data;if d.ref.typ == theTypeID){
 	    val text=d.fieldValue(1).toString
 	    if(text.contains(searchText)){
@@ -464,6 +526,30 @@ class TextModule extends ActionModule with GraphActionModule {
 	  }
 	  true
 	}
+
+  def numAnswer=new AnswerDefinition("StartWert",DataType.IntTyp,Some(DialogQuestion("Nummerieren",Seq(new AnswerDefinition("Schrittweite",DataType.IntTyp,None)))))
+
+  def numAction= new ActionIterator("Nummerieren", Some(DialogQuestion("Nummerieren",Seq(numAnswer,
+      new AnswerDefinition("Muster ($)",DataType.StringTyp,Some(DialogQuestion("Nummerieren",Seq(numAnswer))))
+  ))),doNum)
+
+  def doNum(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+    val (pattern,start,step)=param.head._2 match {
+      case IntConstant(st) ⇒ ("",st,param(1)._2.toInt)
+      case StringConstant(pa)⇒ (pa,param(1)._2.toInt,param(2)._2.toInt)
+    }
+    val placeHolderPos=pattern.indexOf('$')
+    val (beforeText,afterText)=if(placeHolderPos== -1) ("","")
+                               else (pattern.substring(0,placeHolderPos),pattern.substring(placeHolderPos+1,pattern.length))
+    var value=start
+    for(elem ← data; if elem.ref.typ==theTypeID) {
+      TransactionManager.tryWriteInstanceField(elem.ref,1,StringConstant(beforeText+value+afterText))
+      value+=step
+    }
+
+    true
+  }
+
 
   def doAlignHor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
     if (data.size > 1) {
@@ -525,7 +611,7 @@ class TextModule extends ActionModule with GraphActionModule {
 
 class BitmapModule extends ActionModule with GraphActionModule {
 	override val createActions=List(createBitmapAction)
-	val actions = Nil
+	val actions:Iterable[ActionTrait] = Nil
 
   def moveElement(elem: InstanceData, delta: VectorConstant): Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,6,elem.fieldValue(6).toVector+delta)
@@ -547,12 +633,12 @@ class BitmapModule extends ActionModule with GraphActionModule {
     Seq(new AnswerDefinition("Dateipfad", DataType.StringTyp, Some(
       DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))))))), doCreateBitmap)
 
-	def doCreateBitmap(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
-		if(parents.size>1) {Log.e("Multiple parents !");return false}
+	def doCreateBitmap(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
+    if(parents.size>1) {Log.e("Multiple parents !");false} else {
     val path = param.head._2
 		val pos=param(1)._2
 		if(path.toString.length>0) {
-			val inst=TransactionManager.tryCreateInstance(theTypeID,Array(new OwnerReference(0.toByte,parents.head.ref)),false)
+			val inst=TransactionManager.tryCreateInstance(theTypeID,Array(new OwnerReference(0.toByte,parents.head.ref)),notifyRefandColl = false)
 			TransactionManager.tryWriteInstanceField(inst.ref,1,path)
 			TransactionManager.tryWriteInstanceField(inst.ref,6,pos)
 			writeFormatParams(inst.ref,formFields)
@@ -607,7 +693,7 @@ class LineModule extends ActionModule with GraphActionModule {
 		true
 	}
 	
-	private def makeLinesFromParams(nparents:Seq[InstanceData],param:Seq[(String,Constant)],formFields:Seq[(Int,Constant)])= {
+	private def makeLinesFromParams(nparents:Seq[InstanceData],param:Seq[(String,Constant)],formFields:Seq[(Int,Constant)]): Unit = {
 	  var lastPoint=param.head._2.toVector
     val parents = Array(new OwnerReference(0.toByte, nparents.head.ref))
     var i = 1
@@ -639,7 +725,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	  makeLine(Array(new OwnerReference(0.toByte,parents.head.ref)),p1,p2,formFields)
 	
 	private def makeLine(parentRefs:Array[OwnerReference],p1:VectorConstant,p2:VectorConstant,formFields:Seq[(Int,Constant)]):InstanceData={	 
-	  val inst=TransactionManager.tryCreateInstance(theTypeID,parentRefs,false)
+	  val inst=TransactionManager.tryCreateInstance(theTypeID,parentRefs,notifyRefandColl = false)
 	  TransactionManager.tryWriteInstanceField(inst.ref,3,p1)
 	  TransactionManager.tryWriteInstanceField(inst.ref,4,p2)
 	  writeFormatParams(inst.ref,formFields)
@@ -783,7 +869,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	    else if(p2==op2) TransactionManager.tryWriteInstanceField(lineRef,4,p1)
 	    else {
 	      TransactionManager.tryWriteInstanceField(lineRef,4,p1)
-	      val newInst=TransactionManager.tryCreateInstance(TypeInfos.lineElemType,lineInst.owners,false)
+	      val newInst=TransactionManager.tryCreateInstance(TypeInfos.lineElemType,lineInst.owners,notifyRefandColl = false)
 	      val outInst=new InstanceData(newInst.ref,for(i<-lineInst.fieldData.indices) 
 	        yield if(i==3) p2 else if (i==4) op2 else lineInst.fieldData(i) , newInst.owners)
 	      TransactionManager.tryWriteInstanceData(outInst)
@@ -808,7 +894,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	    }
 	    for(i<-1 to numCopy){
 	      val ndist=dist*i.toDouble
-		    val newInst=TransactionManager.tryCreateInstance(TypeInfos.lineElemType,oldInst.owners,false)
+		    val newInst=TransactionManager.tryCreateInstance(TypeInfos.lineElemType,oldInst.owners,notifyRefandColl = false)
 		    val outInst=new InstanceData(newInst.ref,for(i<-oldInst.fieldData.indices) 
 		        yield if(i==3) p1+ndist else if (i==4) p2+ndist else oldInst.fieldData(i) , newInst.owners)
 		      TransactionManager.tryWriteInstanceData(outInst)
@@ -957,7 +1043,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	  cutLine.getCutIntersectionWith(p1,p2) match {
 	    case Seq((pos,cutPoint)) if pos > 0 && pos < 1 & cutPoint != p1 && cutPoint != p2 =>
 				TransactionManager.tryWriteInstanceField(elData.ref,4,cutPoint)
-				val newRef=TransactionManager.tryCreateInstance(theTypeID, elData.owners,false)
+				val newRef=TransactionManager.tryCreateInstance(theTypeID, elData.owners,notifyRefandColl = false)
 				TransactionManager.tryWriteInstanceField(newRef.ref,3,cutPoint)
 				TransactionManager.tryWriteInstanceField(newRef.ref,4,p2)
 				for(i<- 0 until 3)if(elData.fieldData(i)!=EMPTY_EX) {
@@ -1019,7 +1105,7 @@ class EllipseModule extends ActionModule with GraphActionModule {
 	def doCreateEllipseCenter(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  //println("Create Ellipse param:" + param.mkString("  | ")+"\n Formfields:"+formFields.mkString(" | "))
 	  var currParam:Int= -1
-	  def nextParam()= {
+	  def nextParam(): Constant = {
 	    currParam+=1
 	    param(currParam)._2
 	  }
@@ -1033,11 +1119,18 @@ class EllipseModule extends ActionModule with GraphActionModule {
 	  
 	  val (axis1Len:Double,mainAngle:Double)= nextParam() match {
 	    case v:VectorConstant => ((v-center).toDouble,math.atan2(v.y-center.y,v.x-center.x)*180d/math.Pi)
-	    case d:DoubleConstant =>
+	    case DoubleConstant(d) =>
 				nextParam() match {
           case v:VectorConstant => (d,getAngle(v))
-          case d2:DoubleConstant =>(d,d2)
+          case DoubleConstant(d2) =>(d,d2)
+          case i2:IntConstant => (d,i2.toDouble)
         }
+      case i:IntConstant => nextParam() match {
+        case v:VectorConstant => (i.toDouble,getAngle(v))
+        case DoubleConstant(d2) =>(i.toDouble,d2)
+        case i2:IntConstant => (i.toDouble,i2.toDouble)
+      }
+      case other => Log.e("unknown match:"+other+" "+other.getClass);(0.0,0.0)
 		}
 	  if(axis1Len==0 ) return false
 	  val axis2Len= nextParam() match {
@@ -1051,13 +1144,14 @@ class EllipseModule extends ActionModule with GraphActionModule {
 				val div=1d-(rotx*rotx)/(axis1Len*axis1Len)
 				if(div>0) math.sqrt((roty*roty)/div)
         else return false
-			case d:DoubleConstant=> d.toDouble
+			case DoubleConstant(d)=> d
+      case i:IntConstant=> i.toDouble
 	  }
 	  if(axis2Len==0) return false
 	  
-	  def createEllipse(sa:Double,ea:Double) = {
+	  def createEllipse(sa:Double,ea:Double): Unit = {
 	    val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-	    val inst=TransactionManager.tryCreateInstance(newTyp,parentRef,false)  
+	    val inst=TransactionManager.tryCreateInstance(newTyp,parentRef,notifyRefandColl = false)
 	    TransactionManager.tryWriteInstanceField(inst.ref,3,center)
 	    TransactionManager.tryWriteInstanceField(inst.ref,4,new DoubleConstant(axis1Len))
 	    TransactionManager.tryWriteInstanceField(inst.ref,5,new DoubleConstant(axis2Len))
@@ -1072,12 +1166,14 @@ class EllipseModule extends ActionModule with GraphActionModule {
 				createEllipse(0,360)
 				return true
 			case v:VectorConstant => getAngle(v)-mainAngle
-	    case d:DoubleConstant => d.toDouble
+	    case DoubleConstant(d) => d
+      case i:IntConstant=> i.toDouble
 	  } 
 	  
 	  val endAngle=nextParam() match {
 	    case v:VectorConstant => getAngle(v)-mainAngle
-	    case d:DoubleConstant => d.toDouble
+	    case DoubleConstant(d) => d
+      case i:IntConstant => i.toDouble
 	  }
 	  
 	  createEllipse((if (startAngle<0) startAngle+360 else startAngle)% 360,if(endAngle==360) 360 else (if(endAngle<0) endAngle+360 else endAngle) % 360)  
@@ -1125,7 +1221,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  }
 	  println("sa:"+startAngle+" ea:"+endAngle)
 	  val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-	  val inst=TransactionManager.tryCreateInstance(newTyp,parentRef,false)  
+	  val inst=TransactionManager.tryCreateInstance(newTyp,parentRef,notifyRefandColl = false)
 	  TransactionManager.tryWriteInstanceField(inst.ref,3,center)
 	  TransactionManager.tryWriteInstanceField(inst.ref,4,new DoubleConstant(radius))
 	  TransactionManager.tryWriteInstanceField(inst.ref,5,new DoubleConstant(startAngle))
@@ -1192,7 +1288,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  for (elem<-data;if elem.ref.typ == theTypeID){
 	    val oldRadius=elem.fieldValue(4).toDouble  
 	    val dist=param.head._2.toDouble
-	    val inst=TransactionManager.tryCreateInstance(theTypeID,elem.owners,false)
+	    val inst=TransactionManager.tryCreateInstance(theTypeID,elem.owners,notifyRefandColl = false)
 	    for(i<-0 to 3) TransactionManager.tryWriteInstanceField(inst.ref, i.toByte, elem.fieldValue(i))
 	    for(i<-5 to 6) TransactionManager.tryWriteInstanceField(inst.ref, i.toByte, elem.fieldValue(i))
 	     TransactionManager.tryWriteInstanceField(inst.ref, 4.toByte, new DoubleConstant(oldRadius+dist))
@@ -1236,7 +1332,8 @@ class ArcModule extends ActionModule with GraphActionModule {
 class PolygonModule extends ActionModule with GraphActionModule {
 
   override val createActions=List(createPolyAction)
-  val actions = List(intersectAction, cutAction, addAction(), setStartPointAction())
+  val actions = List(intersectAction, cutAction, addAction(), setStartPointAction(),takeOverAction)
+  lazy val allowedClasses: List[Int] =List(TypeInfos.polyElemType,TypeInfos.areaPolyElemType,TypeInfos.wohnflaechenElementType)
 
   def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
   	TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toPolygon.translate(delta))
@@ -1262,7 +1359,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
 
 	def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
     TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParams(inst.ref, param))
 		writeFormatParams(inst.ref,formFields)
 		true
@@ -1307,12 +1404,29 @@ class PolygonModule extends ActionModule with GraphActionModule {
   	}
   	else false
   }
+
+  def takeOverAction=new ActionIterator("Format Übern",Some(DialogQuestion("Format übernehmen von welchem Objekt",
+    Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,allowedClasses.map(_.toString).mkString(",") )))),doTakeOver,false,-1)
+
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    if(param.size==1) {
+      val otherRef=param.head._2.toObjectReference
+      val oInst=StorageManager.getInstanceData(otherRef)
+      val fieldOffset=if(otherRef.typ==TypeInfos.polyElemType)0 else 1
+      for(elem<-data;if allowedClasses.contains(elem.ref.typ)){
+        for(i<-5 to 7)
+          TransactionManager.tryWriteInstanceField(elem.ref,(i+(if(elem.ref.typ==TypeInfos.polyElemType)0 else 1)).toByte,oInst.fieldValue(i+fieldOffset))
+        TransactionManager.tryWriteInstanceField(elem.ref, (if (elem.ref.typ == TypeInfos.polyElemType) 0 else 1).toByte,oInst.fieldValue(fieldOffset))
+      }
+      true
+    } else false
+  }
 }
 
 
 class PolygonLineModule extends ActionModule with GraphActionModule {
   override val createActions = List(createPolyLineAction)
-  val actions = Nil
+  val actions:Iterable[ActionTrait] = Nil
 
   def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translate(delta))
@@ -1336,8 +1450,8 @@ class PolygonLineModule extends ActionModule with GraphActionModule {
 
   def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
     val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
-    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
-    TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParams(inst.ref, param))
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
+    TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParamsToLine(inst.ref, param))
     writeFormatParams(inst.ref, formFields)
     true
   }
@@ -1367,7 +1481,7 @@ class MeasureLineModule extends PolygonLineModule {
       if (res.points.size < 3) res else res.removeStraightEdges()
     }))
 
-    TransactionManager.tryWriteInstanceField(instRef, 11, GraphElemModule.getUmfang(poly, false))
+    TransactionManager.tryWriteInstanceField(instRef, 11, GraphElemModule.getUmfang(poly, addStartPoint = false))
     TransactionManager.tryWriteInstanceField(instRef, 4, poly)
   }
 
@@ -1379,8 +1493,8 @@ class MeasureLineModule extends PolygonLineModule {
 
   override def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
     val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
-    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, true)
-    updateLengthValue(inst.ref, GraphElemModule.polygonFromParams(inst.ref, param))
+    val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
+    updateLengthValue(inst.ref, GraphElemModule.polygonFromParamsToLine(inst.ref, param))
     writeFormatParams(inst.ref, formFields)
     true
   }
@@ -1391,6 +1505,7 @@ class MeasureLineModule extends PolygonLineModule {
 *
 */
 class AreaPolygonModule extends PolygonModule {
+  override val actions=List(intersectAction, cutAction, addAction(), setStartPointAction(),takeOverAction,convertWohnflaecheAction)
   override def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
   	TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.translate(delta))
 
@@ -1400,10 +1515,8 @@ class AreaPolygonModule extends PolygonModule {
   override def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= 
     TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.transform(rotator))
 
-  protected def generateExpression(inst: InstanceData, poly: Polygon): Expression = {
-    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
-    if (areaList.isEmpty) EMPTY_EX else PolygonDivider.combineExpression(areaList)
-  }
+  protected def generateExpression(inst: InstanceData, poly: Polygon): Expression = GraphElemModule.generateAreaExpression(inst,poly)
+
 
   def updateAreaValue(inst: InstanceData, p: Polygon): Boolean = {
     val instRef = inst.ref
@@ -1423,7 +1536,7 @@ class AreaPolygonModule extends PolygonModule {
 
 	override def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
-  	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,true)
+  	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,notifyRefandColl = true)
     updateAreaValue(inst, GraphElemModule.polygonFromParams(inst.ref, param))
 		writeFormatParams(inst.ref,formFields)
 		true
@@ -1445,7 +1558,25 @@ class AreaPolygonModule extends PolygonModule {
       updateAreaValue(inst, func(oldPoly, otherPoly))
     }
     true
-  }  
+  }
+
+  def convertWohnflaecheAction=new ActionIterator("In Wohnfläche",None,convertToWohnflaeche)
+
+  def convertToWohnflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    for(d<-data;if d.ref.typ==TypeInfos.areaPolyElemType){
+      val inst=TransactionManager.tryCreateInstance(TypeInfos.wohnflaechenElementType,d.owners,notifyRefandColl = true)
+      for(i<-1 to 9)
+        TransactionManager.tryWriteInstanceField(inst.ref,i.toByte,d.fieldData(i))
+      val poly=d.fieldValue(4).toPolygon
+      TransactionManager.tryWriteInstanceField(inst.ref, 10, GraphElemModule.generateWohnExpression(inst,poly) match {
+        case EMPTY_EX => DoubleConstant(poly.getAreaValue)
+        case ex: Expression => ex
+      })
+      TransactionManager.tryWriteInstanceField(inst.ref,11.toByte,d.fieldData(11))
+      TransactionManager.tryDeleteInstance(d.ref,None,None)
+    }
+    true
+  }
 }
 
 class WohnflaechenModul extends AreaPolygonModule {
@@ -1456,13 +1587,26 @@ class WohnflaechenModul extends AreaPolygonModule {
 
   override val notifyFieldChanged = true
 
-  protected override def generateExpression(inst: InstanceData, poly: Polygon): Expression = {
-    val areaList: Seq[PartArea] = poly.pathList.flatMap(path => PolygonDivider.divideArea(path.removeDoublePoints().removeStraightEdges()))
-    val putz = UnitNumber(inst.fieldValue(13).toDouble, PolygonDivider.meterFraction)
-    val umfang = GraphElemModule.getUmfang(poly, true)
-    if (areaList.isEmpty) EMPTY_EX else if (putz.value == 0d || umfang.isNullConstant) PolygonDivider.combineExpression(areaList)
-    else BinaryOperation(PolygonDivider.combineExpression(areaList), BinOperator.minusOp,
-      BinaryOperation(putz, BinOperator.getOp('*'), umfang))
+  protected override def generateExpression(inst: InstanceData, poly: Polygon): Expression = GraphElemModule.generateWohnExpression(inst,poly)
+
+  override val actions=List(intersectAction, cutAction, addAction(), setStartPointAction(),takeOverAction,convertToMessFlaecheAction)
+
+  def convertToMessFlaecheAction=new ActionIterator("In MessFläche",None,convertToMessflaeche)
+
+  def convertToMessflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    for(d<-data;if d.ref.typ==TypeInfos.wohnflaechenElementType){
+      val inst=TransactionManager.tryCreateInstance(TypeInfos.areaPolyElemType,d.owners,notifyRefandColl = true)
+      for(i<-1 to 9)
+        TransactionManager.tryWriteInstanceField(inst.ref,i.toByte,d.fieldData(i))
+      val poly=d.fieldValue(4).toPolygon
+      TransactionManager.tryWriteInstanceField(inst.ref, 10, GraphElemModule.generateAreaExpression(inst,poly) match {
+        case EMPTY_EX => DoubleConstant(poly.getAreaValue)
+        case ex: Expression => ex
+      })
+      TransactionManager.tryWriteInstanceField(inst.ref,11.toByte,d.fieldData(11))
+      TransactionManager.tryDeleteInstance(d.ref,None,None)
+    }
+    true
   }
 
 }
@@ -1472,6 +1616,7 @@ object TypeInfos {
   val moduleMap: mutable.HashMap[Int, GraphActionModule] = collection.mutable.HashMap[Int, GraphActionModule]()
 	val polyElemType=42 // WARNING ElementType is fixed because it can not be found at runtime
 	val lineElemType=40
+  val ellipseElemType=43
 	val arcElemType=41
 	val textElemType=44
 	val areaPolyElemType=341

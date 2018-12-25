@@ -7,8 +7,8 @@ import client.dialog._
 import definition.expression.{DoubleConstant, Expression, ParserError, StringParser}
 import definition.typ.CustomPanel
 
-import scala.swing.{BoxPanel, Button, GridPanel, Orientation, Swing}
 import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, GridPanel, Orientation, Swing}
 
 class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPanel {
   @volatile var angle:Double=0d

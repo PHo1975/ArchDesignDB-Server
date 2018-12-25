@@ -1,14 +1,15 @@
 package client.graphicsView
 
-import java.awt._
-import javax.swing.BorderFactory
+
+import java.awt.{Polygon => _, _}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, LineStyle, Reference}
-import definition.expression.{Polygon => _, _}
+import definition.expression._
 import definition.typ.CustomInstanceEditor
+import javax.swing.BorderFactory
 import util.StringUtils
 
 import scala.swing.event.{ButtonClicked, EditDone, SelectionChanged, UIElementResized}
@@ -192,7 +193,7 @@ class HatchPreview extends Component {
    val defaultStroke=new BasicStroke(0.5f)
    border=BorderFactory.createLineBorder(Color.gray)   
    var whiteBackground=false
-   var p:Polygon=new Polygon(Seq.empty,Seq.empty)   
+   var p:Polygon=new Polygon(Seq.empty,Seq.empty)
    var lastSize:Dimension=new Dimension(0,0)
    var paperStyle:Boolean=false
    

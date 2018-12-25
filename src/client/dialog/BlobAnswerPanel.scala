@@ -40,8 +40,10 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
   override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
   	super.loadParamAnswer(answerDesc)
   	active=true
-    if (answerDesc.constraint == "SelectPoints" && AnswerPanelsData.currentViewController != null)
+    if (answerDesc.constraint == "SelectPoints" && AnswerPanelsData.currentViewController != null) {
       AnswerPanelsData.currentViewController.askForPointSelection(this)
+      FollowMouseToast.showToast("Punkte auswählen",AnswerPanelsData.currentViewController.canvas.peer)
+    }
   }
 
   override def reset(): Unit = {

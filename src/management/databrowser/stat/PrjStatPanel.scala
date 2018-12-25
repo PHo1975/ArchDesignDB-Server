@@ -1,15 +1,15 @@
 package management.databrowser.stat
 
 import java.awt.Color
-import javax.swing.JTable
 
 import client.dataviewer.{FieldColumnModel, ViewConstants}
+import javax.swing.JTable
 
 import scala.swing.{BorderPanel, BoxPanel, Label, Orientation, ScrollPane, Table}
 
 class PrjStatPanel extends BorderPanel {
    
-  val columnMod=new FieldColumnModel{
+  val columnMod: FieldColumnModel =new FieldColumnModel{
       createColumn(0,"Tag",70)
       createColumn(1,"Benutzer",80)      
       createColumn(2,"Zeit",70)
@@ -18,7 +18,7 @@ class PrjStatPanel extends BorderPanel {
   val stModel=new ProjectDataTableModel
   val renderer=new StatRenderer
   
-  val statTable=new Table{
+  val statTable: Table =new Table{
      selection.intervalMode=Table.IntervalMode.Single
      selection.elementMode=Table.ElementMode.None    
      peer.setModel(stModel)
@@ -30,7 +30,7 @@ class PrjStatPanel extends BorderPanel {
      gridColor=Color.gray
   }
   
-  val scroller = new ScrollPane{
+  val scroller: ScrollPane = new ScrollPane{
     viewportView=statTable    
   }
   

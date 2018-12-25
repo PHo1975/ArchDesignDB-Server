@@ -3,10 +3,8 @@
  */
 package management.databrowser
 
-import server.storage.ServerObjectClass
 import definition.data.ExtFieldRef
 import javax.swing.table.AbstractTableModel
-import definition.typ.AbstractObjectClass
 
 /**
  * 

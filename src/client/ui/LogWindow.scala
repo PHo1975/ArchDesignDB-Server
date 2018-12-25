@@ -1,6 +1,6 @@
 package client.ui
 
-import scala.swing.{TextArea, Window, Dialog}
+import scala.swing.{Dialog, Window}
 
 /**
  * Created by Kathi on 30.05.2015.

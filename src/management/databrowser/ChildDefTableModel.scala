@@ -3,9 +3,7 @@
  */
 package management.databrowser
 
-import definition.typ._
-import definition.data._
-import server.storage.{ServerObjectClass,ServerCCD}
+import server.storage.{ServerCCD, ServerObjectClass}
 
 /**
  * 
@@ -13,11 +11,11 @@ import server.storage.{ServerObjectClass,ServerCCD}
 class ChildDefTableModel extends ActivableAbstractTableModel {
 	
   var childDefList:Seq[ServerCCD]=Seq.empty
-  var propMod:PropFieldTableModel=null
+  var propMod:PropFieldTableModel=_
   var propRow:Int=0
   
 	
-  def setValues(newList:Seq[ServerCCD],npropMod:PropFieldTableModel,npropRow:Int)= {  	
+  def setValues(newList:Seq[ServerCCD],npropMod:PropFieldTableModel,npropRow:Int): Unit = {
   	childDefList=newList
   	propMod=npropMod
   	propRow=npropRow
@@ -27,9 +25,9 @@ class ChildDefTableModel extends ActivableAbstractTableModel {
   
   
 	
-  def getRowCount(): Int = { childDefList.size+1 }
+  def getRowCount: Int = { childDefList.size+1 }
 
-  def getColumnCount(): Int = { 3 }
+  def getColumnCount: Int = { 3 }
 
   def getValueAt(row: Int, col: Int): Object = { 
   	if(row>=childDefList.size) null
@@ -81,9 +79,6 @@ class ChildDefTableModel extends ActivableAbstractTableModel {
   		case _ => classOf[String]
   	}
   }
-  
-  def update(theClass:ServerObjectClass) = if(isDirty){
-  	
-  }
 
+	override def update(theClass: ServerObjectClass): Unit = {}
 }

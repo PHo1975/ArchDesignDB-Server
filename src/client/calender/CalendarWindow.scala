@@ -2,19 +2,19 @@ package client.calender
 
 
 import java.net.{ConnectException, InetAddress}
-import javafx.application.{Application => FxApplication, Platform}
+
+import client.comm.{ClientQueryManager, ClientSocket, UserSettings}
+import definition.comm._
+import definition.expression.DateConstant
+import javafx.application.{Platform, Application => FxApplication}
 import javafx.geometry.Insets
 import javafx.scene.Scene
 import javafx.scene.control.TabPane.TabClosingPolicy
-import javafx.scene.control.{Button, CheckBox, Label, ListCell, ListView, SelectionMode, Tab, TabPane, Tooltip, TreeItem, TreeView}
+import javafx.scene.control._
 import javafx.scene.layout.{HBox, Priority, VBox}
 import javafx.scene.paint.Color
 import javafx.scene.shape.Rectangle
 import javafx.stage.Stage
-
-import client.comm.{UserSettings,ClientQueryManager, ClientSocket}
-import definition.comm._
-import definition.expression.DateConstant
 
 import scala.util.control.NonFatal
 
@@ -43,9 +43,9 @@ class WatchCheck[T](t:String,lv:ListView[T]) extends CheckBox(t) {
       if(n) lv.getSelectionModel().selectAll()
       else lv.getSelectionModel.clearSelection()
     })
-  onListChanged[Integer](lv.getSelectionModel().getSelectedIndices(),c=> {
+  onListChanged[Integer](lv.getSelectionModel().getSelectedIndices, c=> {
       selfChanged=true
-      if(c.getList.size()==lv.getItems().size) setSelected(true)
+      if(c.getList.size()==lv.getItems.size) setSelected(true)
       else setSelected(false)
       selfChanged=false
     })
@@ -53,14 +53,14 @@ class WatchCheck[T](t:String,lv:ListView[T]) extends CheckBox(t) {
 
 class CalendarWindow extends FxApplication  {
   import client.calender.CalendarHelper._
-  var primaryStage:Stage=null
+  var primaryStage:Stage=_
   var model=new CalendarModel(this)  
-  var sock:ClientSocket=null  
-  var calendar:CalendarGroup=null
+  var sock:ClientSocket=_
+  var calendar:CalendarGroup=_
   val treeView=new TreeView[AdTreeNode]
-  var allUsersCheck:CheckBox=null//=new CheckBox("alle Benutzer")
+  var allUsersCheck:CheckBox=_//=new CheckBox("alle Benutzer")
   
-  def setupStage(pStage:Stage)={
+  def setupStage(pStage:Stage): Unit ={
     import client.calender.CalendarHelper._
     primaryStage=pStage
     primaryStage.setTitle("Kalender")    
@@ -72,8 +72,8 @@ class CalendarWindow extends FxApplication  {
     primaryStage.setScene(scene)
     val pvbox=new VBox    
     val eventFormTab=new Tab("Ereignis")  
-    var projListSelfChanged=false
-    var userListSelfChanged=false
+    //var projListSelfChanged=false
+    //var userListSelfChanged=false
     
     CalendarHelper.addressTreeView=treeView
     pvbox.setSpacing(10)
@@ -81,7 +81,7 @@ class CalendarWindow extends FxApplication  {
     projectListView.setCellFactory(callback(t=> new ProjectCell()  ))    
     projectListView.setPrefSize(310, 190)    
     projectListView.setFocusTraversable(false) 
-    projectListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE)
+    projectListView.getSelectionModel.setSelectionMode(SelectionMode.MULTIPLE)
     
     model.weekTableModel.initProjectListView(projectListView,treeView)
     val allProjectCheck=new WatchCheck("alle Projekte",projectListView)
@@ -98,7 +98,7 @@ class CalendarWindow extends FxApplication  {
     userListView.setCellFactory(callback(t=> new UserCell()))
     userListView.setPrefSize(110, 190)
     userListView.setFocusTraversable(false)
-    userListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE)
+    userListView.getSelectionModel.setSelectionMode(SelectionMode.MULTIPLE)
     model.weekTableModel.initUserListView(userListView) 
     allUsersCheck=new WatchCheck("alle Benutzer",userListView)
     allUsersCheck.setTooltip(new Tooltip("Alle Benutzer auswählen"))
@@ -123,7 +123,7 @@ class CalendarWindow extends FxApplication  {
     treeView.setPrefWidth(treeViewWidth)   
     treeView.setShowRoot(true)
     treeView.setFocusTraversable(false)
-    treeView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE)
+    treeView.getSelectionModel.setSelectionMode(SelectionMode.SINGLE)
     VBox.setVgrow(treeView,Priority.ALWAYS)    
     val treeViewVBox=new VBox
     treeViewVBox.setSpacing(10)
@@ -144,7 +144,7 @@ class CalendarWindow extends FxApplication  {
     val spacingBox1=new VBox
     spacingBox1.setMinWidth(12)
     spacingBox1.setStyle("-fx-background-color: linear-gradient(to right, lightgray, white);")
-    secondRowHBox.getChildren().addAll(treeViewVBox,spacingBox1,tableView)    
+    secondRowHBox.getChildren.addAll(treeViewVBox,spacingBox1,tableView)
     val thirdRowHBox=new HBox
     thirdRowHBox.setSpacing(5)
     val spacingBox2=new VBox
@@ -156,12 +156,12 @@ class CalendarWindow extends FxApplication  {
     eventFormTab.setContent(model.eventForm.form)
     model.reportTab.setContent(model.reportForm.form)
     model.reportTab.setDisable(true)
-    model.tabPane.getTabs().addAll(eventFormTab,model.reportTab)
+    model.tabPane.getTabs.addAll(eventFormTab,model.reportTab)
     model.reportTab.setTooltip(new Tooltip("Zur Anzeige des Tagesberichts muss EIN Projekt und ein Tag ausgewählt sein"))
     model.tabPane.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE)
-    model.tabPane.getStyleClass().add(TabPane.STYLE_CLASS_FLOATING)
+    model.tabPane.getStyleClass.add(TabPane.STYLE_CLASS_FLOATING)
     thirdRowHBox.getChildren.addAll(model.addressForm,spacingBox2,model.tabPane)    
-    onChanged[TreeItem[AdTreeNode]](treeView.getSelectionModel().selectedItemProperty(),(o,n)=> {
+    onChanged[TreeItem[AdTreeNode]](treeView.getSelectionModel.selectedItemProperty(), (o, n)=> {
       n match {
         case m:MyTreeItem[_]=> m.getValue match {
           case ad:Address=>model.addressForm.loadAdress(ad)
@@ -177,20 +177,23 @@ class CalendarWindow extends FxApplication  {
     root.getChildren.addAll(topHBox,spacingBox3,secondRowHBox,thirdRowHBox)    
     root.setSpacing(0)    
     root.setPadding(new Insets(5,10,10,10))
-    root.getStylesheets().add("client/calender/calendarComp.css")    
+    root.getStylesheets.add("client/calender/calendarComp.css")
     scene.setFill(Color.rgb(250,250,250,0.9))    	
   }
   
   
-  override def start(pStage:Stage)= {    
-    val args=getParameters.getRaw()
+  override def start(pStage:Stage): Unit = {
+    val args=getParameters.getRaw
     val serverName=args.get(0)
     try {
 			sock=new ClientSocket(InetAddress.getByName(serverName),args.get(1).toInt,args.get(2),args.get(3),"Cal",false)
 	  } catch { case c:ConnectException =>
+      println("Kann Server an Adresse "+serverName+" nicht finden.")
       runInFx{FxMessageBox.showMessage("Kann Server an Adresse "+serverName+" nicht finden.", "Kalender", primaryStage)}
       Platform.exit()
-    case NonFatal(e) => runInFx{FxMessageBox.showMessage("Fehler beim Verbinden:"+e.toString(),"Kalender",primaryStage);}
+    case NonFatal(e) =>
+      println("Fehler beim Verbinden:"+e.toString)
+      runInFx{FxMessageBox.showMessage("Fehler beim Verbinden:"+e.toString,"Kalender",primaryStage);}
       e.printStackTrace()
       Platform.exit()
     case other:Throwable =>println(other);System.exit(0);null
@@ -198,6 +201,7 @@ class CalendarWindow extends FxApplication  {
 	  if(sock!=null){ 
       sock.connectionBrokenListener=()=>{stop()}
 	    sock.classesReadListener= ()=>{
+        println("Calendar settings")
 			  ClientQueryManager.setClientSocket(sock)  
 			  ClientQueryManager.registerSetupListener (() => {
 			    CalendarHelper.runInFx{
@@ -216,14 +220,15 @@ class CalendarWindow extends FxApplication  {
 				    allUsersCheck.setSelected(true)
 				    model.load()
 				    primaryStage.show()
-					}					 
+					}
+          println("Calendar settings done")
 			  })
 	    }
 		  sock.start()
 	  }
   }
   
-  override def stop() = {      
+  override def stop(): Unit = {
     if(sock!=null){
       saveWindowPositions()
       model.shutDown()
@@ -232,7 +237,7 @@ class CalendarWindow extends FxApplication  {
     }  
   }
   
-  def saveWindowPositions() = {
+  def saveWindowPositions(): Unit = {
 	  //val defaultGroup=new PropertyGroup("Calendar",new collection.mutable.HashMap[String,PropertyValue]())  
 	  UserSettings.setIntProperty("Calendar","WindowWidth",primaryStage.getWidth().toInt)
 	  UserSettings.setIntProperty("Calendar","WindowHeight",primaryStage.getHeight().toInt)
