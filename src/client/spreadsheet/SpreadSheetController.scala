@@ -26,7 +26,7 @@ class SpreadSheetSelectGroup(nparent:OwnerReference,nchildren:Iterable[SpreadShe
 }
 
 
-class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Component] with SelectSender with AbstractFocusContainer {
+class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Component] with SelectSender with FocusContainer {
   val emptyRange=Range(-1,-1)
   var myParser=new SpreadSheetParser
   var spreadSheetRef:Reference=_
@@ -53,7 +53,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   var loadDoneListener: ()=>Unit= _  
   
   val headerModel=new SingleObjectDataModel(
-      (data)=> {
+      data=> {
 		    val name=data.fieldValue(1).toString
 		    val date=data.fieldValue(2).toDate
 		    val result=data.fieldValue.head
@@ -326,7 +326,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
 		
     listenTo(this,mouse.clicks)
     reactions+= {
-      case e:FocusGained =>  notifyContainerListeners(4)       
+      case e:FocusGained =>  notifyContainerListener(4)
     }    
   }
   
@@ -363,7 +363,6 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     add(tableScroller,BorderPanel.Position.Center)
   },BorderPanel.Position.Center)
   registerSelectListener(SelectEventDispatcher)
-  registerContainerListener(NewButtonsList)
   
 	def replaceFieldReferences(ex:Expression,allFieldRefs:Boolean):Expression = ex.replaceExpression {
     case f: FieldReference =>
@@ -537,7 +536,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
   
   def containerName:String = "Tabellenkalkulation"
 
-  def containerRef: Option[Reference] = someSpreadSheetRef
+  def ownerRef: Option[Reference] = someSpreadSheetRef
 
 
   def addRows(): Unit = {

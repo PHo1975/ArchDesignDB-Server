@@ -34,7 +34,7 @@ object ScaleModel {
 		//println("layerType "+layerType+" allClasses:"+AllClasses.get.getClassList.size)
 	  val cl =AllClasses.get.getClassByID(layerType).asInstanceOf[ClientObjectClass]     
   	scales= SortedMap(cl.enumFields.values.head.enumValues.map((v)=>(v._2,ScaleModel.stringToScale(v._1))).toSeq/*.sortBy(_._2)*/:_*)
-  	println("scales loaded:"+scales.mkString("|"))
+  	//println("scales loaded:"+scales.mkString("|"))
   })
 }
 

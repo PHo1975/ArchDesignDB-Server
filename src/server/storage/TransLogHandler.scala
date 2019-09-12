@@ -10,6 +10,7 @@ import server.config.FSPaths
 import util.Log
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
 
 /** manages the transaction log
  * 
@@ -32,23 +33,37 @@ object TransLogHandler {
 	
 	private var insertPos:Int=0
 		
-	private var transID:Int =
-		if(theFile.length==0) { theFile.writeInt(1); 1 } 
-	  else {
-	  	theFile.seek(0)	  	
-	  	insertPos=theFile.readInt// ((theFile.length()-4)/recordSize).toInt
-	  	if(insertPos==0) {
-	  	  Log.w("Warning: InsertPos==0 !")
-	  	  theFile.seek(0)
-	  	  theFile.writeInt(1)
+	private var transID:Int = {
+		val fileSize=theFile.length()
+		if (fileSize == 0) {
+			theFile.writeInt(1); 1
+		}
+		else {
+			theFile.seek(0)
+			insertPos = theFile.readInt // ((theFile.length()-4)/recordSize).toInt
+			println("Insertpos:" + insertPos)
+			if (insertPos == 0) {
+				Log.w("Warning: InsertPos==0 !")
+				theFile.seek(0)
+				theFile.writeInt(1)
 				1
-	  	} else {
-	  		theFile.seek(getSeekPos(insertPos-1)+1)        
-	  		val tr=theFile.readInt
-	  		System.out.println("TransLog insPos:"+insertPos+" transID:"+tr)
-	  		tr
-	  	}
-	  }
+			} else {
+				var sp = getSeekPos(insertPos - 1) + 1
+				while (sp > fileSize) {
+					println("Translog Seekpos " + sp + " behind file Size:" +fileSize)
+					sp -= recordSize
+					insertPos-=1
+				}
+				if (sp>0) {
+					theFile.seek(sp)
+					val tr = theFile.readInt
+					println("TransLog insPos:" + insertPos + " transID:" + tr)
+					tr
+				}
+				else throw new IllegalAccessException("")
+			}
+		}
+	}
 	//readFinished()
 
 	def setInsertPosToEnd():Unit= {
@@ -209,11 +224,13 @@ object TransLogHandler {
     flush()
 	}
 	
-	def flush():Unit= {
-		//Log.w("Transloghandler flush "+insertPos)
+	def flush():Unit= try {
+		Log.w("Transloghandler flush "+insertPos)
     theFile.seek(0)
     theFile.writeInt(insertPos)
     theFile.getChannel.force(true)
+	} catch {
+		case NonFatal(e) => Log.e("Transloghandler flush ",e)
 	}
 	
 }

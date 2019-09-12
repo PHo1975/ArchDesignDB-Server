@@ -33,7 +33,7 @@ trait SidePanelController {
   /** load data in the side panel 
    * 
    * @param parentRef Reference of the parent instance in the path panel
-   * @param tableType the type of the data instances in the TypeTable
+   * @param tableClass the type of the data instances in the TypeTable
    * 
    */
   def openPanel(parentRef:Reference,tableClass:AbstractObjectClass,container:ControllerContainer):Unit

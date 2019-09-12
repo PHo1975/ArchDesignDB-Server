@@ -244,7 +244,8 @@ object ClientQueryManager {
 			out.writeByte(fieldNr)
 			newValue.write(out)
 		}
-    resultListener(commandResultQueue.take())
+		val result=commandResultQueue.take()
+    resultListener(result)
 	}
 	
 	def writeInstancesField(refs:Iterable[Referencable],fieldNr:Byte,newValue:Expression):Unit = runInPool{
@@ -393,20 +394,30 @@ object ClientQueryManager {
 	 */
 	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit= {
     //System.out.println("executeAction owner:"+owner+" instList:"+instList+" action:"+actionName+" p:"+params.mkString)
-	  if(instList.isEmpty) throw new IllegalArgumentException("InstList is empty in action "+actionName+" "+params.mkString("|"))
-    runInPool{
-  		sock.sendData( ClientCommands.executeAction) { out =>
-  			out.writeInt(instList.size)
-  			instList foreach(_.ref.write(out))
-  			out.writeUTF(actionName)
-  			out.writeInt(params.size)
-  			params foreach((x) => {out.writeUTF(x._1); x._2 .write(out)})
-  			//println("execute Action :"+actionName)
-  			owner.write(out)
-  		}
-    }
+	  _executeAction(owner,instList,actionName,params)
 		commandResultQueue.take()
 	}
+
+  def executeActionResult(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)],
+                          resultListener:CommandResult=>Unit=EmptyResultListener):Unit= {
+    _executeAction(owner,instList,actionName,params)
+    resultListener(commandResultQueue.take())
+  }
+
+  private def _executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit = {
+    if(instList.isEmpty) throw new IllegalArgumentException("InstList is empty in action "+actionName+" "+params.mkString("|"))
+    runInPool{
+      sock.sendData( ClientCommands.executeAction) { out =>
+        out.writeInt(instList.size)
+        instList foreach(_.ref.write(out))
+        out.writeUTF(actionName)
+        out.writeInt(params.size)
+        params foreach(x => {out.writeUTF(x._1); x._2 .write(out)})
+        //println("execute Action :"+actionName)
+        owner.write(out)
+      }
+    }
+  }
 	
 	def executeCreateAction(parentList:Iterable[Referencable],newType:Int,propField:Byte,actionName:String,params:Seq[(String,Constant)],
       formatValues:Seq[(Int,Constant)]):Unit = runInPool{
@@ -418,7 +429,7 @@ object ClientQueryManager {
 			out.writeByte(propField)
 			out.writeUTF(actionName)
 			out.writeInt(params.size)
-			params foreach((x) => {out.writeUTF(x._1); x._2 .write(out)})
+			params foreach(x => {out.writeUTF(x._1); x._2 .write(out)})
 			out.writeInt(formatValues.size)
 			for(ix<-formatValues.indices;x=formatValues(ix))
 			  {if(x._2==null) util.Log.e("Format value nr "+ix+" ==null");out.writeInt(x._1); x._2.write(out)}

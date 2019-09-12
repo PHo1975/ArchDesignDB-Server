@@ -222,7 +222,7 @@ object GraphElemModule{
 class LinearElemModule extends ActionModule {
   var graphTypeID:Int= -1
 
-  lazy val allowedClasses: List[Int] =List(TypeInfos.lineElemType,TypeInfos.arcElemType,TypeInfos.ellipseElemType,TypeInfos.polyLineElemType)
+  lazy val allowedClasses: List[Int] =List(TypeInfos.lineElemType,TypeInfos.arcElemType,TypeInfos.ellipseElemType,TypeInfos.polyLineElemType,TypeInfos.measureLineElemType)
 
   lazy val actions=List(takeOverAction)
 
@@ -237,12 +237,17 @@ class LinearElemModule extends ActionModule {
       val otherRef=param.head._2.toObjectReference
       val oInst=StorageManager.getInstanceData(otherRef)
       for(elem<-data;if allowedClasses.contains(elem.ref.typ)){
-        TransactionManager.tryWriteInstanceField(elem.ref,0.toByte,oInst.fieldValue(0))
+        if(elem.ref.typ!=TypeInfos.measureLineElemType) TransactionManager.tryWriteInstanceField(elem.ref,0.toByte,oInst.fieldValue(0))
         TransactionManager.tryWriteInstanceField(elem.ref,1.toByte,oInst.fieldValue(1))
         TransactionManager.tryWriteInstanceField(elem.ref,2.toByte,oInst.fieldValue(2))
         if(elem.ref.typ==TypeInfos.polyLineElemType&& oInst.ref.typ==TypeInfos.polyLineElemType)
           for(i<-4 to 8)
             TransactionManager.tryWriteInstanceField(elem.ref,i.toByte,oInst.fieldValue(i))
+        else if(elem.ref.typ==TypeInfos.measureLineElemType&& oInst.ref.typ==TypeInfos.measureLineElemType) {
+          TransactionManager.tryWriteInstanceField(elem.ref,3.toByte,oInst.fieldValue(3))
+          for(i<-5 to 9)
+            TransactionManager.tryWriteInstanceField(elem.ref,i.toByte,oInst.fieldValue(i))
+        }
       }
       true
     } else false
@@ -464,10 +469,10 @@ class GraphElemModule extends ActionModule {
 class TextModule extends ActionModule with GraphActionModule {
 	val horizontalText="Horizontal"
   override val createActions=List(createTextAction)
-  val actions = List(editTextAction, replaceAction, numAction, alignHor, alignVert, distributeAction)
+  val actions = List(takeOverAction,editTextAction, replaceAction, numAction, alignHor, alignVert, distributeAction)
   
-  def alignHor=new ActionIterator("Vert.ausrichten",None,doAlignHor)
-  def alignVert=new ActionIterator("Hor.ausrichten",None,doAlignVert)
+  def alignHor=new ActionIterator("Vert ausrichten",None,doAlignHor)
+  def alignVert=new ActionIterator("Hor ausrichten",None,doAlignVert)
 
   def distributeAction = new ActionIterator("Verteilen", Some(DialogQuestion("Verteilen", Seq(new AnswerDefinition("Ausrichtung", DataType.EnumTyp, None, horizontalText + ",Vertikal")))),
 		doDistribute)
@@ -605,6 +610,22 @@ class TextModule extends ActionModule with GraphActionModule {
         TransactionManager.tryWriteInstanceField(d.ref, 1, text)
       true
     } else false
+
+  def takeOverAction=new ActionIterator("Stil Übernehmen",Some(DialogQuestion("Textstil übernehmen von welchem Text",
+    Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,TypeInfos.textElemType.toString )))),doTakeOver,false,buttonID = -1)
+
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    if(param.size==1) {
+      val otherRef=param.head._2.toObjectReference
+      val oInst=StorageManager.getInstanceData(otherRef)
+      for(elem<-data;if elem.ref.typ == TypeInfos.textElemType){
+        TransactionManager.tryWriteInstanceField(elem.ref,0.toByte,oInst.fieldValue(0))
+        for(i<-3 to 9)
+          TransactionManager.tryWriteInstanceField(elem.ref,i.toByte,oInst.fieldValue(i))
+      }
+      true
+    } else false
+  }
 }
 
 
@@ -706,8 +727,8 @@ class LineModule extends ActionModule with GraphActionModule {
         case ("Winkel", d: DoubleConstant) =>
           i += 1
           param(i)._2 match {
-            case d: DoubleConstant =>
-              lastPoint + VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d) * d.toDouble
+            case d2: DoubleConstant =>
+              lastPoint + VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d) * d2.toDouble
             case v: VectorConstant =>
               val delta = v - lastPoint
               lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
@@ -847,7 +868,8 @@ class LineModule extends ActionModule with GraphActionModule {
 
 
   def cutPartAction = new ActionIterator("Teillinie löschen", Some(DialogQuestion("Teillinie löschen",
-    Seq(new AnswerDefinition("Teillinie auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.lineElemType.toString)))), doCutPart, true)
+    Seq(new AnswerDefinition("Teillinie auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.lineElemType.toString)))),
+    doCutPart, true)
 
   def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
 	  cutLine(param)
@@ -1247,7 +1269,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	
 	
 	
-	override def mirrorElement(elem:InstanceData,mirror:(VectorConstant)=>VectorConstant):InstanceData= {
+	override def mirrorElement(elem:InstanceData,mirror: VectorConstant =>VectorConstant):InstanceData= {
 	  val radius=elem.fieldValue(4).toDouble
 	  val centerPoint=elem.fieldValue(3).toVector
 	  val newCenter=mirror(centerPoint)
@@ -1259,13 +1281,13 @@ class ArcModule extends ActionModule with GraphActionModule {
 	}
 
   def fixAngles(sa: Double, ea: Double): (Double, Double) = {
-    val newA = if (sa < 360d && sa != 0) sa + 360d else if (sa > 360d) sa - 360d else sa
-	  val newB=if(ea<360d) ea+360d else if(ea>360d) ea-360d else ea
+    val newA = /*if (sa < 360d && sa != 0) sa + 360d else*/ if (sa > 360d) sa - 360d else sa
+	  val newB=/*if(ea<360d) ea+360d else*/ if(ea>360d) ea-360d else ea
 	  (newA,if(newB<newA)newB+360d else newB)
 	}
 	
 	
-	def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= {
+	def rotateElement(elem:InstanceData,angle:Double,rotator: VectorConstant =>VectorConstant):Unit= {
 	  TransactionManager.tryWriteInstanceField(elem.ref,3,rotator(elem.fieldValue(3).toVector))	  
 	  val startAngle=GraphElemModule.rotateAngleField(elem,5,angle)
     if((elem.fieldValue(6).toDouble-elem.fieldValue(5).toDouble)%360d ==0) 
@@ -1455,10 +1477,12 @@ class PolygonLineModule extends ActionModule with GraphActionModule {
     writeFormatParams(inst.ref, formFields)
     true
   }
+
 }
 
 
 class MeasureLineModule extends PolygonLineModule {
+  override val actions:Iterable[ActionTrait] = Seq(setFactorAction,verbindenAction)
   override def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
     TransactionManager.tryWriteInstanceField(elem.ref, 4, elem.fieldValue(4).toPolygon.translate(delta))
 
@@ -1498,6 +1522,40 @@ class MeasureLineModule extends PolygonLineModule {
     writeFormatParams(inst.ref, formFields)
     true
   }
+
+  def factorQuestion: DialogQuestion = DialogQuestion("Faktor eingeben", Seq(new AnswerDefinition("Faktor", DataType.DoubleTyp,
+    None)))
+
+  def setFactorAction=new ActionIterator("Faktor eingeben",Some(factorQuestion),doSetFactor)
+  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    val factor=param(0)._2
+    for(elem<-data)
+      TransactionManager.tryWriteInstanceField(elem.ref,12,factor)
+    true
+  }
+
+  def doVerbinden(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    if (param.size == 1) {
+      val otherRef = param.head._2.toObjectReference
+      val oInst = StorageManager.getInstanceData(otherRef)
+      val thisPath: PointList =data.head.fieldValue(4).toPolygon.pathList.head
+      val otherPath: PointList =oInst.fieldValue(4).toPolygon.pathList.head
+      val resultPoints: Seq[VectorConstant] =if(otherPath.points.head==thisPath.points.last) thisPath.points++ otherPath.points.drop(1)
+      else if(thisPath.points.head==otherPath.points.last) otherPath.points ++ thisPath.points.drop(1)
+      else if(otherPath.points.head==thisPath.points.head) otherPath.points.drop(1).reverse ++ thisPath.points
+      else if(thisPath.points.last==otherPath.points.last) thisPath.points ++ otherPath.points.dropRight(1).reverse
+      else throw new IllegalArgumentException("Andere Poly-Linie überlappt nicht")
+      val resPointList=new PointList(resultPoints).removeStraightEdges()
+      val poly=new Polygon(Seq(data.head.ref),Seq(resPointList))
+      TransactionManager.tryWriteInstanceField(data.head.ref,4,poly)
+      TransactionManager.tryWriteInstanceField(data.head.ref,11, GraphElemModule.getUmfang(poly, addStartPoint = false))
+      TransactionManager.tryDeleteInstance(otherRef,None,None)
+      true
+    } else false
+  }
+
+  def verbindenAction=new ActionIterator("Verbinden",Some(DialogQuestion("Verbinden mit",
+    Seq(new AnswerDefinition("PolyLinie wählen",DataType.ObjectRefTyp,None,"342")))),doVerbinden,false,-1)
 }
 
 
@@ -1505,14 +1563,15 @@ class MeasureLineModule extends PolygonLineModule {
 *
 */
 class AreaPolygonModule extends PolygonModule {
-  override val actions=List(intersectAction, cutAction, addAction(), setStartPointAction(),takeOverAction,convertWohnflaecheAction)
+  override val actions=List(intersectAction, cutAction, addAction(), setStartPointAction(),takeOverAction,
+    convertWohnflaecheAction,convertLineAction,setFactorAction)
   override def moveElement(elem: InstanceData, delta: VectorConstant): Unit =
   	TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.translate(delta))
 
   override def copyElement(elem: InstanceData, delta: VectorConstant): InstanceData =
     elem.setField(4,elem.fieldValue(4).toPolygon.translate(delta))  
   
-  override def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= 
+  override def rotateElement(elem:InstanceData,angle:Double,rotator: VectorConstant =>VectorConstant):Unit=
     TransactionManager.tryWriteInstanceField(elem.ref,4,elem.fieldValue(4).toPolygon.transform(rotator))
 
   protected def generateExpression(inst: InstanceData, poly: Polygon): Expression = GraphElemModule.generateAreaExpression(inst,poly)
@@ -1531,7 +1590,7 @@ class AreaPolygonModule extends PolygonModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     updateAreaValue(elem, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
 
-  override def createPolyAction = new CreateActionImpl("FlächenPolygon", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  override def createPolyAction = new CreateActionImpl("Messfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
     "PolyTo")), doCreatePoly)
 
 	override def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -1542,13 +1601,13 @@ class AreaPolygonModule extends PolygonModule {
 		true
 	}
 
-  override def intersectQuestion = DialogQuestion("Schnittfläche mit Polygon", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+  override def intersectQuestion = DialogQuestion("Schnittfläche mit Fläche", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
 
-  override def cutQuestion = DialogQuestion("Polygonfläche abschneiden", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+  override def cutQuestion = DialogQuestion("Fläche abschneiden", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
 
-  override def addQuestion() = DialogQuestion("Polygonfläche hinzufügen", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+  override def addQuestion() = DialogQuestion("Fläche hinzufügen", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
   
   override def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {   
@@ -1575,6 +1634,36 @@ class AreaPolygonModule extends PolygonModule {
       TransactionManager.tryWriteInstanceField(inst.ref,11.toByte,d.fieldData(11))
       TransactionManager.tryDeleteInstance(d.ref,None,None)
     }
+    true
+  }
+
+  def convertLineAction=new ActionIterator("In Messlinie",None,convertToMeasureLine)
+
+  def convertToMeasureLine(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    for (d <- data; if d.ref.typ == TypeInfos.areaPolyElemType) {
+      val inst = TransactionManager.tryCreateInstance(TypeInfos.measureLineElemType, d.owners, notifyRefandColl = true)
+      for (i <- 1 to 3)
+        TransactionManager.tryWriteInstanceField(inst.ref, i.toByte, d.fieldData(i))
+      val oldPoly = d.fieldValue(4).toPolygon
+      val poly = new Polygon(Seq(d.ref), oldPoly.pathList.map(list =>
+        new PointList(list.points :+ list.points.head)
+      ))
+      TransactionManager.tryWriteInstanceField(inst.ref, 4.toByte, poly)
+      TransactionManager.tryWriteInstanceField(inst.ref, 11, GraphElemModule.getUmfang(poly, addStartPoint = false))
+      TransactionManager.tryWriteInstanceField(inst.ref, 10.toByte, d.fieldData(9))
+
+      TransactionManager.tryDeleteInstance(d.ref, None, None)
+    }
+    true
+  }
+  def factorQuestion: DialogQuestion = DialogQuestion("Faktor eingeben", Seq(new AnswerDefinition("Faktor", DataType.DoubleTyp,
+    None)))
+
+  def setFactorAction=new ActionIterator("Faktor eingeben",Some(factorQuestion),doSetFactor)
+  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+    val factor=param(0)._2
+    for(elem<-data)
+      TransactionManager.tryWriteInstanceField(elem.ref,11,factor)
     true
   }
 }

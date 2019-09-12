@@ -22,9 +22,9 @@ object SPControllerList {
 		case other:Throwable =>println(other);System.exit(0);null
 	}  
   
-  private lazy val contrList=classList.map(_.newInstance.asInstanceOf[SidePanelController])  
+  private lazy val contrList=classList.map(_.getConstructor().newInstance().asInstanceOf[SidePanelController])
   
   def generateList(tableClass:AbstractObjectClass):Seq[SidePanelController]=
-  	contrList.filter(_.classFits(tableClass)).map(_.getClass.newInstance)
+  	contrList.filter(_.classFits(tableClass)).map(_.getClass.getConstructor().newInstance())
    
 }

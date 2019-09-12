@@ -153,6 +153,10 @@ class IntAnswerPanel extends  StringAnswerPanel {
 class DoubleAnswerPanel extends  StringAnswerPanel {
   override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.DoubleTyp).toDouble != 0d)
 
-  override def editDone(): Unit = {func(ansParm, parse(textField.text).convertTo(DataType.DoubleTyp)); reset()}
+  override def editDone(): Unit = {
+		val const=parse(textField.text)
+
+		func(ansParm,if(const.getType==DataType.IntTyp) const.convertTo(DataType.DoubleTyp) else const); reset()
+	}
 }	
 

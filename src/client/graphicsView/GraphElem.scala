@@ -20,53 +20,9 @@ import util.{Log, StringUtils}
 
 import scala.collection.mutable
 
-/** super class for all graphical elements
- * 
- */
 
-class HandleHolder(var handle:Int=80) {
-  val lineStylesMap: mutable.TreeSet[Int] =collection.mutable.TreeSet[Int]()
-  var _scale:Double=50
-  def lineStyleUsed(id:Int): String = {
-    lineStylesMap+=id
-    LineStyleHandler.getStyle(id).name
-  }
-  def increase():Unit= handle+=1
-  def getHex: String ={
-    increase()
-    handle.toHexString}
-  def createLineStyleTable(scale:Double):String = {
-    println("scale "+scale)
-    _scale=scale
-    val buffer=new StringBuffer()
-    var lsHandle=17
-    for (st ← lineStylesMap) {
-      buffer.append("  0\r\nLTYPE\r\n  5\r\n")
-      buffer.append(lsHandle.toHexString)
-      buffer.append("\r\n100\r\nAcDbSymbolTableRecord\r\n100\r\nAcDbLinetypeTableRecord\r\n  2\r\n")
-      val style=LineStyleHandler.getStyle(st)
-      buffer.append(style.name)
-      buffer.append("\r\n 70\r\n    64\r\n  3\r\n")
-      buffer.append(style.name)
-      buffer.append("\r\n 72\r\n    65\r\n 73\r\n")
-      buffer.append("%6d".format(style.dots.length))
-      buffer.append("\r\n 40\r\n")
-      buffer.append(style.dots.map(dot⇒ Math.round(dot/scale*100d)/100d).sum)
-      buffer.append("\r\n")
-      var flip=1d
-      for(dot ← style.dots) {
-        buffer.append(" 49\r\n")
-        buffer.append(flip*Math.round(dot/scale*100d)/100d)
-        buffer.append("\r\n 74\r\n     0\r\n")
-        flip*= -1d
-      }
-      lsHandle+=1
-    }
-    if(buffer.length >0)
-    buffer.delete(buffer.length-2,buffer.length)
-    buffer.toString
-  }
-}
+
+
 
 trait Formatable extends Referencable {
   def getFormatFieldValue(fieldNr:Int):Constant
@@ -144,7 +100,7 @@ class RefPointDummy(ix:Int,pos:VectorConstant) extends GraphElem(new Reference(0
   }
     
     
-  def getFormatFieldValue(fieldNr:Int)= EMPTY_EX
+  def getFormatFieldValue(fieldNr:Int): Constant = EMPTY_EX
 
   def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[Nothing] = Seq.empty
 }
@@ -491,7 +447,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
   override def drawRotated(g: Graphics2D, sm: Scaler, selectColor: Color, angle: Double, rotator: VectorConstant => VectorConstant): Unit =
     internDraw(g,sm,selectColor,rotator,NULLVECTOR)
   
-  private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,trans:VectorConstant=>VectorConstant,offSet:VectorConstant)={
+  private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,trans:VectorConstant=>VectorConstant,offSet:VectorConstant): Unit ={
 	  //val trans=transformWithOffset(sm,offSet)_
 	  val newPoly=poly.toPathTransformed(trans)
 	  val theArea=new Area(newPoly)		
@@ -838,7 +794,7 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
   registerClass(wohnflaechenClassID,createWohnflaeche)
   registerClass(measureLineClassID,createMeasureLine)
 
-  println("MeasureFactory "+this.typeMap.mkString(" | "))
+  //println("MeasureFactory "+this.typeMap.mkString(" | "))
 
   def emptyFunc(ref: Reference) = new AreaPolyElement(EMPTY_REFERENCE,0,0,0,0,None,false,
     NULLPOLYGON,NULLVECTOR,0d,"")
@@ -1368,4 +1324,53 @@ object GraphElemConst {
 			}
 		}
 	}
+}
+
+/** Helper Class for DXF export
+  *
+  * @param handle
+  */
+
+class HandleHolder(var handle:Int=80) {
+  val lineStylesMap: mutable.TreeSet[Int] =collection.mutable.TreeSet[Int]()
+  var _scale:Double=50
+  def lineStyleUsed(id:Int): String = {
+    lineStylesMap+=id
+    LineStyleHandler.getStyle(id).name
+  }
+  def increase():Unit= handle+=1
+  def getHex: String ={
+    increase()
+    handle.toHexString}
+  def createLineStyleTable(scale:Double):String = {
+    println("scale "+scale)
+    _scale=scale
+    val buffer=new StringBuffer()
+    var lsHandle=17
+    for (st ← lineStylesMap) {
+      buffer.append("  0\r\nLTYPE\r\n  5\r\n")
+      buffer.append(lsHandle.toHexString)
+      buffer.append("\r\n100\r\nAcDbSymbolTableRecord\r\n100\r\nAcDbLinetypeTableRecord\r\n  2\r\n")
+      val style=LineStyleHandler.getStyle(st)
+      buffer.append(style.name)
+      buffer.append("\r\n 70\r\n    64\r\n  3\r\n")
+      buffer.append(style.name)
+      buffer.append("\r\n 72\r\n    65\r\n 73\r\n")
+      buffer.append("%6d".format(style.dots.length))
+      buffer.append("\r\n 40\r\n")
+      buffer.append(style.dots.map(dot⇒ Math.round(dot/scale*100d)/100d).sum)
+      buffer.append("\r\n")
+      var flip=1d
+      for(dot ← style.dots) {
+        buffer.append(" 49\r\n")
+        buffer.append(flip*Math.round(dot/scale*100d)/100d)
+        buffer.append("\r\n 74\r\n     0\r\n")
+        flip*= -1d
+      }
+      lsHandle+=1
+    }
+    if(buffer.length >0)
+      buffer.delete(buffer.length-2,buffer.length)
+    buffer.toString
+  }
 }

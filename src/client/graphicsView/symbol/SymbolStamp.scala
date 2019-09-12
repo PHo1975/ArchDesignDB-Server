@@ -6,8 +6,8 @@ import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression._
 import definition.typ.DataType
 
-import scala.collection.immutable.Map
-import scala.collection.mutable
+import scala.collection.immutable.{ListMap, Map}
+import scala.collection.{immutable, mutable}
 
 
 case class SymbolParam(ref:Reference,name:String,typ:DataType.Value,defaultValue:Constant){
@@ -17,15 +17,14 @@ case class SymbolParam(ref:Reference,name:String,typ:DataType.Value,defaultValue
 
 
 class SymbolStamp (stampData:InstanceData) extends Referencable {
-  import client.graphicsView.symbol.StampPool._
-  var params= new collection.immutable.ListMap[Reference,SymbolParam] ++ 
+  var params: ListMap[Any, SymbolParam] = new collection.immutable.ListMap[Reference,SymbolParam] ++
     (ClientQueryManager.queryInstance(stampData.ref, 1) map(inst=>(inst.ref.instance ,new SymbolParam(inst) )))  
     
-  val templates = ClientQueryManager.queryInstance(stampData.ref,0) 
-  val ref=stampData.ref  
-  val name=stampData.fieldValue.head.toString
+  val templates: immutable.IndexedSeq[InstanceData] = ClientQueryManager.queryInstance(stampData.ref,0)
+  val ref: Reference =stampData.ref
+  val name: String =stampData.fieldValue.head.toString
   
-  def getParamValue(param:SymbolParam,paramValues:Map[String,Constant])={
+  def getParamValue(param:SymbolParam,paramValues:Map[String,Constant]): Constant ={
     paramValues.getOrElse(param.name ,param.defaultValue)
   }    
   
@@ -44,7 +43,7 @@ class SymbolStamp (stampData:InstanceData) extends Referencable {
       }
       ex.getValue
     }
-    templates.flatMap(generateElement(_,angle,translateElements,rotator))
+    templates.flatMap(StampPool.generateElement(_,angle,translateElements,rotator))
   }
 }
 
@@ -52,8 +51,8 @@ class SymbolStamp (stampData:InstanceData) extends Referencable {
 object StampPool {
   val maxSize=50
   
-  val measureElemContainer= new ElemContainer{
-    def scaleRatio=1d/100d
+  val measureElemContainer: ElemContainer = new ElemContainer{
+    def scaleRatio: Double =1d/100d
   }
   
   lazy val generatorMap:Map[Int,(InstanceData,Double,Expression=>Constant,VectorConstant=>VectorConstant)=>GraphElem]=Map(
@@ -61,7 +60,7 @@ object StampPool {
       GraphElemConst.arcClassID->createArc _,
       GraphElemConst.ellipseClassID->createEllipse _)
   
-  val poolList= mutable.LinkedHashMap[Reference,Option[SymbolStamp]]()
+  val poolList: mutable.LinkedHashMap[Reference, Option[SymbolStamp]] = mutable.LinkedHashMap[Reference,Option[SymbolStamp]]()
   def getStamp(stampRef:Reference):Option[SymbolStamp] = {
      poolList.getOrElse(stampRef,{
       ClientQueryManager.queryInstance(stampRef,-1).headOption match {
@@ -75,22 +74,22 @@ object StampPool {
     })
   }
   
-  def createLine(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant)= {
-    new LineElement(data.ref,translator(data.fieldData.head).toInt,translator(data.fieldData(1)).toInt,
-        translator(data.fieldData(2)).toInt,rotator(translator(data.fieldData(3)).toVector),rotator(translator(data.fieldData(4)).toVector))
+  def createLine(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant): LineElement = {
+    LineElement(data.ref, translator(data.fieldData.head).toInt, translator(data.fieldData(1)).toInt,
+      translator(data.fieldData(2)).toInt, rotator(translator(data.fieldData(3)).toVector), rotator(translator(data.fieldData(4)).toVector))
   }
    
-  def createArc(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant)= {
-    new ArcElement(data.ref,translator(data.fieldData.head).toInt,translator(data.fieldData(1)).toInt,
-        translator(data.fieldData(2)).toInt,rotator(translator(data.fieldData(3)).toVector),translator(data.fieldData(4)).toDouble,
-        translator(data.fieldData(5)).toDouble+angle,translator(data.fieldData(6)).toDouble+angle)
+  def createArc(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant): ArcElement = {
+    ArcElement(data.ref, translator(data.fieldData.head).toInt, translator(data.fieldData(1)).toInt,
+      translator(data.fieldData(2)).toInt, rotator(translator(data.fieldData(3)).toVector), translator(data.fieldData(4)).toDouble,
+      translator(data.fieldData(5)).toDouble + angle, translator(data.fieldData(6)).toDouble + angle)
   } 
   
-   def createEllipse(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant)= {
-    new EllipseElement(data.ref,translator(data.fieldData.head).toInt,translator(data.fieldData(1)).toInt,
-        translator(data.fieldData(2)).toInt,rotator(translator(data.fieldData(3)).toVector),translator(data.fieldData(4)).toDouble,
-        translator(data.fieldData(5)).toDouble,translator(data.fieldData(6)).toDouble+angle,translator(data.fieldData(7)).toDouble,
-        translator(data.fieldData(8)).toDouble)
+   def createEllipse(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant): EllipseElement = {
+    EllipseElement(data.ref, translator(data.fieldData.head).toInt, translator(data.fieldData(1)).toInt,
+      translator(data.fieldData(2)).toInt, rotator(translator(data.fieldData(3)).toVector), translator(data.fieldData(4)).toDouble,
+      translator(data.fieldData(5)).toDouble, translator(data.fieldData(6)).toDouble + angle, translator(data.fieldData(7)).toDouble,
+      translator(data.fieldData(8)).toDouble)
   } 
   
   //private def getNone(data:InstanceData,translator:Expression=>Constant)= None

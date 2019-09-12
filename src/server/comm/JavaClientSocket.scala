@@ -177,7 +177,7 @@ class JavaClientSocket(val socket: Socket) extends Thread with AbstractUserSocke
       }
     }
     catch {
-      case e: SocketException => Log.e("socked failed",e)
+      case e: SocketException => Log.w("Client logged out: "+e.getMessage)
       // avoid stack trace when stopping a client with Ctrl-C
       case e: IOException =>
         Log.e("socked failed",e)

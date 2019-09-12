@@ -60,8 +60,8 @@ class DimLineModule extends ActionModule with GraphActionModule {
       else {
         val mainLineVect=VectorConstant.fromAngle2D(angle*math.Pi/180d)
         val hdirVect=new VectorConstant(-mainLineVect.y,mainLineVect.x,0)
-        val mline=new Line3D(position,mainLineVect)
-        val intersectionEdges=points.map(p=>new Edge(p,mline.intersectionWith(new Line3D(p,hdirVect))))
+        val mline=Line3D(position, mainLineVect)
+        val intersectionEdges=points.map(p=>new Edge(p,mline.intersectionWith(Line3D(p, hdirVect))))
         val polyEdges=(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
         for(edge<-intersectionEdges) yield {
           //val len=edge.length
@@ -79,13 +79,13 @@ class DimLineModule extends ActionModule with GraphActionModule {
       //println("Help Line Lengths:"+helpLineLengths.mkString(", "))
       val blob=BlobConstant.fillData(out=>{
 		    out.writeInt(points.size)
-		    for(i<-0 until points.size){
+		    for(i<-points.indices){
 		      points(i).write(out)
 		      out.writeDouble(helpLineLengths(i))
 		      out.writeBoolean(false)
 		    }		    
 		  })		
-	    val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,false)
+	    val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,notifyRefandColl = false)
 	    TransactionManager.tryWriteInstanceField(inst.ref,1,param.head._2)
 	    TransactionManager.tryWriteInstanceField(inst.ref,3,new DoubleConstant(angle))
 	    TransactionManager.tryWriteInstanceField(inst.ref,4,blob)
@@ -120,9 +120,9 @@ class DimLineModule extends ActionModule with GraphActionModule {
     val polyEdges=(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
     //println("Change Helplines "+polyEdges.mkString(" \n "))
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
-      val mline=new Line3D(position,mainLineVect)
-      val intersectionEdges=dimList.map(p=>new Edge(p.refPoint,mline.intersectionWith(new Line3D(p.refPoint,hdirVect))))
-      for(i<-0 until dimList.size;edge=intersectionEdges(i)) yield {          
+      val mline=Line3D(position, mainLineVect)
+      val intersectionEdges=dimList.map(p=>new Edge(p.refPoint,mline.intersectionWith(Line3D(p.refPoint, hdirVect))))
+      for(i<-dimList.indices; edge=intersectionEdges(i)) yield {
        	var curLen=0d
        	for(poly<-polyEdges) edge.getIntersectionWith(poly) match {
         	case Some(v)=>
@@ -191,7 +191,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
 		}	
 	}	
   
-   def mirrorElement(elem:InstanceData,mirror:(VectorConstant)=>VectorConstant):InstanceData= {
+   def mirrorElement(elem:InstanceData,mirror: VectorConstant =>VectorConstant):InstanceData= {
 	  val result=elem.setField(1,mirror(elem.fieldValue(1).toVector))
 	  elem.fieldValue(4).getValue match {
 	    case blob:BlobConstant =>
@@ -207,7 +207,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
   
   
   
-	def rotateElement(elem:InstanceData,angle:Double,rotator:(VectorConstant)=>VectorConstant):Unit= {
+	def rotateElement(elem:InstanceData,angle:Double,rotator: VectorConstant =>VectorConstant):Unit= {
 	  TransactionManager.tryWriteInstanceField(elem.ref,1,rotator(elem.fieldValue(1).toVector))
 	  GraphElemModule.rotateAngleField(elem,3,angle)
 	  elem.fieldValue(4).getValue match {
@@ -284,8 +284,6 @@ class DimLineModule extends ActionModule with GraphActionModule {
       val dist=lpoint-newPoint
       val hdirUnit=(iPoint-newPoint).unit
       val sc=dist.getScaleTo(hdirUnit)
-      println("mline:"+mline+" hline:"+hline+" ipoint:"+iPoint+" lpoint:"+lpoint+" dist:"+dist+" sc:"+sc)
-      
       val helpLineLength=if(sc<0) (iPoint-newPoint).toDouble else sc
       val newBlob=DimensionPoint.createBlob(dimList :+ new DimensionPoint(newPoint,sc,None))
        TransactionManager.tryWriteInstanceField(ref,4,newBlob)
@@ -298,9 +296,9 @@ class DimLineModule extends ActionModule with GraphActionModule {
     val point=param.head._2.toVector
     val lcd=param(1)._2.toDouble
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
-      val mline=new Line3D(position,mainLineVect)      
+      val mline=Line3D(position, mainLineVect)
       val newDimList=if(dimList.size<3) dimList else dimList.filter(dimElem => {
-        val ip=mline.intersectionWith(new Line3D(dimElem.refPoint,hdirVect))
+        val ip=mline.intersectionWith(Line3D(dimElem.refPoint, hdirVect))
         math.abs(ip.x - point.x) > lcd || math.abs(ip.y - point.y) > lcd
       })
       val newBlob=DimensionPoint.createBlob(newDimList)
@@ -311,7 +309,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
   
   def doSetMainRef(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
     if(param.size!=2) false else {
-    println("Set Main Ref "+param.mkString("| "))
+    //println("Set Main Ref "+param.mkString("| "))
     val point=param.head._2.toVector
     val delta=DoubleConstant(param.last._2.toDouble)
     for (d<-data;if d.ref.typ == theTypeID) {

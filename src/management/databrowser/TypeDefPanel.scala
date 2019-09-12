@@ -460,11 +460,11 @@ class ClassNameEditor(box:JComboBox[String]) extends DefaultCellEditor(box) with
 			editor.setSelectedIndex( classList.indexOf(value.asInstanceOf[java.lang.Integer].intValue) )
 			editor
   	}
-  	override def getCellEditorValue():java.lang.Object =
+  	override def getCellEditorValue:java.lang.Object =
   	{
-  		val ix =getComponent().asInstanceOf[JComboBox[String]].getSelectedIndex()
+  		val ix =getComponent.asInstanceOf[JComboBox[String]].getSelectedIndex
 			//System.out.println("getValue "+ix)
-  		if(ix<0) new java.lang.Integer(-1)
+  		if(ix<0) Integer.valueOf(-1)
   		else classList(ix).asInstanceOf[AnyRef]
   	}
   }

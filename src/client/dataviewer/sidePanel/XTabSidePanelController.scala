@@ -7,7 +7,7 @@ import java.awt.event.{MouseAdapter, MouseEvent}
 import java.awt.{Color, Dimension}
 
 import client.dataviewer.{MultilineEditor, TypeTableModel, ViewConstants}
-import client.dialog.{AbstractFocusContainer, NewButtonsList, SelectEventDispatcher, SelectSender}
+import client.dialog.{FocusContainer, SelectEventDispatcher, SelectSender}
 import client.icons.IconManager
 import definition.data.{EMPTY_OWNERREF, OwnerReference, Reference}
 import definition.expression.Expression
@@ -22,7 +22,7 @@ import scala.swing.event.ButtonClicked
 /** Controller for XTab SidePanel
  * 
  */
-class XTabSidePanelController extends SidePanelController with SelectSender with AbstractFocusContainer {
+class XTabSidePanelController extends SidePanelController with SelectSender with FocusContainer {
 	
 	val tmodel=new XTabSidePanelModel(this)
 	var ydataModel:TypeTableModel= _
@@ -117,7 +117,6 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
 	
 	lazy val XTabRowType:Int=SystemSettings().systemTypes("XTabRow")
 	registerSelectListener(SelectEventDispatcher)
-  registerContainerListener(NewButtonsList)
 
 	def getDefaultHeaderRenderer: TableCellRenderer = table.peer.getTableHeader.getDefaultRenderer
 	
@@ -209,7 +208,7 @@ class XTabSidePanelController extends SidePanelController with SelectSender with
   
   def containerName:String="Preisspiegel"
 
-	def containerRef: Option[Reference] = tmodel.getParentRef
+	def ownerRef: Option[Reference] = tmodel.getParentRef
   
   def requestFocus():Unit=table.requestFocus()
   

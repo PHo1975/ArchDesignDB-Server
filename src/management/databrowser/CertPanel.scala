@@ -107,7 +107,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
   }
 
 
-  def authorize(reg: Registration, domain: String): Unit = {
+  def authorize(reg: Registration, domain: String): Unit = if(FSPaths.certRootFolder.length>0){
     val auth = reg.authorizeDomain(domain)
     Log.w("Authorization for " + domain)
     val challenge = httpChallenge(auth, domain)
@@ -119,7 +119,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
         var attempts = 10
         while (challenge.getStatus != Status.VALID && attempts > 0) {
           if (challenge.getStatus == Status.INVALID) throw new AcmeException("Challenge failed")
-          else Log.w("Challenge status:" + challenge.getStatus())
+          else Log.w("Challenge status:" + challenge.getStatus)
           Swing.onEDT(infoLabel.text="challenge attempts "+attempts)
           Thread.sleep(2000L)
           try {
@@ -136,13 +136,15 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
       } catch {case ex: InterruptedException => Log.e("Challenge interrupted", ex)}
     } else println("Challenge already valid")
     if (challenge.getStatus == Status.INVALID) throw new AcmeException("Challenge failed final")
-  }
+  } else Log.e("Try to authorize but no folder")
 
 
   def httpChallenge(auth: Authorization, domain: String): Challenge = {
     val challenge: Http01Challenge = auth.findChallenge(Http01Challenge.TYPE)
     if (challenge == null) throw new AcmeException("Found no " + Http01Challenge.TYPE + " challenge, don't know what to do...")
-    val tFile = new File(FSPaths.certRootFolder + "/.well-known/acme-challenge/" + challenge.getToken())
+    var folder=FSPaths.certRootFolder
+    if (folder.last=='/') folder=folder.dropRight(1)
+    val tFile = new File(folder + "/.well-known/acme-challenge/" + challenge.getToken)
     CollUtils.tryWith(new FileWriter(tFile)) { f => f.write(challenge.getAuthorization) }
     tokenFile = Some(tFile)
     challenge
@@ -150,7 +152,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
 
 
   protected def requestCertificate(reg:Registration,csr: PKCS10CertificationRequest):Unit = try {
-    val certificate = reg.requestCertificate(csr.getEncoded())
+    val certificate = reg.requestCertificate(csr.getEncoded)
     Log.w("Certificate generated:" + certificate.getLocation)
     val cert = certificate.download()
     if(cert!=null) {

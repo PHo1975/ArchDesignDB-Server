@@ -1,5 +1,5 @@
 package client.comm
-import java.awt.event.KeyEvent
+import java.awt.event.{InputEvent, KeyEvent}
 import java.beans.PropertyChangeListener
 import java.io.{DataInput, DataOutput}
 
@@ -112,7 +112,7 @@ object KeyStrokeManager {
     groupMap.getOrElseUpdate(groupName,new CommandGroup(groupName))
   
   def keyStrokeToString(stroke:KeyStroke)= {
-    val modifierText=KeyEvent.getKeyModifiersText(stroke.getModifiers())
+    val modifierText=InputEvent.getModifiersExText(stroke.getModifiers())
     val keyText= KeyEvent.getKeyText(stroke.getKeyCode())
     if(stroke==null) ""
     else if(modifierText.length>0) modifierText+" + "+ keyText else keyText
@@ -122,7 +122,7 @@ object KeyStrokeManager {
   /** replaces an keystroke->Action setting in a Component
    * @param peer the component
    * @param keyCode what keyCode to change
-   * @param func a function that gets the old Action data and returns the new Action 
+
    */ 
   private def setKeyAction(peer:JComponent,keyCode:Int,newAction:javax.swing.Action)= {
 		val aName=peer.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).

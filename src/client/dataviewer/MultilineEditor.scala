@@ -12,6 +12,7 @@ import javax.swing._
 import javax.swing.event._
 import javax.swing.table._
 import javax.swing.text._
+import util.Log
 
 import scala.swing.Swing
 /**
@@ -35,6 +36,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	var editingColumn: Int = -1
 	val minWidth=150
 	var ownHide=false
+	var stopped=false
 
 	val textArea=new JTextArea(document)
 
@@ -96,7 +98,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 					else {
 						val action=textArea.getActionMap.get("selectNextRowCell")
 						//System.out.println("action :"+action)
-						SwingUtilities.notifyAction(action,KeyStroke.getKeyStroke(e.getKeyCode,e.getModifiers),e,theTable, e.getModifiers)
+						SwingUtilities.notifyAction(action,KeyStroke.getKeyStroke(e.getKeyCode,e.getModifiersEx),e,theTable, e.getModifiersEx)
 						e.consume()
 					}
 				case _ =>
@@ -125,26 +127,32 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	override def shouldSelectCell( e:EventObject  )=true
 
 	override def cancelCellEditing(): Unit = {
+		Log.w("Cancel")
 		ownHide=true
 		super.cancelCellEditing()
 		hidePopup()
 	}
 
 	override def stopCellEditing():Boolean = {
-		//System.out.println("stop ")
-		var validated=false
-	  for(v<-validator;ix<- v.validate(textArea.getText, editingColumn)) {
-	    textArea.setCaretPosition(ix)
-	    //val tix=if(ix>=textArea.getText.length-1) textArea.getText.length-2 else ix
-	    textArea.setSelectionStart(ix)
-	    textArea.setSelectionEnd(ix+1)
-	    validated=true
-	  }
-		if(validated) false
+		Log.w("Stop cell editing stopped:"+stopped+" ownhide:"+ownHide)
+		if(stopped||ownHide) true
 		else {
-			val ret = super.stopCellEditing
-			hidePopup()
-			ret
+			//System.out.println("stop ")
+			var validated = false
+			for (v <- validator; ix <- v.validate(textArea.getText, editingColumn)) {
+				textArea.setCaretPosition(ix)
+				//val tix=if(ix>=textArea.getText.length-1) textArea.getText.length-2 else ix
+				textArea.setSelectionStart(ix)
+				textArea.setSelectionEnd(ix + 1)
+				validated = true
+			}
+			if (validated) false
+			else {
+				stopped=true
+				val ret = super.stopCellEditing
+				hidePopup()
+				ret
+			}
 		}
 	}
 
@@ -167,6 +175,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 
 	def getTableCellEditorComponent(table:JTable,value: Object, isSelected:Boolean,rowIndex: Int, vColIndex:Int): JTextArea ={
 	  editingColumn=vColIndex
+		stopped=false
 	  KeyStrokeManager.disableBindings()
 	  val bounds=table.getCellRect(rowIndex,vColIndex,true)
 

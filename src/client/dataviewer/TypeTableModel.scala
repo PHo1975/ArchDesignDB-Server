@@ -21,6 +21,7 @@ import javax.swing.table.{AbstractTableModel, JTableHeader, TableCellEditor}
 import scala.Option.option2Iterable
 import scala.swing.event.{ListSelectionEvent => _, _}
 import scala.swing.{Alignment, BoxPanel, Button, Component, Label, Orientation, Panel, SequentialContainer, Swing, Table}
+import scala.util.control.NonFatal
 
 
 
@@ -110,7 +111,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 					case e: KeyPressed =>
 						e.peer.getKeyCode match {
               case KeyEvent.VK_DOWN  => if(table.selection.rows.nonEmpty){
-                if((e.peer.getModifiersEx() & InputEvent.CTRL_DOWN_MASK)>0) {
+                if((e.peer.getModifiersEx & InputEvent.CTRL_DOWN_MASK)>0) {
                   e.consume()
                   Swing.onEDT{openChild(table.selection.rows.head)}
                 } else if(table.selection.rows.head==getRowCount-1) {
@@ -118,7 +119,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
                   propMod.tableExitsToDown(tableIx)
                 }
               }
-              case KeyEvent.VK_UP =>if((e.peer.getModifiersEx() & InputEvent.CTRL_DOWN_MASK)>0 ) propMod.mainController.viewBox.goUp()
+              case KeyEvent.VK_UP =>if((e.peer.getModifiersEx & InputEvent.CTRL_DOWN_MASK)>0 ) propMod.mainController.viewBox.goUp()
                  else if(table.selection.rows.isEmpty||table.selection.rows.head==0){
                    deselect()
                    propMod.tableExitsToUp(tableIx)
@@ -141,17 +142,17 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				peer.setIntercellSpacing(new Dimension(0, 0))
 				gridColor=Color.lightGray
 					
-				peer.getColumnModel().setSelectionModel(sm)
-		sm.addListSelectionListener((e: ListSelectionEvent) => if (!e.getValueIsAdjusting() &&
+				peer.getColumnModel.setSelectionModel(sm)
+		sm.addListSelectionListener((e: ListSelectionEvent) => if (!e.getValueIsAdjusting &&
 			table.selection.columns.nonEmpty && table.selection.rows.nonEmpty && table.hasFocus)
 			scrollToSelection())
-				peer.getColumnModel().addColumnModelListener(new TableColumnModelListener(){ 
+				peer.getColumnModel.addColumnModelListener(new TableColumnModelListener(){
 					def columnAdded(e:TableColumnModelEvent ): Unit = {}
 					def columnMarginChanged(e:ChangeEvent ): Unit = {}
 					def columnMoved(e:TableColumnModelEvent): Unit = {
 						if (dragColumn == -1) 
-							dragColumn = e.getFromIndex()
-            dragColumnNewPos = e.getToIndex()
+							dragColumn = e.getFromIndex
+            dragColumnNewPos = e.getToIndex
           }
 					def columnRemoved(e:TableColumnModelEvent ): Unit = {}
 					def columnSelectionChanged(e:javax.swing.event.ListSelectionEvent ): Unit = {}
@@ -163,7 +164,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				      case None => None
 				    })).toMap
 				
-				peer.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter() { 
+				peer.getTableHeader.addMouseListener(new java.awt.event.MouseAdapter() {
 					override def mouseReleased(e:java.awt.event.MouseEvent): Unit = {
 						if (dragColumn != -1 && (dragColumn == 0 || dragColumnNewPos == 0)) 
 							peer.moveColumn(dragColumnNewPos, dragColumn)
@@ -195,7 +196,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 					val v=model.getValueAt(row,modCol)
 					//val v = model.getValueAt(	peer.convertRowIndexToModel(row),	modCol)
 					if(col==0) {
-						if(!singleField && row>=getRowCount-1) itcr.componentFor(this,false,false,null,row,col)
+						if(!singleField && row>=getRowCount-1) itcr.componentFor(this,isSelected = false,hasFocus = false,null,row,col)
 						else ftcr.componentFor(this,sel,foc,if(v==null) null else v.toString, row, col)
 					}			  
 					else v match {
@@ -207,7 +208,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 					}
 				}
 				
-				super.rendererComponent(false,false,0,0).font=tableFont
+				super.rendererComponent(isSelected = false,focused = false,0,0).font=tableFont
 
 		override def editor(row: Int, column: Int): TableCellEditor = {
 					if(column==0)null
@@ -221,7 +222,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 	} // table
 	
 		
-	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ENTER,(oldAction)=>{
+	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ENTER,oldAction=>{
 		oldEnterAction=oldAction
 		new javax.swing.AbstractAction() {
 			def actionPerformed(e: java.awt.event.ActionEvent): Unit = {
@@ -239,7 +240,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		}
 	})
 	
-	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ESCAPE,(oldAction)=> {
+	KeyStrokeManager.replaceKeyAction(table.peer,KeyEvent.VK_ESCAPE,oldAction=> {
 		new javax.swing.AbstractAction() {
 			def actionPerformed(e: java.awt.event.ActionEvent): Unit = {
 				//System.out.println("Escape :"+table.peer .isEditing)
@@ -249,14 +250,19 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		}
 	})
 	
-	val inputValidator=new MyInputValidator() {
+	val inputValidator: MyInputValidator =new MyInputValidator() {
 		var editorComponent: JComponent = _
 
 	  def validate(text:String,col:Int):Option[Int] = {
 	    val mcol=table.peer.convertColumnIndexToModel(col)
 	    if(text!=null&& text.length>0&& col >0 && objClass.fields(mcol-1).typ!=DataType.StringTyp) {
 	      StringParser.parse(text) match {
-	        case ex:Expression => None
+	        case ex:Expression => try {ex.getValue; None} catch {
+						case e:Throwable => if(editorComponent!=null){
+							new Toast(e.getMessage,editorComponent,ClientApp.top).visible=true
+						} else util.Log.e("editorComponent == null")
+						Some (0)
+					}
 	        case err:ParserError =>
 						util.Log.e("validation error:"+err)
 						ClientQueryManager.printErrorMessage(err.message)
@@ -603,25 +609,29 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 
 	override def setValueAt(aValue: Object, rowIndex: Int, columnIndex: Int): Unit =		
 		if(dataList!=null&& columnIndex >0)  listLock.synchronized {
+
 			def showError(res:CommandResult): Unit = res match {
 				case HasError(err: Exception) =>
 					Swing.onEDT({
-						//println("col:"+columnIndex)
 						table.peer.editCellAt(rowIndex, table.peer.convertColumnIndexToView(columnIndex))
 						Swing.onEDT({
 							if (aValue != null)
 								table.peer.getEditorComponent match {
-									case m: JTextArea => m.setText(aValue.toString); new Toast(err.getMessage, table.peer.getEditorComponent.asInstanceOf[JComponent], ClientApp.top).visible = true
+									case m: JTextArea => m.setText(aValue.toString);
+										try {
+											new Toast(err.getMessage, table.peer.getEditorComponent.asInstanceOf[JComponent], ClientApp.top).visible = true
+										} catch {case NonFatal(e)=> util.Log.e("Error toast" +e)}
 									case o => util.Log.e("Other Editor:" + o + " " + o.getClass)
 								}
 						})
 					})
 				case _ =>
 			}
-			
+
+			//val time=System.currentTimeMillis()
 			val expr= if(objClass.enumFields.exists(_._1==columnIndex-1)) 
 				IntConstant(if(aValue==null) 0 else aValue.asInstanceOf[EnumData].id) // enumeration 
-				else parseValue(columnIndex,aValue) match {
+			else parseValue(columnIndex,aValue) match {
 				  case ex:Expression =>ex
 				  case err:ParserError =>
 						ClientQueryManager.printErrorMessage(err.message)
@@ -629,7 +639,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 						new Toast(err.message,table.peer.getEditorComponent.asInstanceOf[JComponent],ClientApp.top).visible=true
 						return
 			}
-			//println("Expr:"+expr)
+			//System.out.println("Parsed "+(System.currentTimeMillis()-time))
 			if(rowIndex==dataList.size) { // create new
 				selfAdded=true
 				ClientQueryManager.createInstances(Array(propMod.getOwnerRef),Seq((typ,objClass.emptyFieldListWithSingleField(columnIndex-1,expr))),checkLinks = true)
@@ -637,6 +647,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			else{
 				val ref= dataList(rowIndex).ref
 				ClientQueryManager.writeInstanceField(ref,(columnIndex-1).toByte,expr, showError)
+				//System.out.println("written "+(System.currentTimeMillis()-time))
 			}
 
 		}  	

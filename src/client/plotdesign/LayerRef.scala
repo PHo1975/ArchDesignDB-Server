@@ -7,7 +7,7 @@ import client.comm.ClientQueryManager
 import client.graphicsView
 import client.graphicsView._
 import definition.comm.NotificationType
-import definition.data.{EMPTY_REFERENCE, InstanceData, OwnerReference, Reference}
+import definition.data._
 import definition.expression.{Constant, NULLVECTOR, VectorConstant}
 import util.Log
 
@@ -60,7 +60,7 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   def bh:Double=myData.fieldValue(6).toDouble
   def xPos:Double=myData.fieldValue(7).toDouble
   def yPos:Double=myData.fieldValue(8).toDouble
-  def filter:Int=myData.fieldValue(9).toInt
+  def filter: PlotFilter =new PlotFilter(myData.fieldValue(9).toInt)
   def _textScale:Double=if(myData.fieldData(10).isNullConstant) 1d else myData.fieldValue(10).toDouble
 
 
@@ -90,7 +90,7 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
   	}}}
 
   	def loadGraphElems(): Unit =listLock.synchronized{
-  	  println("load graph Elems lref:"+ref+" layer:"+layerRef+" measure "+measureLayerFieldOffset)
+  	  //println("load graph Elems lref:"+ref+" layer:"+layerRef+" measure "+measureLayerFieldOffset)
   		if(graphSubsID== -1)
   		graphSubsID=ClientQueryManager.createFactSubscription(layerRef,0,
         if(measureLayerFieldOffset==1) MeasureElemFactory else GraphElemFactory){

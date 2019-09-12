@@ -25,6 +25,7 @@ class PlotGenerator extends CustomGenerator {
 	val lineType: Int =AllClasses.get.getClassIDByName("LineElem")
 	val arcType: Int =AllClasses.get.getClassIDByName("ArcElem")
 	val polyType: Int =AllClasses.get.getClassIDByName("PolyElem")
+  val polyLineType:Int=AllClasses.get.getClassIDByName("PolyLineElem")
 	val ellType: Int =AllClasses.get.getClassIDByName("EllipseElem")
 	val textType: Int =AllClasses.get.getClassIDByName("TextElem")
 	val dimLineTyp: Int =AllClasses.get.getClassIDByName("DimLineElem")
@@ -35,9 +36,13 @@ class PlotGenerator extends CustomGenerator {
   val symbolFillerType: Int =AllClasses.get.getClassIDByName("SymbolFiller")
   val bitmapType: Int =AllClasses.get.getClassIDByName("BitmapElem")
 	val scales: Map[Int, Double] = SystemSettings().enumByID(cl.fields(2).asInstanceOf[EnumFieldDefinition].enumID).
-	enumValues.map((v)=>(v._2,stringToScale(v._1))).toMap
+	enumValues.map(v=>(v._2,stringToScale(v._1))).toMap
 
   val numberFormat="%,.2f"
+
+  val filterMap: Map[Int, Int] =Map(lineType->1, arcType->2, ellType->4, polyType->8, polyLineType->16,
+    bitmapType->32, textType->64, dimLineTyp->128, symbolType->256, symbolFillerType->512,
+    areaPolyTyp->1024, wohnFLTyp->2048, measureLineType->4096)
 
 
 	def fillPlotPage(dataParent:InstanceData,dataEater:DataEater,generator:SinglePageGenerator):Unit= this.synchronized{
@@ -58,6 +63,7 @@ class PlotGenerator extends CustomGenerator {
          def bh: Double = layRefInst.fieldValue(6).toDouble
          val px: Float = layRefInst.fieldValue(7).toFloat * 1000f
          val py: Float = layRefInst.fieldValue(8).toFloat * 1000f
+         val filter=new PlotFilter(layRefInst.fieldValue(9).toInt)
          val theLayerRef = layRefInst.fieldValue.head.toObjectReference
          if (StorageManager.instanceExists(theLayerRef.typ, theLayerRef.instance)) {
            val theLayerInst = StorageManager.getInstanceData(theLayerRef)
@@ -193,6 +199,7 @@ class PlotGenerator extends CustomGenerator {
 
            def getImageSize(file:File):(Int,Int)= {
              var ret=(0,0)
+             println("get Image Size File="+file)
              CollUtils.tryWith(ImageIO.createImageInputStream(file))(ins=>{
                for (reader: ImageReader <- ImageIO.getImageReaders(ins).asScala) {
                  try {
@@ -231,7 +238,9 @@ class PlotGenerator extends CustomGenerator {
              ellType -> createEll, polyType -> createPoly, textType -> createText, dimLineTyp -> createDimLine, areaPolyTyp -> createAreaPoly, wohnFLTyp->createWohnflaeche,
              symbolType -> createSymbol, symbolFillerType ->createSymbolFiller,bitmapType -> createBitmap)
 
-           def createPrintElement(ref: Reference): PrintElement = {
+           def shouldPrint(typ:Int):Boolean=(filterMap(typ) & filter.filter)==0
+
+           def createPrintElement(ref: Reference): PrintElement =  {
              val data = try {StorageManager.getInstanceData(ref)} catch {case NonFatal(e) => util.Log.e(e); return null;case other:Throwable =>println(other);System.exit(0);null}
              val color = new Color(data.fieldValue.head.toInt)
              val lineWidth = toUnit(data.fieldValue(1).toDouble / 100)
@@ -253,7 +262,7 @@ class PlotGenerator extends CustomGenerator {
                  val clipRect = new Rectangle2D.Float(p1.x, p2.y, p2.x - p1.x, p1.y - p2.y)
                  dataEater.addPrintElement(new ClipPrintElement(clipRect))
                }
-               dataEater.addPrintElements(grProps.propertyFields(0).propertyList.map(createPrintElement).filter(_ != null))
+               dataEater.addPrintElements(newElems = grProps.propertyFields(0).propertyList.filter(el => shouldPrint(el.typ)).map(createPrintElement).filter(_ != null))
 
                if (bw > 0d) dataEater.addPrintElement(new RestoreClipPrintElement)
                if( plotAngle!=0f) dataEater.addPrintElement(RotationEndPrintElement)
@@ -273,11 +282,13 @@ class PlotGenerator extends CustomGenerator {
        val notesString=dataEater.paramValues.find(_._1=="Bemerkungen") match {case Some((_,value))=>value.toString.trim;case _=>""}
        if(notesString.length>0) {
          val notes=notesString.split("\n")
-         dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.size+1f)*lineHeight+1, 0f, standardFont.height),
+         dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.length+1f)*lineHeight+1f, 0f, standardFont.height),
            "Hinweise:", standardFont.fontName, 0, 0f, 0f, Color.black, 0f))
          for(ix<-notes.indices;note=notes(ix)){
-           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.size-ix)*lineHeight+2f, 0f, smallFont.height*0.9f),
+           println("ix:"+ix+" N:"+note+" y:"+(lastY-(notes.length-ix)*lineHeight+1f))
+           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.length-ix)*lineHeight+1f, 0f, smallFont.height),
              note, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
+
          }
          lastY-=(notes.length+2)*lineHeight
        }
@@ -307,9 +318,9 @@ class PlotGenerator extends CustomGenerator {
              dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,currentY+0.5f,tableWidth,0),if(ix==0)1f else 0.5f,0,if(ix==0) Color.black else Color.gray))
              dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY + lineHeight, 0f, smallFont.height*0.9f),
                version.fieldValue(0).toString, smallFont.fontName, if(ix==versions.size-1)FontStyle.boldStyle else 0, 0f, 0f, Color.black, 0f))
-             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(0), currentY + lineHeight, 0f, smallFont.height*0.9f),
+             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(0), currentY + lineHeight, 0f, smallFont.height/**0.9f*/),
                version.fieldValue(1).toString, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
-             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(1), currentY + lineHeight, 0f, smallFont.height*0.9f),
+             dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(1), currentY + lineHeight, 0f, smallFont.height/**0.9f*/),
                version.fieldValue(3).toString, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
            }
            dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY-lineHeight-1f, 0f, standardFont.height),

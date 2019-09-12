@@ -4,7 +4,7 @@
 package client.graphicsView
 
 import client.dataviewer.DataViewController
-import client.dialog.{NewButtonsList, SelectEventDispatcher}
+import client.dialog.{CreateActionList, SelectEventDispatcher}
 import client.layout._
 import definition.comm.{IntValue, PropertyGroup}
 import definition.typ.SelectGroup
@@ -67,7 +67,6 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
   add(graphViewController.canvasPanel,BorderPanel.Position.Center)
   add(layerBox,BorderPanel.Position.North)
   graphViewController.selectModel.registerSelectListener(SelectEventDispatcher)
-  graphViewController.registerContainerListener(NewButtonsList)
   switchLayerButton.margin=new Insets(0,0,0,0)
   switchLayerButton.focusable=false
 
@@ -76,7 +75,7 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
       case e:Iterable[_]=>e.headOption match {
         case Some(selGroup: SelectGroup[_]) =>
           val layerList=selGroup.children.filter(a=>Layer.allowedDisplayListTypes.contains(a.ref.typ)).toSeq
-          val path = NewButtonsList.lastContainer match {
+          val path = CreateActionList.lastContainer match {
             case Some(cont) => cont match {
               case a: DataViewController => a.viewBox.pathController.model.dataList.map(_.toString).toArray
               case o => Log.w("Unknown container:" + o + " " + o.getClass); Array.empty[String]
@@ -117,7 +116,7 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
     val fs=pgroup.getIntProperty("fs")
 
     def layersLoaded():Unit = Swing.onEDT{
-      println("Layers loaded begin")
+      //println("Layers loaded begin")
       graphViewController.setupColorsFixed(fs==1)
       graphViewController.scaleModel.relativeScale=(s1.toDouble/100d,s2.toDouble/100d)
       graphViewController.scaleModel.setWorldBounds(WX,WY,WW,WH)
@@ -125,7 +124,7 @@ class GraphicsViewbox extends BorderPanel with ViewboxContent {
         doneListener()
       layerPanController.layerTable.repaint()
       //val now=System.currentTimeMillis()
-      println("restore GraphicsView ")
+      //println("restore GraphicsView ")
     }
     graphViewController.layerModel.restoreSettings(pgroup,Some(layersLoaded _))
 

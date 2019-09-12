@@ -1,8 +1,8 @@
 package client.plotdesign
-import java.awt.{Color, Graphics2D, Point}
 import java.awt.datatransfer.Transferable
 import java.awt.event.{ComponentAdapter, ComponentEvent}
 import java.awt.geom.{Point2D, Rectangle2D}
+import java.awt.{Color, Graphics2D, Point}
 
 import client.comm.ClientQueryManager
 import client.dataviewer.InstanceSelection
@@ -60,7 +60,6 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
     println("Plot setup")
   	layerTypes=Seq(SystemSettings().systemTypes("Layer"),SystemSettings().systemTypes("MeasureLayer"))
   	layerRefType=SystemSettings().systemTypes("LayerPlotRef")
-  	registerContainerListener(NewButtonsList)
 		println("Plot Setup done")
   })
   scaleModel.registerScaleListener(()=>{
@@ -242,7 +241,7 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
 		
 	
 	def containerName="Graph2DEdit"
-	 def containerRef: Option[Reference] =loadedRef//.getOrElse(EMPTY_REFERENCE)
+	 def ownerRef: Option[Reference] =loadedRef//.getOrElse(EMPTY_REFERENCE)
 	 
 	 
 	 def addTempElem( newElem:GraphElem):Unit= {

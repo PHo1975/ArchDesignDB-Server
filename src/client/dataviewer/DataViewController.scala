@@ -5,7 +5,7 @@ package client.dataviewer
 
 import client.dataviewer.sidePanel.SidePanelController
 import client.dialog.form.FormBox
-import client.dialog.{AbstractFocusContainer, EMPTY_GROUP, SelectSender}
+import client.dialog.{EMPTY_GROUP, FocusContainer, SelectSender}
 import client.model.{AbstractTableViewbox, FormPanel, PathControllable, PathController}
 import definition.data.{EMPTY_OWNERREF, InstanceData, Referencable, Reference}
 import definition.typ.{AbstractObjectClass, AllClasses, CustomInstanceEditor, SelectGroup}
@@ -24,7 +24,7 @@ trait ExtendedCustomInstanceEditor[A] extends CustomInstanceEditor[A] {
 }
 
 
-class DataViewController(val viewBox: AbstractTableViewbox) extends PathControllable with SelectSender with AbstractFocusContainer with Referencable {
+class DataViewController(val viewBox: AbstractTableViewbox) extends PathControllable with SelectSender with FocusContainer with Referencable {
   //SimpleProfiler.dprint =true
   private var loaded = false
   var ref: Reference = _
@@ -150,7 +150,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
 
     mainClass.customInstanceEditor match {
       case Some(editorName) if withCustomEditor =>
-        val ed = Class.forName(editorName).newInstance.asInstanceOf[CustomInstanceEditor[Component]]
+        val ed = Class.forName(editorName).getConstructor().newInstance().asInstanceOf[CustomInstanceEditor[Component]]
         ed match {
           case ex: ExtendedCustomInstanceEditor[_] => ex.setPathController(viewBox.pathController)
           case _ =>
@@ -234,14 +234,14 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
       case a@Some(table) => lastFocusedTable = a
       case _ =>
     }
-    notifyContainerListeners(currPropertyField)
+    notifyContainerListener(currPropertyField)
   }
 
   def deselect(notify: Boolean): Unit = {
     for (mod <- propertyModels)
       mod.deselect(-1)
     if (notify)
-      notifyContainerListeners(0)
+      notifyContainerListener(0)
   }
 
   /** sends a message to the path controller that it should open a child instance
@@ -254,7 +254,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
   // FocusContainer interface
   def containerName = ""
 
-  def containerRef = Some(this)
+  def ownerRef = Some(this)
 
   def requestFocus(): Unit = {
     lastFocusedTable match {

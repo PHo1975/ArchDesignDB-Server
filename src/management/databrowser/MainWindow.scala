@@ -76,7 +76,7 @@ object MainWindow extends SimpleSwingApplication {
 
 
   def dataInit(): Unit = {
-    //println("Datainit")
+   println("Datainit")
     generateDataList()
     theModel = new DefaultTableModel(dataList, Array[Object]("ID", "Name", "Description")) {
       override def getColumnClass(col: Int): Class[_] = {
@@ -102,7 +102,7 @@ object MainWindow extends SimpleSwingApplication {
   def generateDataList(): Unit = {
     def classListIterator = AllClasses.get.getClassList.valuesIterator
     dataList = classListIterator.map(
-      x => Array[Object](new java.lang.Integer(x.id), x.name, x.description)).toSeq.
+      x => Array[Object](Integer.valueOf(x.id), x.name, x.description)).toSeq.
       sortWith(_(0).asInstanceOf[java.lang.Integer].intValue < _(0).asInstanceOf[java.lang.Integer].intValue).toArray
     shortClassList = classListIterator.map(x => (x.id, x.name)).toSeq.sortWith(_._2 < _._2)
     classListListener.foreach(_.classListChanged(shortClassList))

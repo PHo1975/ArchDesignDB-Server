@@ -30,7 +30,8 @@ object NO_MATCH extends MatchingPoints(None,None,None)
  */
 trait AbstractViewController[A,ResType] extends FocusContainer with ElemContainer{
   var rubberStartPoint: VectorConstant = _
-  var hasCreateActionStarted:Boolean=false
+  var _hasCreateActionStarted:Boolean=false
+  override def hasCreateActionStarted=_hasCreateActionStarted
   var pointListener:PointClickListener=_
   var objSelectListener:Option[ObjectSelectListener]=None
   var selectPointsListener:Option[SelectPointsListener]=None
@@ -305,22 +306,22 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
     }
 
 
-  def createActionStarted(numEl: Int): Unit = if (numEl > 0) {
+  override def createActionSubmitted(numEl: Int): Unit = if (numEl > 0) {
     //System.out.println("CreateActionStarted "+numEl+" selMod:"+selectModel)
-    hasCreateActionStarted=true
+    _hasCreateActionStarted=true
     numCreatedElements=numEl
     if(selectModel!=null){
       selectModel.deselect(false)
     }
   }
 
-  override def resetCAS(): Unit = {
-    super.resetCAS()
+  override def resetCreateAction(): Unit = {
+    super.resetCreateAction()
     //System.out.println(" reset cas "+hasCreateActionStarted)
     //System.out.println(Thread.currentThread().getStackTrace.drop(1).take(10).mkString("\n ")+"\n")
     //System.out.println("--")
-    if(hasCreateActionStarted)
-      hasCreateActionStarted=false
+    if(_hasCreateActionStarted)
+      _hasCreateActionStarted=false
     numCreatedElements=0
   }
 
@@ -381,7 +382,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   def focusGained(): Unit = {
     AnswerPanelsData.currentViewController=this
     checkIPEMode()
-    notifyContainerListeners(0)
+    notifyContainerListener(0)
   }
 
   def checkIPEMode():Unit = if (_viewportState==ViewportState.InPlaceEdit) stopIPEMode()
@@ -424,7 +425,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
     }
     val allBounds=getAllBounds
     if(allBounds.x==Double.MaxValue){ // no elements in layer, still max value
-      util.Log.w("ZoomAll bounds=null "+allBounds)
+      //util.Log.w("ZoomAll bounds=null "+allBounds)
       scaleModel.setWorldBounds(-1,-1,5,5)
     }
     else scaleModel.setWorldBounds(allBounds.x,allBounds.y,allBounds.width,allBounds.height)
@@ -460,7 +461,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       val minY=scala.math.min(p1y,p2y)
       val maxY=scala.math.max(p1y,p2y)
       _viewportState match {
-        case ViewportState.SelectState =>	checkSelection(minX,minY,maxX,maxY,onlyInside,control)
+        case ViewportState.SelectState =>	 checkSelection(minX,minY,maxX,maxY,onlyInside,control)
 
         case ViewportState.SelectPoints =>
           val points=selectModel.getPointsInRectangle(minX,minY,maxX,maxY)
@@ -485,7 +486,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
     }
   }
 
-  def actionStopped():Unit= {
+  override def actionStopped():Unit= {
     //println("ViewController actionStopped "+_viewportState)
     checkIPEMode()
     resetCustomDragger()
@@ -535,7 +536,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
         }
       } else _viewportState match {
         case ViewportState.SelectState => if (!middleButton) {
-          val hittedElements = filterSelection(clickPosX, clickPosY, lcd)
+          val hittedElements: Iterable[A] = filterSelection(clickPosX, clickPosY, lcd)
           //System.out.println("hitted elements:"+hittedElements)
           if (control) {
             if (hittedElements.nonEmpty) selectModel.addSelection(hittedElements, toggle = true)

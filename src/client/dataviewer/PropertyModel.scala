@@ -7,7 +7,7 @@ import java.awt.Color
 import java.awt.event.InputEvent
 
 import client.comm._
-import client.dialog.{CreateActionMenuButton, CreateMenuButton, NewButtonsList}
+import client.dialog.{CreateActionList, CreateActionMenuButton, CreateMenuButton}
 import definition.comm._
 import definition.data._
 import definition.typ._
@@ -50,8 +50,7 @@ class TitlePopupMenu(title:String) extends Component {
 /** manages all data changes of a property field of a instance
  * the PropertyModels are specialized on a certain allowed class
  * 
- * @param mainController the main controller managing the whole dataView
- * @param allowedClass what classes are allowed in this property field
+ * @param mainController the main controller managing the whole dataView *
  */
 class PropertyModel(val propIx:Int,val mainController:DataViewController) {	
 	var ownerRef:OwnerReference = _
@@ -158,7 +157,7 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 
 	def getPropFieldDefinition: PropertyFieldDefinition = mainController.mainClass.propFields(ownerRef.ownerField)
 	
-	def isEmpty:Boolean= ! tableModMap.valuesIterator.exists(! _.isEmpty)
+	def isEmpty:Boolean= tableModMap.valuesIterator.forall(_.isEmpty)
 
 
 	def createTableModel(ix: Int, typ: Int, singleField: Boolean, showClassLabel: Boolean, focusTable: Boolean = false): TypeTableModel = {
@@ -233,7 +232,7 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 			case _: FocusGained => border = selectBorder; repaint()
 			case _: FocusLost => border = standBorder; repaint()
 			case ButtonClicked(`addBut`) =>
-				NewButtonsList.listenToButtons(buttonList)
+				CreateActionList.listenToButtons(buttonList)
 				requestFocusInWindow()
 				if (buttonList.size == 1) {
           focusGained(None)
@@ -264,15 +263,15 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 		def update(mainClass: ClientObjectClass, fieldToLoad: Int): Unit = {
 		  visible= mainClass.propFields(fieldToLoad).createChildDefs.nonEmpty
 		  if(visible){
-        NewButtonsList.deafToButtons(buttonList)
-		    buttonList=mainClass.createMenuItems(fieldToLoad).filter(_.ccd.editorName==propMod.mainController.containerName)
+        CreateActionList.deafToButtons(buttonList)
+		    buttonList=mainClass.simpleCreateMenuItems(fieldToLoad).filter(_.ccd.editorName==propMod.mainController.containerName)
 		    addBut.text=if (buttonList.size==1) buttonList.head.commandName+"-Tabelle erzeugen" else "Tabelle erzeugen..."
 		    
 		  }
 		}
 
 		def shutDown(): Unit = {
-			NewButtonsList.deafToButtons(buttonList)
+			CreateActionList.deafToButtons(buttonList)
 			buttonList = Seq.empty
 		}
 

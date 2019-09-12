@@ -35,7 +35,7 @@ object SessionManager {
   System.setProperty("org.eclipse.jetty.LEVEL","WARN")
   var scl: ServerClassList = _
   var isSetup=false
-  val setupListeners: ArrayBuffer[() => Unit] = collection.mutable.ArrayBuffer[() => Unit]()
+  protected val setupListeners: ArrayBuffer[() => Unit] = collection.mutable.ArrayBuffer[() => Unit]()
   val backupTimer=new Timer(true)
   val backupTask=new BackupTask
   val backupFormatter=new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss")
@@ -56,20 +56,21 @@ object SessionManager {
       val xmlData = xml.XML.loadFile(FSPaths.configDir + "types.xml")
       scl = new ServerClassList(xmlData)
       AllClasses.set(scl)
-      //println("All Classes set")
+      println("All Classes set")
       UserList.fromXML(xml.XML.loadFile(FSPaths.configDir + "users.xml"))
-      //println("Userlist read")
+      println("Userlist read")
       StorageManager.init(scl.classList)
-      //println("StorageManager Init")
+      println("StorageManager Init")
       ActionNameMap.read()
-      //println("ActionNames read")
+      println("ActionNames read")
       SystemSettings.settings = new ServerSystemSettings(FSPaths.settingsObjectRef)
-      //println("Server System Settings")
+      println("Server System Settings")
       //println("Setup Listeners "+setupListeners.size)
       for (li <- setupListeners) {
         li() // call listeners
-        //println("SetupListener done")
+
       }
+      println("SetupListener done")
       isSetup = true
       Runtime.getRuntime.addShutdownHook(new Thread {
         override def run(): Unit = {
@@ -79,7 +80,7 @@ object SessionManager {
       })
 
       MainServerSocket.start()
-      //println("Socket startet")
+      println("Socket startet")
       val now = new Date()
       val thisDate =DateConstant()
       val gc = new GregorianCalendar
@@ -142,10 +143,10 @@ object SessionManager {
       } catch {
         case NonFatal(e) => util.Log.e("fehler webserver:" + e.getMessage, e)
       }
-
+      println("init done")
     }  catch {
       case NonFatal(e)=> util.Log.e("init",e);println("e:"+e)
-      case g:Throwable=> println("Fatal "+g)}
+      case g:Throwable=> println("Fatal "+g+" "+g.getSuppressed.mkString+" ");g.printStackTrace()}
   }
 
   def inputMissingData(): Unit = Swing.onEDT {

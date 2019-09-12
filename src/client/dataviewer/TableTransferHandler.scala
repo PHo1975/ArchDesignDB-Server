@@ -78,7 +78,7 @@ class TableTransferHandler(tableMod:TypeTableModel) extends TransferHandler {
              case _ => false
            }
            //System.out.println(" loc:"+tabLoc.getRow+ " data.parent:"+data.parentRefs .first + " "+tableMod.getParentRef)
-         } else
+         } else // no Instanceselection flavor:
          if (support.getDataFlavors.exists(_.isFlavorJavaFileListType())) {
            val flavor = support.getDataFlavors.filter(_.isFlavorJavaFileListType()).head
            var fileList: Seq[File] = null

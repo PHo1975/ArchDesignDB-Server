@@ -1,16 +1,20 @@
 package client.spreadsheet
 
-import client.comm.{ClientQueryManager, MapDataModel, TreeMapDataModel}
+import client.comm._
 import client.dataviewer.ViewConstants
+import client.dialog.Toast
+import client.ui.ClientApp
 import definition.comm.NotificationType
 import definition.data.{EMPTY_OWNERREF, InstanceData, Reference}
 import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}
 import javax.swing.event.TableModelEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
+import javax.swing.{JComponent, JTextArea}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.swing.Swing
+import scala.util.control.NonFatal
 
 class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTableModel {
 
@@ -116,8 +120,27 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     val ncol=IntConstant(col)
     val nrow=IntConstant(row)
     val nnul=IntConstant(0)
-    ClientQueryManager.executeAction(EMPTY_OWNERREF,List(controller.spreadSheetRef),"insertCells",
-        Seq(("startCol",ncol),("endCol",ncol),("startRow",nrow),("endRow",nrow),("dx",nnul),("dy",nnul),(value.toString,EMPTY_EX)))
+
+    def showError(res:CommandResult): Unit = res match {
+      case HasError(err: Exception) =>
+        Swing.onEDT({
+          controller.table.peer.editCellAt(row, controller.table.peer.convertColumnIndexToView(col))
+          Swing.onEDT({
+            if (value != null)
+              controller.table.peer.getEditorComponent match {
+                case m: JTextArea => m.setText(value.toString)
+                  try {
+                    new Toast(err.getMessage, controller.table.peer.getEditorComponent.asInstanceOf[JComponent], ClientApp.top).visible = true
+                  } catch {case NonFatal(e)=> util.Log.e("Error toast" +e)}
+                case o => util.Log.e("Other Editor:" + o + " " + o.getClass)
+              }
+          })
+        })
+      case _ =>
+    }
+
+    ClientQueryManager.executeActionResult(EMPTY_OWNERREF,List(controller.spreadSheetRef),"insertCells",
+        Seq(("startCol",ncol),("endCol",ncol),("startRow",nrow),("endRow",nrow),("dx",nnul),("dy",nnul),(value.toString,EMPTY_EX)),showError)
   }
 
 
@@ -131,7 +154,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
 
   protected def addCells(cells: Seq[SpreadSheetCell]): Unit = colCellList.synchronized {
     colCellList.clear()
-    for(c<-cells) addCell(c,false)
+    for(c<-cells) addCell(c,notify = false)
   }
 
 
@@ -180,7 +203,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
            //println("Cell field Changed:"+data(0))
            removePreviousCellData(data.head)
            val notify=data.head.row>maxRowNum
-           addCell(data.head,true)
+           addCell(data.head,notify = true)
            if(notify) myFireTableChanged()
          case NotificationType.instanceRemoved=>
            val dref=data.head.ref
@@ -190,7 +213,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
                myFireTableChanged()
              case None => //println("not in list" +data(0))
            }
-         case NotificationType.childAdded=> addCell(data.head,true)
+         case NotificationType.childAdded=> addCell(data.head,notify = true)
        }
       }
     })

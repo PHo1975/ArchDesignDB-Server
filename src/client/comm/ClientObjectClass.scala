@@ -34,11 +34,11 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
    var enumFields:Map[Int,EnumDefinition]= Map.empty // position of enum fields
    var actionButtons:Seq[ActionStrokeButton]=Seq.empty
 
-  lazy val createMenuItems: Map[Int, Seq[CreateMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
+  lazy val simpleCreateMenuItems: Map[Int, Seq[CreateMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
     val buttons = pf.createChildDefs.filter(_.action.isEmpty).map(new CreateMenuButton(description, i.toByte, _))
      i -> buttons
    }).toMap
-  lazy val createActionMenuItems: Map[Int, Seq[CreateActionMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
+  lazy val actionCreateMenuItems: Map[Int, Seq[CreateActionMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
      val buttons=pf.createChildDefs .filter(_.action.isDefined).map(new CreateActionMenuButton(description,i.toByte,_))
      i -> buttons
    }).toMap
@@ -48,7 +48,7 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
   	 super.resolveSuperFields()
   	 try {  	   
   	   enumFields=fields.view.zipWithIndex.collect(
-  	       {case (enumField:EnumFieldDefinition,ix)=>(ix,SystemSettings().enumByID(enumField.enumID)) }).toMap   
+  	       {case (enumField:EnumFieldDefinition,ix) if SystemSettings().enumByID.contains(enumField.enumID) =>(ix,SystemSettings().enumByID(enumField.enumID)) }).toMap
   		
   		 actionButtons=(for(sc<-superClasses;superClass= AllClasses.get.getClassByID(sc).asInstanceOf[ClientObjectClass] ) 
   		   yield superClass.actionButtons.filterNot(sca=> theActions.exists(_.name==sca.commandName))).flatten ++ 

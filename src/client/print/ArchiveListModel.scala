@@ -17,7 +17,7 @@ class ArchiveListModel extends AbstractListModel[ArchivePageable] {
 	
 	def load(outDefRef:Reference): Unit = {
 	  val data=ClientQueryManager.queryInstance(outDefRef,1)
-	  println("Load Archive "+data.mkString("|"))
+	  //println("Load Archive "+data.mkString("|"))
 		archiveList=data.map(new ArchivePageable(_))
 		//println("la "+outDefRef+" list:"+archiveList.mkString("\n"))
 		fireContentsChanged(this,0,archiveList.size-1)

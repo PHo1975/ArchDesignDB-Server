@@ -130,7 +130,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 
   def notifyListeners(cleared: Boolean = false): Unit = {
 	  val alsoSelected=if(cleared) Nil else controller.lastHittedElements.flatMap(_._2)
-	  val groups=if(cleared) Nil else elMap.values.filterNot(_.children.isEmpty)
+	  val groups: Iterable[SelectGroup[GraphElem]] =if(cleared) Nil else elMap.values.filterNot(_.children.isEmpty)
 	  selectListeners.foreach(_.selectionChanged(this,groups,alsoSelected))
 	}
 	

@@ -86,7 +86,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
       } else activeLayer = -1
   	  if(activeLayer > -1){
   	  	controller.setRelativeScale(layerList(activeLayer).scale)
-  	  	controller.notifyContainerListeners(0)
+  	  	controller.notifyContainerListener(0)
   	  }
   	} else if(activeLayer>=layerList.size)
   	  setActiveLayerIx(getNextActiveLayer)
@@ -137,7 +137,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	  	toggleVisibility(0)
   	  }
   	  else {
-  	    controller.notifyContainerListeners(0)
+  	    controller.notifyContainerListener(0)
   	    fireTableDataChanged()
   	    return
   	  }
@@ -156,7 +156,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	  loadHandler.registerJob(()=>{controller.zoomAll()})
   	}    
   	controller.setRelativeScale(layerList(activeLayer).scale)
-		controller.notifyContainerListeners(0)
+		controller.notifyContainerListener(0)
   	controller.canvas.requestFocusInWindow()
   	fireTableDataChanged()
   }
@@ -370,10 +370,10 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 
   def restoreSettings(pgroup: PropertyGroup, doneListener: Option[() => Unit]): Unit = {
-	  System.out.println("LayerModel restore settings ")
+	  //System.out.println("LayerModel restore settings ")
 	  layerList.clear()
 	  val numLayer=pgroup.getIntProperty("NumLay")
-	  System.out.println("NumLayer "+numLayer)
+	  //System.out.println("NumLayer "+numLayer)
 
 		for(i<- 0 until numLayer) {
 			val layRef=Reference(pgroup.getStringProperty("L"+i.toString))
@@ -386,21 +386,21 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 				layerList +=newLayer
 			}
 		}
-		println("layers found "+layerList.size)
+		//println("layers found "+layerList.size)
 		notifySizeChanged()
-		println("notify size")
+		//println("notify size")
 		loadLayers(doneListener)
-		println("Layers loaded")
+		//println("Layers loaded")
 		setActiveLayerIx(pgroup.getIntProperty("AS"))
-		println("Active layer set")
+		//println("Active layer set")
 	}
 
 	private def loadLayers(doneListener:Option[()=>Unit]):Unit= try{
-		println("Load Layers")
+		//println("Load Layers")
 		var layerToLoad= 0
 
 		def layerLoaded():Unit = {
-			println("Layer loaded "+layerToLoad)
+			//println("Layer loaded "+layerToLoad)
 			layerToLoad+=1
 			while(layerToLoad < layerList.size&& !layerList(layerToLoad).visible)
 				layerToLoad+=1

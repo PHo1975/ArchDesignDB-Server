@@ -3,9 +3,9 @@ package client.print
 import java.awt.print.{PageFormat, PrinterJob}
 
 import definition.data.{FormDescription, OutputDefinition}
-import javax.print.{PrintService, PrintServiceLookup}
-import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
 import javax.print.attribute.standard.{Media, MediaPrintableArea, MediaSizeName, MediaTray}
+import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
+import javax.print.{PrintService, PrintServiceLookup}
 import javax.swing.DefaultComboBoxModel
 
 object PrintModel {
@@ -22,7 +22,7 @@ object PrintModel {
   if(printServices==null || printServices.size==0) util.Log.e("no print services found !")
 	var printerName:String=null
 	var theService:javax.print.PrintService= PrintServiceLookup.lookupDefaultPrintService
-	println("before crash")
+	//println("before crash")
 	if(theService==null) println("Printservice == null")
 	else if (theService.getDefaultAttributeValue(classOf[Media])==null) println("Default AttributeValue == null")
 	var lastSelectedMedia:MediaSizeWrapper=MediaMap.getMediaSize(theService.getDefaultAttributeValue(classOf[Media]).asInstanceOf[MediaSizeName])

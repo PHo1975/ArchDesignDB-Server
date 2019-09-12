@@ -49,6 +49,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	var shuttingDown=false
 	var inplaceTextElement:Option[TextElement]=None
 	var inplaceEditFinishListener:Option[(String) => Unit]=None
+
+	//var jumpUpCallback:Option[()=>Unit]=None
 	
   scaleModel.registerScaleListener(()=>{
   	refreshCanvas()
@@ -57,7 +59,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   val layerPane=new LPane
   private var ipePane: InplaceEditPanel = _
   
-  layerPane.panel.add(canvas.peer,new java.lang.Integer(1))  
+  layerPane.panel.add(canvas.peer,Integer.valueOf(1))
   
   def createIPEPane():Unit=ClientQueryManager.runInPool{
      ipePane=new InplaceEditPanel(this)
@@ -65,7 +67,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
        ipePane.setup()       
        Log.w("ipe:"+ipePane+" peer:"+ipePane.peer)
        ipePane.visible=false
-       layerPane.panel.add(ipePane.peer,new java.lang.Integer(2))
+       layerPane.panel.add(ipePane.peer,Integer.valueOf(2))
        //System.out.println("setup IPE "+layerPane.peer.getSize())
        ipePane.peer.setSize(layerPane.size)
        ipePane.setPaneSize(layerPane.size)
@@ -109,7 +111,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	    numCreatedElements-= 1
       selectModel.addSelection(Seq((lay,List(elem))),toggle = false)
 	    if(numCreatedElements<1){
-	      casReceived()	    	
+	      createdDataReceived()
 	    }
 	    //System.out.println("CAS graphElem Added "+elem)	    
 	  }	    
@@ -330,8 +332,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 		requestFocus()
     //println("Show Create "+NewButtonsList.actionButtons.map(_.commandName).mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     val buttons = layerModel.getActiveLayer match {
-      case Some(m: MeasureLayer) => NewButtonsList.actionButtons.takeRight(3)
-      case _ => NewButtonsList.actionButtons.dropRight(3)
+      case Some(m: MeasureLayer) => CreateActionList.actionButtons.takeRight(3)
+      case _ => CreateActionList.actionButtons.dropRight(3)
     }
     if (buttons.size == 1) {
       buttons.head.strokeHit()
@@ -364,7 +366,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	 // FocusContainer
 	 def containerName="Graph2DEdit"
 
-  def containerRef: Option[AbstractLayer] = layerModel.getActiveLayer
+  def ownerRef: Option[AbstractLayer] = layerModel.getActiveLayer
 	  
 	 /** Format Field Values to give to a new created Object
    * @param forType class type of the object to create

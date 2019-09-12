@@ -57,7 +57,7 @@ object LogFileModel extends AbstractTableModel {
   		 case 2 => rec.trID.asInstanceOf[AnyRef]
   		 //case 2 => rec.userID.asInstanceOf[AnyRef]
   		 case 3 => rec.typ.asInstanceOf[AnyRef]
-  		 case 4 => new Integer(rec.inst)
+  		 case 4 => Integer.valueOf(rec.inst)
   		 case 5 => rec.dataPos.asInstanceOf[AnyRef]
   		 case 6 => rec.dataLength.asInstanceOf[AnyRef]
   		 case _ => "**"

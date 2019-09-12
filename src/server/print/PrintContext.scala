@@ -149,7 +149,7 @@ class PrintContext extends Context{
 				val className=classString.replace('_','.')
 				//System.out.println("CustomResover "+className+" varName:"+customVarName)
 				customResolverMap.getOrElseUpdate(className,
-            Class.forName(className).newInstance.asInstanceOf[CustomPrintvarResolver]).
+            Class.forName(className).getConstructor().newInstance().asInstanceOf[CustomPrintvarResolver]).
               resolve(customVarName, currentInstance)
 			case _ => EMPTY_EX
 	  }  	    		

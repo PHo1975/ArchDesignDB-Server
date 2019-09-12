@@ -11,8 +11,11 @@ import util.{Log, StrToDouble}
 object GewerkActionModule {
   val gewerkOZField: Byte =1.toByte
   val posOZField: Byte =1.toByte
+  val posMengeField:Byte=3.toByte
+    val posPreisField:Byte=6.toByte
   val lvOZField: Byte =1.toByte
   val posTyp=133
+  val gewerkTyp=135
 
   
   def doNum(ozField:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
@@ -35,22 +38,43 @@ object GewerkActionModule {
           if posRef.typ==posTyp){
         for(posProp<-StorageManager.getInstanceProperties(posRef);measureRef<-posProp.propertyFields(1).propertyList)
           TransactionManager.tryDeleteInstance(measureRef,None,None)
+        for(posProp<-StorageManager.getInstanceProperties(posRef);pspRef<-posProp.propertyFields(0).propertyList)
+          TransactionManager.tryDeleteInstance(pspRef,None,None)
         if(StorageManager.getInstanceData(posRef).fieldData(3).getTerm != measureTerm)
           TransactionManager.tryWriteInstanceField(posRef,3.toByte,measureExpression)
       }
     }
     true
   }
+
+  private def loopGewerkRemovePS(posPropField:Int,topRef:Reference):Unit = {
+    for(prop<-StorageManager.getInstanceProperties(topRef);
+        posRef<-prop.propertyFields(posPropField).propertyList)
+        if (posRef.typ==posTyp) {
+          for(posProp<-StorageManager.getInstanceProperties(posRef);pspRef<-posProp.propertyFields(0).propertyList)
+            TransactionManager.tryDeleteInstance(pspRef,None,None)
+        } else
+        if (posRef.typ==gewerkTyp)
+          loopGewerkRemovePS(posPropField,posRef)
+
+  }
+
+  def doRemovePS(posPropField:Int) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+    for (gewerk<-data)
+      loopGewerkRemovePS(posPropField,gewerk.ref)
+    true
+  }
 }
 
 class GewerkActionModule extends ActionModule {  
   import server.ava.GewerkActionModule._
-  lazy val actions=List(numAction,removeMeasureAction)
+  lazy val actions=List(numAction,removeMeasureAction,removePSAction)
   
   val numAction=new ActionIterator("Nummerieren",Some(DialogQuestion("Neu Nummerieren",
     Seq(new AnswerDefinition("Schrittweite:", DataType.DoubleTyp, None)))),doNum(gewerkOZField))
 
   val removeMeasureAction=new ActionIterator("Massen entfernen",None,doRemoveMeasure(1))
+  val removePSAction=new ActionIterator("Preise entfernen",None,doRemovePS(1))
 
   def setObjectType(otype:Int): Unit = { }
 }
@@ -70,17 +94,36 @@ class KalkListeActionModule extends ActionModule {
 
 class PosActionModule extends ActionModule {
   import server.ava.GewerkActionModule._
-  lazy val actions=List(numAction)
+  lazy val actions=List(numAction,factorMengeAction,factorPreisAction)
 
   val numAction=new ActionIterator("Nummerieren",Some(DialogQuestion("Neu Nummerieren",
     Seq(new AnswerDefinition("Schrittweite:", DataType.DoubleTyp, None)))),doNum(posOZField))
 
+  val factorMengeAction=new ActionIterator("Menge x Faktor",Some(DialogQuestion("Menge x Faktor",
+    Seq(new AnswerDefinition("Faktor:", DataType.DoubleTyp, None)))),doFactor(posMengeField))
+
+  val factorPreisAction=new ActionIterator("EP x Faktor",Some(DialogQuestion("EP x Faktor",
+    Seq(new AnswerDefinition("Faktor:", DataType.DoubleTyp, None)))),doFactor(posPreisField))
+
   def setObjectType(otype:Int): Unit = { }
+
+  def doFactor(field:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+    val factor=param.head._2
+
+    for(el<-data){
+      val oldTerm=el.fieldData(field)
+      val newTerm=BinaryOperation(oldTerm,BinOperator.getOp('*'),factor)
+      TransactionManager.tryWriteInstanceField(el.ref,field,newTerm)
+    }
+    true
+  }
+
+
 }
 
 class LVActionModule extends ActionModule {
   import server.ava.GewerkActionModule._
-  lazy val actions=List(numAction,vergabeAction,ubertragAction,removeMeasureAction)
+  lazy val actions=List(numAction,vergabeAction,ubertragAction,removeMeasureAction,removePSAction)
 
   lazy val allcl: AllClasses[_ <: AbstractObjectClass] =AllClasses.get
   lazy val psGewerkTyp: Int =allcl.getClassByName("PSGewerkSumme").get.id
@@ -95,6 +138,7 @@ class LVActionModule extends ActionModule {
   val vergabeAction=new ActionIterator("Vergabe",Some(PanelRemoteQuestion("client.model.ava.CostTransferPanel")),doVergabe)
   val ubertragAction=new ActionIterator("Schätzung übertr.",Some(PanelRemoteQuestion("client.model.ava.CostTransferPanel")),doUbertrag)
   val removeMeasureAction=new ActionIterator("Massen entfernen",None,doRemoveMeasure(2))
+  val removePSAction=new ActionIterator("Preise entfernen",None,doRemovePS(2))
 
   def doVergabe(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  {
     val zusstellTyp=allcl.getClassByName("Kostenzusammenstellung").get.id

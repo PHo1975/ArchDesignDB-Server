@@ -35,6 +35,6 @@ object SelectionFilterInfo {
    
    protected def getElemFilters: immutable.IndexedSeq[ElementFilter] ={
      val clInfo=AllClasses.get
-     GraphElemFactory.typeMap.keys.map(typeID=>ElementFilter(clInfo.getClassByID(typeID).description, typeID)).toIndexedSeq
+     GraphElemFactory.typeMap.keys.map(typeID=>ElementFilter(clInfo.getClassByID(typeID).description, typeID)).toIndexedSeq.sortBy(_.name)
    }
 }

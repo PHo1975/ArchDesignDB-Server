@@ -53,7 +53,7 @@ object PrintEngine {
 	private val printableClassesMap = collection.mutable.HashMap[Int, Boolean]()
   
 	
-	def getGenerator(name:String): CustomGenerator = generatorMap.getOrElseUpdate(name,Class.forName(name.trim).newInstance().asInstanceOf[CustomGenerator])
+	def getGenerator(name:String): CustomGenerator = generatorMap.getOrElseUpdate(name,Class.forName(name.trim).getConstructor().newInstance().asInstanceOf[CustomGenerator])
 
 	def generatePages(u:JavaClientSocket, dataParent:InstanceData, oDef:OutputDefinition, pageWidth:Int, pageHeight:Int, form:FormDescription): Unit =
 		lock.synchronized {						

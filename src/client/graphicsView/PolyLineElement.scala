@@ -28,7 +28,7 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
   def loopPoints(trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
     poly.pathList.headOption match {
       case Some(pl) if pl.points.size > 1 =>
-        println("points:"+pl.points.mkString(" | "))
+        //println("points:"+pl.points.mkString(" | "))
         new Iterator[VectorConstant] {
           var st: Int = -1
 
@@ -72,15 +72,15 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
     path
   }
 
-  def createPoints(trans: (VectorConstant) => VectorConstant): Iterator[VectorConstant] = {
-    println("createPoints "+poly.pathList.mkString)
+  def createPoints(trans: VectorConstant => VectorConstant): Iterator[VectorConstant] = {
+    //println("createPoints "+poly.pathList.mkString)
     val w = if (width == 0) 0.05d else width
     loopPoints(trans, w * (-0.5d + align)) ++ loopPoints(trans, w * (0.5d + align)).toSeq.reverseIterator
   }
 
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
     val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm) _
-    println("draw path "+createPoints(trans).mkString(" "))
+    //println("draw path "+createPoints(trans).mkString(" "))
     val path = createPath(createPoints(trans))
     //println("draw path :"+path.getBounds)
     val theArea = new Area(path)

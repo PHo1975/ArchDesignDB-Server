@@ -40,7 +40,6 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
   pathController.registerSizeChangeListener((a) => {viewbox.setTitle(pathMod.getTitleText)})
   val scr = new AdaptedScroller(pathView)
   dataviewController.registerSelectListener(SelectEventDispatcher)
-  dataviewController.registerContainerListener(NewButtonsList)
 
   list.peer.setModel(model)
   list.selection.intervalMode = IntervalMode.Single
@@ -72,7 +71,7 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
       val newVal = searchBox.text
       if (newVal.length > 4 && rootRef != EMPTY_REFERENCE)
         ClientQueryManager.startSearch(rootRef, newVal, model.addSearchResult)
-      NewButtonsList.focusLastContainer()
+      CreateActionList.focusLastContainer()
   }
 
   def goUp(): Unit = if (pathMod.getSize > 0)

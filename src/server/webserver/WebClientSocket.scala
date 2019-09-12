@@ -142,6 +142,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         case "JumpUp"=>jumpUp(data)
         case "ChangeTableSetup"=>changeTableSetup(data)
         case "WriteField"=> writeField(data)
+        case "WriteInstancesField"=>writeInstancesField(data)
         case "Execute"=> executeAction(data,false)
         case "CreateInstance"=>createInstance(data)
         case "DeleteInstance"=>deleteInstance(data)
@@ -264,8 +265,9 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     }
 
   protected def loadData(data:String):Unit = data.split("\\|") match {
-    case Array(Reference(parentRef),StrToInt(propertyField))=>
+    case Array(Reference(parentRef),StrToInt(propertyField),StrToInt(dataTicket))=>
       userSocket.sendData(ServerCommands.sendQueryResponse ) {out=>
+        out.writeInt(dataTicket)
         sendQueryData(out,parentRef,propertyField.toByte)
       }
     case o=> Log.e("Wrong format load data "+o)
@@ -310,6 +312,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     case other => Log.e("set Table Setup wrong string:"+data)
   }
 
+
   protected def writeField(data:String):Unit = data.split("\\|") match {
     case Array(Reference(ref),StrToInt(field),Decode(expression)) => try {
       TransactionManager.doTransaction(userEntry.id,ClientCommands.writeField.id.toShort,
@@ -323,6 +326,26 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     }
     case o:Array[String]=> Log.e("writeField wrong data "+o.mkString(" | "))
   }
+
+
+  protected def writeInstancesField(data:String):Unit = data.split("\\|") match {
+    case Array(listString,StrToInt(field),Decode(expression)) => try {
+      val refList: Array[Reference] =listString.split("#").flatMap { case Reference(ref) => Some(ref); case _ => None }
+      if(refList.nonEmpty)
+      TransactionManager.doTransaction(userEntry.id,ClientCommands.writeField.id.toShort,
+        refList.head,false,0,{
+          for(ref<-refList)
+          if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression))
+            Log.e("cant write field "+field+" in ref:"+ref+" ex:"+expression)
+        })
+
+    }
+    catch {
+      case NonFatal(e) => Log.e("write Fields "+field+" wrong String: " + data,e)
+    }
+    case o:Array[String]=> Log.e("writeField wrong data "+o.mkString(" | "))
+  }
+
 
   protected def strToParam(st:String): (String, Constant) = {
     val ix=st.indexOf("\u2192")

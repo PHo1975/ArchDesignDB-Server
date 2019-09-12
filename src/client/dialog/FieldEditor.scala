@@ -228,7 +228,7 @@ trait ActiveTextComponent extends TextComponent{
     case e:EditDone=> if(dirty){
       dirty=false      
       fieldChanged(text.trim)
-      NewButtonsList.focusLastContainer()
+      CreateActionList.focusLastContainer()
     }  
   }  
 } 
@@ -260,7 +260,7 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
     ed.addFocusListener(new java.awt.event.FocusAdapter {
       override def focusGained(e: java.awt.event.FocusEvent): Unit = {
         //println("focus"+model.undefined+" "+model.getValue+" "+p.getEditor().asInstanceOf[JSpinner.NumberEditor].getTextField.getText.size)
-        if(ed.getText.length==0) p.setValue(new java.lang.Integer(0))
+        if(ed.getText.length==0) p.setValue(Integer.valueOf(0))
       }
     })
     p
@@ -308,7 +308,7 @@ trait SidePanelTextComponent extends  ActiveTextComponent with SidePanelComponen
 
   def fieldChanged(newVal: String): Unit = if (filter(newVal)) {
     editor.storeValue(newVal,this)
-    NewButtonsList.focusLastContainer()
+    CreateActionList.focusLastContainer()
   }
 }
 
@@ -374,7 +374,7 @@ trait SidePanelDoubleComponent extends  ActiveTextComponent with SidePanelCompon
         new Toast(message,this.peer,ClientApp.top).visible=true
       case exp:Expression=>
         editor.storeValue(exp.getValue.toDouble,this)
-        NewButtonsList.focusLastContainer()
+        CreateActionList.focusLastContainer()
     }  
   }   
 }

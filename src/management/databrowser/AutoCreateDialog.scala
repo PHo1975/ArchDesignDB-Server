@@ -330,7 +330,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 				def newVal=newValue match {
 					case (_,n:java.lang.Integer)=> n
 					case n:java.lang.Integer => n
-					case _ => new java.lang.Integer(-1)
+					case _ => Integer.valueOf(-1)
 				}
 
 				if(rowIndex < currentValues.size) {

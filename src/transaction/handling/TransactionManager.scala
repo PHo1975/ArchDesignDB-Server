@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
  */
 object TransactionManager {
 	@volatile protected var running = false
-  
+  println("Transaction start")
   val numUndoSteps=10
   var currentUser:Short=0
   var currentActionCode:Short=0

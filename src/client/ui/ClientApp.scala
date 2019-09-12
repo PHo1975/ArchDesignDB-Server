@@ -155,7 +155,7 @@ object ClientApp extends App {
     var isDecorating = false
 
     override def closeOperation(): Unit = {
-      util.Log.e("Close " )
+      //util.Log.e("Close " )
       if (!isDecorating) shutDown()
     }
 
@@ -273,7 +273,7 @@ object ClientApp extends App {
     })
 
     sock.classesReadListener = () => Swing.onEDT {
-      println("Classes Read ")
+      //println("Classes Read ")
       ClientQueryManager.setClientSocket(sock)
 
       ViewConstants.defaultRowHeight = UserSettings.getIntProperty("Fonts", "RowHeight", 25)
@@ -317,7 +317,7 @@ object ClientApp extends App {
       undoBut.font = ViewConstants.defFont
 
       ClientQueryManager.registerSetupListener(() => {
-        println("clientapp setup")
+        //println("clientapp setup")
         val windowWidth = UserSettings.getIntProperty("WindowSettings", "Width")
         val windowHeight = UserSettings.getIntProperty("WindowSettings", "Height")
         val windowX = UserSettings.getIntProperty("WindowSettings", "XPos")
@@ -329,7 +329,7 @@ object ClientApp extends App {
         else if (windowWidth > 0 && windowHeight > 0)
           top.bounds = new java.awt.Rectangle(windowX, windowY, windowWidth, windowHeight)
         top.visible = true
-        println("Client app setup done")
+        //println("Client app setup done")
       })
 
       SelectEventDispatcher.registerSelectListener(ActionPanel)
@@ -351,28 +351,28 @@ object ClientApp extends App {
     }
 
     sock.startupFinishListener += (() => Swing.onEDT {
-      println("startup finished")
+      //println("startup finished")
       val storeList = UserSettings.getListProperty[PropertyGroup]("WindowSettings", "Boxes")
-      println("storeList loaded "+ storeList.size)
+      //println("storeList loaded "+ storeList.size)
       storeList.find(_.name == "Default") match {
         case Some(group) => mainBox.restoreSettings(Some(group), loadDone _)
         case None => mainBox.restoreSettings(None, loadDone _)
       }
-      println("restore done")
+      //println("restore done")
     })
     sock.start()
-    println("Sock gestartet")
+    //println("Sock gestartet")
   } catch {
     case NonFatal(e) => println("Fataler Fehler "+e)
   }
 
 
   def loadDone():Unit = {
-    System.out.println("Init Loading Done ")
+    //System.out.println("Init Loading Done ")
   }
 
   def shutDown(): Unit = {
-    util.Log.e("shutdown")
+    //util.Log.e("shutdown")
     top.visible = false
 
     if(sock!=null) {

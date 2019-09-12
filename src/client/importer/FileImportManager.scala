@@ -12,7 +12,7 @@ import scala.swing.Window
 
 class DescriptorHolder(val className:String,id:Int) {
   def createDescriptor: FileImportDescriptor = {
-    val d=Class.forName(className).newInstance.asInstanceOf[FileImportDescriptor]
+    val d=Class.forName(className).getConstructor().newInstance().asInstanceOf[FileImportDescriptor]
     d.baseID=id
     d
   }

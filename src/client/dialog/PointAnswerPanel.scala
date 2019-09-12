@@ -59,7 +59,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   
   var internPointClickListener:Option[(VectorConstant)=>Unit]=None
   var internEditListener:Option[(String)=>Unit]=None
-  val buttons = Seq(globalBut, dxBut, dyBut, dzBut, midBut, divBut, interBut, bracketBut, forcePrecBut)
+  val buttons: Seq[AbstractPanelButton] = Seq(globalBut, dxBut, dyBut, dzBut, midBut, divBut, interBut, bracketBut, forcePrecBut)
   
   textEdit.maximumSize=new Dimension(Short.MaxValue,30)
   textEdit.preferredSize=new Dimension(100,30)
@@ -94,12 +94,12 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   listenTo(textEdit)
   removeLastFocusListener(textEdit)
 
-  def textDialog(caption:String,listener:(String)=>Unit):Unit= this.synchronized{    
+  def textDialog(caption:String,listener: String =>Unit):Unit= this.synchronized{
     initTextEdit(caption)
     internEditListener=Some(listener)
   }
   
-  def pointDialog(caption:String,listener:(VectorConstant)=>Unit):Unit= {    
+  def pointDialog(caption:String,listener: VectorConstant =>Unit):Unit= {
     textEdit.visible=false
     AnswerPanelsData.currentViewController.requestFocus()
     showTextLabel(caption)
@@ -116,15 +116,15 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
           bracketBut.tooltip="Summenfunktion einschalten"
         AnswerPanelsData.currentViewController.stopBracketMode()
       }
-		case ButtonClicked(`dxBut`)=> textDialog("dx-Wert:",(text)=> {
+		case ButtonClicked(`dxBut`)=> textDialog("dx-Wert:",text=> {
   		  AnswerPanelsData.currentViewController.addDelta(getTextEditDouble,0,0)
   		})  		
   	
-  	case ButtonClicked(`dyBut`)=> textDialog("dy-Wert:",(text)=> {
+  	case ButtonClicked(`dyBut`)=> textDialog("dy-Wert:",text=> {
   		  AnswerPanelsData.currentViewController.addDelta(0,getTextEditDouble,0)
   		})
   	
-  	case ButtonClicked(`dzBut`)=>	textDialog("dz-Wert:",(text)=> {
+  	case ButtonClicked(`dzBut`)=>	textDialog("dz-Wert:",text=> {
   		  AnswerPanelsData.currentViewController.addDelta(0,0,getTextEditDouble)
   		})
   	
@@ -145,9 +145,9 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   	case ButtonClicked(`divBut`)=>
 			pointDialog("Teilung von Punkt",p1=> {
          pointDialog("Teilung bis Punkt",p2 => {
-           textDialog("Anzahl Teilungen",(text)=> {
+           textDialog("Anzahl Teilungen",text=> {
              val parts=parse(text).toInt
-             if(parts>1) textDialog("Teilungspunkt Nr:",(text2)=> {
+             if(parts>1) textDialog("Teilungspunkt Nr:",text2=> {
                val nr=parse(text2).toInt
                if(nr>0 && nr < parts) {
                  val dist=p2-p1
@@ -164,7 +164,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
 
     case ButtonClicked(`forcePrecBut`) =>
       //println("force Button "+forcePrecBut.selected)
-      forcePrecision = forcePrecBut.selected;
+      forcePrecision = forcePrecBut.selected
       defaultPrecision = forcePrecision
   	
   	
@@ -291,7 +291,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
                   case _=> Log.e("Falscher Elementtyp"+obj2.getType);None
                 }) match {
                   case Some(res) =>
-                    viewController.changeViewportState(ViewportState.AskPoint,false)
+                    viewController.changeViewportState(ViewportState.AskPoint,withStop = false)
                     if(isBracketMode) AnswerPanelsData.currentViewController.startBracketMode()
                     viewController.setCoordinate(res.x, res.y, res.z)
                   case _ =>
@@ -310,7 +310,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
                   case _=> Log.e("Falscher Elementtyp"+obj2.getType);None
                 }) match {
                   case Some(res)=>
-                    viewController.changeViewportState(ViewportState.AskPoint,false)
+                    viewController.changeViewportState(ViewportState.AskPoint,withStop = false)
                     if(isBracketMode) AnswerPanelsData.currentViewController.startBracketMode()
                     viewController.setCoordinate(res.x, res.y, res.z)
                   case _=>

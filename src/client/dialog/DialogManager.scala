@@ -47,7 +47,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	var actionGroups:Iterable[SelectGroup[_<:Referencable]] = _	
 	var currentQuestion:Option[ParamQuestion]= None
 	protected var repeatQuestion: Option[DialogQuestion] = None
-	var customAnswerListener: List[((Seq[ResultElement]) => Unit, Option[ParamQuestion])] = Nil
+	var customAnswerListener: List[(Seq[ResultElement] => Unit, Option[ParamQuestion])] = Nil
 	 // in field paramquestion is the current question stored, when its only a temporary answerlistener that should not be stored
 	 // so that the current question can be restored after the temporary question is answered
 	//
@@ -132,7 +132,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	def sidePanelDialogStart():Unit= {
 	  dialogPanel.visible=true
 	  ActionPanel.visible=false
-		NewButtonsList.unregisterActionButtons()
+		CreateActionList.unregisterActionButtons()
 		cancelBut.visible=true
 		ClientApp.fieldEditPan.visible=false
 		dialogPanel.revalidate()
@@ -141,7 +141,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	def sidePanelDialogEnd():Unit= {	  
 		dialogPanel.visible=false
 		ActionPanel.visible=true
-		NewButtonsList.registerActionButtons()				
+		CreateActionList.registerActionButtons()
 		cancelBut.visible=false
 		ClientApp.fieldEditPan.visible=true
 		dialogPanel.revalidate()
@@ -188,7 +188,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 			answerList.clear()
       ActionPanel.restoreButtonBindings()
 		}
-		for(lc<-NewButtonsList.lastContainer) 				
+		for(lc<-CreateActionList.lastContainer)
 				lc.actionStopped()		
 	}
 	
@@ -256,8 +256,8 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 					//println("start Create "+question.getClass())
 					propField=npropField
 					loadQuestion(question)
-				case None => for(lc<-NewButtonsList.lastContainer) {
-		      		lc.createActionStarted(1)
+				case None => for(lc<-CreateActionList.lastContainer) {
+		      		lc.createActionSubmitted(1)
 		      		val formatValues= lc .getCreationFormatValues(ncreateType)			  
 		      		ClientQueryManager.executeCreateAction(elems.children,ncreateType,npropField,action.name,Seq(),formatValues)
 		      	}
@@ -321,13 +321,13 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
         }
 			case c:CommandQuestion =>
 				repeatQuestion=None
-				for (cont<-NewButtonsList.lastContainer)
+				for (cont<-CreateActionList.lastContainer)
 					if(customQuestionHandlerList.contains(c.moduleName)) customQuestionHandlerList(c.moduleName).load(c,cont)
 					else Log.e("unknown Module "+c.moduleName)
 
 			case x:XMLQuestion =>
 				repeatQuestion=None
-				for(cont<-NewButtonsList.lastContainer)
+				for(cont<-CreateActionList.lastContainer)
 					if(customQuestionHandlerList.contains(x.moduleName))customQuestionHandlerList(x.moduleName).load(x,cont)
 					else Log.e("unknown Module "+x.moduleName)
 		}		
@@ -380,7 +380,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 						}
           }
 			}			
-		} else util.Log.e("answer given on dactive"+dialogIsActive+" reb:"+hasRebound)
+		} else util.Log.e("answer given on dactive"+dialogIsActive+" reb:"+hasRebound+" parm:"+parm.toString+" result:"+result+" currentQuestion:"+currentQuestion)
 	}
 
 	def processCustomEnquiry(resultList: Seq[(String, Constant)]): Unit = {
@@ -399,10 +399,10 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
       currentAction match {
         case Some(ca) if (ca.question.isDefined && ca.question.get.repeat) || ca.rebound =>
 					hasRebound=true
-					NewButtonsList.lastContainer match {
+					CreateActionList.lastContainer match {
             case Some(lc) if lc.hasCreateActionStarted =>
 							//println("reapeat with CAS "+ca.name+" "+ca.question.get)
-							lc.onCASReceived{()=>repeatAction(ca,createType,propField)}
+							lc.onCreatedDataReceived{ ()=>repeatAction(ca,createType,propField)}
 						case _ =>
 							//("repeat without cAS "+ca.name+" "+ca.question.get)
 							//println(Thread.currentThread.getStackTrace.drop(1).take(10).mkString("\n "))
@@ -413,9 +413,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
       //println("createType "+createType)
 		  createType match {
 		  	case Some(ct)=> for(group <-actionGroups) {			  
-		  		val formatValues= NewButtonsList.lastContainer match {
+		  		val formatValues= CreateActionList.lastContainer match {
 		  			case Some(lc) =>
-							lc.createActionStarted(if(createdNewElements==0) 1 else createdNewElements)
+							lc.createActionSubmitted(if(createdNewElements==0) 1 else createdNewElements)
 							lc.getCreationFormatValues(ct)
 						case None=>Nil
 		  		}
@@ -448,7 +448,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 			val moduleNames=settingsString.split(',')
 			//println("ModuleNames "+moduleNames.mkString)
 			for (m <-moduleNames) try {
-				customQuestionHandlerList(m)= Class.forName(m).newInstance.asInstanceOf[CustomQuestionHandler]
+				customQuestionHandlerList(m)= Class.forName(m).getConstructor().newInstance().asInstanceOf[CustomQuestionHandler]
 			} catch {
 				case NonFatal(e) => util.Log.e("trying to instantiate CustomQuestionHandler module:'"+m+"' \n",e)
 			}

@@ -4,10 +4,10 @@
 package client.model
 
 import java.awt.Color
-import java.awt.event.{ActionEvent, KeyEvent}
+import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 
 import client.dataviewer.DataViewController
-import client.dialog.{NewButtonsList, SelectEventDispatcher}
+import client.dialog.SelectEventDispatcher
 import client.layout.{Viewbox, ViewboxContent}
 import client.ui.ClientApp
 import definition.comm.{ListValue, PropertyGroup}
@@ -96,17 +96,15 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
   switchPathButton.margin=new Insets(0,0,0,0)
 	switchPathButton.focusable=false 
   dataviewController.registerSelectListener(SelectEventDispatcher)
-  dataviewController.registerContainerListener(NewButtonsList)
   contents+=pathBox+=dataviewController.splitBox//+=glue  
   dataviewController.formPanel.bookmarkButListener=showBookmarkDialog _
 	val goUpActionString="Go Up"	
-	peer.getInputMap( JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,0 ), goUpActionString)
-	peer.getActionMap().put(goUpActionString,new AbstractAction{
+	peer.getInputMap( JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_UP,InputEvent.CTRL_DOWN_MASK ), goUpActionString)
+	peer.getActionMap.put(goUpActionString,new AbstractAction{
 		def actionPerformed(e: ActionEvent): Unit = goUp()
 	})
 
-	def goUp(): Unit = if (pathMod.getSize > 0)
-	     pathController.selectionChanged(pathMod.getSize-1)	
+	def goUp(): Unit = pathController.goUp()
   
   /** opens a new box */
 	def open(readyListener:()=>Unit,sourceBoxSelection:AnyRef): Unit ={

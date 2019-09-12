@@ -14,47 +14,48 @@ import scala.swing.event.ButtonClicked
  * 
  */
 
-object NewButtonsList extends Reactor with ContainerFocusListener {
+object CreateActionList extends Reactor  {
   var lastContainer:Option[FocusContainer]=None
-  var lastSuperInstRef:Option[Reference]=None
+  var lastOwnertRef:Option[Reference]=None
   var lastPropField:Int= -1
   private val selGroup=new SelectGroup[Referencable](EMPTY_OWNERREF,Seq[Referencable]())
   //var buttonList:Seq[CreateMenuButton]=Nil
   var actionButtons:Seq[CreateActionMenuButton]=Nil
-  
+
   reactions += {
     case ButtonClicked(theBut:CreateActionMenuButton) => if(selGroup.children.nonEmpty){
-      theBut.ccd.action match {       
-        case Some(action)=>DialogManager.startCreateActionDialog(action,selGroup,theBut.ccd.childClassID,theBut.propField)          
-        case _ => throw new IllegalArgumentException("No Action defined in CreateActionButton "+theBut) 
-      }          
-    } 
+      theBut.ccd.action match {
+        case Some(action)=>DialogManager.startCreateActionDialog(action,selGroup,theBut.ccd.childClassID,theBut.propField)
+        case _ => throw new IllegalArgumentException("No Action defined in CreateActionButton "+theBut)
+      }
+    }
     case ButtonClicked(theBut:CreateMenuButton)=> if(selGroup.children.nonEmpty) {
       DialogManager.reset()
-      for(lc<-NewButtonsList.lastContainer) {
+      for(lc<-CreateActionList.lastContainer) {
         //println("newbuttonslist button clicked "+theBut.text)
-        lc.createActionStarted(1)
-        val formatValues= lc .getCreationFormatValues(theBut.ccd.childClassID)        
+        lc.createActionSubmitted(1)
+        val formatValues= lc .getCreationFormatValues(theBut.ccd.childClassID)
         ClientQueryManager.executeCreateAction(selGroup.children,theBut.ccd.childClassID,theBut.propField,"*",Seq(),formatValues)
       }
     }
   }
-  def containerFocused(container:FocusContainer, propField:Int):Unit = {    
+
+  def containerFocused(container:FocusContainer, propField:Int):Unit = {
     //println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.containerRef+" propfield:"+propField)
     val cont=Some(container)
-    val newContRef=container.containerRef.map(_.ref)
-  	if(!(cont==lastContainer&&newContRef==lastSuperInstRef&&propField==lastPropField)) {
+    val newContRef=container.ownerRef.map(_.ref)
+  	if(!(cont==lastContainer&&newContRef==lastOwnertRef&&propField==lastPropField)) {
       //println("ContainerFocus the same ")
       //println("container Focused newCont:"+container+" last:"+lastContainer+"\nnewContRef:"+newContRef+" last:"+lastSuperInstRef+"\npropField:"+propField+" last:"+lastPropField)
       if (DialogManager.dialogIsActive) DialogManager.reset()
       shutDown()
-      container.containerRef match {
+      container.ownerRef match {
         case Some(contRef) =>
           val theClass = AllClasses.get.getClassByID(contRef.ref.typ).asInstanceOf[ClientObjectClass]
           if (theClass.propFields.size > propField) {
             //buttonList=theClass.createMenuItems(propField).filter(_.ccd.editorName==container.containerName)
             //listenTo(buttonList:_*)
-            actionButtons = theClass.createActionMenuItems(propField).filter(_.ccd.editorName == container.containerName)
+            actionButtons = theClass.actionCreateMenuItems(propField).filter(_.ccd.editorName == container.containerName)
             listenTo(actionButtons: _*)
             registerActionButtons()
           } else util.Log.e("wrong propField " + propField + " for class " + theClass)
@@ -64,7 +65,7 @@ object NewButtonsList extends Reactor with ContainerFocusListener {
       }
       lastContainer = cont
       lastPropField = propField
-      lastSuperInstRef = newContRef
+      lastOwnertRef = newContRef
     }
   }
 

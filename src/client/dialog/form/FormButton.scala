@@ -27,7 +27,7 @@ class FormButton(atext:String,val minWidth:Int,val maxWidth:Int,val minHeight:In
   listenTo(this)
   reactions+={
     case e:ButtonClicked=>try{ for(inst<-instance)
-      Class.forName(listenerClass.trim).newInstance().
+      Class.forName(listenerClass.trim).getConstructor().newInstance().
       	asInstanceOf[FormButtonListener].formButtonClicked(atext,inst)
     } catch {
       case NonFatal(er)=> util.Log.e("FormButton "+atext+ " cant find listener class :"+listenerClass+" ",er)

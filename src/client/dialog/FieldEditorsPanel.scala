@@ -22,9 +22,9 @@ class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with 
   opaque = false
   lazy val maxSize = new Dimension(ViewConstants.sidePanelWidth, Short.MaxValue)
 
-	var groupList:Iterable[SelectGroup[_<:Referencable]]= _
-	var commonTyp:Int = -1
-  var currentEditors: ArrayBuffer[FieldEditor] = collection.mutable.ArrayBuffer[FieldEditor]()
+	protected var groupList:Iterable[SelectGroup[_<:Referencable]]= _
+	protected var commonTyp:Int = -1
+  protected var currentEditors: ArrayBuffer[FieldEditor] = collection.mutable.ArrayBuffer[FieldEditor]()
 	border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),
 	    BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(8,0,6,0),"Felder:"))
 	xLayoutAlignment=0.5d
@@ -77,7 +77,7 @@ object EditorFactory {
   val editorCache: mutable.HashMap[String, FieldEditor] = collection.mutable.HashMap[String, FieldEditor]()
   val inplaceEditorCache: mutable.HashMap[String, InplaceFieldEditor] = collection.mutable.HashMap[String, InplaceFieldEditor]()
 	
-	private def updateFieldEditor(name:String,newEditor:FieldEditor)= {	  
+	private def updateFieldEditor(name:String,newEditor:FieldEditor): Unit = {
 		newEditor.getPanel.xLayoutAlignment=0.5d
 		editorCache(name)=newEditor		
 	}
@@ -86,7 +86,7 @@ object EditorFactory {
 		if(editorCache.contains(name)) Some(editorCache(name))
 		else if(inplaceEditorCache.contains(name)) None
 		else {		  
-			Class.forName(name).newInstance.asInstanceOf[AbstractFieldEditor] match {
+			Class.forName(name).getConstructor().newInstance().asInstanceOf[AbstractFieldEditor] match {
 			  case newEditor:FieldEditor =>
 					updateFieldEditor(name,newEditor)
 					Some(newEditor)
@@ -101,7 +101,7 @@ object EditorFactory {
 	def getInplaceEditor(name:String):Option[InplaceFieldEditor] = {	  
 	  if(editorCache.contains(name)) None		
 		else {		  
-			Class.forName(name).newInstance.asInstanceOf[AbstractFieldEditor] match {
+			Class.forName(name).getConstructor().newInstance().asInstanceOf[AbstractFieldEditor] match {
 			  case newEditor:FieldEditor =>
 					updateFieldEditor(name,newEditor)
 					None

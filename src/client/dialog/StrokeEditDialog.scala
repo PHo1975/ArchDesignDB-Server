@@ -21,8 +21,8 @@ class CommandModel extends AbstractTableModel {
     case _ => "Belegt"
   }
 
-  def getRowCount(): Int = currentCommands.size
-  def getColumnCount() = 3
+  def getRowCount: Int = currentCommands.size
+  def getColumnCount = 3
   def getValueAt(row: Int, col: Int): AnyRef = {
   	val com=currentCommands(row)
   	col match {
@@ -112,13 +112,13 @@ class StrokeEditDialog (w:Window) extends Dialog(w) {
   }
   
   def setStroke(e:KeyEvent):Unit = {    
-    e.peer.getKeyCode() match {
+    e.peer.getKeyCode match {
       case java.awt.event.KeyEvent.VK_CONTROL | java.awt.event.KeyEvent.VK_SHIFT | java.awt.event.KeyEvent.VK_ALT => return
       case _=> keyListenReady=false
     }
     commandTable.selection.rows.headOption match {
       case Some(ix)=> KeyStrokeManager.addStroke(comModel.currentGroupName,
-          comModel.currentCommands(ix)._1,KeyStroke.getKeyStroke(e.peer.getKeyCode(),e.peer.getModifiers()))
+          comModel.currentCommands(ix)._1,KeyStroke.getKeyStroke(e.peer.getKeyCode,e.peer.getModifiersEx))
           comModel.refreshGroup()
       case _ =>
     }

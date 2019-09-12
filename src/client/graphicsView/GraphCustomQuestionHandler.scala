@@ -23,7 +23,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   val dimHelpLineToText="Hilfslinien bis"
   val lineDistance = 1.3d
   lazy val polyStroke =new BasicStroke(1f * ViewConstants.polyLineTo.toFloat)
-  val funcMap: collection.immutable.HashMap[String, (GraphViewController) => Unit] = collection.immutable.HashMap[String, (GraphViewController) => Unit](
+  val funcMap: collection.immutable.HashMap[String, GraphViewController => Unit] = collection.immutable.HashMap[String, GraphViewController => Unit](
     "LineTo" -> lineTo(lineToText, create = true, separateElements = true), "PolyTo" -> polyTo, "ArcCenter" -> arcCenter, "ArcGeneral" -> arcGeneral,
       "Rotate"->rotate,"RotateMulti"->rotateMulti,"Tangent"->tangent,"EllipseCenter"->ellipseCenter,"CreateText"->createText,"CreateDimLine"->createDimLine,
       "ChangeHelpLines"->lineTo(dimHelpLineToText,create = false,separateElements = false,strict=false),"ChangeRefPoint"->changeDimLineRefPoint,"DelDimPoint"->delDimPoint,
@@ -56,10 +56,10 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   
   def rotate(gc:GraphViewController):Unit= {
     //println("Rotate ")
-    DialogManager.startInterQuestion(middlePointQuestion,(answerList)=>{
+    DialogManager.startInterQuestion(middlePointQuestion,answerList=>{
       val center=answerList.head.result.toVector
       //println("Centerpoint":+center)
-      DialogManager.startInterQuestion(rotateQuestion,(answerList)=>{
+      DialogManager.startInterQuestion(rotateQuestion,answerList=>{
         answerList.last.result match {
           case d:DoubleConstant=> DialogManager.processResults()
           case p:VectorConstant=>
@@ -84,10 +84,10 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 
             })
             DialogManager.startInterQuestion(singlePointQuestion("Drehen", "Winkel bis Punkt", None),
-                (answerList)=> DialogManager.processResults())
+                answerList=> DialogManager.processResults())
           case e:ObjectReference=>
             DialogManager.startInterQuestion(DialogQuestion("Drehen", Seq(new AnswerDefinition("Richtungskante", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString))),
-                (answerList)=> DialogManager.processResults())
+                answerList=> DialogManager.processResults())
           case _ =>
         }
       })
@@ -95,11 +95,11 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   }
 
   def rotateMulti(gc:GraphViewController):Unit= {
-    DialogManager.startInterQuestion(singleIntQuestion("Mehrfach rotieren","Anzahl Kopien"),(answerList)=>{
-      DialogManager.startInterQuestion(middlePointQuestion,(answerList)=>{
+    DialogManager.startInterQuestion(singleIntQuestion("Mehrfach rotieren","Anzahl Kopien"),answerList=>{
+      DialogManager.startInterQuestion(middlePointQuestion,answerList=>{
         val center=answerList.head.result.toVector
         //println("Centerpoint":+center)
-        DialogManager.startInterQuestion(rotateQuestion,(answerList)=>{
+        DialogManager.startInterQuestion(rotateQuestion,answerList=>{
           answerList.last.result match {
             case d:DoubleConstant=> DialogManager.processResults()
             case p:VectorConstant=>
@@ -124,10 +124,10 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 
               })
               DialogManager.startInterQuestion(singlePointQuestion("Drehen", "Winkel bis Punkt", None),
-                (answerList)=> DialogManager.processResults())
+                answerList=> DialogManager.processResults())
             case e:ObjectReference=>
               DialogManager.startInterQuestion(DialogQuestion("Drehen", Seq(new AnswerDefinition("Richtungskante", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString))),
-                (answerList)=> DialogManager.processResults())
+                answerList=> DialogManager.processResults())
             case _ =>
           }
         })
@@ -137,11 +137,11 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 
 
   def move(gc: GraphViewController): Unit = DialogManager.startInterQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
-		moveStartAnswers) ,(answerList)=>{
+		moveStartAnswers) ,answerList=>{
       answerList.head.result match{
         case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
-            (answerList)=>{DialogManager.processResults()})
-        case startP:VectorConstant=>            
+            answerList=>{DialogManager.processResults()})
+        case startP:VectorConstant=>
            val elements=getSelElements(gc.selectModel)
         	 gc.setCustomDragger((pos,g)=>{
              val sm=gc.scaleModel
@@ -149,12 +149,12 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
              for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         	 })
           DialogManager.startInterQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", None),
-            (answerList)=>DialogManager.processResults() )
+            answerList=>DialogManager.processResults() )
       }
   })
-  
-  
-  private def getSelElements(selMod:ViewSelectModel)=     
+
+
+  private def getSelElements(selMod:ViewSelectModel)=
   	if(selMod.numSelected>500) {
   	  val bounds=selMod.selectionBounds()
       Seq(LineElement(EMPTY_REFERENCE, ColorMap.selectColor.getRGB, 10, 0,
@@ -170,19 +170,19 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 
   protected def finishCopy(gc: GraphViewController, multiple: Boolean): Unit = {
     gc.setCustomDragger(null)
-    if(!multiple) NewButtonsList.lastContainer match {
-      case Some(lc) => 	lc.createActionStarted(gc.selectModel.numSelected)
+    if(!multiple) CreateActionList.lastContainer match {
+      case Some(lc) => 	lc.createActionSubmitted(gc.selectModel.numSelected)
       case None =>
     }
     DialogManager.processResults()
   }
-  
+
   def copy(gc:GraphViewController):Unit= {
   	val selMod=gc.selectModel
-    
+
   	def secondStep(answerList:Seq[ResultElement],multiple:Boolean): Unit = answerList.last.result match{
   	  case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Kopieren","Delta Y eingeben:"),
-            (answerList)=>{finishCopy(gc,multiple)})
+            answerList=>{finishCopy(gc,multiple)})
       case startP:VectorConstant=>
         val elements=getSelElements(selMod)
         gc.setCustomDragger((pos,g)=>{
@@ -191,25 +191,25 @@ val delta=pos-startP
 for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         })
         DialogManager.startInterQuestion(singlePointQuestion("Kopieren", "'Nach Punkt' angeben", None),
-          (answerList)=>{
+          answerList=>{
               finishCopy(gc,multiple)
            })
     }
   	//println("copy numSel:"+selMod.numSelected)
     DialogManager.startInterQuestion(DialogQuestion("Kopieren<br>",
-      new AnswerDefinition("wie Oft", DataType.IntTyp, None, AnswerDefinition.NonNullConstraint) +: moveStartAnswers), (answerList) => {
-      gc.setCustomDragger(null)    
+      new AnswerDefinition("wie Oft", DataType.IntTyp, None, AnswerDefinition.NonNullConstraint) +: moveStartAnswers), answerList => {
+      gc.setCustomDragger(null)
       answerList.head.result match{
         case i: IntConstant => DialogManager.startInterQuestion(
           DialogQuestion("Kopieren<br>Distanz angeben", moveStartAnswers),
-            (nanswerList)=>secondStep(nanswerList,multiple = true))
+            nanswerList=>secondStep(nanswerList,multiple = true))
         case _=> secondStep(answerList,multiple = false)
-      } 
-    })   
+      }
+    })
   }
 
 
-  def parStartAnswers = Seq(new AnswerDefinition("durch Punkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT),
+  def parStartAnswers: Seq[AnswerDefinition] = Seq(new AnswerDefinition("durch Punkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT),
 	    new AnswerDefinition("Abstand",DataType.DoubleTyp,None,AnswerDefinition.NonNullConstraint))
 
 
@@ -221,18 +221,18 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     val selMod=gc.selectModel
 
     def finish(numCopies:Int): Unit ={
-      NewButtonsList.lastContainer match {
-        case Some(lc) =>	lc.createActionStarted(numCopies)
+      CreateActionList.lastContainer match {
+        case Some(lc) =>	lc.createActionSubmitted(numCopies)
         case None => util.Log.e("no last container")
       }
       DialogManager.processResults()
     }
-    
+
     def secondStep(answerList:Seq[ResultElement],numCopies:Int):Unit={
       answerList.last.result match{
         case _: DoubleConstant => DialogManager.startInterQuestion(dirQuestion, (_) => {finish(numCopies)})
         case _: VectorConstant => finish(numCopies)
-      }     
+      }
     }
       //println("paralell numSel:"+selMod.numSelected+" cas:"+gc.hasCreateActionStarted)
     if (selMod.numSelected == 1) {
@@ -246,10 +246,10 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
               sm.xToScreen(lineEl.endPoint.x + dist.x), sm.yToScreen(lineEl.endPoint.y + dist.y))
           })
           DialogManager.startInterQuestion(DialogQuestion("Parallele Linie",
-            parStartAnswers :+ new AnswerDefinition("wie Oft", DataType.IntTyp, None, AnswerDefinition.NonNullConstraint)), (answerList) => {
+            parStartAnswers :+ new AnswerDefinition("wie Oft", DataType.IntTyp, None, AnswerDefinition.NonNullConstraint)), answerList => {
             answerList.head.result match {
               case i: IntConstant => DialogManager.startInterQuestion(DialogQuestion("Parallele Linie", parStartAnswers),
-                (nanswerList) => secondStep(nanswerList, i.toInt))
+                nanswerList => secondStep(nanswerList, i.toInt))
               case _ => secondStep(answerList, 1)
             }
           })
@@ -268,7 +268,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   		new AnswerDefinition("Linie auswählen",DataType.ObjectRefTyp,None,GraphElemConst.lineClassID.toString)))
 
   def mirror(gc:GraphViewController):Unit= {
-     DialogManager.startInterQuestion(mirrorQuestion,(answerList)=>{
+     DialogManager.startInterQuestion(mirrorQuestion,answerList=>{
        val withCopies=answerList.head.result.getType==DataType.StringTyp
        answerList(if(withCopies)1 else 0).result match {
          case li:ObjectReference=> DialogManager.processResults()
@@ -280,9 +280,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              GraphElemConst.drawLineFloat(g,p1x,p1y,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
            })
            DialogManager.startInterQuestion(singlePointQuestion("Spiegeln", "Endpunkt Spiegelachse", Some(true)),
-               (answerList)=>{
-		              if(withCopies) NewButtonsList.lastContainer match {
-		              	case Some(lc) =>	lc.createActionStarted(gc.selectModel.numSelected)
+               answerList=>{
+		              if(withCopies) CreateActionList.lastContainer match {
+		              	case Some(lc) =>	lc.createActionSubmitted(gc.selectModel.numSelected)
 		              	case None =>
 		              }
                  DialogManager.processResults()})
@@ -310,12 +310,12 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
     }
 
-    DialogManager.startInterQuestion(lineQuestion(lineText, create, strict), (answerList) => {
+    DialogManager.startInterQuestion(lineQuestion(lineText, create, strict), answerList => {
       lastPoint = answerList.head.result.toVector
       gc.setCustomDragger(lineDragger)
 
       def askSecondPoint(): Unit = {
-        DialogManager.startInterQuestion(lineNextPointQuestion(lineText, strict), (answerList) => {
+        DialogManager.startInterQuestion(lineNextPointQuestion(lineText, strict), answerList => {
           //println("Answer:"+answerList.mkString(" | "))
           def handlePointAnswer(p: VectorConstant): Unit = {
             if (separateElements) DialogManager.increaseNumCreatedElements()
@@ -338,7 +338,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                 }
 
                 gc.setCustomDragger(angleDragger)
-                DialogManager.startInterQuestion(lineLengthQuestion(lineText), (answerList) => {
+                DialogManager.startInterQuestion(lineLengthQuestion(lineText), listener = answerList => {
                   answerList.last.result match {
                     case length: DoubleConstant =>
                       val newPoint = lastPoint + VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d) * length.toDouble
@@ -370,7 +370,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     Seq(new AnswerDefinition("zu Linie", DataType.ObjectRefTyp, None, GraphElemConst.lineClassID.toString)))
 
   def orthoLine(gc:GraphViewController):Unit={
-    DialogManager.startInterQuestion(pickLineQuestion,(answerList)=>{
+    DialogManager.startInterQuestion(pickLineQuestion,answerList=>{
       gc.getElementByRef(answerList.head.result.toObjectReference) match {
         case Some(elem: LineElement) =>
           val l3d=elem.toLine3D
@@ -382,7 +382,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             GraphElemConst.drawArcFloat(g,sm.xToScreen(crossP.x)-10f,sm.yToScreen(crossP.y)-10f,21f,20f,angle,90f)
           }
           gc.setCustomDragger(lineDragger)
-          DialogManager.startInterQuestion(singlePointQuestion("Lotlinie zeichnen", "durch Punkt", Some(true)), (answerList) => {
+          DialogManager.startInterQuestion(singlePointQuestion("Lotlinie zeichnen", "durch Punkt", Some(true)), answerList => {
             DialogManager.processResults()
           })
         case _ =>
@@ -401,7 +401,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 
   def rectangle(gc:GraphViewController):Unit={
-    DialogManager.startInterQuestion(rectStartQuestion,(answerList)=> {
+    DialogManager.startInterQuestion(rectStartQuestion,answerList=> {
       val startPoint=answerList.last.result.toVector
       def diagRectDragger(pos:VectorConstant,g:Graphics2D): Unit = {
   				val sm=gc.scaleModel
@@ -417,7 +417,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   			}
 
       gc.setCustomDragger(diagRectDragger)
-      DialogManager.startInterQuestion(rectSecondQuestion,(answerList1)=> {
+      DialogManager.startInterQuestion(rectSecondQuestion,answerList1=> {
         // println("Answers:"+answerList1.mkString("| "))
          answerList1.last.result match {
            case p:VectorConstant =>
@@ -436,14 +436,14 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              }
 
              gc.setCustomDragger(widthDragger)
-             DialogManager.startInterQuestion(rectHeightQuestion,(answerList2)=> {
+             DialogManager.startInterQuestion(rectHeightQuestion,answerList2=> {
                //println("Answer:"+answerList2.head.result)
                DialogManager.increaseNumCreatedElements(4)
                DialogManager.processResults()
              })
            case StringConstant("über Achse")=>
              gc.setCustomDragger(lineDragger)
-             DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Endpunkt Achse", None), (answerList2) => {
+             DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Endpunkt Achse", None), answerList2 => {
                 val endPoint=answerList2.last.result.toVector
                 def axisDragger(pos:VectorConstant,g:Graphics2D): Unit = {
             	    val sm=gc.scaleModel
@@ -458,14 +458,14 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             	    GraphElemConst.drawLineFloat(g,pxs(3),pys(3),pxs.head,pys.head)
                 }
                 gc.setCustomDragger(axisDragger)
-                DialogManager.startInterQuestion(rectAxisWidthQuestion,(answerList)=> {
+                DialogManager.startInterQuestion(rectAxisWidthQuestion,answerList=> {
                   DialogManager.increaseNumCreatedElements(4)
                   DialogManager.processResults()
                 })
              })
            case StringConstant("über Randkante")=>
              gc.setCustomDragger(lineDragger)
-             DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Randpunkt Kante", None), (answerList2) => {
+             DialogManager.startInterQuestion(singlePointQuestion("Rechteck", "Randpunkt Kante", None), answerList2 => {
                 val endPoint=answerList2.last.result.toVector
                 def edgeDragger(pos:VectorConstant,g:Graphics2D): Unit = {
                   val sm=gc.scaleModel
@@ -479,7 +479,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             	    GraphElemConst.drawLineFloat(g,pxs(3),pys(3),pxs.head,pys.head)
                 }
                 gc.setCustomDragger(edgeDragger)
-                DialogManager.startInterQuestion(rectAxisWidthQuestion,(answerList)=> {
+                DialogManager.startInterQuestion(rectAxisWidthQuestion,answerList=> {
                   DialogManager.increaseNumCreatedElements(4)
                   DialogManager.processResults()
                 })
@@ -493,7 +493,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   def chooseCircleQuestion = DialogQuestion("Tangente zeichnen", Seq(new AnswerDefinition("durch Kreis", DataType.ObjectRefTyp, None, GraphElemConst.arcClassID.toString)))
 
   def tangent(gc:GraphViewController):Unit = {
-    DialogManager.startInterQuestion(chooseCircleQuestion,(answerList)=> {
+    DialogManager.startInterQuestion(chooseCircleQuestion,answerList=> {
       for(elem<-gc.getElementByRef(answerList.head.result.toObjectReference)) {
         val arcElem=elem.asInstanceOf[ArcElement]
         gc.setCustomDragger((pos,g)=>{
@@ -507,7 +507,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
               GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
           }
         })
-        DialogManager.startInterQuestion(singlePointQuestion("Tangente zeichnen", "Tangente durch Punkt", None), (answerList) => {
+        DialogManager.startInterQuestion(singlePointQuestion("Tangente zeichnen", "Tangente durch Punkt", None), answerList => {
           val point=answerList.last.result.toVector
           val dist=(arcElem.centerPoint-point).toDouble
           if(dist!=0&& arcElem.diameter!=0){
@@ -517,7 +517,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             val lineList=for(ix<-pointList.indices;p=pointList(ix)) yield
               LineElement(new Reference(0, ix), ColorMap.tempColor.getRGB, 10, 0, p, point)
           	gc.resetCustomDragger()
-            DialogManager.startInterQuestion(DialogQuestion("Tangente zeichnen", Seq(new TempChooseAnswerDef("Tangente auswählen", lineList))), (answerList) => {
+            DialogManager.startInterQuestion(DialogQuestion("Tangente zeichnen", Seq(new TempChooseAnswerDef("Tangente auswählen", lineList))), answerList => {
           	  DialogManager.processResults()
           	})
           }
@@ -550,11 +550,11 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       g.fill(theArea)
     }
 
-    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), (answerList) => {
+    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), answerList => {
       lastPoint = answerList.head.result.toVector
       lastPoints += lastPoint
       gc.setCustomDragger(lineDragger)
-      DialogManager.startInterQuestion(lineNextPointQuestion(polyToText), (answerList) => {
+      DialogManager.startInterQuestion(lineNextPointQuestion(polyToText), answerList => {
         lastPoint = answerList.last.result match {
           case v: VectorConstant => v
           case d: DoubleConstant => if (answerList.last.answer.name == "dx") lastPoint + new VectorConstant(d.toDouble, 0d, 0d)
@@ -584,11 +584,11 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       g.draw(newPoly)
     }
 
-    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), (answerList) => {
+    DialogManager.startInterQuestion(lineQuestion(polyToText, create = true), answerList => {
       lastPoint = answerList.head.result.toVector
       lastPoints += lastPoint
       gc.setCustomDragger(polyDragger)
-      DialogManager.startInterQuestion(lineNextPointQuestion(polyToText), (answerList) => {
+      DialogManager.startInterQuestion(lineNextPointQuestion(polyToText), answerList => {
         lastPoint = answerList.last.result match {
           case v: VectorConstant => v
           case d: DoubleConstant => if (answerList.last.answer.name == "dx") lastPoint + new VectorConstant(d.toDouble, 0d, 0d)
@@ -614,9 +614,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     new AnswerDefinition("Begrenzungslinie zeichnen", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT)), repeat = true)
 
   def createDimLine(gc:GraphViewController):Unit = {
-    DialogManager.startInterQuestion(singlePointQuestion("Maßlinie erzeugen", "Durch Punkt", Some(false)), (answerList) => {
+    DialogManager.startInterQuestion(singlePointQuestion("Maßlinie erzeugen", "Durch Punkt", Some(false)), answerList => {
         val position=answerList.head.result.toVector
-        DialogManager.startInterQuestion(dimAngleQuestion,(answerList)=> {
+        DialogManager.startInterQuestion(dimAngleQuestion,answerList=> {
           var wantBreak=false
           val angle= answerList.last.result match {
             case s: StringConstant => if (s.toString == "Vertikal") math.Pi / 2d else 0d
@@ -637,11 +637,11 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           	var mpointList=collection.mutable.ArrayBuffer[VectorConstant]()
           	var lastHelpLinePoint:Option[VectorConstant]=None
 
-            def createLine(a: VectorConstant, b: VectorConstant) = LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB(), 10, 0, a, b)
+            def createLine(a: VectorConstant, b: VectorConstant) = LineElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, a, b)
           	val mainLine=createLine(position,position+mainLineVect)
           	gc.addTempElem(mainLine)
           	var wantHelpLinePoly=false // do I want dim points or the help line polygon
-          	DialogManager.startInterQuestion(dimNextQuestion,(answerList)=>{
+          	DialogManager.startInterQuestion(dimNextQuestion,answerList=>{
           		answerList.last.result match {
                 case newPoint: VectorConstant =>
                   if (wantHelpLinePoly) {
@@ -681,7 +681,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     gc.selectModel.selectionList.toSeq.headOption match {
       case Some(d:DimLineElement)=>
         if(d.intersectionLines.size>2) // dont delete points when the dimension line has only 2 points
-          DialogManager.startInterQuestion(singlePointQuestion("Masspunkt löschen", "Masspunkt wählen", Some(true)), (answerList) => {
+          DialogManager.startInterQuestion(singlePointQuestion("Masspunkt löschen", "Masspunkt wählen", Some(true)), answerList => {
         	val position=answerList.head.result.toVector
         	val lcd=gc.getCurrentLineCatchDistance
         	//println("Del Dim pos:"+position+" lcd:"+lcd )
@@ -701,11 +701,11 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       case Some(d:DimLineElement)=>
         val refPoints=for(i<-d.points.indices;dp=d.points(i)) yield new RefPointDummy(i,dp.refPoint)
         DialogManager.startInterQuestion(DialogQuestion("Referenzpunkt ändern", Seq(
-          new TempChooseAnswerDef("Referenzpunkt wählen", refPoints))), (answerList) => {
+          new TempChooseAnswerDef("Referenzpunkt wählen", refPoints))), answerList => {
               val refPointNr=answerList.head.result.toInt
                //gc.clearNewElements()
                //gc.addTempElem(refPoints(refPointNr))
-          DialogManager.startInterQuestion(singlePointQuestion("Referenzpunkt ändern", "neue Position", Some(true)), (answerList) => {
+          DialogManager.startInterQuestion(singlePointQuestion("Referenzpunkt ändern", "neue Position", Some(true)), answerList => {
                  //println("Answers:"+answerList.mkString(","))
                  DialogManager.processResults()
                })
@@ -728,7 +728,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 
   def arcCenter(gc:GraphViewController):Unit= {
-	DialogManager.startInterQuestion(circleCenterQuestion,(answerList)=> {
+	DialogManager.startInterQuestion(circleCenterQuestion,answerList=> {
 	  val center=answerList.head.result.toVector
 	  gc.setCustomDragger((pos,g)=>{
 	      val radius=(pos-center).toDouble
@@ -739,7 +739,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 	      GraphElemConst.drawArcFloat(g,tx,ty,sm.xToScreen(center.x+radius)-tx,sm.yToScreen(center.y-radius)-ty,0,360)
 	      })
 
-		DialogManager.startInterQuestion(radiusQuestion,(answerList)=> {
+		DialogManager.startInterQuestion(radiusQuestion,answerList=> {
 			val secAnswer=answerList(1)
 			val radius= secAnswer.answer.name match {
 				case "Randpunkt des Kreises"=> (secAnswer.result.toVector - center).toDouble
@@ -752,7 +752,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 				GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			})
 			//println("Radius:"+radius)
-			DialogManager.startInterQuestion(startAngleQuestion,(answerList)=> {
+			DialogManager.startInterQuestion(startAngleQuestion,answerList=> {
 			  val startAngle=answerList(2).result match {
 			    case v:VectorConstant => math.atan2(v.y-center.y,v.x-center.x)*180d/math.Pi
 			    case d:DoubleConstant => d.toDouble
@@ -770,7 +770,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			  	GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			  	GraphElemConst.drawArcFloat(g,tx,ty,sm.xToScreen(center.x+radius)-tx,sm.yToScreen(center.y-radius)-ty,startAngle.toInt,((if(endAngle<startAngle)360 else 0)+endAngle-startAngle).toInt)
 			  })
-			  DialogManager.startInterQuestion(endAngleQuestion,(answerList)=> {
+			  DialogManager.startInterQuestion(endAngleQuestion,answerList=> {
 			  	DialogManager.processResults()
 			  })
 			})
@@ -791,14 +791,14 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 
   def ellipseCenter(gc:GraphViewController):Unit= {
-	DialogManager.startInterQuestion(elCenterQuestion,(answerList)=> {
+	DialogManager.startInterQuestion(elCenterQuestion,answerList=> {
 	  val center=answerList.head.result.toVector
 	  gc.setCustomDragger((pos,g)=>{
 	  	val sm=gc.scaleModel
 	  	GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(center.x),sm.yToScreen(center.y))
 	  })
 
-		DialogManager.startInterQuestion(axis1Question,(answerList)=> {
+		DialogManager.startInterQuestion(axis1Question,answerList=> {
 			var axis1Len:Double=0d
 			var mainAngle:Double= 0d
 			answerList.last.result match {
@@ -813,7 +813,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             val an=math.atan2(pos.y-center.y,pos.x-center.x)
             GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(center.x+axis1Len*math.cos(an)),sm.yToScreen(center.y+axis1Len*math.sin(an)))
           })
-          DialogManager.startInterQuestion(axis1AngleQuestion,(answerList)=> {
+          DialogManager.startInterQuestion(axis1AngleQuestion,answerList=> {
             mainAngle= answerList.last.result match{
               case ap:VectorConstant=> math.atan2(ap.y-center.y,ap.x-center.x)*180d/math.Pi
               case d:DoubleConstant=>d.toDouble
@@ -847,7 +847,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			  			}
 			  		})
 
-			  DialogManager.startInterQuestion(axis2Question,(answerList)=> {
+			  DialogManager.startInterQuestion(axis2Question,answerList=> {
 			    val axis2Len=answerList.last.result match {
 			      case v:VectorConstant =>
               val deltaP=v-center
@@ -866,7 +866,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			    	val sm=gc.scaleModel
 			    	GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			    })
-			    DialogManager.startInterQuestion(startAngleQuestion,(answerList)=> {
+			    DialogManager.startInterQuestion(startAngleQuestion,answerList=> {
 			    	val startAngle=answerList.last.result match {
 			    		case v:VectorConstant => math.atan2(v.y-center.y,v.x-center.x)*180d/math.Pi-mainAngle
 			    		case d:DoubleConstant => d.toDouble
@@ -889,7 +889,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			    				val newArc=at.createTransformedShape(theArc)
 			    				g.draw(newArc)
 			    	})
-			    	DialogManager.startInterQuestion(endAngleQuestion,(answerList)=> {
+			    	DialogManager.startInterQuestion(endAngleQuestion,answerList=> {
 			    		DialogManager.processResults()
 			    	})
 			    })
@@ -902,7 +902,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   def textPosQuestion = DialogQuestion("Text erstellen", Seq(new AnswerDefinition("Absetzpunkt angeben", DataType.VectorTyp, None, AnswerPanelsData.NOSTRICT_HIT),
       new AnswerDefinition("Unter anderem Text",DataType.ObjectRefTyp,None,GraphElemConst.textClassID.toString)))
 
-  def createText(gc:GraphViewController):Unit= DialogManager.startInterQuestion(textPosQuestion,(answerList)=> {
+  def createText(gc:GraphViewController):Unit= DialogManager.startInterQuestion(textPosQuestion,answerList=> {
     val point=answerList.head.result match {
       case el:ObjectReference=>gc.layerModel .getElementByRef(el.toObjectReference) match {
         case Some(textEl:TextElement)=>
@@ -917,7 +917,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     }
   	val textTypeID=AllClasses.get.getClassIDByName("TextElem")
   	val formFields=gc.getCreationFormatValues(textTypeID) .toMap
-  	val textEl= if(formFields.isEmpty) new TextElement(EMPTY_REFERENCE,ColorMap.tempColor.getRGB(),"",point,"Arial",2,1,0,0,0,0)
+  	val textEl= if(formFields.isEmpty) new TextElement(EMPTY_REFERENCE,ColorMap.tempColor.getRGB,"",point,"Arial",2,1,0,0,0,0)
   	else {
   		//println(formFields.mkString("|"))
   		val color=formFields(0).toInt
@@ -925,12 +925,12 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   		val height=formFields(4).toDouble
   		val align=formFields(6).toInt
   		val textAngle=formFields(7).toDouble
-  		new TextElement(EMPTY_REFERENCE,ColorMap.tempColor.getRGB(),"",point,fontName,height,1,align,textAngle,0,0)
+  		new TextElement(EMPTY_REFERENCE,ColorMap.tempColor.getRGB,"",point,fontName,height,1,align,textAngle,0,0)
   	}
   	//gc.addTempElem(textEl)
   	DialogManager.answerArea.reset()
   	//println("CustomQuestion Start IPE")
-  	gc.startIPEMode(textEl,Some( (text)=>{
+  	gc.startIPEMode(textEl,Some( text=>{
   		if(text.length>0) {
   			//println("CustomQuestion text:"+text)
         DialogManager.addAnswer(new AnswerDefinition("Text", DataType.StringTyp, None), StringConstant(text))
@@ -940,10 +940,10 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   	}))
   })
 
-  lazy val parPolyDistQuestion = DialogQuestion("Paralleler Polygonzug", List(new AnswerDefinition("Erster Abstand", DataType.DoubleTyp, None)), false)
+  lazy val parPolyDistQuestion = DialogQuestion("Paralleler Polygonzug", List(new AnswerDefinition("Erster Abstand", DataType.DoubleTyp, None)), repeat = false)
 
   def parPolyDistNextQuestion(text: String) = DialogQuestion("Paralleler Polygonzug", List(new AnswerDefinition(text, DataType.DoubleTyp, None),
-    new AnswerDefinition("StartPunkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT)), false)
+    new AnswerDefinition("StartPunkt", DataType.VectorTyp, None, AnswerPanelsData.STRICT_HIT)), repeat = false)
 
 
   def parPoly(gc: GraphViewController): Unit = {
@@ -975,7 +975,8 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         }
       })
 
-      DialogManager.startInterQuestion(singlePointQuestion("Paralleler Polygonzug", "nächster Punkt", Some(true), true), (answerList) => {
+      DialogManager.startInterQuestion(singlePointQuestion("Paralleler Polygonzug", "nächster Punkt", Some(true), repeat = true),
+        answerList => {
         val newPoint=answerList.last.result.toVector
         if(newPoint==lastPoint) DialogManager.processResults()
         else {
@@ -1007,7 +1008,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         		/*for(Seq(a,b)<-intersectionPoints.sliding(2,1)) {
         	  for(i<-a.indices;val pa=a(i);val pb=b(i))
         	    g.drawLine(sm.xToScreen(pa.x),sm.yToScreen(pa.y),sm.xToScreen(pb.x),sm.yToScreen(pb.y))
-        	}*/        	
+        	}*/
         		val lp=llst.get
         		val nnv=getNormVectors(lastPoint,pos)
         		val oldNormVectors=getNormVectors(lp,lastPoint)
@@ -1020,12 +1021,12 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         		for(i<-ninterPoints.indices;pa=lastIntersectionPoints(i);pb=ninterPoints(i);pc=newPoints(i)){
         			GraphElemConst.drawLineFloat(g,sm.xToScreen(pa.x),sm.yToScreen(pa.y),sm.xToScreen(pb.x),sm.yToScreen(pb.y))
         			GraphElemConst.drawLineFloat(g,sm.xToScreen(pb.x),sm.yToScreen(pb.y),sm.xToScreen(pc.x),sm.yToScreen(pc.y))
-        		}        	
+        		}
         	})
         }
       })
     }
-    
+
     def reactAnswer(answerList:Seq[ResultElement]):Unit= {
       answerList.last.result match {
         case DoubleConstant(d)=>
@@ -1034,9 +1035,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           DialogManager.startInterQuestion(parPolyDistNextQuestion(numNames(step)),reactAnswer)
         case v:VectorConstant => reactStartPoint(v)
       }
-      
+
     }
-    DialogManager.startInterQuestion(parPolyDistQuestion,(answerList)=> {
+    DialogManager.startInterQuestion(parPolyDistQuestion,answerList=> {
       distances += answerList.last.result.toDouble
       DialogManager.startInterQuestion(parPolyDistNextQuestion(numNames.head),reactAnswer )
     })

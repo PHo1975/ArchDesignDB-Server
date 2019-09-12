@@ -53,7 +53,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     val b = bounds
     val ratiox = e.getPoint.getX / b.width.toDouble
     val ratioy = e.getPoint.getY / b.height.toDouble
-    println("Wheel "+e.getWheelRotation)
+    //println("Wheel "+e.getWheelRotation)
     if (e.getWheelRotation > 0) controller.scaleModel.zoomMinus(ratiox, ratioy)
     else controller.scaleModel.zoomPlus(ratiox, ratioy)
 	})

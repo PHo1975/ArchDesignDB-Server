@@ -27,7 +27,7 @@ class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientatio
 		resultLabel.yLayoutAlignment=0d
 		val glue: Component =Swing.Glue
 		glue.yLayoutAlignment=0d
-  maximumSize = new Dimension(Short.MaxValue, 21 * ViewConstants.fontScale / 100)
+  maximumSize = new Dimension(Short.MaxValue, 23 * ViewConstants.fontScale / 100)
 		contents+=firstLabel+=glue+=resultLabel		
 		yLayoutAlignment=0
 		xLayoutAlignment=0
@@ -63,7 +63,7 @@ class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientatio
 class PathController (val model:PathModel, val view:MyListView[InstanceData],val listener:PathControllable) {
 	
 	private val lock=new Object
-	def lineHeight=24	
+	def lineHeight=25
 	private var oldIndex= -1	
 	private val renderPrototype=new PathLineRenderer(Some(model))
 	private var sizeChangeListeners= collection.mutable.HashSet[(Int)=>Unit]()
@@ -148,9 +148,14 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
   def shutDown(): Unit = model.shutDown()
 
 
-  def registerSizeChangeListener(func: (Int) => Unit): Unit = sizeChangeListeners += func
-	
-	
+  def registerSizeChangeListener(func: Int => Unit): Unit = sizeChangeListeners += func
+
+	def goUp():Unit = {
+    Thread.dumpStack()
+    if (model.getSize > 0)
+		selectionChanged(model.getSize-1)}
+
+
 	private def notifySizeListeners(): Unit = {
 		val size=oldIndex//model.getSize
 		for(func <-sizeChangeListeners) func(size)

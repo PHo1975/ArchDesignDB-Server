@@ -13,7 +13,7 @@ import client.graphicsView._
 import client.graphicsView.symbol.{StampPool, SymbolOrient}
 import definition.data._
 import definition.expression.{Polygon, VectorConstant}
-import util.StringUtils
+import util.{Log, StringUtils}
 
 /**
  * 
@@ -286,27 +286,44 @@ abstract class APageable extends Pageable with Printable {
       g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY ))
       //g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_NORMALIZE ))
       val cl=clipRect()
+			val oldClip=g.getClip
       g.clipRect(cl.x.toInt+1,cl.y.toInt+1,cl.width.toInt-1,cl.height.toInt-1)
       g2.setStroke(new BasicStroke(0.2f))
       val page=pagesList(pageIndex)
       val (basic,decorated)=page.elementList.span(_.getElementType!=PrintElType.DecoreMarker)
-			printRotated(g2,basic,(elems)=>{
-				val (noClipped,clipped)=elems.span(_.getElementType!=PrintElType.ClipPrintElement)
-				printSorted(g2,noClipped)
-				if(clipped.nonEmpty) {
-					var clipStartPos = 1
-					clipped.head.print(g2, context)
-					for ((el, ix) <- clipped.view.zipWithIndex; if el.getElementType == PrintElType.ClipRestoreElement) {
-						printSorted(g2, clipped.view(clipStartPos, ix))
-						el.print(g2, context)
-						if (ix + 1 < clipped.size) clipped(ix + 1).print(g2, context) // next clip
-						clipStartPos = ix + 2
-					}
-				}
-			})
+			printRotated(g2,basic,elems=>{ printClipGroups(g2, elems)	})
       printSorted(g2,decorated)
+			g.setClip(oldClip)
       Printable.PAGE_EXISTS
     } else Printable.NO_SUCH_PAGE
+  }
+
+  def printClipGroups(g2:Graphics2D,list:Seq[PrintElement]):Unit= {
+    var groupStart:Int=0
+    var isClip:Boolean=false
+    for(i<-list.indices;el=list(i)) {
+      if(isClip) {
+        if(el.getElementType==PrintElType.ClipRestoreElement){
+          //println("Clip Group Ending "+i+" groupstart:"+groupStart)
+          list(groupStart).print(g2,context)
+          printSorted(g2,list.view(groupStart+1,i))
+          el.print(g2,context)
+          isClip=false
+          groupStart=i+1
+        }
+      } else {
+        if(el.getElementType==PrintElType.ClipPrintElement){
+          //println("Clip Group Beginning "+i+" groupstart:"+groupStart)
+          if(groupStart<i) printSorted(g2,list.view(groupStart,i))
+          isClip=true
+          groupStart=i
+        }
+      }
+    }
+    if(isClip) Log.e("Clip Restore missing")
+    //println("End GroupStart:"+groupStart)
+    if(groupStart<list.length)
+      printSorted(g2,list.view(groupStart,list.length))
   }
 
 	protected def printRotated(g:Graphics2D,elems:Seq[PrintElement],callBack:(Seq[PrintElement])=>Unit):Unit = {

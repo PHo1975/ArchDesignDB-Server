@@ -30,7 +30,7 @@ trait ActionModule {
 
 object ActionModule {
 	def load(moduleName:String):ActionModule = try{
-		Class.forName(moduleName).newInstance.asInstanceOf[ActionModule]
+		Class.forName(moduleName).getConstructor().newInstance().asInstanceOf[ActionModule]
 	} catch {case NonFatal(e)=> Log.e(e);println(e); EmptyModule
 	case other: Throwable => println(other); System.exit(0); null
 	}

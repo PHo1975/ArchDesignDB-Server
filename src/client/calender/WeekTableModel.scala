@@ -2,7 +2,7 @@ package client.calender
 
 import client.calender.CalendarHelper.handleEvent
 import client.comm.ClientQueryManager
-import com.sun.javafx.scene.control.skin.LabeledText
+//import com.sun.javafx.scene.control.skin.LabeledText
 import definition.comm.UserInfo
 import definition.data.{InstanceData, OwnerReference, Referencable, Reference}
 import definition.expression.{BoolConstant, DateConstant, IntConstant, StringConstant}
@@ -17,6 +17,7 @@ import javafx.scene.Parent
 import javafx.scene.control._
 import javafx.scene.input.{ClipboardContent, TransferMode}
 import javafx.scene.layout.{GridPane, HBox, Priority}
+import javafx.scene.text.Text
 import util.StrToInt
 
 import scala.Array.canBuildFrom
@@ -472,7 +473,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
       e.getDragboard.getContent(CalendarDragFormat) match {
         case ce:CalendarEvent =>    
           e.getTarget match {
-            case t:LabeledText =>t.getParent().getId match {
+            case t:Text =>t.getParent().getId match {
               case StrToInt(prjID)=> model.projectList.findProject(prjID) match {
                 case Some(targetProject)=> 
                   e.getTransferMode() match {

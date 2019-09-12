@@ -114,7 +114,7 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   		usedPanels+= 1
   		if(pool.size>=usedPanels) pool(usedPanels-1)
   		else {
-  			val newPan = m.runtimeClass.newInstance.asInstanceOf[T]
+  			val newPan = m.runtimeClass.getConstructor().newInstance().asInstanceOf[T]
   			newPan.registerAnswerCallBack(func)
   			pool append newPan
   			newPan
