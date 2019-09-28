@@ -351,7 +351,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	 * @return screen pos of a hitting element point, or null if no points arround
 	 */
 	def checkPointHit(screenPos:Point):MatchingScreenPoints = {
-		val worldPoints=getNearestPoint(scaleModel.xToWorld(screenPos.x),scaleModel.yToWorld(screenPos.y))
+		val worldPoints: MatchingPoints =getNearestPoint(scaleModel.xToWorld(screenPos.x),scaleModel.yToWorld(screenPos.y))
 		MatchingScreenPoints(optionToScreen(worldPoints.hitBoth),optionToScreen(worldPoints.hitX),
 			optionToScreen(worldPoints.hitY),worldPoints.hitBoth)			  	
 	}
@@ -368,13 +368,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 
   def ownerRef: Option[AbstractLayer] = layerModel.getActiveLayer
 	  
-	 /** Format Field Values to give to a new created Object
-   * @param forType class type of the object to create
-   * @return list of (formatfieldNr,FieldValue) 
-   */
-
-
-  def shutDown(): Unit = {
+	def shutDown(): Unit = {
     shuttingDown=true
     layerModel.removeAllLayers(true)
   }

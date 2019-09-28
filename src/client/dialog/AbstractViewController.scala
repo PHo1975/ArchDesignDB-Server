@@ -7,7 +7,7 @@ import java.awt.geom.Rectangle2D
 import java.awt.{Graphics2D, Point}
 
 import client.dataviewer.ViewConstants
-import client.graphicsView._
+import client.graphicsView.{ObjectSelectMode, ViewportState, _}
 import definition.expression.{Constant, VectorConstant}
 import definition.typ.AllClasses
 import util.Log
@@ -29,14 +29,14 @@ object NO_MATCH extends MatchingPoints(None,None,None)
  * 
  */
 trait AbstractViewController[A,ResType] extends FocusContainer with ElemContainer{
-  var rubberStartPoint: VectorConstant = _
+  var rubberStartPoint: Option[VectorConstant] = None
   var _hasCreateActionStarted:Boolean=false
-  override def hasCreateActionStarted=_hasCreateActionStarted
+  override def hasCreateActionStarted: Boolean =_hasCreateActionStarted
   var pointListener:PointClickListener=_
   var objSelectListener:Option[ObjectSelectListener]=None
   var selectPointsListener:Option[SelectPointsListener]=None
   var objSelectClassConstraints:Seq[Int]=Seq.empty
-  var objSelectMode=ObjectSelectMode.SingleObject
+  var objSelectMode: ObjectSelectMode.Value =ObjectSelectMode.SingleObject
   var lastSelectedPoint:VectorConstant=new VectorConstant(0,0,0)
   var bracketMode:Boolean = false
   var showTempElements=false
@@ -49,7 +49,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   var lastHittedElements:Iterable[A]=Nil
   var lastHittedElementNr:Int= -1
   protected var tempObjectsToChoose:Seq[GraphElem]=Nil
-  protected var _viewportState=ViewportState.SelectState
+  protected var _viewportState: ViewportState.Value =ViewportState.SelectState
 
   def viewportState: ViewportState.Value = _viewportState
   var isZoomingIn=false
@@ -208,13 +208,13 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   def getNearestPoint(clickPosX:Double,clickPosY:Double):MatchingPoints = if (layerModel!=null){
     val pcd = ViewConstants.pointCatchDistance / scaleModel.scale
     //println("GetNeareastPoint cpx:"+clickPosX+" y:"+clickPosY+" pcd:"+pcd)
-    val rubberList = if(rubberStartPoint!=null)
-                       GraphElemConst.checkHit(clickPosX, clickPosY, pcd, rubberStartPoint)
-                     else Seq.empty
-    val hittedPoints=GraphElemConst.checkHit(clickPosX,clickPosY,pcd,NULLVECTOR) ++ // check for basepoint of coordinate system
-      (if(rubberList.isEmpty)
-         layerModel.checkElementPointsWithLayer((el,layer)=>el.hitPoint(layer,clickPosX, clickPosY, pcd))
-       else layerModel.checkElementPointsWithLayer((el,layer)=>el.hitPoint(layer,clickPosX, clickPosY, pcd))++rubberList)
+
+    val rubberList: Seq[(Byte, VectorConstant)] = rubberStartPoint match {
+      case Some(rs)=>GraphElemConst.checkHit(clickPosX, clickPosY, pcd, rs)
+      case None =>Nil
+    }
+    val hittedPoints: Seq[(Byte, VectorConstant)] =GraphElemConst.checkHit(clickPosX,clickPosY,pcd,NULLVECTOR) ++ // check for basepoint of coordinate system
+          layerModel.checkElementPointsWithLayer((el,layer)=>el.hitPoint(layer,clickPosX, clickPosY, pcd))++rubberList
 
     if(hittedPoints.nonEmpty) {
       var nearestPoint:VectorConstant= null
@@ -326,8 +326,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   }
 
   protected def optionToScreen(worldPos:Option[VectorConstant]):Option[Point] =
-    if(worldPos.isDefined) Option(new Point(scaleModel.xToScreen(worldPos.get.x).toInt,scaleModel.yToScreen(worldPos.get.y).toInt))
-    else None
+    worldPos.map(wp=>new Point(scaleModel.xToScreen(wp.x).toInt,scaleModel.yToScreen(wp.y).toInt))
 
 
   def internSetPoint(point: VectorConstant): Unit = {
@@ -345,7 +344,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   def processPoint(point: VectorConstant): Unit = {
-    rubberStartPoint=point
+    rubberStartPoint=Some(point)
     pointListener.pointClicked(point)
   }
 

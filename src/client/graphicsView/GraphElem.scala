@@ -1234,9 +1234,16 @@ object GraphElemConst {
 		val minY=if(startPoint.y<endPoint.y) startPoint.y else endPoint.y
 		val maxY=if(startPoint.y>endPoint.y) startPoint.y else endPoint.y
 		px>=(minX - dist) && (px<= maxX +dist) && py>=(minY-dist) && (py<= maxY +dist)
-	}	
-	
-	
+	}
+
+  /** checks if the given point p checks with the click point at coordinate px,py
+   *
+   * @param px click pos x
+   * @param py click pos y
+   * @param dist maximal distance
+   * @param p element point
+   * @return  a List of one Tuple (Byte =GraphElemConst.HITBOTH,.HITX or .HITY,p)
+   */
 	def checkHit(px:Double,py:Double,dist:Double,p:VectorConstant):Seq[(Byte,VectorConstant)]={
   	val xHit=scala.math.abs(px-p.x)<dist
   	val yHit=scala.math.abs(py-p.y)<dist

@@ -109,7 +109,7 @@ object SessionManager {
           val https_config = new HttpConfiguration(http_config)
           https_config.addCustomizer(new SecureRequestCustomizer(true, 31536000l, true))
 
-          val sslContextFactory = new SslContextFactory()
+          val sslContextFactory = new SslContextFactory.Server()
           if (!FSPaths.keyStoreFile.exists) util.Log.e("keystore " + FSPaths.keyStoreFile + " existiert nicht")
           sslContextFactory.setKeyStorePath(FSPaths.keyStoreFile.toString)
           sslContextFactory.setKeyStorePassword("Pitpass1#")

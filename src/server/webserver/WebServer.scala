@@ -79,7 +79,7 @@ object WebServer extends Server() {
     servletContextHandler.setContextPath("/")
 
     val fileServlet=new ServletHolder("files",classOf[DefaultServlet])
-    fileServlet.setInitParameter("dirAllowed","true")
+    fileServlet.setInitParameter("dirAllowed","false")
     fileServlet.setInitParameter("gzip","true")
     fileServlet.setInitParameter("resourceBase",FSPaths.deployDir+"files\\")
     fileServlet.setInitParameter("useFileMappedBuffer","false")
