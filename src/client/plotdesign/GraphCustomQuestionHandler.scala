@@ -32,9 +32,9 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   lazy val rectEndQuestion: DialogQuestion = singlePointQuestion("Rechteck Zuschnitt", "bis Punkt", Some(false))
   
   def setCutRect(gc:PlotDesignController):Unit={     
-     DialogManager.startInterQuestion(rectStartQuestion,(answerList)=> {
+     DialogManager.startInterQuestion(rectStartQuestion,answerList=> {
       val startPoint=answerList.last.result.toVector      
-      def diagRectDragger(pos:VectorConstant,g:Graphics2D)= {
+      def diagRectDragger(pos:VectorConstant,g:Graphics2D): Unit = {
 				val sm=gc.scaleModel
 				val scy=sm.yToScreen(startPoint.y)
 				val py=sm.yToScreen(pos.y)
@@ -44,18 +44,13 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 				GraphElemConst.drawRectFloat(g,sx,sy,sm.xToScreen(math.max(pos.x,startPoint.x))-sx,math.max(scy,py)-sy)
 			}
       gc.setCustomDragger(diagRectDragger)
-      DialogManager.startInterQuestion(rectEndQuestion,(answerList1)=> {
-        val endPoint=answerList1.last.result.toVector
-        
-        DialogManager.processResults()
-      })
-      
+      DialogManager.startInterQuestion(rectEndQuestion, _ => DialogManager.processResults() )
      })
   }
   
   def move(gc:PlotDesignController):Unit={
     DialogManager.startInterQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
-      moveStartAnswers), (answerList) => {
+      moveStartAnswers), answerList => {
       answerList.head.result match{
         case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
             (answerList)=>{DialogManager.processResults()})
@@ -69,7 +64,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
              }
         	 })
           DialogManager.startInterQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", Some(false)),
-            (answerList)=>DialogManager.processResults() )
+            _=>DialogManager.processResults() )
       }
 		})  
   }

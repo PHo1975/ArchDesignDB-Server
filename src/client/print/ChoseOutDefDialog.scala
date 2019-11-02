@@ -8,8 +8,8 @@ import java.awt.event.{WindowAdapter, WindowEvent}
 
 import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
-import definition.data.{OutputDefinition, Reference}
-import definition.expression.{BoolConstant, Constant, IntConstant, StringConstant}
+import definition.data.{OutputDefinition, Reference, ResultElement}
+import definition.expression.{BoolConstant, IntConstant, StringConstant}
 import javax.swing.BorderFactory
 import javax.swing.border.TitledBorder
 
@@ -136,7 +136,7 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 
 	def deleteOutdef(): Unit = if (outdefListView.selection.indices.nonEmpty) {
 		val selOD=outdefListView.selection.items.head		
-		DialogManager.processCustomEnquiry(IndexedSeq(("DeleteOutDef",IntConstant(selOD.odInst)) ))
+		DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("DeleteOutDef",IntConstant(selOD.odInst)) ))
 		PrintModel.setOutDefs(PrintModel.outDefs.filterNot(_.odInst ==selOD.odInst))		
 	}
 
@@ -146,8 +146,8 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 	protected def chooseOutdef(selOD: OutputDefinition): Unit = {
 	  PrintQuestionHandler.newDialog.loadOutDefSettings(selOD)
 		val sm=PrintModel.lastSelectedMedia
-		DialogManager.processCustomEnquiry(IndexedSeq(("ChoseOutDef",IntConstant(selOD.odInst)),
-				("PageWidth",IntConstant(sm.width.toInt)),("PageHeight",IntConstant(sm.height .toInt)) ) )	  
+		DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("ChoseOutDef",IntConstant(selOD.odInst)),
+			ResultElement("PageWidth",IntConstant(sm.width.toInt)),ResultElement("PageHeight",IntConstant(sm.height .toInt)) ) )
 		if(visible){
 		  resetOnClose=false
 		  close()
@@ -181,20 +181,20 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 		outdefListView.selection.indices+=0
 	}
 
-	def whenNewoutputDefined(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[(String, Constant)]): Unit = {
+	def whenNewoutputDefined(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[ResultElement]): Unit = {
 	  resetOnClose=false
 	  close()
 	  PrintQuestionHandler.outputDefined(formIx,printer,pageSetting,portrait,w,h,paramData)
 	}
 
-	def whenOutputDefChanged(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[(String, Constant)]): Unit = {
+	def whenOutputDefChanged(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[ResultElement]): Unit = {
 	  resetOnClose=false
 	  close()
 	  //println("when outputdef changed "+formIx)
 	  PrintModel.changeOutDef(new OutputDefinition(changedODInst,PrintModel.forms(formIx).inst,printer,pageSetting,portrait,paramData))
-	  DialogManager.processCustomEnquiry(IndexedSeq(("ChangeOutDef",IntConstant(changedODInst)),("Form",IntConstant(formIx)),
-  		("Printer",StringConstant(printer)),("PageSettings",StringConstant(pageSetting)),
-  		("Portrait",BoolConstant(portrait)),("PageWidth",IntConstant(w)),("PageHeight",IntConstant(h)) ) ++ paramData)
+	  DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("ChangeOutDef",IntConstant(changedODInst)),ResultElement("Form",IntConstant(formIx)),
+			ResultElement("Printer",StringConstant(printer)),ResultElement("PageSettings",StringConstant(pageSetting)),
+			ResultElement("Portrait",BoolConstant(portrait)),ResultElement("PageWidth",IntConstant(w)),ResultElement("PageHeight",IntConstant(h)) ) ++ paramData)
 	}
 	
 	peer.addWindowListener (new WindowAdapter(){

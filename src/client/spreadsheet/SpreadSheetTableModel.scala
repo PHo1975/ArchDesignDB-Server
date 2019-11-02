@@ -5,11 +5,12 @@ import client.dataviewer.ViewConstants
 import client.dialog.Toast
 import client.ui.ClientApp
 import definition.comm.NotificationType
-import definition.data.{EMPTY_OWNERREF, InstanceData, Reference}
+import definition.data.{EMPTY_OWNERREF, InstanceData, Reference, ResultElement}
 import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}
 import javax.swing.event.TableModelEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 import javax.swing.{JComponent, JTextArea}
+import util.Log
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -140,7 +141,8 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     }
 
     ClientQueryManager.executeActionResult(EMPTY_OWNERREF,List(controller.spreadSheetRef),"insertCells",
-        Seq(("startCol",ncol),("endCol",ncol),("startRow",nrow),("endRow",nrow),("dx",nnul),("dy",nnul),(value.toString,EMPTY_EX)),showError)
+        Seq(ResultElement("startCol",ncol),ResultElement("endCol",ncol),ResultElement("startRow",nrow),ResultElement("endRow",nrow),
+          ResultElement("dx",nnul),ResultElement("dy",nnul),ResultElement(value.toString,EMPTY_EX)),showError)
   }
 
 
@@ -214,6 +216,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
              case None => //println("not in list" +data(0))
            }
          case NotificationType.childAdded=> addCell(data.head,notify = true)
+         case NotificationType.parentNotExistend=> Log.e("load Cells "+controller.spreadSheetRef )
        }
       }
     })

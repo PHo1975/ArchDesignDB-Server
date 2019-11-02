@@ -9,7 +9,7 @@ import java.util.Date
 import client.comm.GenDataReceiver
 import client.dialog.{ActionPanel, CustomQuestionHandler, DialogManager, FocusContainer}
 import client.ui.ClientApp
-import definition.data.{FormDescription, PageData}
+import definition.data.{FormDescription, PageData, ResultElement}
 import definition.expression._
 import definition.typ.{ParamQuestion, XMLQuestion}
 import javax.print.attribute.standard.PageRanges
@@ -49,11 +49,11 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
   }
   
   
-  def outputDefined(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Seq[(String,Constant)])= PrintQuestionHandler.synchronized{ 
+  def outputDefined(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Seq[ResultElement])= PrintQuestionHandler.synchronized{
    //println("output Defined:"+formIx+" "+printer+" paramData:"+paramData)
-  	DialogManager.processCustomEnquiry(IndexedSeq(("NewOutDef",IntConstant(formIx)),
-  		("Printer",StringConstant(printer)),("PageSettings",StringConstant(pageSetting)),
-  		("Portrait",BoolConstant(portrait)),("PageWidth",IntConstant(w)),("PageHeight",IntConstant(h))) ++ paramData)
+  	DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("NewOutDef",IntConstant(formIx)),
+			ResultElement("Printer",StringConstant(printer)),ResultElement("PageSettings",StringConstant(pageSetting)),
+			ResultElement("Portrait",BoolConstant(portrait)),ResultElement("PageWidth",IntConstant(w)),ResultElement("PageHeight",IntConstant(h))) ++ paramData)
   }
   
     

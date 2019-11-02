@@ -10,7 +10,7 @@ import java.awt.{Color, Dimension}
 import client.comm.ClientQueryManager
 import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
 import client.dialog.DialogManager
-import definition.data.{FormDescription, OutputDefinition}
+import definition.data.{FormDescription, OutputDefinition, ResultElement}
 import definition.expression._
 import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, OrientationRequested}
 import javax.swing._
@@ -42,7 +42,7 @@ class BoolRenderer extends CheckBox {
 
 class NewOutdefDialog (w:Window) extends Dialog(w)  {	
 	
-	private var outputDefinedFunc:(Int,String,String,Boolean,Int,Int,Seq[(String,Constant)])=>Unit = _ 
+	private var outputDefinedFunc:(Int,String,String,Boolean,Int,Int,Seq[ResultElement])=>Unit = _
 	var combosAdjusting=false
 	var resetOnClose=false
 	val cancelBut=new Button("Abbruch")
@@ -210,11 +210,11 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 	def storePrintData(): Unit = {
 	  close()
 	  val paperSettings=PrintModel.lastSelectedMedia.mn.toString+(if(PrintModel.trayModel.getSize>0)"|"+trayCombo.selection.item.mt.toString else "")
-	  DialogManager.processCustomEnquiry(IndexedSeq(("StorePrintData",
-	  		IntConstant(PrintModel.outputDefInst)),("Form",IntConstant(formListView.selection.indices.head)),
-  		("Printer",StringConstant(PrintModel.getPrintServiceName(PrintModel.theService))),("PageSettings",StringConstant(paperSettings)),
-  		("Portrait",BoolConstant(portraitBut.selected)),("PageWidth",IntConstant(PrintModel.lastSelectedMedia.width.toInt)),
-  		("PageHeight",IntConstant(PrintModel.lastSelectedMedia.height.toInt)) ) ++ PrintModel.paramTabMod.getParams)
+	  DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("StorePrintData",
+	  		IntConstant(PrintModel.outputDefInst)),ResultElement("Form",IntConstant(formListView.selection.indices.head)),
+			ResultElement("Printer",StringConstant(PrintModel.getPrintServiceName(PrintModel.theService))),ResultElement("PageSettings",StringConstant(paperSettings)),
+			ResultElement("Portrait",BoolConstant(portraitBut.selected)),ResultElement("PageWidth",IntConstant(PrintModel.lastSelectedMedia.width.toInt)),
+			ResultElement("PageHeight",IntConstant(PrintModel.lastSelectedMedia.height.toInt)) ) ++ PrintModel.paramTabMod.getParams)
 	}
 
 
@@ -239,16 +239,16 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 
 	def getCurrentForm: FormDescription = formListView.selection.items.get(0)
 
-	def showDialog(newTitle: String, noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[(String, Constant)]) => Unit, nresetOnClose: Boolean): Unit = {
+	def showDialog(newTitle: String, noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[ResultElement]) => Unit, nresetOnClose: Boolean): Unit = {
 		title=newTitle
 		outputDefinedFunc=noutputDefinedFunc		
 		resetOnClose=nresetOnClose
 		visible=true
 	}
 
-	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[(String, Constant)]) => Unit, odef: OutputDefinition): Unit = {
+	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[ResultElement]) => Unit, odef: OutputDefinition): Unit = {
 		loadOutDefSettings(odef)		
-		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,nresetOnClose = true)
+		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,resetOnClose)
 	}
 
 	def loadForms(newList: Seq[FormDescription]): Unit = {
@@ -297,8 +297,8 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		  val myForm=PrintModel.forms(fix)
 		  
 			def findParamValue(pname:String)= {		    
-				odef.paramValues.find(_._1 ==pname) match {
-					case Some(param)=>  param._2 
+				odef.paramValues.find(_.paramName ==pname) match {
+					case Some(param)=>  param.result
 					case None =>myForm.params.find(_.name==pname) match {
 					  case Some(paramDesc)=> paramDesc.defaultValue
 					  case None=> EMPTY_EX

@@ -529,7 +529,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 		 for (layer<-layerModel.getActiveLayer) {
 			 val ownerRefArray=Array(layer.ownerRef)
        DialogManager.startInterQuestion(DialogQuestion("Projektion", List(new AnswerDefinition("Projektion", DataType.EnumTyp, None, "Draufsicht,Ansicht X,Ansicht Y"))),
-				 (resList)=>{
+				 resList =>{
 					 val proj=resList.head.result.toString match {
 						 case "Draufsicht" => 0
 						 case "Ansicht X" => 1

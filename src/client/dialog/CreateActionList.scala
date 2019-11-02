@@ -4,8 +4,8 @@
 package client.dialog
 
 import client.comm.{ClientObjectClass, ClientQueryManager, KeyStrokeManager}
-import definition.data.{EMPTY_OWNERREF, Referencable, Reference}
-import definition.typ.{AllClasses, SelectGroup}
+import definition.data.Reference
+import definition.typ.AllClasses
 
 import scala.swing.Reactor
 import scala.swing.event.ButtonClicked
@@ -16,26 +16,26 @@ import scala.swing.event.ButtonClicked
 
 object CreateActionList extends Reactor  {
   var lastContainer:Option[FocusContainer]=None
-  var lastOwnertRef:Option[Reference]=None
+  var lastOwnerRef:Option[Reference]=None
   var lastPropField:Int= -1
-  private val selGroup=new SelectGroup[Referencable](EMPTY_OWNERREF,Seq[Referencable]())
+  //private val selGroup=new SelectGroup[Referencable](EMPTY_OWNERREF,Seq[Referencable]())
   //var buttonList:Seq[CreateMenuButton]=Nil
   var actionButtons:Seq[CreateActionMenuButton]=Nil
 
   reactions += {
-    case ButtonClicked(theBut:CreateActionMenuButton) => if(selGroup.children.nonEmpty){
+    case ButtonClicked(theBut:CreateActionMenuButton) => for (owner<-lastOwnerRef){
       theBut.ccd.action match {
-        case Some(action)=>DialogManager.startCreateActionDialog(action,selGroup,theBut.ccd.childClassID,theBut.propField)
+        case Some(action)=>DialogManager.startCreateActionDialog(action,owner,theBut.ccd.childClassID,theBut.propField)
         case _ => throw new IllegalArgumentException("No Action defined in CreateActionButton "+theBut)
       }
     }
-    case ButtonClicked(theBut:CreateMenuButton)=> if(selGroup.children.nonEmpty) {
+    case ButtonClicked(theBut:CreateMenuButton)=> for(owner<-lastOwnerRef) {
       DialogManager.reset()
       for(lc<-CreateActionList.lastContainer) {
         //println("newbuttonslist button clicked "+theBut.text)
         lc.createActionSubmitted(1)
         val formatValues= lc .getCreationFormatValues(theBut.ccd.childClassID)
-        ClientQueryManager.executeCreateAction(selGroup.children,theBut.ccd.childClassID,theBut.propField,"*",Seq(),formatValues)
+        ClientQueryManager.executeCreateAction(owner.ref,theBut.ccd.childClassID,theBut.propField,"*",Seq(),formatValues)
       }
     }
   }
@@ -44,7 +44,7 @@ object CreateActionList extends Reactor  {
     //println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.containerRef+" propfield:"+propField)
     val cont=Some(container)
     val newContRef=container.ownerRef.map(_.ref)
-  	if(!(cont==lastContainer&&newContRef==lastOwnertRef&&propField==lastPropField)) {
+  	if(!(cont==lastContainer&&newContRef==lastOwnerRef&&propField==lastPropField)) {
       //println("ContainerFocus the same ")
       //println("container Focused newCont:"+container+" last:"+lastContainer+"\nnewContRef:"+newContRef+" last:"+lastSuperInstRef+"\npropField:"+propField+" last:"+lastPropField)
       if (DialogManager.dialogIsActive) DialogManager.reset()
@@ -59,13 +59,13 @@ object CreateActionList extends Reactor  {
             listenTo(actionButtons: _*)
             registerActionButtons()
           } else util.Log.e("wrong propField " + propField + " for class " + theClass)
-          selGroup.children = List(contRef)
+
           //println("set selgroup.children "+selGroup.children)
         case None =>
       }
       lastContainer = cont
       lastPropField = propField
-      lastOwnertRef = newContRef
+      lastOwnerRef = newContRef
     }
   }
 

@@ -25,17 +25,11 @@ import scala.util.control.NonFatal
  * 
  */
 
-case class ResultElement(question:ParamQuestion, answer:AnswerDefinition, result:Constant)
-
-
 case class CustomPanelQuestion(override val panel:CustomPanel) extends PanelQuestion{
   def toXML:scala.xml.Node=null
-
 	def name: String = panel.name
 	def classID=5
 }
-
-
 
 object DialogManager extends SelectListener /*with ActionPanListener*/{
   var propField:Byte=0
@@ -55,12 +49,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	var currentAction:Option[ActionTrait]= None
 	var createType:Option[Int]=None
 	var customQuestionHandlerList: mutable.HashMap[String, CustomQuestionHandler] = collection.mutable.HashMap[String, CustomQuestionHandler]()
-	var hasDraggerToast:Option[AbstractViewController[_,_]]=None  
-  
-
+	var hasDraggerToast:Option[AbstractViewController[_,_]]=None
   val lock=new Object
 	val selectField=new MultiLineLabel()
-
 	selectField.background = ViewConstants.leftPanelColor
 	val questionField=new MultiLineLabel()	
 	questionField.border=BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.lightGray),BorderFactory.createEmptyBorder(1,1,1,1))
@@ -218,7 +209,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	 * function in DialogManager !
 	 * storeAnswer: should the answer be stored on the answer stack or is is just a temporary question from the point panel
 	 */
-	def startInterQuestion(question:ParamQuestion,listener:(Seq[ResultElement]) => Unit,storeAnswer:Boolean=true):Unit= {
+	def startInterQuestion(question:ParamQuestion, listener: Seq[ResultElement] => Unit, storeAnswer:Boolean=true):Unit= {
 	  customAnswerListener=(listener,if(!storeAnswer)currentQuestion else None) :: customAnswerListener
 	  sidePanelDialogStart()
     dialogIsActive=true
@@ -244,22 +235,22 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	}
 
 
-	def startCreateActionDialog(action: ActionTrait, elems: SelectGroup[_ <: Referencable], ncreateType: Int, npropField: Byte): Unit = lock.synchronized {
+	def startCreateActionDialog(action: ActionTrait, ownerRef:Reference, ncreateType: Int, npropField: Byte): Unit = lock.synchronized {
 	  if(dialogIsActive&& !hasRebound)reset()
     if(hasRebound)hasRebound=false
 	  action.question match {
 		    case Some(question) =>
 					initAction()
-					actionGroups=List(elems)
+					//actionGroups=List(elems)
 					createType=Some(ncreateType)
 					currentAction=Some(action)
 					//println("start Create "+question.getClass())
 					propField=npropField
 					loadQuestion(question)
-				case None => for(lc<-CreateActionList.lastContainer) {
-		      		lc.createActionSubmitted(1)
-		      		val formatValues= lc .getCreationFormatValues(ncreateType)			  
-		      		ClientQueryManager.executeCreateAction(elems.children,ncreateType,npropField,action.name,Seq(),formatValues)
+				case None => for(lastC<-CreateActionList.lastContainer) {
+		      		lastC.createActionSubmitted(1)
+		      		val formatValues= lastC .getCreationFormatValues(ncreateType)
+		      		ClientQueryManager.executeCreateAction(ownerRef,ncreateType,npropField,action.name,Seq(),formatValues)
 		      	}
 	  }
 	}
@@ -336,13 +327,13 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	
 	// adds answer Data without Dialog processing. Used by IPE-Mode creating
 	def addAnswer(parm:AnswerDefinition,result:Constant):Unit= if(dialogIsActive&& ! hasRebound){
-	  answerList += ResultElement(null,parm,result)
+	  answerList += ResultElement(parm.name,result)
 	} else util.Log.e("add Answer on dactive"+dialogIsActive+" reb:"+hasRebound)
 	
 	def answerGiven(parm:AnswerDefinition,result:Constant):Unit = lock.synchronized{
 		if(dialogIsActive && !hasRebound){
 			//System.out.println("Answer given "+parm+" "+result+"\n customAnswerListener:"+customAnswerListener+" repeatQuestion:"+repeatQuestion)
-		  val answer=ResultElement(currentQuestion.get,parm,result)
+		  val answer=ResultElement(parm.name,result)
 			answerList += answer      
 			parm.followQuestion match {
 				case Some(question) => loadQuestion(question)
@@ -383,18 +374,17 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		} else util.Log.e("answer given on dactive"+dialogIsActive+" reb:"+hasRebound+" parm:"+parm.toString+" result:"+result+" currentQuestion:"+currentQuestion)
 	}
 
-	def processCustomEnquiry(resultList: Seq[(String, Constant)]): Unit = {
+	def processCustomEnquiry(resultList: Seq[ResultElement]): Unit = {
 		isServerEnquiry=false
 		ClientQueryManager.answerEnquiry(resultList)
 	}
 	
 	def processResults():Unit = {
-		val resultList=answerList.map(x =>(x.answer.name,x.result))
     var repeatWithoutCAS=false
 		//System.out.println("process Results :"+resultList.mkString("\n")+"\n currentAction:"+currentAction+"\n actionGroups:"+actionGroups+"\n")
 		if(isServerEnquiry){
 			isServerEnquiry=false
-			ClientQueryManager.answerEnquiry(resultList)
+			ClientQueryManager.answerEnquiry(answerList)
 		} else if(actionGroups!=null) {
       currentAction match {
         case Some(ca) if (ca.question.isDefined && ca.question.get.repeat) || ca.rebound =>
@@ -405,25 +395,23 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 							lc.onCreatedDataReceived{ ()=>repeatAction(ca,createType,propField)}
 						case _ =>
 							//("repeat without cAS "+ca.name+" "+ca.question.get)
-							//println(Thread.currentThread.getStackTrace.drop(1).take(10).mkString("\n "))
 							repeatWithoutCAS=true
 					}
 				case _ => hasRebound=false
 			}
       //println("createType "+createType)
 		  createType match {
-		  	case Some(ct)=> for(group <-actionGroups) {			  
-		  		val formatValues= CreateActionList.lastContainer match {
+		  	case Some(ct)=>
+		  		CreateActionList.lastContainer match {
 		  			case Some(lc) =>
 							lc.createActionSubmitted(if(createdNewElements==0) 1 else createdNewElements)
-							lc.getCreationFormatValues(ct)
-						case None=>Nil
+							val formatValues= lc.getCreationFormatValues(ct)
+							for(ca<-currentAction;owner<-lc.ownerRef)
+								ClientQueryManager.executeCreateAction(owner.ref,ct,propField,ca.name,answerList,formatValues)
+						case None=>
 		  		}
-		  		for(ca<-currentAction)
-		  		  ClientQueryManager.executeCreateAction(group.children,ct,propField,ca.name,resultList,formatValues)
-		  	}
-		  	case None=> for(group <-actionGroups; ca<-currentAction)
-		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,resultList)
+		  	case None=> for(ca<-currentAction;group <-actionGroups )
+		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,answerList)
 		  }	
       if(!hasRebound)reset()
       if(repeatWithoutCAS) for(ca<-currentAction) repeatAction(ca,createType,propField)
@@ -434,7 +422,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	protected def repeatAction(ca: ActionTrait, crType: Option[Int], prField: Byte): Unit = {
     //println("Repeat "+createType+" "+ca.name+" "+ actionGroups+" dialogIsActive:"+dialogIsActive+" "+Thread.currentThread().getName)
     crType match {
-      case Some(ct)=>if(actionGroups.nonEmpty) startCreateActionDialog(ca,actionGroups.head,ct,prField)
+      case Some(ct)=>for(lc<-CreateActionList.lastContainer;owner<-lc.ownerRef) startCreateActionDialog(ca,owner.ref,ct,prField)
       case None =>  startActionDialog(ca,actionGroups)
     }
   }

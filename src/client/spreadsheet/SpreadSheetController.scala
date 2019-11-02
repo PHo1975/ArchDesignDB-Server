@@ -77,7 +77,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       case ButtonClicked(`resultBut`)=> selection match{
         case SingleCellSelection(col,row)=>
           ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"setResultCell",
-          		Seq(("col",IntConstant(col)),("row",IntConstant(row))))
+          		Seq(ResultElement("col",IntConstant(col)),ResultElement("row",IntConstant(row))))
         case _=>
       }
     }
@@ -544,7 +544,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
       case selRows:RowsSelection=>
         ClientQueryManager.runInPool{
           ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"addRows",
-            Seq(("startRow",IntConstant(selRows.rows.start)),("endRow",IntConstant(selRows.rows.end-1))))
+            Seq(ResultElement("startRow",IntConstant(selRows.rows.start)),ResultElement("endRow",IntConstant(selRows.rows.end-1))))
 
           Swing.onEDT{
             deselect(true)
@@ -558,7 +558,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
     selection match {
       case selRows:RowsSelection=>
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"removeRows",
-       Seq(("startRow",IntConstant(selRows.rows.start)),("endRow",IntConstant(selRows.rows.end-1))))
+       Seq(ResultElement("startRow",IntConstant(selRows.rows.start)),ResultElement("endRow",IntConstant(selRows.rows.end-1))))
       case o=> Log.e("unkown Rows "+o)
     }
     deselect(true)
@@ -573,7 +573,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
           if(tableModel.colCellList.contains(col))
             tableModel.colCellList(col).clear()
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"addColumns",
-        Seq(("startCol",IntConstant(selCols.cols.start)),("endCol",IntConstant(selCols.cols.end-1))))
+        Seq(ResultElement("startCol",IntConstant(selCols.cols.start)),ResultElement("endCol",IntConstant(selCols.cols.end-1))))
         for(col <-selCols.cols)
           tableModel.colCellList(col).clear()
       case _=>
@@ -590,7 +590,7 @@ class SpreadSheetController extends BorderPanel with CustomInstanceEditor[Compon
           if(tableModel.colCellList.contains(col))
             tableModel.colCellList(col).clear()
         ClientQueryManager.executeAction(EMPTY_OWNERREF,List(spreadSheetRef),"removeColumns",
-        Seq(("startCol",IntConstant(selCols.cols.start)),("endCol",IntConstant(selCols.cols.end-1))))
+        Seq(ResultElement("startCol",IntConstant(selCols.cols.start)),ResultElement("endCol",IntConstant(selCols.cols.end-1))))
       case _=>
     }
     Swing.onEDT{

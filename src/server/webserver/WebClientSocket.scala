@@ -15,7 +15,7 @@ import server.comm._
 import server.config.ServerSystemSettings
 import server.storage._
 import transaction.handling.{ActionList, TransactionManager}
-import util.{Log, StrToInt}
+import util.{Log, StrToInt, StringUtils}
 
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
@@ -144,6 +144,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         case "WriteField"=> writeField(data)
         case "WriteInstancesField"=>writeInstancesField(data)
         case "Execute"=> executeAction(data,false)
+        case "ExecuteCreate"=>
         case "CreateInstance"=>createInstance(data)
         case "DeleteInstance"=>deleteInstance(data)
         case "Root"=> sendRoot(data)
@@ -352,18 +353,20 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     (st.substring(0,ix),Expression.decode(st.substring(ix+1,st.length))._1.getValue)
   }
 
+  protected def strToFormatValues(st:String): (Int, Constant) = {
+    val ix=st.indexOf("\u2192")
+    (StringUtils.stringToInt(st.substring(0,ix)),Expression.decode(st.substring(ix+1,st.length))._1.getValue)
+  }
+
+
   protected def executeAction(data:String,createAction:Boolean):Unit= data.split("\\|") match {
-    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText, createAction)
-    case Array(RefList(rList), actionName) => intExecute(rList,actionName,"",createAction)
+    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Seq.empty, createAction)
+    case Array(RefList(rList), actionName) => intExecute(rList,actionName,"",0,0,Seq.empty,createAction)
     case _=> Log.e("Execute action wrong syntax:"+data)
   }
 
-  def intExecute (rList: Array[Reference], actionName: String, paramText: String, createAction: Boolean): Unit = {
+  def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Seq[(Int,Constant)], createAction: Boolean): Unit = {
     val paramList:Array[(String,Constant)] =if(paramText.trim.length==0)Array.empty else paramText.split ('\u01c1').map (strToParam)
-    val newType = 0
-    val propField = 0.toByte
-    val formList: Seq[(Int, Constant)] = Nil
-    val owner = new OwnerReference (0, EMPTY_REFERENCE)
     var error: CommandError = null
     val instList = for (r <- rList
                         if StorageManager.instanceExists (r.typ, r.instance) ) yield StorageManager.getInstanceData (r)
@@ -387,7 +390,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
                 }
 
               case b: ActionIterator => // Iterator, runs through all instances in given order
-                b.func (this, owner, instList, paramList)
+                b.func (this, EMPTY_OWNERREF, instList, paramList)
 
               case c: CreateActionImpl if createAction => c.func (this, instList, paramList, newType, formList)
               case e => Log.e ("unknown type " + e + " " + createAction)
@@ -416,10 +419,18 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     }
   }
 
+  protected def executeCreateAction(data:String):Unit = data.split("\\|") match {
+    case Array(Reference(ownerRef),StrToInt(propField),StrToInt(createType),actionName,paramText,formatValuesText)=>
+      val formatList:Array[(Int,Constant)]   = if(formatValuesText.trim.length==0)Array.empty else formatValuesText.split ('\u01c1').map (strToFormatValues)
+      intExecute(Array(ownerRef),actionName, paramText,createType,propField.toByte,formatList,createAction = true)
+    case _=> Log.e("Execute action wrong syntax:"+data)
+  }
+
+
 
   protected def simplyCreateInstance(parentList:Seq[InstanceData],newType:Int,propField:Byte): Unit = {
     val ownerRef=new OwnerReference(propField,parentList.head.ref)
-   TransactionManager.tryCreateInstance(newType,Array(ownerRef),true)
+   TransactionManager.tryCreateInstance(newType,Array(ownerRef),notifyRefandColl = true)
   }
 
   def askEnquiry(question:ParamQuestion,continuation:(JavaClientSocket,Seq[(String,Constant)])=>Unit):Unit={

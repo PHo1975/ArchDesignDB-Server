@@ -6,7 +6,7 @@ package client.print
 import client.comm.ClientQueryManager
 import client.dialog.Toast
 import client.ui.ClientApp
-import definition.data.{FormDescription, ParameterDescription}
+import definition.data.{FormDescription, ParameterDescription, ResultElement}
 import definition.expression._
 import definition.typ.DataType
 import javax.swing.table.AbstractTableModel
@@ -115,12 +115,10 @@ class ParamTabMod extends AbstractTableModel  {
   	}
   }
   
-  override def isCellEditable(row:Int,col:Int): Boolean = {
-  	col==2
-  }
+  override def isCellEditable(row:Int,col:Int): Boolean =	col==2
+
   
-  def getParams:Seq[(String,Constant)]= {
-  	paramValues.map(a=>(a._1,a._3))
-  }
+  def getParams:Seq[ResultElement]= paramValues.map(a=>ResultElement(a._1,a._3))
+
 	
 }

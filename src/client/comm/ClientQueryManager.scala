@@ -27,6 +27,7 @@ trait StepListReader{
 }
 
 
+
 object ClientQueryManager {
 
 	type UpdateFunc=(NotificationType.Value,IndexedSeq[InstanceData])=>Unit
@@ -392,19 +393,19 @@ object ClientQueryManager {
 	 * @param params the parameter values for the action	 *
 	 * 
 	 */
-	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit= {
+	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[ResultElement]):Unit= {
     //System.out.println("executeAction owner:"+owner+" instList:"+instList+" action:"+actionName+" p:"+params.mkString)
 	  _executeAction(owner,instList,actionName,params)
 		commandResultQueue.take()
 	}
 
-  def executeActionResult(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)],
+  def executeActionResult(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[ResultElement],
                           resultListener:CommandResult=>Unit=EmptyResultListener):Unit= {
     _executeAction(owner,instList,actionName,params)
     resultListener(commandResultQueue.take())
   }
 
-  private def _executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[(String,Constant)]):Unit = {
+  private def _executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[ResultElement]):Unit = {
     if(instList.isEmpty) throw new IllegalArgumentException("InstList is empty in action "+actionName+" "+params.mkString("|"))
     runInPool{
       sock.sendData( ClientCommands.executeAction) { out =>
@@ -412,24 +413,24 @@ object ClientQueryManager {
         instList foreach(_.ref.write(out))
         out.writeUTF(actionName)
         out.writeInt(params.size)
-        params foreach(x => {out.writeUTF(x._1); x._2 .write(out)})
+        params foreach(x => {out.writeUTF(x.paramName); x.result .write(out)})
         //println("execute Action :"+actionName)
         owner.write(out)
       }
     }
   }
 	
-	def executeCreateAction(parentList:Iterable[Referencable],newType:Int,propField:Byte,actionName:String,params:Seq[(String,Constant)],
+	def executeCreateAction(parentRef:Reference,newType:Int,propField:Byte,actionName:String,params:Seq[ResultElement],
       formatValues:Seq[(Int,Constant)]):Unit = runInPool{
     //System.out.println("execute create parents:"+parentList.mkString(",")+" newType:" + newType+" ")
 		sock.sendData(ClientCommands.executeCreateAction) { out =>
-			out.writeInt(parentList.size)
-			parentList foreach(_.ref.write(out))
+			out.writeInt(1)
+			parentRef.write(out)
 			out.writeInt(newType)
 			out.writeByte(propField)
 			out.writeUTF(actionName)
 			out.writeInt(params.size)
-			params foreach(x => {out.writeUTF(x._1); x._2 .write(out)})
+			params foreach(x => {out.writeUTF(x.paramName); x.result.write(out)})
 			out.writeInt(formatValues.size)
 			for(ix<-formatValues.indices;x=formatValues(ix))
 			  {if(x._2==null) util.Log.e("Format value nr "+ix+" ==null");out.writeInt(x._1); x._2.write(out)}
@@ -579,10 +580,10 @@ object ClientQueryManager {
 		}		
 	}
 
-  def answerEnquiry(params: Seq[(String, Constant)]): Unit = {
+  def answerEnquiry(params: Seq[ResultElement]): Unit = {
 		sock.sendData(ClientCommands.answerEnquiry) { out =>
 			out.writeInt(params.size)
-			params foreach((x) => {out.writeUTF(x._1); x._2 .write(out)})
+			params foreach((x) => {out.writeUTF(x.paramName); x.result.write(out)})
 		}
 	}	
 	

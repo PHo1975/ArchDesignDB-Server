@@ -35,6 +35,7 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
   def calcBounds:Rectangle2D.Double= {
     val bounds=new Rectangle2D.Double
     val (w,h)= image match {
+      case Some(null)=>Log.e("Null image when calcBounds");(20,20)
       case Some(img) =>(img.getWidth,img.getHeight)
       case None => (100,100)
     }
@@ -70,7 +71,7 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
   override def drawRotated(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,rotator:VectorConstant=>VectorConstant): Unit =
     internDraw(g,sm,selectColor,rangle,rotator(pos),showBitmap = false)
 
-  def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,npos:VectorConstant,showBitmap:Boolean): Unit =for(im<-image) {
+  def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,npos:VectorConstant,showBitmap:Boolean): Unit =for(im<-image;if im!=null) {
     g.setPaint(if (selectColor == null) ColorMap.getColor(color) else selectColor)
     g.setStroke(sm.getStroke(5, 0))
     val x = sm.xToScreen(npos.x).toInt
