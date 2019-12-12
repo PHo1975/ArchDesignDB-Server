@@ -279,7 +279,7 @@ class PlotGenerator extends CustomGenerator {
        val lineHeight=smallFont.height*1.7f
        var lastY=dataEater.pageHeight-60
 
-       val notesString=dataEater.paramValues.find(_._1=="Bemerkungen") match {case Some((_,value))=>value.toString.trim;case _=>""}
+       val notesString=dataEater.paramValues.find(_.paramName=="Bemerkungen") match {case Some(ResultElement(_,value))=>value.toString.trim;case _=>""}
        if(notesString.length>0) {
          val notes=notesString.split("\n")
          dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, lastY-(notes.length+1f)*lineHeight+1f, 0f, standardFont.height),
@@ -293,7 +293,7 @@ class PlotGenerator extends CustomGenerator {
          lastY-=(notes.length+2)*lineHeight
        }
 
-       if(dataEater.paramValues.find(_._1=="Versionstabelle") match {case Some((_,value))=>value.toBoolean;case _=>false}) {
+       if(dataEater.paramValues.find(_.paramName=="Versionstabelle") match {case Some(ResultElement(_,value))=>value.toBoolean;case _=>false}) {
          // Print Versionstabelle
           val versions=props.propertyFields(3).propertyList.map(StorageManager.getInstanceData)
          if(versions.nonEmpty) {

@@ -59,7 +59,7 @@ object SessionManager {
       println("All Classes set")
       UserList.fromXML(xml.XML.loadFile(FSPaths.configDir + "users.xml"))
       println("Userlist read")
-      StorageManager.init(scl.classList)
+      StorageManager.init(scl)
       println("StorageManager Init")
       ActionNameMap.read()
       println("ActionNames read")

@@ -18,12 +18,12 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 	protected val bufferStream= new MyByteStream(256)
 	protected val outStream=new DataOutputStream(bufferStream)
 
-  var readBuffer: Array[Byte] = Array.ofDim[Byte](256)
-	var inBufferStream=new UnsyncBAInputStream(readBuffer)
-	var dataInStream=new DataInputStream(inBufferStream)
+  protected var readBuffer: Array[Byte] = Array.ofDim[Byte](256)
+	protected var inBufferStream=new UnsyncBAInputStream(readBuffer)
+	protected var dataInStream=new DataInputStream(inBufferStream)
 	
-	var lastReadPos:Long= -2 
-	var lastReadSize:Int= -2
+	protected var lastReadPos:Long= -2
+	protected var lastReadSize:Int= -2
 	//var followCount=0
 	
 	/** Stores an Instance in the Data File
@@ -44,6 +44,14 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 	  val pos=theFile.length
 	  theFile.write(buffer,0,size)
 	  pos
+	}
+
+	def appendBuffer(buffer:Array[Byte]):Long={
+		if(lastReadPos!= -2) lastReadPos= -2 // reset cache marker
+		val pos=theFile.length
+		theFile.seek(pos)
+		theFile.write(buffer)
+		pos
 	}
 	
 	/**
@@ -70,11 +78,9 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 			readBuffer=Array.ofDim[Byte](size+128)
 			inBufferStream=new UnsyncBAInputStream(readBuffer)
 			dataInStream=new DataInputStream(inBufferStream)
-		}	
-		//print(" R:"+pos+","+size )
+		}
 		if(pos!=lastReadPos+lastReadSize)  // dont seek for subsequent instances			
 			theFile.seek(pos)
-				
 		theFile.read(readBuffer,0,size)
 		inBufferStream.reset()
 		lastReadPos=pos
@@ -90,7 +96,7 @@ class ContainerFileHandler [T <: Referencable] (val fileName:String,factory: (Re
 
   def takeOverReorgFile(reorgFile: File): Unit = {
 	  theFile.close()
-	  val backupFile=new File(compFileName.toString()+".bak")
+	  val backupFile=new File(compFileName.toString+".bak")
 	  if(backupFile.exists()) backupFile.delete
 	  compFileName.renameTo(backupFile)
 	  reorgFile.renameTo(compFileName)
@@ -133,9 +139,8 @@ class MyByteStream(nsize:Int) extends ByteArrayOutputStream(nsize) {
 		count += 1
 	}
 
-  override def reset(): Unit = {
-		count = 0
-	}
+  override def reset(): Unit = count = 0
+
 
   protected def ensureCapacity(minCapacity: Int): Unit =
 		if (minCapacity - buf.length > 0) grow(minCapacity)

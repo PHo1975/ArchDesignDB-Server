@@ -48,7 +48,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	
 	var shuttingDown=false
 	var inplaceTextElement:Option[TextElement]=None
-	var inplaceEditFinishListener:Option[(String) => Unit]=None
+	var inplaceEditFinishListener:Option[String => Unit]=None
 
 	//var jumpUpCallback:Option[()=>Unit]=None
 	
@@ -110,10 +110,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  if(hasCreateActionStarted) {
 	    numCreatedElements-= 1
       selectModel.addSelection(Seq((lay,List(elem))),toggle = false)
-	    if(numCreatedElements<1){
-	      createdDataReceived()
-	    }
-	    //System.out.println("CAS graphElem Added "+elem)	    
+	    if(numCreatedElements<1)   createdDataReceived()
 	  }	    
 		refreshCanvas()
 	}
@@ -154,17 +151,17 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	 */
 	def checkSelection(minX:Double,minY:Double,maxX:Double,maxY:Double,onlyInside:Boolean,control:Boolean):Unit= {
 	  lastHittedElements=Nil		
-	  val elemList= if(onlyInside) layerModel.filterLayersSelection(true,(e)=>{
+	  val elemList= if(onlyInside) layerModel.filterLayersSelection(onlyEdible = true, e=>{
 	  		val eb=e.getBounds(this)
 	  		eb.x>=minX && eb.width<=maxX && eb.y>=minY && eb.height<=maxY
 	  	})
 	  	else {
         val rect = new Rect2DDouble(minX, minY, maxX - minX, maxY - minY)
-	  	  layerModel.filterLayersSelection(true,_.intersectsRect(this, rect))
+	  	  layerModel.filterLayersSelection(onlyEdible = true,_.intersectsRect(this, rect))
 	  	}	
 	  //System.out.println("check selection result="+elemList)
 	  if(control) {	  	
-	  	selectModel.addSelection(elemList,false)
+	  	selectModel.addSelection(elemList,toggle = false)
 	  } else {
 	  	if (elemList.isEmpty)selectModel.deselect(true)
 	  	else //for(it<-elemList)	  		
@@ -182,7 +179,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	
 	override def findCrossPoint(clickPosX:Double,clickPosY:Double):Option[VectorConstant]= {
     val lcd=getCurrentLineCatchDistance
-    val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(false, (el) ⇒ el.ref.typ==GraphElemConst.lineClassID &&
+    val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(onlyEdible = false, el ⇒ el.ref.typ==GraphElemConst.lineClassID &&
       el.hits(this,clickPosX,clickPosY,lcd)).flatMap(_._2)
     if (lines.size>1) {
       val firstLine=lines.head.asInstanceOf[LineElement]
@@ -206,14 +203,14 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
       util.Log.e("ObjSelectClassConstraints == null")
 			    Nil
 			  }
-	  else { layerModel.filterLayersSelection(onlyEdible,(el)=>el.hits(this,clickPosX,clickPosY,lcd) ).
+	  else { layerModel.filterLayersSelection(onlyEdible,el=>el.hits(this,clickPosX,clickPosY,lcd) ).
 	    flatMap(_._2).filter(a=>(a.ref!=null)&& objSelectClassConstraints. contains(a.ref.typ)&&
 	        (if(objSelectMode==ObjectSelectMode.SingleObjectNotSelected) !selectModel.selectionList.contains(a) else true))
 	  } 
 	}
 
   def filterSelection(clickPosX: Double, clickPosY: Double, lcd: Double): Iterable[(AbstractLayer, Iterable[GraphElem])] =
-    layerModel.filterLayersSelection(true, (el) => el.hits(this, clickPosX, clickPosY, lcd))
+    layerModel.filterLayersSelection(onlyEdible = true, el => el.hits(this, clickPosX, clickPosY, lcd))
 	
 	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit =
 	  //println("processElementClick "+hittedElements.mkString(", "))
@@ -239,7 +236,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
           for (o <- objSelectListener) o.objectsSelected(ObjectReference(hittedElements.head.ref), editable)
       }
     catch {
-      case NonFatal(e) => ClientQueryManager.printErrorMessage(e.toString())
+      case NonFatal(e) => ClientQueryManager.printErrorMessage(e.toString)
       case other: Throwable => println(other); System.exit(0)
     }
 
@@ -332,7 +329,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 		requestFocus()
     //println("Show Create "+NewButtonsList.actionButtons.map(_.commandName).mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     val buttons = layerModel.getActiveLayer match {
-      case Some(m: MeasureLayer) => CreateActionList.actionButtons.takeRight(3)
+      case Some(_: MeasureLayer) => CreateActionList.actionButtons.takeRight(3)
       case _ => CreateActionList.actionButtons.dropRight(3)
     }
     if (buttons.size == 1) {
@@ -394,8 +391,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	   }
 	 }
 
-  def startIPEMode(el: GraphElem, listener: Option[(String) => Unit]): Unit =  {
-	   //Log.w("start IPE Mode:"+el+" listener:"+listener+" vps:"+viewportState)
+  def startIPEMode(el: GraphElem, listener: Option[String => Unit]): Unit =  {
+	   Log.w("start IPE Mode:"+el+" listener:"+listener+" vps:"+viewportState)
 	   if(_viewportState==ViewportState.InPlaceEdit) stopIPEMode()
 	   else  el match {
 	  	 case tel:TextElement=>
@@ -509,12 +506,12 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
     var success=false
     for(elRef <-instData.selection;if Layer.allowedDisplayListTypes.contains(elRef.typ) &&
       !layerModel.containsRef(elRef)){
-      val newLayer = Layer.createLayer(this, elRef, true, true, instData.pathFromRoot)
+      val newLayer = Layer.createLayer(this, elRef, visible = true, edible = true, instData.pathFromRoot)
 	    newLayer.load(Some(()=>Swing.onEDT{
 	      layerModel.addLayer( newLayer)
 	      layerModel.setActiveLayerIx(layerModel.getRowCount-1) 
 	      zoomAll()
-	    }),true)
+	    }),alwaysNotify = true)
 	    success=true
 	  }
     success
@@ -528,7 +525,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   def importSpreadSheetData(spreadData: SpreadSheetTransferable): Unit = {
 		 for (layer<-layerModel.getActiveLayer) {
 			 val ownerRefArray=Array(layer.ownerRef)
-       DialogManager.startInterQuestion(DialogQuestion("Projektion", List(new AnswerDefinition("Projektion", DataType.EnumTyp, None, "Draufsicht,Ansicht X,Ansicht Y"))),
+       DialogManager.startIntermediateQuestion(DialogQuestion("Projektion", List(new AnswerDefinition("Projektion", DataType.EnumTyp, None, "Draufsicht,Ansicht X,Ansicht Y"))),
 				 resList =>{
 					 val proj=resList.head.result.toString match {
 						 case "Draufsicht" => 0

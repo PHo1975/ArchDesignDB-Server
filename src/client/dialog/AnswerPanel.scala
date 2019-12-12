@@ -25,7 +25,7 @@ abstract class AnswerPanel extends BoxPanel (Orientation.Vertical) {
 	infoLabel.border=BorderFactory.createEmptyBorder(2,3,2,3)
 	infoLabel.xLayoutAlignment=0.5d
 
-	var func: (AnswerDefinition,Constant)=>Unit = _
+	//var func: (AnswerDefinition,Constant)=>Unit = _
 	var ansParm:AnswerDefinition = _
 
   def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
@@ -35,7 +35,7 @@ abstract class AnswerPanel extends BoxPanel (Orientation.Vertical) {
 		infoLabel.visible=answerDesc.name.length>0
 	}
 
-  def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = func = nfunc
+  //def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = func = nfunc
 
   def reset(): Unit = {}
 
@@ -73,7 +73,7 @@ class BoolAnswerPanel  extends AnswerPanel {
 	}
 	listenTo(yesBut,noBut)	
 	reactions+= {
-    case ButtonClicked(e) => func(ansParm, BoolConstant(e.text == "Ja"))
+    case ButtonClicked(e) => DialogManager.answerGiven(ansParm, BoolConstant(e.text == "Ja"))
 	}
 }
 
@@ -82,7 +82,7 @@ class OptionAnswerPanel extends AnswerPanel {
   var buttons:Seq[StrokableButton]=Nil
   
   reactions += {
-    case b: ButtonClicked => func(ansParm, StringConstant(b.source.text)); visible = false
+    case b: ButtonClicked => DialogManager.answerGiven(ansParm, StringConstant(b.source.text)); visible = false
 	}
 
   override def loadParamAnswer(answerDesc: AnswerDefinition): Unit = {
@@ -129,7 +129,7 @@ class StringAnswerPanel extends  AnswerPanel {
 
   def editDone(): Unit = {
 		//System.out.println("Edit done "+this.getClass)	  
-		func(ansParm,StringConstant(textField.text))
+		DialogManager.answerGiven(ansParm,StringConstant(textField.text))
     reset()
 	}
 
@@ -146,7 +146,7 @@ class StringAnswerPanel extends  AnswerPanel {
 class IntAnswerPanel extends  StringAnswerPanel {
   override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.IntTyp).toInt != 0)
 
-  override def editDone(): Unit = {func(ansParm, parse(textField.text).convertTo(DataType.IntTyp)); reset()}
+  override def editDone(): Unit = {DialogManager.answerGiven(ansParm, parse(textField.text).convertTo(DataType.IntTyp)); reset()}
 }
 
 
@@ -156,7 +156,7 @@ class DoubleAnswerPanel extends  StringAnswerPanel {
   override def editDone(): Unit = {
 		val const=parse(textField.text)
 
-		func(ansParm,if(const.getType==DataType.IntTyp) const.convertTo(DataType.DoubleTyp) else const); reset()
+		DialogManager.answerGiven(ansParm,if(const.getType==DataType.IntTyp) const.convertTo(DataType.DoubleTyp) else const); reset()
 	}
 }	
 

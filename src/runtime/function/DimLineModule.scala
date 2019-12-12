@@ -2,7 +2,7 @@ package runtime.function
 import client.dialog.AnswerPanelsData
 import definition.data.{DimensionPoint, InstanceData, OwnerReference, Reference}
 import definition.expression._
-import definition.typ.{AnswerDefinition, CommandQuestion, DataType, DialogQuestion}
+import definition.typ._
 import server.comm.AbstractUserSocket
 import server.storage._
 import transaction.handling.TransactionManager
@@ -12,26 +12,26 @@ class DimLineModule extends ActionModule with GraphActionModule {
   override val createActions=List(createDimLineAction)	
   val actions=List(moveMainLineAction,changeHelpLines,addDimPoint,delDimPoint,changeRefPoint,setMainRefPoint)
 	
-	lazy val moveMainLineAction=new ActionIterator("Linie verschieben",mvQuestion("Linie verschieben",false),doMoveMainLine)
+	lazy val moveMainLineAction=new ActionIterator("Linie verschieben",mvQuestion("Linie verschieben",strict = false),doMoveMainLine)
 	
-  lazy val changeHelpLines=new ActionIterator("Hilfslinien ändern",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  lazy val changeHelpLines=new ActionIterator("Hilfslinien ändern",Some(CommandQuestion(ModuleType.Graph,
     "ChangeHelpLines")),doChangeHelpLines)
   
-  lazy val changeRefPoint=new ActionImpl("Referenzpunkt ändern",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  lazy val changeRefPoint=new ActionImpl("Referenzpunkt ändern",Some(CommandQuestion(ModuleType.Graph,
     "ChangeRefPoint")),doChangeRefPoint)
   
   lazy val addDimPoint=new ActionIterator("Maßpunkt hinzufügen",Some( DialogQuestion("Masspunkt<br>hinzufügen", Seq(
     new AnswerDefinition("Punkt angeben", DataType.VectorTyp, Some(DialogQuestion("Hilfslinie bis", Seq(
       new AnswerDefinition("Punkt angeben", DataType.VectorTyp, None,AnswerPanelsData.NOSTRICT_HIT)))))))),doAddDimPoint,true)
   
-  lazy val delDimPoint=new ActionIterator("Maßpunkt löschen",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  lazy val delDimPoint=new ActionIterator("Maßpunkt löschen",Some(CommandQuestion(ModuleType.Graph,
     "DelDimPoint")),doDelDimPoint)
   
 	lazy val setMainRefPoint=new ActionIterator("HauptReferenz setzen",Some(DialogQuestion("HauptReferenz setzen",
     Seq(new AnswerDefinition("Nullpunkt auswählen", DataType.VectorTyp, Some(DialogQuestion("Wert bei Nullpunkt",
       Seq(new AnswerDefinition("Delta-Wert:", DataType.DoubleTyp, None)))))))),doSetMainRef)
   
-	def createDimLineAction=new CreateActionImpl("Maßlinie",Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+	def createDimLineAction=new CreateActionImpl("Maßlinie",Some(CommandQuestion(ModuleType.Graph,
     "CreateDimLine")),doCreateDimLine)
 	
 	def doCreateDimLine(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean=

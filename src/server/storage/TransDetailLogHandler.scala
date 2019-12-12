@@ -94,13 +94,18 @@ object TransDetailLogHandler {
 		}
 		else {
 			System.out.println("read transStep "+trID+" insPos:"+insertPos+" lastLoggedID:"+lastLoggedID)
-			if(insertPos-(lastLoggedID-trID)<0) None
-			else {
-				theFile.seek(filePosToIndex(insertPos-(lastLoggedID-trID)-1))
-				val result=internRead(true)
-        for(r<-result)if(r.trID!=trID) throw new IllegalArgumentException("wrong trid:"+r+" wanted:"+trID)
-        result
-			}
+			var seekTR=trID
+			var result: Option[TransStepData]=None
+			do {
+				result= if (insertPos-(lastLoggedID-seekTR)<0) None
+				else {
+					theFile.seek(filePosToIndex(insertPos - (lastLoggedID - seekTR) - 1))
+					internRead(true)
+				}
+				seekTR-= 1
+			} while(result.isDefined&& result.get.trID!=trID)
+			//for(r<-result)if(r.trID!=trID) throw new IllegalArgumentException("wrong trid:"+r+" wanted:"+trID)
+			result
 		}
 	}
   
@@ -116,11 +121,13 @@ object TransDetailLogHandler {
     val action=ActionNameMap.getActionName(dataInStream.readShort)
     val ct=dataInStream.readInt
     //val midTime=System.currentTimeMillis()    
-    val result= try {Some(new TransStepData(ntrID,time,userID,if(removeZombies)StorageManager.getZombieInstanceData(ref)
-			else new InstanceData(ref,IndexedSeq(),Array(),Seq.empty,false),multi,action,ct))}
+    val result= try {
+			Some(new TransStepData(ntrID,time,userID,
+				if(removeZombies)StorageManager.getZombieInstanceData(ref)
+			else InstanceData.emptyInstance(ref),multi,action,ct))}
     catch {case NonFatal(e) => if(removeZombies){
       util.Log.e("internRead",e);None}
-    else Some(new TransStepData(ntrID,time,userID,new InstanceData(ref,IndexedSeq(),Array(),Seq.empty,false),multi,action,ct))
+    else Some(new TransStepData(ntrID,time,userID,InstanceData.emptyInstance(ref),multi,action,ct))
       }
     //println("readTrans "+trID+" "+(System.currentTimeMillis-startTime)+" "+(midTime-startTime))
     result

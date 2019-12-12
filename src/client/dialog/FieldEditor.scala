@@ -282,7 +282,7 @@ abstract class ActiveNumberSpinner(minV:Number,maxV:Number,step:Number) extends 
     selfChanged=true
     //model.setToUndefined()
     peer.setValue(minV)
-    peer.getEditor().asInstanceOf[JSpinner.NumberEditor].getTextField.setText("")   
+    peer.getEditor.asInstanceOf[JSpinner.NumberEditor].getTextField.setText("")
     //println("Set to undefined ")          
     selfChanged=false
   }
@@ -326,8 +326,8 @@ class SidePanelTextArea(val allowedFields:Map[String,Byte],val editor:FieldEdito
     super.onFirstSubscribe()
 	  peer.addKeyListener(new java.awt.event.KeyAdapter{
       override def keyPressed(e: java.awt.event.KeyEvent): Unit = {
-	      e.getKeyCode() match {
-	        case java.awt.event.KeyEvent.VK_ENTER=> if(e.isControlDown()){
+	      e.getKeyCode match {
+	        case java.awt.event.KeyEvent.VK_ENTER=> if(e.isControlDown){
             pasteLineBreak()
           }
           else {

@@ -61,7 +61,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   //val javaTrue=new java.lang.Boolean(true)
   //val javaFalse=new java.lang.Boolean(false)
   val newElemLayer: NewElemLayer = new NewElemLayer(controller)
-  var sizeChangeListener:Option[(Int) => Unit] = None
+  var sizeChangeListener:Option[Int => Unit] = None
 
 
   def addLayer(newLayer: AbstractLayer): Unit = listLock.synchronized {
@@ -149,7 +149,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
       } else {
         if (!layer.visible) {
           loadHandler.reset()
-          layer.load(Some(loadHandler.complete _), true)
+          layer.load(Some(loadHandler.complete _), alwaysNotify = true)
         }
         if (!layer.edible) layer.edible = true
       }
@@ -181,7 +181,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	}
 
 
-  def registerSizeChangeListener(newList: (Int) => Unit): Unit = {
+  def registerSizeChangeListener(newList: Int => Unit): Unit = {
   	sizeChangeListener=Some(newList)
   	notifySizeChanged()
   }
@@ -206,7 +206,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   	else {  
   	  //println("toggle visible "+layer)
   	  loadHandler.reset()
-  	  layer.load(Some(loadHandler.complete _),true)
+  	  layer.load(Some(loadHandler.complete _),alwaysNotify = true)
   	}
   	fireTableDataChanged()
   	
@@ -329,7 +329,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 	
 		
-	def checkElementPoints(checkFunc:(Formatable)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
+	def checkElementPoints(checkFunc: Formatable =>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
 		val ret1=layerList.flatMap(_.checkElementPoints(checkFunc))
 		val ret2= newElemLayer.checkElementPoints(checkFunc)
 		collection.mutable.ArrayBuffer()++=ret1++=ret2		
@@ -344,7 +344,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	
 	
 	
-	def filterLayersSelection(onlyEdible:Boolean,filtFunc:(GraphElem)=>Boolean):Iterable[(AbstractLayer,Iterable[GraphElem])]= {
+	def filterLayersSelection(onlyEdible:Boolean,filtFunc: GraphElem =>Boolean):Iterable[(AbstractLayer,Iterable[GraphElem])]= {
 		val ret1=layerList.flatMap(a=>{
 			val list=a.filterSelection(onlyEdible,filtFunc)
 			if (list.isEmpty) Seq.empty 
@@ -405,13 +405,13 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 			while(layerToLoad < layerList.size&& !layerList(layerToLoad).visible)
 				layerToLoad+=1
 			if(layerToLoad< layerList.size)
-				layerList(layerToLoad).load(Some(layerLoaded _),false)
+				layerList(layerToLoad).load(Some(layerLoaded _),alwaysNotify = false)
 			else for(d<-doneListener)d()
 		}
 		if(layerList.isEmpty) for(d<-doneListener) d()
 		else while(layerToLoad < layerList.size&& !layerList(layerToLoad).visible)
 			layerToLoad+=1
-		if(layerToLoad<layerList.size) layerList(layerToLoad).load(Some(layerLoaded _),false)
+		if(layerToLoad<layerList.size) layerList(layerToLoad).load(Some(layerLoaded _),alwaysNotify = false)
 		else for(d<-doneListener)d()
 	} catch {
 		case NonFatal(e)=> Log.e("Load Layers ",e)

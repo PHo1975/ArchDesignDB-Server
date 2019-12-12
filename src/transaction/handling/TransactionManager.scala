@@ -49,27 +49,18 @@ object TransactionManager {
 		transTimes=Nil
 	  if(running ) throw new IllegalArgumentException("An Transaction is still running ")
 		running=true
-	  //TransLogHandler.incrementTransID();
-	  //System.out.println("Start Trans " +TransLogHandler.transID)
 	}
 	
 	// Finishes the Transaction and commits all changes to the database
-	private def finishTransaction():Unit = 	{
-		//logStep("Finish")
-		if(!running) throw new IllegalArgumentException("Finish: No transaction running ")
-
-		TransLogHandler.increaseTransID()
-		ActionList.commitAllData()
-		//logStep("committed")
-		//TransLogHandler.flush()
-    //logStep("flushed")
-		TransDetailLogHandler.log(TransLogHandler.getTransID,currentUser,currentRef,multiInst,currentActionCode,logCreateType)
-		//logStep("log written")
-		//println(transTimes.reverse.mkString(" | "))
-		//System.out.println("Finish Trans "+ TransLogHandler.transID)
+	private def finishTransaction():Unit = {
+		if (!running) throw new IllegalArgumentException("Finish: No transaction running ")
+		if (currentRef.typ != 0) { // ignore service Trasks like Backup that have EmptyReference
+			TransLogHandler.increaseTransID()
+			ActionList.commitAllData()
+			TransDetailLogHandler.log(TransLogHandler.getTransID, currentUser, currentRef, multiInst, currentActionCode, logCreateType)
+		}
 		running=false
 		currentUser = -1
-
 	}
 
 	def canModify: Boolean = running && undoUserEntry == null

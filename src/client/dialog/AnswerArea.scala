@@ -4,7 +4,6 @@
 package client.dialog
 
 import client.dataviewer.ViewConstants
-import definition.expression.Constant
 import definition.typ._
 
 import scala.collection.mutable.ArrayBuffer
@@ -30,7 +29,7 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   
   val customPools=new collection.mutable.HashMap[DataType.Value,PanelPool[_ <: AnswerPanel]]
   
-  var func: (AnswerDefinition,Constant)=>Unit = _
+  //var func: (AnswerDefinition,Constant)=>Unit = _
 
 
   def createOrLab(text: String): Label = {
@@ -98,9 +97,9 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   	repaint()
   }
 
-  def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = {
+  /*def registerAnswerCallBack(nfunc: (AnswerDefinition, Constant) => Unit): Unit = {
   	func=nfunc
-  }
+  }*/
 
   def registerCustomPanel[T <: AnswerPanel](typ: DataType.Value)(implicit m: ClassTag[T]): Unit = {
   	customPools(typ)=new PanelPool[T]
@@ -115,7 +114,7 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
   		if(pool.size>=usedPanels) pool(usedPanels-1)
   		else {
   			val newPan = m.runtimeClass.getConstructor().newInstance().asInstanceOf[T]
-  			newPan.registerAnswerCallBack(func)
+  			//newPan.registerAnswerCallBack(func)
   			pool append newPan
   			newPan
   		}

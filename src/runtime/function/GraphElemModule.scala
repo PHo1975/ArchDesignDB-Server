@@ -166,7 +166,7 @@ object GraphElemModule{
 
     val lengths: Seq[Double] = (poly.pathList.headOption match {
       case Some(pl) if pl.points.lengthCompare(1) > 0 =>
-        val lastPointIterator = new Iterator[Double] {
+        val lastPointIterator: Iterator[Double] = new Iterator[Double] {
           var open = true
 
           def hasNext: Boolean = addStartPoint && open
@@ -264,31 +264,25 @@ class GraphElemModule extends ActionModule {
   def setObjectType(typeID: Int): Unit = graphTypeID = typeID
 
 
-  val moveAction = new ActionIterator("Verschieben", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "Move")), doMove)
+  val moveAction = new ActionIterator("Verschieben", Some(CommandQuestion(ModuleType.Graph, "Move")), doMove)
 
-  val copyAction = new ActionIterator("Kopieren", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "Copy")), doCopy, true)
+  val copyAction = new ActionIterator("Kopieren", Some(CommandQuestion(ModuleType.Graph, "Copy")), doCopy, true)
 
-  val rotateAction = new ActionIterator("Drehen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "Rotate")), doRotate)
+  val rotateAction = new ActionIterator("Drehen", Some(CommandQuestion(ModuleType.Graph, "Rotate")), doRotate)
 
-  val rotateMultAction = new ActionIterator("Mehrfach Drehen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "RotateMulti")),doRotateMulti)
+  val rotateMultAction = new ActionIterator("Mehrfach Drehen", Some(CommandQuestion(ModuleType.Graph, "RotateMulti")),doRotateMulti)
 
   val pointModAction = new ActionIterator("Punkt-Mod", Some(DialogQuestion("Punkt-Mod", Seq(new AnswerDefinition("Punkte wählen", DataType.BlobTyp, mvQuestion("Punkt-Mod"), "SelectPoints")))),
       doPointMod)
 
-  val scaleAction = new ActionIterator("Verzerren", Some(DialogQuestion("Bezugspunkt", Seq(new AnswerDefinition("Bezugspunkt eingeben", DataType.VectorTyp,
+  val scaleAction = new ActionIterator("Verzerren", Some(DialogQuestion("Verzerren", Seq(new AnswerDefinition("Bezugspunkt eingeben", DataType.VectorTyp,
     Some(DialogQuestion("Faktor X", Seq(new AnswerDefinition("Faktor X eingeben", DataType.DoubleTyp,
       Some(DialogQuestion("Faktor Y", Seq(new AnswerDefinition("Faktor Y eingeben", DataType.DoubleTyp, None)))))))))))),
       doScale)
 
-  val createSymbolAction = new ActionIterator("Symbol erzeugen", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "CreateSymbolStamp")), doCreateSymbol, false, 900)
+  val createSymbolAction = new ActionIterator("Symbol erzeugen", Some(CommandQuestion(ModuleType.Graph, "CreateSymbolStamp")), doCreateSymbol, false, 900)
 
-  val mirrorAction = new ActionIterator("Spiegeln", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
-    "Mirror")), doMirror)
+  val mirrorAction = new ActionIterator("Spiegeln", Some(CommandQuestion(ModuleType.Graph,"Mirror")), doMirror)
 	
 	lazy val actions=List(moveAction,copyAction,rotateAction,rotateMultAction,mirrorAction,pointModAction,scaleAction,createSymbolAction)
 
@@ -491,12 +485,13 @@ class TextModule extends ActionModule with GraphActionModule {
 	  TransactionManager.tryWriteInstanceField(elem.ref,7,new DoubleConstant(elem.fieldValue(7).toDouble+angle*180d/math.Pi))	  
 	}
 
-  def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion(ModuleType.Graph,
     "CreateText")), doCreateText)
 	
 	def doCreateText(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
     if(parents.size>1) {Log.e("Multiple parents !"); false}
-    else {
+    else if(param.isEmpty) {Log.e("no param when Create Text");false}
+    else{
 	  val (pos,text)=if(param.size==3) (param(1)._2,param(2)._2) else (param.head._2,param(1)._2)
 	  if(text.toString.length>0) {
 	    //println("create Text params:"+param.mkString("|")+"\nFormatparams:"+formFields.mkString("|"))
@@ -704,7 +699,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 
 
-  def createLineAction = new CreateActionImpl("Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createLineAction = new CreateActionImpl("Linie", Some(CommandQuestion(ModuleType.Graph,
     "LineTo")), doCreateLine)
 	
 	def doCreateLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {		
@@ -754,7 +749,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 
 
-  def createTangentAction = new CreateActionImpl("Tangente", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createTangentAction = new CreateActionImpl("Tangente", Some(CommandQuestion(ModuleType.Graph,
     "Tangent")), doCreateTangent)
 	
 	def doCreateTangent(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -900,7 +895,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 
 
-  def parallelAction = new ActionIterator("Parallele Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def parallelAction = new ActionIterator("Parallele Linie", Some(CommandQuestion(ModuleType.Graph,
     "ParLine")), doParallel, true)
 
   def doParallel(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
@@ -929,7 +924,7 @@ class LineModule extends ActionModule with GraphActionModule {
 		Seq(new AnswerDefinition("Lot zu Linie",DataType.ObjectRefTyp,
 		    Some(new DialogQuestion("Lot durch Punkt",Seq(	new AnswerDefinition("Zielpunkt wählen",DataType.VectorTyp,None)),false)),TypeInfos.lineElemType.toString)))),doCreateOrthoLine)*/
 
-  def createOrthoLineAction = new CreateActionImpl("Lot-Linie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createOrthoLineAction = new CreateActionImpl("Lot-Linie", Some(CommandQuestion(ModuleType.Graph,
     "OrthoLine")),doCreateOrthoLine,false)
 	
 	def doCreateOrthoLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {	  
@@ -945,7 +940,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	  true
 	}
 
-  def createRectAction = new CreateActionImpl("Rechteck", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createRectAction = new CreateActionImpl("Rechteck", Some(CommandQuestion(ModuleType.Graph,
     "Rectangle")), doCreateRect)
 	
 	def doCreateRect(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -990,7 +985,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	  makeLine(parentRefs,points(3),points.head,formFields)
 	}
 
-  def createParPolyAction = new CreateActionImpl("Paralleler Polygonzug", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createParPolyAction = new CreateActionImpl("Paralleler Polygonzug", Some(CommandQuestion(ModuleType.Graph,
     "ParPoly")), doCreateParPoly)
 	
 	 
@@ -1121,7 +1116,7 @@ class EllipseModule extends ActionModule with GraphActionModule {
 
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = pointModField(3, elem, delta, chPoints)
 
-  def createEllipseCenterAction = new CreateActionImpl("Ellipse", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createEllipseCenterAction = new CreateActionImpl("Ellipse", Some(CommandQuestion(ModuleType.Graph,
     "EllipseCenter")), doCreateEllipseCenter)
 	
 	def doCreateEllipseCenter(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -1213,7 +1208,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	override val createActions=List(createArcCenterAction,createArcGeneralAction)	
 	val actions =  Seq(makeParallelArc,cutPartAction)
 
-  def createArcCenterAction = new CreateActionImpl("Mittelpunktkreis", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createArcCenterAction = new CreateActionImpl("Mittelpunktkreis", Some(CommandQuestion(ModuleType.Graph,
     "ArcCenter")), doCreateArcCenter)
 	
 	
@@ -1252,7 +1247,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	  true
 	}
 
-  def createArcGeneralAction = new CreateActionImpl("Allgemeiner Kreis", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createArcGeneralAction = new CreateActionImpl("Allgemeiner Kreis", Some(CommandQuestion(ModuleType.Graph,
     "ArcGeneral")), doCreateArcGeneral)
 	
 	def doCreateArcGeneral(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -1373,7 +1368,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
 
-  def createPolyAction = new CreateActionImpl("Füllfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createPolyAction = new CreateActionImpl("Füllfläche", Some(CommandQuestion(ModuleType.Graph,
     "PolyTo")), doCreatePoly)
 
 
@@ -1466,7 +1461,7 @@ class PolygonLineModule extends ActionModule with GraphActionModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
 
-  def createPolyLineAction = new CreateActionImpl("PolyLinie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createPolyLineAction = new CreateActionImpl("PolyLinie", Some(CommandQuestion(ModuleType.Graph,
     "PolyLineTo")), doCreatePolyLine)
 
 
@@ -1512,7 +1507,7 @@ class MeasureLineModule extends PolygonLineModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     updateLengthValue(elem.ref, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
 
-  override def createPolyLineAction = new CreateActionImpl("MessLinie", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  override def createPolyLineAction = new CreateActionImpl("MessLinie", Some(CommandQuestion(ModuleType.Graph,
     "PolyLineTo")), doCreatePolyLine)
 
   override def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
@@ -1590,7 +1585,7 @@ class AreaPolygonModule extends PolygonModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     updateAreaValue(elem, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
 
-  override def createPolyAction = new CreateActionImpl("Messfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  override def createPolyAction = new CreateActionImpl("Messfläche", Some(CommandQuestion(ModuleType.Graph,
     "PolyTo")), doCreatePoly)
 
 	override def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
@@ -1669,7 +1664,7 @@ class AreaPolygonModule extends PolygonModule {
 }
 
 class WohnflaechenModul extends AreaPolygonModule {
-  override def createPolyAction = new CreateActionImpl("Wohnfläche", Some(CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  override def createPolyAction = new CreateActionImpl("Wohnfläche", Some(CommandQuestion(ModuleType.Graph,
     "PolyTo")), doCreatePoly)
 
   override def onFieldChanged(self: InstanceData, fieldNr: Byte, newValue: Expression): Unit = if (fieldNr == 13) {updateAreaValue(self, self.fieldValue(4).toPolygon)}

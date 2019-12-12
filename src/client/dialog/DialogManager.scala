@@ -16,7 +16,6 @@ import definition.typ._
 import javax.swing.{BorderFactory, KeyStroke}
 import util.Log
 
-import scala.collection.mutable
 import scala.swing._
 import scala.swing.event._
 import scala.util.control.NonFatal
@@ -32,25 +31,25 @@ case class CustomPanelQuestion(override val panel:CustomPanel) extends PanelQues
 }
 
 object DialogManager extends SelectListener /*with ActionPanListener*/{
-  var propField:Byte=0
-	var createdNewElements=0	
+  protected var propField:Byte=0
+	protected var createdNewElements=0
 	var dialogIsActive=false
-	var isServerEnquiry=false	
-	var hasRebound=false	
+	protected var isServerEnquiry=false
+	protected var hasRebound=false
 	var selectedInstances:Iterable[SelectGroup[_<:Referencable]] = _
-	var actionGroups:Iterable[SelectGroup[_<:Referencable]] = _	
-	var currentQuestion:Option[ParamQuestion]= None
+	protected var actionGroups:Iterable[SelectGroup[_<:Referencable]] = Seq.empty
+	protected var currentQuestion:Option[ParamQuestion]= None
 	protected var repeatQuestion: Option[DialogQuestion] = None
 	var customAnswerListener: List[(Seq[ResultElement] => Unit, Option[ParamQuestion])] = Nil
 	 // in field paramquestion is the current question stored, when its only a temporary answerlistener that should not be stored
 	 // so that the current question can be restored after the temporary question is answered
 	//
-	var isQuestionRepeating=false
-	var currentAction:Option[ActionTrait]= None
-	var createType:Option[Int]=None
-	var customQuestionHandlerList: mutable.HashMap[String, CustomQuestionHandler] = collection.mutable.HashMap[String, CustomQuestionHandler]()
+	protected var isQuestionRepeating=false
+	protected var currentAction:Option[ActionTrait]= None
+	protected var createType:Option[Int]=None
+	//var customQuestionHandlerList: mutable.HashMap[ModuleType.Value, CustomQuestionHandler] = collection.mutable.HashMap[ModuleType.Value, CustomQuestionHandler]()
 	var hasDraggerToast:Option[AbstractViewController[_,_]]=None
-  val lock=new Object
+  protected val lock=new Object
 	val selectField=new MultiLineLabel()
 	selectField.background = ViewConstants.leftPanelColor
 	val questionField=new MultiLineLabel()	
@@ -118,7 +117,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	cancelBut.focusable = false
   cancelBut.xLayoutAlignment=0.5
   ClientQueryManager.registerSetupListener(()=> initCustomQuestionHandlers())
-  answerArea.registerAnswerCallBack(answerGiven)
+  //answerArea.registerAnswerCallBack(answerGiven)
 	
 	def sidePanelDialogStart():Unit= {
 	  dialogPanel.visible=true
@@ -147,7 +146,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	def reset():Unit= lock.synchronized{
 	 //println("\nReset isactive:"+dialogIsActive+" "+answerList.mkString+" is repeating:"+isQuestionRepeating+" hasRep:"+hasRebound)
 		//println(Thread.currentThread().getStackTrace.slice(1, 16).mkString("\n "))
-   //println("..... ")
+   println("reset ")
 	  resetDraggerToast()
 		if(dialogIsActive) {
       dialogIsActive=false
@@ -209,7 +208,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	 * function in DialogManager !
 	 * storeAnswer: should the answer be stored on the answer stack or is is just a temporary question from the point panel
 	 */
-	def startInterQuestion(question:ParamQuestion, listener: Seq[ResultElement] => Unit, storeAnswer:Boolean=true):Unit= {
+	def startIntermediateQuestion(question:ParamQuestion, listener: Seq[ResultElement] => Unit, storeAnswer:Boolean=true):Unit= {
 	  customAnswerListener=(listener,if(!storeAnswer)currentQuestion else None) :: customAnswerListener
 	  sidePanelDialogStart()
     dialogIsActive=true
@@ -313,14 +312,13 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 			case c:CommandQuestion =>
 				repeatQuestion=None
 				for (cont<-CreateActionList.lastContainer)
-					if(customQuestionHandlerList.contains(c.moduleName)) customQuestionHandlerList(c.moduleName).load(c,cont)
-					else Log.e("unknown Module "+c.moduleName)
+					customQuestionHandlerList(c.module).load(c,cont)
+
 
 			case x:XMLQuestion =>
 				repeatQuestion=None
 				for(cont<-CreateActionList.lastContainer)
-					if(customQuestionHandlerList.contains(x.moduleName))customQuestionHandlerList(x.moduleName).load(x,cont)
-					else Log.e("unknown Module "+x.moduleName)
+					customQuestionHandlerList(x.module).load(x,cont)
 		}		
 	}	
 	
@@ -374,18 +372,21 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		} else util.Log.e("answer given on dactive"+dialogIsActive+" reb:"+hasRebound+" parm:"+parm.toString+" result:"+result+" currentQuestion:"+currentQuestion)
 	}
 
+
 	def processCustomEnquiry(resultList: Seq[ResultElement]): Unit = {
 		isServerEnquiry=false
 		ClientQueryManager.answerEnquiry(resultList)
 	}
+
 	
 	def processResults():Unit = {
     var repeatWithoutCAS=false
-		//System.out.println("process Results :"+resultList.mkString("\n")+"\n currentAction:"+currentAction+"\n actionGroups:"+actionGroups+"\n")
+		System.out.println("process Results :"+answerList.mkString("\n")+"\n currentAction:"+currentAction+"\n actionGroups:"+actionGroups+"\ncreateType:"+createType)
+		//Thread.dumpStack()
 		if(isServerEnquiry){
 			isServerEnquiry=false
 			ClientQueryManager.answerEnquiry(answerList)
-		} else if(actionGroups!=null) {
+		} else {
       currentAction match {
         case Some(ca) if (ca.question.isDefined && ca.question.get.repeat) || ca.rebound =>
 					hasRebound=true
@@ -399,7 +400,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 					}
 				case _ => hasRebound=false
 			}
-      //println("createType "+createType)
+      println("createType "+createType+" currentAction:"+currentAction)
 		  createType match {
 		  	case Some(ct)=>
 		  		CreateActionList.lastContainer match {
@@ -427,16 +428,19 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
     }
   }
 
+	def customQuestionHandlerList(m:ModuleType.Value): CustomQuestionHandler = m match {
+		case ModuleType.Print => PrintQuestionHandler
+			case ModuleType.Graph => client.graphicsView.GraphCustomQuestionHandler
+			case ModuleType.Plot=> client.plotdesign.PlotCustomQuestionHandler
+	}
+
 	def initCustomQuestionHandlers(): Unit = if (SystemSettings() != null) {
-		customQuestionHandlerList("client.print.PrintQuestionHandler")=PrintQuestionHandler		
-		customQuestionHandlerList("client.graphicsView.GraphCustomQuestionHandler")=client.graphicsView.GraphCustomQuestionHandler
-		customQuestionHandlerList("client.plotdesign.GraphCustomQuestionHandler")=client.plotdesign.GraphCustomQuestionHandler
 		val settingsString=SystemSettings().getClientSetting("CustomQuestionHandlers")
 		if(settingsString.trim.length>0) {
 			val moduleNames=settingsString.split(',')
 			//println("ModuleNames "+moduleNames.mkString)
 			for (m <-moduleNames) try {
-				customQuestionHandlerList(m)= Class.forName(m).getConstructor().newInstance().asInstanceOf[CustomQuestionHandler]
+				Log.e("Try to instatiate custom QuestionHandler "+m)
 			} catch {
 				case NonFatal(e) => util.Log.e("trying to instantiate CustomQuestionHandler module:'"+m+"' \n",e)
 			}

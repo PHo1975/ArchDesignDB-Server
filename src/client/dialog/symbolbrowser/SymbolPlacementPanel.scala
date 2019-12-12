@@ -4,7 +4,7 @@ import java.awt.Dimension
 
 import client.comm.ClientQueryManager
 import client.dialog._
-import definition.expression.{DoubleConstant, Expression, ParserError, StringParser}
+import definition.expression._
 import definition.typ.CustomPanel
 
 import scala.swing.event.ButtonClicked
@@ -43,10 +43,10 @@ class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPa
   part1.xLayoutAlignment=0.5d
   part2.xLayoutAlignment=0.5d
   
-  pointPanel.registerAnswerCallBack((answer,const)=>{    
+  pointPanel.externPointClickListener= Some((point:VectorConstant)=>{
     DialogManager.addAnswer(SymbolBrowserController.answer, DoubleConstant(angle))
     DialogManager.addAnswer(SymbolBrowserController.answer, DoubleConstant(scale))
-    DialogManager.answerGiven(answer, const)    
+    DialogManager.answerGiven(SymbolBrowserController.answer, point)
   })
   xLayoutAlignment=0.5d
   contents+=part1+=buttonPanel+=Swing.VStrut(20)+=part2+=

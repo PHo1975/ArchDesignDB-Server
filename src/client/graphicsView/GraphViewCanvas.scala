@@ -177,7 +177,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 	
 	
 	private def intDrawCrossHair(g:Graphics2D):Unit=  
-	if(currentMousePos!=null&& inside&& SwingUtilities.isEventDispatchThread()){
+	if(currentMousePos!=null&& inside&& SwingUtilities.isEventDispatchThread){
     if (!everPainted) everPainted = true
     else {
       val currBounds = bounds
@@ -199,7 +199,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
           dr(pos, g)
         }
       } catch {
-        case NonFatal(e) => util.Log.e("Error Crosshair " + e)
+        case NonFatal(e) => util.Log.e("Error Crosshair ", e)
         case other: Throwable => println(other); System.exit(0); null
       }
       g.setPaintMode()

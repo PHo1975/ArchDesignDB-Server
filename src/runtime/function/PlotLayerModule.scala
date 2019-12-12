@@ -2,7 +2,7 @@ package runtime.function
 
 import definition.data.{InstanceData, OwnerReference}
 import definition.expression.{Constant, DoubleConstant, EMPTY_EX, VectorConstant}
-import definition.typ.{CommandQuestion, DataType, SystemSettings}
+import definition.typ.{CommandQuestion, DataType, ModuleType, SystemSettings}
 import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, StorageManager}
 import transaction.handling.TransactionManager
@@ -12,11 +12,11 @@ class PlotLayerModule extends ActionModule {
   
   lazy val actions=List(moveAction,alignHor,alignVert,setCutRect,resetCutRect)  
   
-  lazy val scales= SystemSettings().enums("DrawingScales").enumValues.map { case (st, k) => (k, st.split(':').last.toDouble) }.toMap
+  lazy val scales: Map[Int, Double] = SystemSettings().enums("DrawingScales").enumValues.map { case (st, k) => (k, st.split(':').last.toDouble) }.toMap
   
-  def setObjectType(typeID:Int) =layerTypeID=typeID 
+  def setObjectType(typeID:Int): Unit =layerTypeID=typeID
   
-  def getCustomQuestion(aname:String)= Some(new CommandQuestion("client.plotdesign.GraphCustomQuestionHandler", aname))
+  def getCustomQuestion(aname:String): Option[CommandQuestion] = Some(new CommandQuestion(ModuleType.Plot, aname))
   
   val moveAction=new ActionIterator("Verschieben",getCustomQuestion("Move"),doMove)
   
@@ -26,7 +26,7 @@ class PlotLayerModule extends ActionModule {
   val resetCutRect=new ActionIterator("Rahmen entfernen",None,doResetCutRect)
   
   
-  def doMove(u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]) =  {
+  def doMove(u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
 		if(param.size==2) {
 			val delta =
 				if(param.head._2.getType==DataType.VectorTyp )
@@ -48,7 +48,7 @@ class PlotLayerModule extends ActionModule {
 		else false
 	}
   
-  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
+  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>1){
     var xValue=0d
     for(d<-data) 
       xValue+=d.fieldValue(7).toDouble    
@@ -58,7 +58,7 @@ class PlotLayerModule extends ActionModule {
     true
   } else false
   
-  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>1){
+  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>1){
     var yValue=0d
     for(d<-data) 
       yValue+=d.fieldValue(8).toDouble    
@@ -68,7 +68,7 @@ class PlotLayerModule extends ActionModule {
     true
   } else false
   
-  def doSetCutRect (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>=1){
+  def doSetCutRect (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>=1){
     val p1=param.head._2.toVector
     val p2=param(1)._2.toVector    
     val firstLRef=data.head
@@ -91,7 +91,7 @@ class PlotLayerModule extends ActionModule {
     true
   } else  false
   
-  def doResetCutRect(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]) =  if(data.size>=1){    
+  def doResetCutRect(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>=1){
     for(d<-data;i<-0 to 3)      
       TransactionManager.tryWriteInstanceField(d.ref,(i+3).toByte,EMPTY_EX)
     true

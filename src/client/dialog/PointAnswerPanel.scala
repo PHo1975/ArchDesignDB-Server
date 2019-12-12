@@ -58,6 +58,8 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   //var preventCancelOnReset=false
   
   var internPointClickListener:Option[(VectorConstant)=>Unit]=None
+  var externPointClickListener:Option[(VectorConstant)=>Unit]=None
+
   var internEditListener:Option[(String)=>Unit]=None
   val buttons: Seq[AbstractPanelButton] = Seq(globalBut, dxBut, dyBut, dzBut, midBut, divBut, interBut, bracketBut, forcePrecBut)
   
@@ -259,14 +261,13 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   }
 
   def pointClicked(point: VectorConstant): Unit = {
-  	//System.out.println("point answer "+point)
-    forcePrecision = defaultPrecision
-    forcePrecBut.selected = defaultPrecision
-    internPointClickListener match{
+  	 internPointClickListener match{
       case Some(listener)=> internPointClickListener=None; listener(point)
-      case None=> func(ansParm,point)
-    }
-  	
+      case None=> externPointClickListener match {
+        case Some(elistener)=> elistener(point)
+        case None => DialogManager.answerGiven(ansParm,point)
+      }
+     }
   }
 
   override def setFocus(): Boolean = {revalidate(); false}

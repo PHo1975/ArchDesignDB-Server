@@ -13,12 +13,18 @@ import util.XMLUtils.readOptString
 import scala.util.control.NonFatal
 
 class ClientClasses (node:scala.xml.Node) extends AllClasses [ClientObjectClass] {
-
-  val classList:Map[Int,ClientObjectClass]=fromXML(node)
+  val classList:Map[Int,ClientObjectClass]=classListfromXML(node)
+	var blockClassList:Map[Int,BlockClass]=blockClassListfromXML(node)
 	
-	def fromXML(node: scala.xml.Node):Map[Int,ClientObjectClass] =
+	def classListfromXML(node: scala.xml.Node):Map[Int,ClientObjectClass] = {
+		val sNode= node \"ClassList"
     (for (ac<- node \\ "OClass";oc= ClientObjectClass.fromXML(ac))	yield oc.id -> oc).toMap
+	}
 
+	def blockClassListfromXML(node: scala.xml.Node):Map[Int,BlockClass]=	{
+		val sNode= node \"BlockClassList"
+		(for (ac<- sNode \ "BClass";oc= BlockClass.fromXML(ac))	yield oc.id -> oc).toMap
+	}
 }
 
 
@@ -26,7 +32,8 @@ class ClientClasses (node:scala.xml.Node) extends AllClasses [ClientObjectClass]
  *  description of a Class
  */
 class ClientObjectClass (val name:String,val id:Int,val description:String,val comment:String,protected val ownFields:Seq[AbstractFieldDefinition],
-	protected val ownFieldSettings:Seq[FieldSetting], protected val ownPropFields:Seq[PropertyFieldDefinition],protected val theActions:Seq[ActionDescription],
+	protected val ownFieldSettings:Seq[FieldSetting], protected val ownPropFields:Seq[PropertyFieldDefinition],
+	 var ownBlockPropFields:Seq[BlockPropertyFieldDefinition]=Seq.empty,protected val theActions:Seq[ActionDescription],
 	 protected val superClasses:Seq[Int], val shortFormat:InstFormat,val longFormat:InstFormat,val resultFormat:InstFormat,val formBox:Option[FormBox],
 	 val customInstanceEditor:Option[String],val importDescriptor:Option[String]=None)
 	 extends AbstractObjectClass {
@@ -57,9 +64,9 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
 			 case NonFatal(e) => util.Log.e("resolveSuperFields",e)
        case other: Throwable => util.Log.e("resolveSuperFields", other)
      }
-   }   
-   
+   }
 }
+
 
 object ClientObjectClass {
 	val readFormContext:FormCreateContext=new FormCreateContext {
@@ -70,7 +77,7 @@ object ClientObjectClass {
 	    ClientQueryManager.printErrorMessage(text)
 	    new Toast(text,component,ClientApp.top).visible=true
 	  }
-}
+	}
 	
 	// creates an ObjectClass object from XML
   def fromXML(node: scala.xml.Node): ClientObjectClass = {
@@ -86,11 +93,14 @@ object ClientObjectClass {
 		val propNode=node \"PropFields"
 		val formNode=node \"Forms"
 		val importDescriptor=readOptString(node ,"@imDesc")
+		val blockPropNode= node \ "BP"
+
 
 		new ClientObjectClass(name,id ,  readOptString(node ,"@desc"),readOptString(node ,"@comm"),
 			for(afield <- fieldNode \ "FD") yield FieldDefinition.fromXML(afield),
 			for(afield <- settingsNode \ "FS") yield FieldSetting.fromXML(afield),
 			for(bfield <- propNode \ "PropertyFD") yield PropertyFieldDefinition.fromXML(bfield,CreateChildDefinition.fromXML),
+			for(bpfield <-blockPropNode\ "BlockProperty") yield BlockPropertyFieldDefinition.fromXML((bpfield)),
 		  for(efield <- actionsNode \\ "Action")yield ActionDescription.fromXML(efield),
 		  superClasses,{
 		  	shortForm=InstFormat.read(node \"@shortForm")

@@ -45,6 +45,7 @@ object MainWindow extends SimpleSwingApplication {
   var newClass: ServerObjectClass = _
   var showWindowMinimized=false
   var webSocketSSL = false
+  var testWS= false
 
   lazy val reorgPanel = new ReorgPanel
   val manButSize=new Dimension(160,35)
@@ -128,6 +129,7 @@ object MainWindow extends SimpleSwingApplication {
       if(args(0).equalsIgnoreCase("noBulk")) MainServerSocket.noBulkAction=true
       if (args.exists(_.equalsIgnoreCase("minimized")))showWindowMinimized=true
       if (args.exists(_.equalsIgnoreCase("ssl"))) webSocketSSL = true
+      if (args.exists(_.equalsIgnoreCase("testws"))) testWS = true
     }
     super.startup(args)
   }

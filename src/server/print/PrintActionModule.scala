@@ -10,6 +10,8 @@ import server.comm.{AbstractUserSocket, JavaClientSocket}
 import server.storage.{ActionIterator, ActionModule, ActionNameMap, StorageManager}
 import transaction.handling.{ActionList, SessionManager, TransactionManager}
 
+import scala.xml.Elem
+
 /**
  * 
  */
@@ -36,7 +38,7 @@ class PrintActionModule extends ActionModule {
 		//println("Printforms :"+formsList.mkString("\n"))
 		
 		
-		val question=new XMLQuestion("client.print.PrintQuestionHandler",
+		val question=new XMLQuestion(ModuleType.Print,
 			<forms> {formsList.map(_.toXML)} </forms>
 		  <outDefs> {outDefs}</outDefs>
 			)
@@ -58,7 +60,8 @@ class PrintActionModule extends ActionModule {
 					val pageHeight=returnData(5)._2.toInt
 					//println("new Outdef "+printForm.name)
 					TransactionManager.doTransaction(u.userID, ActionNameMap.getActionID("AusgabeDef erzeugen"),data.head.ref, false, outDefType,{
-					  var outDefInst=TransactionManager.tryCreateInstance(outDefType, Array(new OwnerReference(0,data.head.ref)), true, -1, true, true)
+					  var outDefInst=TransactionManager.tryCreateInstance(outDefType, Array(new OwnerReference(0,data.head.ref)), notifyRefandColl = true,
+							-1, notifySubs = true)
 					  outDefInst=outDefInst.setField(0,IntConstant(printForm.inst))
 					  outDefInst=outDefInst.setField(1,printer)
 					  outDefInst=outDefInst.setField(2,pageSettings)
@@ -69,7 +72,7 @@ class PrintActionModule extends ActionModule {
 					  val paramOwnerRef=Array(new OwnerReference(0,outDefInst.ref))
 					  val childList= for(p <-paramList) yield {
 					  	//println("add param"+p+" "+p._2.getType)
-					  	var pInst=TransactionManager.tryCreateInstance(paramValueType, paramOwnerRef,true)
+					  	var pInst=TransactionManager.tryCreateInstance(paramValueType, paramOwnerRef,notifyRefandColl = true)
 					  	//println("pinst:"+pInst)
 					  	pInst=pInst.setField(0,StringConstant(p._1))
 					  	pInst=pInst.setField(1,p._2)
@@ -127,7 +130,7 @@ class PrintActionModule extends ActionModule {
 					  	//println("write param"+p+" "+p._2.getType)
 					  	var pInst= oldParamList.find(_.fieldValue.head.toString==p._1) match {
 					  		case Some(instDat)=>instDat
-					  		case None =>TransactionManager.tryCreateInstance(paramValueType, Array(new OwnerReference(0,outDefInst.ref)),true)
+					  		case None =>TransactionManager.tryCreateInstance(paramValueType, Array(new OwnerReference(0,outDefInst.ref)),notifyRefandColl = true)
 					  	}
 					  	pInst=pInst.setField(0,StringConstant(p._1))
 					  	pInst=pInst.setField(1,p._2)
@@ -148,7 +151,7 @@ class PrintActionModule extends ActionModule {
 					val pageHeight=returnData(6)._2.toInt
 					val odRef=new Reference(outDefType,odInst)
 					var outDefInst=ActionList.getInstanceData(odRef)
-					val paramList=returnData.drop(7)
+					val paramList=returnData.drop(7).map(retd=>ResultElement(retd._1,retd._2))
 					val outDef=new OutputDefinition(odInst,printForm.inst,printer.toString,pageSettings.toString,portrait.toBoolean,paramList)
 					//println("Store "+printForm.name)
 					PrintEngine.storePages(u,data.head,odRef,outDef,pageWidth,pageHeight,printForm)
@@ -158,7 +161,7 @@ class PrintActionModule extends ActionModule {
 		true
   }// doOutputWindow
 	
-	def getOutDefs(ref:Reference)= StorageManager.getInstanceProperties(ref) match {			
+	def getOutDefs(ref:Reference): Seq[Elem] = StorageManager.getInstanceProperties(ref) match {
 			case Some(pdata)=> for(p <-pdata.propertyFields(0).propertyList;if p.typ == outDefType)
 				yield  {
 				  val paramList:Seq[InstanceData]=StorageManager.getInstanceProperties(p) match {
@@ -170,6 +173,6 @@ class PrintActionModule extends ActionModule {
 			case None => Seq.empty
 		} 
   
-  def setObjectType(typeID:Int)={}  
+  def setObjectType(typeID:Int): Unit ={}
 
 }

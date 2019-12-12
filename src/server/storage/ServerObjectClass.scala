@@ -14,7 +14,7 @@ import util.XMLUtils.{optText, readOptString}
 
 import scala.collection.immutable.IndexedSeq
 import scala.swing.{Button, ToggleButton}
-import scala.xml.Text
+import scala.xml.{Elem, Text}
 
 
 case class ServerCCD(editorName:String,childClassID:Int,actionName:String="*") extends AbstractCCD {
@@ -28,23 +28,21 @@ case class ServerCCD(editorName:String,childClassID:Int,actionName:String="*") e
 	def setChildClass(newValue:Int) = new ServerCCD(editorName,newValue,actionName)
 	def setAction(newValue:String) = new ServerCCD(editorName,childClassID,newValue)	
   
-  override def toXMLFile = {
+  override def toXMLFile: Elem = {
 		<CC cID={childClassID.toString}  e={optText(editorName)} actionName={optText(actionName)} />
    }
 }
 
-/**
- * 
- */
+
 class ServerObjectClass (var name:String,var id:Int,var description:String="",var comment:String="",var ownFields:Seq[AbstractFieldDefinition]=Seq.empty,
 	  var ownFieldSettings:Seq[FieldSetting]=Seq.empty,
-	  var ownPropFields:Seq[PropertyFieldDefinition]=Seq.empty,var superClasses:Seq[Int]=Seq.empty,
+	  var ownPropFields:Seq[PropertyFieldDefinition]=Seq.empty,var ownBlockPropFields:Seq[BlockPropertyFieldDefinition]=Seq.empty, var superClasses:Seq[Int]=Seq.empty,
 	 var moduleName:String="",val actionModule:ActionModule=EmptyModule,var shortFormat:InstFormat=NOFORMAT,var longFormat:InstFormat=NOFORMAT,
 	 var resultFormat:InstFormat=NOFORMAT,	 val formBox:Option[FormBox]=None,var customInstanceEditor:Option[String]=None,
 	 val ownAutoCreateInfos:Seq[AutoCreateInfo]=Seq.empty,var importDescriptor:Option[String]=None)
 	 extends AbstractObjectClass {
 
-	def ownActions = actionModule.actions
+	def ownActions: Iterable[ActionTrait] = actionModule.actions
 	
 	def getCreateAction(aName:String):ActionTrait={
 	  //println("class "+name+" getCreateAction "+aName)
@@ -54,54 +52,54 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
 	 }
 	}
 	
-	def toXML =	{
+	def toXML: Elem =	{
 		<OClass name={name} id={id.toString} desc={optText(description)} comm={optText(comment)} superC={superClasses.mkString(",")} edit={
 			customInstanceEditor map(Text(_))}  shortForm={optText(shortFormat.toString)}
 			longForm={optText(longFormat.toString)} resForm={optText(resultFormat.toString)} imDesc={importDescriptor map(Text(_)) } >
 		<Fields> 		{			ownFields.map(_.toXML)	}</Fields>
     <FSS>{ownFieldSettings.map(_.toXML)}</FSS>
-		<PropFields> 		{			ownPropFields.map(_.toXML(false))	}</PropFields>		
+		<PropFields> 		{			ownPropFields.map(_.toXML(false))	}</PropFields>
+		<BP>{ownBlockPropFields.map(_.toXML)}</BP>
 		<Actions> {ownActions.filterNot(_.hiddenFromPanel).map(_.toXML)} </Actions>    
     <Forms>{formBox match {case Some(b)=> b.toXML ;case _ => xml.Null} }</Forms>
 		</OClass>
 	}	
 	
-	def saveToXML() = {		
+	def saveToXML(): Elem = {
 		<OClass name={name} id={id.toString} desc={optText(description)} comm={optText(comment)} superC={superClasses.mkString(",")} edit={
 			customInstanceEditor map(Text(_))}     shortForm={optText(shortFormat.toString)}
 			longForm={optText(longFormat.toString)} resForm={optText(resultFormat.toString)} moduleName={optText(moduleName)} imDesc={importDescriptor map(Text(_))}>
 		<Fields> 		{			ownFields.map(_.toXML)	}</Fields>
     <FSS>{ownFieldSettings.map(_.toXML)}</FSS>
-		<PropFields> 		{			ownPropFields.map(_.toXML(true))	}</PropFields>		
+		<PropFields> 		{			ownPropFields.map(_.toXML(true))	}</PropFields>
+			<BP>{ownBlockPropFields.map(_.toXML)}</BP>
     <Forms>{formBox match {case Some(b)=> b.toXML ;case _ => xml.Null}}</Forms>
     <AC> {ownAutoCreateInfos.map(_.toXML)}</AC>
     
 		</OClass>
 	}
 	
-	def makeClone= {
-		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,/*theActions,theCreateActions,*/
+	def makeClone: ServerObjectClass = {
+		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,ownBlockPropFields,
 		superClasses,moduleName,actionModule,shortFormat,longFormat,resultFormat,formBox,customInstanceEditor,ownAutoCreateInfos,importDescriptor)
 		theClone.resolveSuperFields()
 		theClone
 	}
 	
-	def setFormBox(newValue:Option[FormBox])= {
-		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,/*theActions,theCreateActions,*/
+	def setFormBox(newValue:Option[FormBox]): ServerObjectClass = {
+		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,ownBlockPropFields,
 		superClasses,moduleName,actionModule,shortFormat,longFormat,resultFormat,newValue,customInstanceEditor,ownAutoCreateInfos,importDescriptor)
 		theClone.resolveSuperFields()
 		theClone		
 	}
 	
 	def setAutoCreateInfo(aci:Seq[AutoCreateInfo]): ServerObjectClass = {
-		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,/*theActions,theCreateActions,*/
+		val theClone=new ServerObjectClass(name,id,description,comment,ownFields,ownFieldSettings,ownPropFields,ownBlockPropFields,
 		superClasses,moduleName,actionModule,shortFormat,longFormat,resultFormat,formBox,customInstanceEditor,aci,importDescriptor)
 		theClone.resolveSuperFields()
 		theClone
 	}
-	
-	
-	
+
 	
 	/** creates an emty Instance of this class
    * 
@@ -126,14 +124,18 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
    * @return the new Property object
    */
   def createInstanceProperty(ref:Reference):InstanceProperties =  {
-  	val pArray=(for(i <- propFields.indices)
-  		yield new PropertyFieldData(propFields(i).single,IndexedSeq.empty)).toArray
+  	val pArray: Array[PropertyFieldData] =((for(i <- propFields.indices)
+  		yield new PropertyFieldData(propFields(i).single,IndexedSeq.empty))++
+			(for(i<-blockPropFields.indices)yield new PropertyFieldData(false,IndexedSeq.empty))
+			).toArray
   	new InstanceProperties(ref,pArray)
   }
   
   def getEmpty: EMPTY_EX.type =EMPTY_EX
   
   def getNumOwnFields: Int =ownFields.size
+
+	def getNumBlockPropFields:Int = ownBlockPropFields.size
   
   def getNumOwnPropFields: Int =ownPropFields.size
 
@@ -146,8 +148,7 @@ object EmptyServerClass  extends ServerObjectClass ("",0)
 
 object ServerObjectClass {	
 	// creates an ObjectClass object from XML
-  
-  val readFormContext=new FormCreateContext {
+  val readFormContext: FormCreateContext =new FormCreateContext {
 	  def getIconableButton(commandName:String,groupName:String,ntooltipText:String)=new Button(commandName)
 	  def getIconableToggleButton(commandName:String,groupName:String,ntooltipText:String)=new ToggleButton(commandName)
 	  def showError(text:String,component:JComponent):Unit= {
@@ -183,15 +184,17 @@ object ServerObjectClass {
 		val settingsData=for(afield <- settingsNode \ "FS") yield FieldSetting.fromXML(afield)
 		val propNode=node \ "PropFields"
 		val propData=for(bfield <- propNode \ "PropertyFD")
-		  yield PropertyFieldDefinition.fromXML(bfield,createCCDFromXML)		
+		  yield PropertyFieldDefinition.fromXML(bfield,createCCDFromXML)
+		val blockPropNode= node \ "BP"
+		val blockPropData= for(bpfield <-blockPropNode\ "BlockProperty")
+			yield BlockPropertyFieldDefinition.fromXML((bpfield))
 		val acNode=node \"AC"
 		val acData=for(afield <- acNode \ "AutoCreate") yield AutoCreateInfo.fromXML(afield)
 		val formNode=node \"Forms"
 		val formBoxData=readFormBox(formNode)		
 		val importDescriptor=readOptString(node ,"@imDesc")
 		new ServerObjectClass(name,id ,  readOptString(node ,"@desc"),readOptString(node ,"@comm"),
-			fieldData,settingsData,propData,
-		  superClasses,
+			fieldData,settingsData,propData,blockPropData,superClasses,
 		  moduleName,module,InstFormat.read(node \"@shortForm"),InstFormat.read(node \"@longForm"),
 		  InstFormat.read(node \"@resForm"),formBoxData,
 		  if(instEditorName.length==0)None else Some(instEditorName),
@@ -200,7 +203,6 @@ object ServerObjectClass {
 	
 	def readFormBox(node:scala.xml.NodeSeq): Option[FormBox] = {
 		val elList=for(abox <- node \ "FormBox") yield FormBox(abox,readFormContext)
-		if(elList.isEmpty) None
-		else Some(elList.head)
+		elList.headOption
 	}
 }

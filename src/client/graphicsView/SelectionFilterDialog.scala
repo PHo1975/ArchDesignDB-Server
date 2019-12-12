@@ -47,9 +47,9 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
    controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,mapLineWidth(Seq(ix)),Seq.empty,Seq.empty,None))
    visible=false
   })
-  val stylePanel=new ListPanel("Strichart",LineStyleHandler.styles,ix=>{
-   controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq(ix),Seq.empty,None))
-   visible=false
+  val stylePanel=new ListPanel("Strichart",LineStyleHandler.styles,doubleClickAction = ix => {
+    controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty, Seq.empty, Seq(ix), Seq.empty, None))
+    visible = false
   })
   val hatchPanel=new ListPanel("Schraffur",HatchHandler.hatchList,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(Seq(0),// hack: Polygon-Type is first type in List,

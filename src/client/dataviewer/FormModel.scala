@@ -63,7 +63,7 @@ class FormModel(controller:DataViewController) extends DataChangeListener {
 		
 	}
 	
-	def shutDown() = if(bestID>0)lock.synchronized{		
+	def shutDown(): Unit = if(bestID>0)lock.synchronized{
 		for (f<-forms;el<-f) el match{
 			case de:FormDataField=>de.wantShutDown();de.shutDown()
 			case _ =>
@@ -74,7 +74,7 @@ class FormModel(controller:DataViewController) extends DataChangeListener {
 	
 	// interface DataChangelistener ************************************
 	
-	def fieldChanged(field:Byte,newValue:Expression) = lock.synchronized{
+	def fieldChanged(field:Byte,newValue:Expression): Unit = lock.synchronized{
 		//println("field changed :"+dataRef+" field:"+field+" value:"+newValue.getTerm)
 		if(bestID==0) throw new IllegalArgumentException("FormModel fieldchanged after shutDown: "+dataRef+" field:"+field+" value: "+newValue)
 		ClientQueryManager.writeInstanceField(dataRef, field, newValue)
@@ -96,14 +96,14 @@ class FormModel(controller:DataViewController) extends DataChangeListener {
 		else StringParser.parse( text) // throw exception when fail
 	}
 	
-	def flipMaximizeWindow(max:Boolean)={
+	def flipMaximizeWindow(max:Boolean): Unit ={
 	  if(max)controller.maximizeSplitBox()
 	  else controller.splitBoxToNormal()
 	}
-	def print()=if(dataRef!=null&&dataValue!=null){
+	def print(): Unit =if(dataRef!=null&&dataValue!=null){
 	  val dataClass=AllClasses.get.getClassByID(dataRef.typ)
 	  dataClass.actions.find{case(string,atrait)=>string==DataViewController.printCommand} match {
-	    case Some((str,tra))=>DialogManager.startActionDialog(tra,Seq(new SelectGroup(dataValue.owners.head,Seq(dataRef))))
+	    case Some((str,tra))=>DialogManager.startActionDialog(tra,Seq(SelectGroup(dataValue.owners.head,Seq(dataRef))))
 	    case _=>
 	  }
 	}

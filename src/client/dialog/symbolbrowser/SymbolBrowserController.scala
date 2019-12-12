@@ -28,7 +28,7 @@ object SymbolBrowserController {
   
   def createSymbol(gc:GraphViewController):Unit= {
     panel.createStampMode=false
-    DialogManager.startInterQuestion(chooseSymbolQuestion,_ =>  {
+    DialogManager.startIntermediateQuestion(chooseSymbolQuestion, _ =>  {
       //println("next Step "+answerList.mkString)      
       for (stamp<-panel.selectedStamp) {        
         val graphElems=stamp.generateElements(Map.empty,0d)        
@@ -43,7 +43,7 @@ object SymbolBrowserController {
           for(el<-graphElems)
             el.drawRotated(g, sm, ColorMap.selectColor,angle, rotator)
         })
-        DialogManager.startInterQuestion(placeSymbolQuestion,_ =>{
+        DialogManager.startIntermediateQuestion(placeSymbolQuestion, _ =>{
           DialogManager.processResults() 
         })         
       }
@@ -52,9 +52,9 @@ object SymbolBrowserController {
   
   def createSymbolStamp(gc:GraphViewController):Unit= {
     panel.createStampMode=true
-    DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Symbol erstellen", "Bezugspunkt wählen", None), _ => {
-      DialogManager.startInterQuestion(GraphCustomQuestionHandler.singleTextQuestion("Symbol erstellen","Name des neuen Symbols:"),_ =>{
-        DialogManager.startInterQuestion(chooseSymbolQuestion,_ =>  {
+    DialogManager.startIntermediateQuestion(GraphCustomQuestionHandler.singlePointQuestion("Symbol erstellen", "Bezugspunkt wählen", None), _ => {
+      DialogManager.startIntermediateQuestion(GraphCustomQuestionHandler.singleTextQuestion("Symbol erstellen","Name des neuen Symbols:"), _ =>{
+        DialogManager.startIntermediateQuestion(chooseSymbolQuestion, _ =>  {
           util.Log.e(" CreateSymbolStamp should not happen ")
         })  
       })
@@ -63,14 +63,14 @@ object SymbolBrowserController {
   
   def changeSymbol(gc:GraphViewController):Unit= {
     panel.createStampMode=false
-    DialogManager.startInterQuestion(chooseSymbolQuestion,_ =>  {
+    DialogManager.startIntermediateQuestion(chooseSymbolQuestion, _ =>  {
       DialogManager.processResults()
     })
   }
   
   def createSymbolFiller(gc:GraphViewController):Unit= {
     panel.createStampMode=false
-    DialogManager.startInterQuestion(chooseSymbolQuestion,_ =>  {
+    DialogManager.startIntermediateQuestion(chooseSymbolQuestion, _ =>  {
       //println("next Step "+answerList.mkString)      
       for (stamp<-panel.selectedStamp) {        
         val graphElems=stamp.generateElements(Map.empty,0d)        
@@ -86,9 +86,9 @@ object SymbolBrowserController {
           for(el<-graphElems)
             el.drawRotated(g, sm, ColorMap.selectColor,angle, rotator)
         })
-        DialogManager.startInterQuestion(placeSymbolQuestion,_ =>{
-          DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("SymbolFüller erstellen", "Bereich bis Punkt", None), _ => {
-            DialogManager.startInterQuestion(GraphCustomQuestionHandler.singleIntQuestion("SymbolFüller erstellen", "Anzahl Teilungen"),_ =>{
+        DialogManager.startIntermediateQuestion(placeSymbolQuestion, _ =>{
+          DialogManager.startIntermediateQuestion(GraphCustomQuestionHandler.singlePointQuestion("SymbolFüller erstellen", "Bereich bis Punkt", None), _ => {
+            DialogManager.startIntermediateQuestion(GraphCustomQuestionHandler.singleIntQuestion("SymbolFüller erstellen", "Anzahl Teilungen"), _ =>{
               DialogManager.processResults()  
             })  
           })

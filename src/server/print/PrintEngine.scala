@@ -32,9 +32,8 @@ object PrintEngine {
 	val orphanTreshold=15
 	val widowTreshold=15
 	val printDateKeyName="Date"
-	
 
-	//var printableType:Int = -1	
+		//var printableType:Int = -1
 	
 	val generatorMap=collection.mutable.Map[String,CustomGenerator]()
 	val customIteratorMap=collection.mutable.Map[String,Null]()
@@ -60,7 +59,7 @@ object PrintEngine {
 			context.initPrintSession()
 			val formRef=new Reference(printFormType,oDef.formInst)			
 			context.updateProjectInfo(dataParent)
-			val paramsMap=oDef.paramValues.toMap
+			val paramsMap=oDef.paramValues.view.map(el=>(el.paramName,el.result)).toMap
 			context.setFormParams(paramsMap)
 			context.setPrintDate(paramsMap.get(PrintEngine.printDateKeyName) match {
 			  case Some(date) if !date.isNullConstant => date
@@ -86,8 +85,8 @@ object PrintEngine {
 			context.initPrintSession()	
 			//if(printFormType== -1) printFormType=SystemSettings().systemTypes("PrintForm")
 			val formRef=new Reference(printFormType,oDef.formInst)
-			context.setPrintDate( new StringConstant(oDef.paramValues.find(el=>el._1=="Date") match {			  
-			  case Some(tuple)=>tuple._2.toString
+			context.setPrintDate( new StringConstant(oDef.paramValues.find(el=>el.paramName=="Date") match {
+			  case Some(tuple)=>tuple.result.toString
 			  case None =>util.JavaUtils.shortDateFormat.format(new Date)
 			}))
 			context.updateProjectInfo(dataParent)

@@ -16,8 +16,8 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
   var active=false
   var selectModel: PointSelectModel = _
   
-  def pointsSelected(points:Seq[VectorConstant]):Unit= {      
-    func(ansParm,BlobConstant.fillData(out=> {
+  def pointsSelected(points:Seq[VectorConstant]):Unit= {
+    DialogManager.answerGiven(ansParm,BlobConstant.fillData(out=> {
       out.writeInt(points.size)
       for(p<-points) p.write(out)
     }))

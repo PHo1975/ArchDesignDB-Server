@@ -2,7 +2,7 @@ package runtime.function
 
 import definition.data.{InstanceData, OwnerReference}
 import definition.expression.{Constant, VectorConstant}
-import definition.typ.{AnswerDefinition, CommandQuestion, DataType, DialogQuestion}
+import definition.typ._
 import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, CreateActionImpl, StorageManager}
 import transaction.handling.{ActionList, TransactionManager}
@@ -11,12 +11,12 @@ import util.GraphUtils
 class SymbolElemModule extends ActionModule with GraphActionModule {
   val horizontalText="Horizontal"
   override val createActions=List(createSymbolAction) 
-  val actions=Seq(replaceAction,breakUpAction,alignHor,alignVert,distributeAction)
+  val actions: Seq[ActionIterator] =Seq(replaceAction,breakUpAction,alignHor,alignVert,distributeAction)
   
-  def createSymbolAction=new CreateActionImpl("Symbol",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def createSymbolAction=new CreateActionImpl("Symbol",Some(new CommandQuestion(ModuleType.Graph,
   "CreateSymbol")),doCreateSymbol)
   
-  def replaceAction=new ActionIterator("Symbol austauschen",Some(new CommandQuestion("client.graphicsView.GraphCustomQuestionHandler",
+  def replaceAction=new ActionIterator("Symbol austauschen",Some(new CommandQuestion(ModuleType.Graph,
   "ChangeSymbol")),doReplace)
 
   def alignHor=new ActionIterator("Vert.ausrichten",None,doAlignHor)
@@ -32,7 +32,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     val angle=param(1)._2
     val scale=param(2)._2
     val pos=param(3)._2
-    val symbInst=TransactionManager.tryCreateInstance(TypeInfos.symbolElemType, Array(new OwnerReference(0,layer.ref)),true)
+    val symbInst=TransactionManager.tryCreateInstance(TypeInfos.symbolElemType, Array(new OwnerReference(0,layer.ref)),notifyRefandColl = true)
     TransactionManager.tryWriteInstanceField(symbInst.ref, 1, symbolRef)    
     TransactionManager.tryWriteInstanceField(symbInst.ref, 2, angle)
     TransactionManager.tryWriteInstanceField(symbInst.ref, 3, scale)    
@@ -75,7 +75,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
       val owners=Array(owner)
       for(props<-StorageManager.getInstanceProperties(symbolRef);grElemRef<-props.propertyFields(0).propertyList;
         grElem=ActionList.getInstanceData(grElemRef)){
-        val createInst=TransactionManager.tryCreateInstance(grElemRef.typ,owners,false)
+        val createInst=TransactionManager.tryCreateInstance(grElemRef.typ,owners,notifyRefandColl = false)
         var newInst=grElem.clone(createInst.ref,owners,Seq.empty)
         val module=TypeInfos.moduleMap(grElemRef.typ)
         newInst=module.copyElement(newInst,pos)          

@@ -158,7 +158,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	  })
 	  
 	  toast.setContent(panel)
-		DialogManager.startInterQuestion(GraphCustomQuestionHandler.singlePointQuestion("Koordinaten messen", "Punkt berühren", Some(true)), _ => {
+		DialogManager.startIntermediateQuestion(GraphCustomQuestionHandler.singlePointQuestion("Koordinaten messen", "Punkt berühren", Some(true)), _ => {
       DialogManager.resetDraggerToast()  },false)
 	}
 
@@ -191,7 +191,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	    GraphElemConst.drawLineFloat(g,sm.xToScreen(lastPos.x), sm.yToScreen(lastPos.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
 	  }
 	  	  
-    DialogManager.startInterQuestion(question,answerList=>{
+    DialogManager.startIntermediateQuestion(question, answerList=>{
       lastPos=answerList.last.result.toVector      
       val toast=controller.createDraggerToast((ntoast,x,y,worldPos)=>{
 		    lengthLabel.text=f"${(worldPos-lastPos).toDouble}%12.12f m"
@@ -204,7 +204,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 		  })
       toast.setContent(panel)
       controller.setCustomDragger(dragger)
-      DialogManager.startInterQuestion(nextPointQuestion,_ =>{
+      DialogManager.startIntermediateQuestion(nextPointQuestion, _ =>{
         lastPos=answerList.last.result.toVector
         //println("LastPos :"+lastPos+" answerList.size:"+answerList.size)
         controller.setCustomDragger(dragger)
@@ -271,7 +271,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
       new Area(new Polygon(Nil,List(plist)).toPathTransformed(transform))
     }
         
-    DialogManager.startInterQuestion(question, (answerList: Seq[ResultElement]) =>{
+    DialogManager.startIntermediateQuestion(question, (answerList: Seq[ResultElement]) =>{
       points+=answerList.last.result.toVector                  
       val toast=controller.createDraggerToast((ntoast,x,y,_)=>{
 				areaLabel.text=f"Fläche: $areaValue%.8f m2"
@@ -281,7 +281,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
       })
       toast.setContent(panel)
       controller.setCustomDragger(dragger)
-      DialogManager.startInterQuestion(nextPointQuestion,_ =>{
+      DialogManager.startIntermediateQuestion(nextPointQuestion, _ =>{
         val newPoint=answerList.last.result.toVector
         points+=newPoint
         //println("click:"+answerList.last.result+"  points: "+points.mkString(","))

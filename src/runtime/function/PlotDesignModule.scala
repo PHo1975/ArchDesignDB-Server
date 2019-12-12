@@ -19,7 +19,7 @@ class PlotDesignModule extends ActionModule {
 
   val cleanup=new ActionIterator("Bereinigen",None,doCleanup)
 
-  def doCleanup(u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]) =  {
+  def doCleanup(u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
     for(d<-data;layerRef<-StorageManager.getInstPropList(d.ref,1);
         layerInst=StorageManager.getInstanceData(layerRef);plotRef=layerInst.fieldValue(0).toObjectReference){
       if(!StorageManager.instanceExists(plotRef.typ,plotRef.instance))  {

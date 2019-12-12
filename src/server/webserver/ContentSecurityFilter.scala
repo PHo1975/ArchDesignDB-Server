@@ -12,6 +12,7 @@ object ContentSecurityFilter {
   var allowedStyleDomains = List("fonts.googleapis.com")
 
   def changeHeaders(hr: HttpServletResponse): Unit = {
+    println("change Headers "+hr.getHeaderNames)
     val contentSecurityPolicy = "default-src 'none' " +
       " ; connect-src 'self' wss://db.holzer-architektur.de; script-src 'self' " + allowedDomains.mkString(" ") +
       "; style-src 'unsafe-inline' 'self' " +

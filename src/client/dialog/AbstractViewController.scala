@@ -103,7 +103,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   def setCustomDragger(ncustomDragger: (VectorConstant, Graphics2D) => Unit): Unit = {
-    customDragger=Option(ncustomDragger)
+    customDragger=Some(ncustomDragger)
     refreshCanvas()
   }
 
@@ -301,7 +301,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       val forClass = AllClasses.get.getClassByID(forType)
       val newClassFormFields = forClass.formatFields
       //println("Formatfield "+forType+" "+newClassFormFields.mkString)
-      val templateElement = selectModel.lastSelection(forType)
+      val templateElement: Formatable = selectModel.lastSelection(forType)
       for (field <- newClassFormFields) yield (field, templateElement.getFormatFieldValue(field))
     }
 

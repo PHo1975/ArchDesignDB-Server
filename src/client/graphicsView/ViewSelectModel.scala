@@ -66,7 +66,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 	 * @param toggle should the elements be removed when they are already in the selection ?
 	 */
   def addSelection(dataList: Iterable[(AbstractLayer, Iterable[GraphElem])], toggle: Boolean): Unit = {
-	  for(data<-dataList;if data._2.nonEmpty) {
+	  for(data: (AbstractLayer, Iterable[GraphElem]) <-dataList; if data._2.nonEmpty) {
 	  	val elList=getElList(data._1) 
 	  	if(toggle) {
 	  		for(ne<-data._2) {

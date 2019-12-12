@@ -1,6 +1,8 @@
 package server.webserver
 
 
+import java.io.File
+
 import javax.servlet.DispatcherType
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import management.databrowser.ConsolePanel
@@ -26,7 +28,8 @@ object WebServer extends Server() {
   lazy val dummySecurityHandler = new ConstraintSecurityHandler()
   val digestAuthenticator = new DigestAuthenticator()
   val loginService: DBLoginService.type = DBLoginService
-  loginService.setName("db.holzer-architektur.de")
+  //loginService.setName("db.holzer-architektur.de")
+  loginService.setName("localHost")
   val servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS)
   val safeServlet = new ServletHolder("safe", classOf[DefaultServlet])
   var longCaching=true
@@ -79,9 +82,11 @@ object WebServer extends Server() {
     servletContextHandler.setContextPath("/")
 
     val fileServlet=new ServletHolder("files",classOf[DefaultServlet])
-    fileServlet.setInitParameter("dirAllowed","false")
+    //fileServlet.setInitParameter("dirAllowed","false")
     fileServlet.setInitParameter("gzip","true")
-    fileServlet.setInitParameter("resourceBase",FSPaths.deployDir+"files\\")
+    if(new File(FSPaths.deployDir+"files"+File.separator).exists())
+      fileServlet.setInitParameter("resourceBase",FSPaths.deployDir+"files"+File.separator)
+    else util.Log.e("can't find ressorce path "+FSPaths.deployDir+"files")
     fileServlet.setInitParameter("useFileMappedBuffer","false")
     fileServlet.setInitParameter("pathInfoOnly","true")
     if(longCaching)
@@ -100,7 +105,8 @@ object WebServer extends Server() {
           " \nFields:"+baseRequest.getHttpFields.iterator().asScala.mkString("| ")+"   method:"+request.getMethod+" content-Type:"+baseRequest.getContentType)
         response.getWriter.append("{\"status\":\"ERROR\",\"message\":\"HTTP ").append(
           response.getStatus.toString).append("\"}")
-        ContentSecurityFilter.changeHeaders(response)
+        if (management.databrowser.MainWindow.webSocketSSL)
+           ContentSecurityFilter.changeHeaders(response)
       }
     }
     addBean(errorHandler)
@@ -111,7 +117,7 @@ object WebServer extends Server() {
 
   def switchToCertMode(): Unit = try {
     stop()
-    removeBean(loginService)
+    //removeBean(loginService)
     servletContextHandler.setSecurityHandler(dummySecurityHandler)
     servletContextHandler.getServletHandler.setFilters(Array[FilterHolder]())
 

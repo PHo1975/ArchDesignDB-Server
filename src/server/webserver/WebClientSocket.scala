@@ -15,7 +15,7 @@ import server.comm._
 import server.config.ServerSystemSettings
 import server.storage._
 import transaction.handling.{ActionList, TransactionManager}
-import util.{Log, StrToInt, StringUtils}
+import util.{CollUtils, Log, StrToInt, StringUtils}
 
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
@@ -54,9 +54,11 @@ class TransBuffers {
 
 
 class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with  AbstractQueryHandler with AbstractUserSocket{
-  var userEntry:UserInfo=_
+  private var _userEntry:UserInfo=_
   var pinger:Option[Runnable]=None
   var mySession:Option[Session]=None
+
+  def userEntry: UserInfo =_userEntry
   private val outStreamLock : AnyRef = new Object()
 
   protected var transBuffers:Option[TransBuffers]=None
@@ -69,12 +71,13 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   override def onWebSocketConnect(sess: Session): Unit = {
     super.onWebSocketConnect(sess)
 
-    Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal)
-    if (sess.getUpgradeRequest.getUserPrincipal != null) {
-      val userName = sess.getUpgradeRequest.getUserPrincipal.getName
+    Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal+" ")
+    if (sess.getUpgradeRequest.getUserPrincipal != null|| management.databrowser.MainWindow.testWS) {
+      val userName = if (management.databrowser.MainWindow.testWS) "Peter" else sess.getUpgradeRequest.getUserPrincipal.getName
+      if(management.databrowser.MainWindow.testWS) println("Option testWS active, test user choosen")
       UserList.getUserByName(userName) match {
-        case Some(u) => userEntry = u
-        case None => Log.e("Login unknown user " + userName); userEntry = null; return;
+        case Some(u) => _userEntry = u
+        case None => Log.e("Login unknown user " + userName); _userEntry = null; return;
       }
       mySession = Some(sess)
       removePinger()
@@ -117,7 +120,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       mySession=None
       pinger=None
       val uid=userEntry.id
-      userEntry=null
+      _userEntry=null
       UserList.removeConnection(uid,this)
     }
 
@@ -143,11 +146,15 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         case "ChangeTableSetup"=>changeTableSetup(data)
         case "WriteField"=> writeField(data)
         case "WriteInstancesField"=>writeInstancesField(data)
-        case "Execute"=> executeAction(data,false)
-        case "ExecuteCreate"=>
+        case "Execute"=> executeAction(data)
+        case "ExecuteCreate"=>executeAction(data)
         case "CreateInstance"=>createInstance(data)
         case "DeleteInstance"=>deleteInstance(data)
         case "Root"=> sendRoot(data)
+        case "SubscribeBlocks"=>subscribeBlocks(data)
+        case "CreateBlock"=>
+        case "ChangeBlock"=>
+        case "DeleteBLock"=>
         case _=>Log.e("unknown Command "+command+" data:"+data)
       }
       case Array("SendTypes")=> sendTypes()
@@ -240,10 +247,16 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
   protected def sendTypes(): Unit = {
-    val ac=AllClasses.get.classList
+    val ac=AllClasses.get
+    val classList=ac.classList
+    val blockClassList=ac.blockClassList
     sendData(ServerCommands.sendTypes){out=>{
-      out.writeInt(ac.size)
-      for(o<-ac.valuesIterator)o.writeToStream(out)
+      out.writeInt(classList.size)
+      for(o<-classList.valuesIterator)
+        o.writeToStream(out)
+      out.writeInt(blockClassList.size)
+      for(b<-blockClassList.valuesIterator)
+        CollUtils.writeToStream(out,b)
       out.writeUTF(WebUserSetting.getTableSettingString(userEntry))
     }
     }
@@ -264,6 +277,10 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
           Log.e("ref " + ref + " not allowed for " + userEntry)
         };
     }
+
+  protected def subscribeBlocks(data:String):Unit={
+
+  }
 
   protected def loadData(data:String):Unit = data.split("\\|") match {
     case Array(Reference(parentRef),StrToInt(propertyField),StrToInt(dataTicket))=>
@@ -359,10 +376,12 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
 
-  protected def executeAction(data:String,createAction:Boolean):Unit= data.split("\\|") match {
-    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Seq.empty, createAction)
-    case Array(RefList(rList), actionName) => intExecute(rList,actionName,"",0,0,Seq.empty,createAction)
-    case _=> Log.e("Execute action wrong syntax:"+data)
+  protected def executeAction(data:String):Unit= data.split("\\|") match {
+    case Array(Reference(owner),StrToInt(propField),StrToInt(createType),actionName,paramText,formatText) =>
+      val formatList:Array[(Int,Constant)]   = if(formatText.trim.length<2)Array.empty else formatText.split ('\u01c1').map (strToFormatValues)
+      intExecute(Array(owner),actionName,paramText,createType,propField.toByte,formatList,createAction = true)
+    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Seq.empty, createAction = false)
+    case _=> Log.e("Execute action wrong syntax:"+data+"\n size:"+data.split("\\|").length)
   }
 
   def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Seq[(Int,Constant)], createAction: Boolean): Unit = {
@@ -419,13 +438,6 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     }
   }
 
-  protected def executeCreateAction(data:String):Unit = data.split("\\|") match {
-    case Array(Reference(ownerRef),StrToInt(propField),StrToInt(createType),actionName,paramText,formatValuesText)=>
-      val formatList:Array[(Int,Constant)]   = if(formatValuesText.trim.length==0)Array.empty else formatValuesText.split ('\u01c1').map (strToFormatValues)
-      intExecute(Array(ownerRef),actionName, paramText,createType,propField.toByte,formatList,createAction = true)
-    case _=> Log.e("Execute action wrong syntax:"+data)
-  }
-
 
 
   protected def simplyCreateInstance(parentList:Seq[InstanceData],newType:Int,propField:Byte): Unit = {
@@ -444,7 +456,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         try {
           val ret=TransactionManager.doTransaction(userEntry.id,ClientCommands.createInstance.id.toShort,
             ownerArray.head.ownerRef ,false,typ,{
-              val inst= TransactionManager.tryCreateInstance(typ,ownerArray,true)
+              val inst= TransactionManager.tryCreateInstance(typ,ownerArray,notifyRefandColl = true)
               if (inst==null)	error=new CommandError("Unknown Issue",ClientCommands.createInstance.id,0)
               else result=inst.ref.instance
             })

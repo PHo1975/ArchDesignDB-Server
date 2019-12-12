@@ -21,17 +21,17 @@ class SpreadSheetGenerator extends CustomGenerator {
    
    class InfoSet(dataParent:InstanceData,dataEater:DataEater){
      val form: FormDescription = dataEater.form
-     val showGrid: Boolean = dataEater.paramValues.find(_._1.equalsIgnoreCase("ShowGrid")) match {
-       case Some((_,value))=>value.toBoolean
+     val showGrid: Boolean = dataEater.paramValues.find(_.paramName.equalsIgnoreCase("ShowGrid")) match {
+       case Some(ResultElement(_,value))=>value.toBoolean
        case None=>false
      }
-     val headerMargin: Float = dataEater.paramValues.find(_._1.equalsIgnoreCase("HeaderMargin")) match {
-       case Some((_,value))=>value.toDouble.toFloat
+     val headerMargin: Float = dataEater.paramValues.find(_.paramName.equalsIgnoreCase("HeaderMargin")) match {
+       case Some(ResultElement(_,value))=>value.toDouble.toFloat
        case None=>0f
      }  
      
-     val zoom:Float=dataEater.paramValues.find(_._1.equalsIgnoreCase("zoom")) match {
-       case Some((_,value)) if value.toFloat > 0 =>value.toFloat
+     val zoom:Float=dataEater.paramValues.find(_.paramName.equalsIgnoreCase("zoom")) match {
+       case Some(ResultElement(_,value)) if value.toFloat > 0 =>value.toFloat
        case _ =>1f
      }
      val rowHeight: Float = SpreadSheet.defaultRowHeight.toFloat * zoom * dotPitch

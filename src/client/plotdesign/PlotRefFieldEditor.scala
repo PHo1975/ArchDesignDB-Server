@@ -88,7 +88,7 @@ class PlotRefFieldEditor extends FieldEditor {
       case ButtonClicked(but:FilterCheckBox)=>but.clicked()
     }
 
-    def resetAllBoxes()=checkboxes.foreach(_.selected=false)
+    def resetAllBoxes(): Unit =checkboxes.foreach(_.selected=false)
 
     override def allowedFields: Map[String, Byte] = Map((className,9))
 
@@ -112,13 +112,13 @@ class PlotRefFieldEditor extends FieldEditor {
 
   val filterEditor=new FilterEditor()
   
-  lazy val fieldComponents=Seq(scaleCombo,angleEditor,textScaleEditor,layerNameLabel,filterEditor)
+  lazy val fieldComponents: Seq[SidePanelComponent[_]] =Seq(scaleCombo,angleEditor,textScaleEditor,layerNameLabel,filterEditor)
   
-  lazy val panel=new BoxPanel(Orientation.Vertical) {
+  lazy val panel:BoxPanel=new BoxPanel(Orientation.Vertical) {
     opaque=false
     contents += getPanelPart("Mass:",scaleCombo) += getPanelPart("Winkel:",angleEditor)	+=
       getPanelPart("Textzoom",textScaleEditor)+=Swing.VStrut(10)+=layerNameLabel+=Swing.VStrut(10)+=
-    new Label("Filter:")+=filterEditor
+    new Label("Elemente ausblenden:")+=filterEditor
   }
 
   def getPanel: BoxPanel = panel

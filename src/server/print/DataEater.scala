@@ -5,8 +5,7 @@ package server.print
 
 import java.io.DataOutput
 
-import definition.data.{FormDescription, PageData, PrintElType, PrintElement}
-import definition.expression.Constant
+import definition.data._
 
 import scala.collection.mutable.ArrayBuffer
 /**
@@ -32,7 +31,7 @@ class DataEater extends YPosHolder {
   val pagesList=collection.mutable.ArrayBuffer[PageData]()  
   
   var form:FormDescription = _	
-  var paramValues:Seq[(String,Constant)]=Nil
+  var paramValues:Seq[ResultElement]=Nil
   
   var elementList=collection.mutable.ArrayBuffer[PrintElement]()
   
@@ -48,7 +47,7 @@ class DataEater extends YPosHolder {
   var hasPrintElements:Boolean=false
   var currentContext:PrintContext=_
   
-  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Seq[(String,Constant)]): Unit = {
+  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Seq[ResultElement]): Unit = {
   	pageWidth=pWidth
   	pageHeight=pHeight
   	paramValues=nvalues

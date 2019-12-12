@@ -9,7 +9,7 @@ import definition.typ.{CommandQuestion, DialogQuestion, ParamQuestion}
 
 import scala.collection.immutable.HashMap
 
-object GraphCustomQuestionHandler extends CustomQuestionHandler {
+object PlotCustomQuestionHandler extends CustomQuestionHandler {
   
   private var graphController:Option[PlotDesignController]=None
   lazy val funcMap: HashMap[String, (PlotDesignController) => Unit] = collection.immutable.HashMap[String, (PlotDesignController) => Unit]("Zuschneiden" -> setCutRect,
@@ -32,7 +32,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   lazy val rectEndQuestion: DialogQuestion = singlePointQuestion("Rechteck Zuschnitt", "bis Punkt", Some(false))
   
   def setCutRect(gc:PlotDesignController):Unit={     
-     DialogManager.startInterQuestion(rectStartQuestion,answerList=> {
+     DialogManager.startIntermediateQuestion(rectStartQuestion, answerList=> {
       val startPoint=answerList.last.result.toVector      
       def diagRectDragger(pos:VectorConstant,g:Graphics2D): Unit = {
 				val sm=gc.scaleModel
@@ -44,15 +44,15 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
 				GraphElemConst.drawRectFloat(g,sx,sy,sm.xToScreen(math.max(pos.x,startPoint.x))-sx,math.max(scy,py)-sy)
 			}
       gc.setCustomDragger(diagRectDragger)
-      DialogManager.startInterQuestion(rectEndQuestion, _ => DialogManager.processResults() )
+      DialogManager.startIntermediateQuestion(rectEndQuestion, _ => DialogManager.processResults() )
      })
   }
   
   def move(gc:PlotDesignController):Unit={
-    DialogManager.startInterQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
+    DialogManager.startIntermediateQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
       moveStartAnswers), answerList => {
       answerList.head.result match{
-        case d:DoubleConstant=> DialogManager.startInterQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
+        case d:DoubleConstant=> DialogManager.startIntermediateQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
             (answerList)=>{DialogManager.processResults()})
         case startP:VectorConstant=>  
            val selMod=gc.selectModel
@@ -63,7 +63,7 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
                lay.drawFrame(g,delta)
              }
         	 })
-          DialogManager.startInterQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", Some(false)),
+          DialogManager.startIntermediateQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", Some(false)),
             _=>DialogManager.processResults() )
       }
 		})  

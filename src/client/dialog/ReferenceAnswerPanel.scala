@@ -80,11 +80,11 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
 
   def objectsSelected(objs: ObjectReference, editable: Boolean): Unit = {
     //System.out.println("Objects selected "+objs)
-    func(ansParm,objs)
+    DialogManager.answerGiven(ansParm,objs)
     AnswerPanelsData.currentViewController match {      
       case ctrl:AbstractViewController[_,_] if ctrl.selectObject_addModifiableInfo =>
         for(q<-ansParm.followQuestion)
-    		func(q.asInstanceOf[DialogQuestion].possibleAnswers.head,BoolConstant(editable))
+    		DialogManager.answerGiven(q.asInstanceOf[DialogQuestion].possibleAnswers.head,BoolConstant(editable))
       case _=>      
     }   
   }
@@ -92,12 +92,12 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
 
   def objectsSelectedWithPoint(obj: ObjectReference, point: VectorConstant, editable: Boolean): Unit = {
     println("objectSelectedWithPoint "+obj+" p: "+point+" follow:"+ansParm.followQuestion)
-    func(ansParm,obj)
-    func(ansParm,point)
+    DialogManager.answerGiven(ansParm,obj)
+    DialogManager.answerGiven(ansParm,point)
     AnswerPanelsData.currentViewController match {
       case ctrl:AbstractViewController[_,_] if ctrl.selectObject_addModifiableInfo =>
         for(q<-ansParm.followQuestion)
-          func(q.asInstanceOf[DialogQuestion].possibleAnswers.head,BoolConstant(editable))
+          DialogManager.answerGiven(q.asInstanceOf[DialogQuestion].possibleAnswers.head,BoolConstant(editable))
       case _=>
     }
     //reset()
@@ -105,19 +105,19 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
 
 
   def segmentPartSelected(obj: ObjectReference, p1: VectorConstant, p2: VectorConstant): Unit = {
-  	func(ansParm,obj)
+  	DialogManager.answerGiven(ansParm,obj)
   	for(q<-ansParm.followQuestion){
   		val ansParm1=q.asInstanceOf[DialogQuestion].possibleAnswers.head
-  		func(ansParm1,p1)
+  		DialogManager.answerGiven(ansParm1,p1)
   		for(q1<-ansParm1.followQuestion){
   			val ansParm2=q1.asInstanceOf[DialogQuestion].possibleAnswers.head
-  			func(ansParm2,p2)      
+  			DialogManager.answerGiven(ansParm2,p2)      
   		}
   	}
   }
 
   def tempObjectSelected(el: Int): Unit = {
-    func(ansParm, IntConstant(el))
+    DialogManager.answerGiven(ansParm, IntConstant(el))
   }
 }
 
