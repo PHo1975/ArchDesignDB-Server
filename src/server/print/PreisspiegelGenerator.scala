@@ -9,6 +9,8 @@ import definition.data._
 import definition.typ.AllClasses
 import server.storage.StorageManager
 
+import scala.collection.mutable.ArrayBuffer
+
 
 case class ColHeader(data:InstanceData) {
   import server.print.PreisspiegelGenerator._
@@ -65,14 +67,14 @@ class PreisspiegelGenerator extends CustomGenerator {
         var currYPos=dataEater.form.top+topMargin
         val cx=dataEater.currentXPos
 
-        def printText(text:String,x:Float,y:Float,width:Float,fontStyle:FontStyle,textStyle:Int=0)=
+        def printText(text:String,x:Float,y:Float,width:Float,fontStyle:FontStyle,textStyle:Int=0): Unit =
           dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(x, y, width, fontStyle.height), text.trim, fontStyle.fontName,
             fontStyle.graphStyle + textStyle, 0, 0, Color.black, 0))
 
-        def printLine(x:Float,y:Float,width:Float,height:Float,thick:Float): Seq[PrintElement] =
+        def printLine(x:Float,y:Float,width:Float,height:Float,thick:Float): Unit =
           dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(x, y, width, height), thick, 0, Color.black))
 
-        def fillRect(x:Float,y:Float,width:Float,height:Float,col:Color)=
+        def fillRect(x:Float,y:Float,width:Float,height:Float,col:Color): Unit =
           dataEater.addPrintElement(FillPrintElement(new Rectangle2D.Float(x, y, width, height), Color.WHITE, 0, col))
 
         def printHeader(): Unit = {
@@ -117,7 +119,7 @@ class PreisspiegelGenerator extends CustomGenerator {
 
         def substNull(value:Double)=if(value==0d) Short.MaxValue.toDouble else value
 
-        def splitText(text:String,bwidth:Float):Seq[String]= {
+        def splitText(text:String,bwidth:Float):ArrayBuffer[String]= {
           val lineBuffer=new collection.mutable.ArrayBuffer[String]()
           for(part<-text.split("\n"))
             if(part.length==0)lineBuffer+="" else {
@@ -135,7 +137,7 @@ class PreisspiegelGenerator extends CustomGenerator {
         }
 
 
-        def printPos(data:InstanceData,level:Int): Seq[PrintElement] ={
+        def printPos(data:InstanceData,level:Int): Unit ={
           val pos=data.fieldValue(1).toString
           val menge=f"${data.fieldValue(3).toDouble}%,.3f "+data.fieldData(3).getValue.toUnitNumber.unitFraction.toString
           val langtext=kurzeText(data.fieldValue(5).toString)
@@ -145,9 +147,9 @@ class PreisspiegelGenerator extends CustomGenerator {
             case Some(l)=>l
             case None => IndexedSeq.empty
           }
-          val lowestPrice = if(preisList.isEmpty||t>0)-1 else preisList.map(pe=>substNull(pe.fieldValue.head.toDouble)).min
+          val lowestPrice = if(preisList.isEmpty||t>0)-1 else preisList.map(pe=>substNull(pe.fieldValue.head.toDouble)).min(Ordering.Double.TotalOrdering)
           val commentWidth=FormDescription.fromMM(gpWidth+epWidth -6f)
-          var notesInfo:Seq[(Int,Seq[String])]=Nil
+          var notesInfo:Seq[(Int,ArrayBuffer[String])]=Nil
 
 
           printBlock(4f){
@@ -240,7 +242,7 @@ class PreisspiegelGenerator extends CustomGenerator {
           printText("Vergleich:",cx+posWidth,currYPos+15f,langTextWidth-1,standardFont)
 
 
-          val lowestPrice=colHeaders.map(el=>substNull(el.summe)).min
+          val lowestPrice=colHeaders.map(el=>substNull(el.summe)).min(Ordering.Double.TotalOrdering)
           for(cix<-colHeaders.indices;col=colHeaders(cix)) {
             val colX=cx+leftWidth+cix*colWidth+colWidth-1
             printText(moneyForm.format(col.summe),colX,currYPos,0f,standardFont,PrintElement.orient_Right)

@@ -86,7 +86,7 @@ trait AbstractFormTextField extends FormDataField with FormElement{
 
   
   
-  def alignRight()
+  def alignRight():Unit
   
   def getRenderedText: String ={
     val value=expr.getValue

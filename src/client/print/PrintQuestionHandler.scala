@@ -39,7 +39,7 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
   	if(PrintModel.outDefs.isEmpty) {  
   	  //println("Outdefs empty, show newdialog")
   		newDialog.setLocationRelativeTo(ActionPanel )
-  		newDialog.showDialog("Neue Ausgabedefinition anlegen",outputDefined,true)
+  		newDialog.showDialog("Neue Ausgabedefinition anlegen",outputDefined,nresetOnClose = true)
   	}
   	else {  		
   	  //println("Oudefs exist")
@@ -49,7 +49,7 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
   }
   
   
-  def outputDefined(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Seq[ResultElement])= PrintQuestionHandler.synchronized{
+  def outputDefined(formIx:Int,printer:String,pageSetting:String,portrait:Boolean,w:Int,h:Int,paramData:Iterable[ResultElement]): Unit = PrintQuestionHandler.synchronized{
    //println("output Defined:"+formIx+" "+printer+" paramData:"+paramData)
   	DialogManager.processCustomEnquiry(IndexedSeq(ResultElement("NewOutDef",IntConstant(formIx)),
 			ResultElement("Printer",StringConstant(printer)),ResultElement("PageSettings",StringConstant(pageSetting)),
@@ -57,7 +57,7 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
   }
   
     
-  def receiveData(in:DataInput)=  PrintQuestionHandler.synchronized{
+  def receiveData(in:DataInput): Unit =  PrintQuestionHandler.synchronized{
     //System.out.print("Receive print data "+Thread.currentThread().getName())
   	val form=newDialog.getCurrentForm  	
   	val jobTitle=in.readUTF+" "+util.JavaUtils.shortDateFormat.format(new Date())
@@ -71,13 +71,13 @@ object PrintQuestionHandler extends CustomQuestionHandler with GenDataReceiver w
 	  	val pageFormat=PrintModel.getPageFormat  	
 	  	MyContext.fontStyleList=form.fonts  	
 	  	PrintModel.myPageable.setData(pageFormat,pagesList)  	
-	  	print(jobTitle, oInst,form,true)
+	  	print(jobTitle, oInst,form,setForm = true)
   	}
   }
   /** @param setForm should set Form before print (not for archives)
    * 
    */
-  def print(ntitle:String,odefInt:Int,currentForm:FormDescription,setForm:Boolean)= PrintQuestionHandler.synchronized{    
+  def print(ntitle:String,odefInt:Int,currentForm:FormDescription,setForm:Boolean): Unit = PrintQuestionHandler.synchronized{
 		PrintModel.outputDefInst=odefInt
 		PrintModel.printJob.setJobName(ntitle)
 		if(setForm)PrintModel.myPageable.form=currentForm		

@@ -10,7 +10,7 @@ import scala.swing.event.ButtonClicked
 import scala.util.control.NonFatal
 
 trait FormButtonListener{
-  def formButtonClicked(text:String,data:InstanceData)
+  def formButtonClicked(text:String,data:InstanceData):Unit
 }
 
 class FormButton(atext:String,val minWidth:Int,val maxWidth:Int,val minHeight:Int,val maxHeight:Int, 

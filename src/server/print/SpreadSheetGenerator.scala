@@ -99,14 +99,14 @@ class SpreadSheetGenerator extends CustomGenerator {
 		  					if(formString.length>0) try {
 									formString.format(value.toDouble)
 								}	catch {
-									case NonFatal(e)=> Log.e(e+" Wrong format:["+formString+"]"); value.toDouble.toString
+									case NonFatal(e)=> Log.e(e.toString+" Wrong format:["+formString+"]"); value.toDouble.toString
 								} else value.toLong.toString
 		  				
 		  				case DoubleTyp =>
 								val formString=formatSet(3).fold(SpreadSheet.defaultFormat.format.numberFormat.get)(
                   _.numberFormat.getOrElse(SpreadSheet.defaultFormat.format.numberFormat.get))
 								if(formString .length>0) try {/* println("Value:"+value+" Formstring:"+formString);*/formString.format(value.toDouble)}
-                  catch {case NonFatal(e)=>Log.e(e+" Wrong format:["+formString+"]"); value.toDouble.toString}
+                  catch {case NonFatal(e)=>Log.e(e.toString+" Wrong format:["+formString+"]"); value.toDouble.toString}
                 else value.toDouble.toString
 							case BoolTyp => if(value.toBoolean) "\u221A" else "\u25a1"
 		  				case StringTyp => value.toString

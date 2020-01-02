@@ -26,17 +26,17 @@ class PlotLayerModule extends ActionModule {
   val resetCutRect=new ActionIterator("Rahmen entfernen",None,doResetCutRect)
   
   
-  def doMove(u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+  def doMove(u:AbstractUserSocket, owner:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]): Boolean =  {
 		if(param.size==2) {
 			val delta =
 				if(param.head._2.getType==DataType.VectorTyp )
 				{
 					val startPoint=param.head._2.toVector
-					val endPoint=param(1)._2.toVector					
+					val endPoint=param.last._2.toVector
 					endPoint-startPoint
 				}
 				else if(param.head._2.getType==DataType.DoubleTyp )
-					new VectorConstant (param.head._2.toDouble,param(1)._2.toDouble,0)
+					new VectorConstant (param.head._2.toDouble,param.last._2.toDouble,0)
  			  else throw new IllegalArgumentException(" move wrong parametertype ")
 			  //System.out.println("move delta:"+delta)
 				for(d <-data) {				  
@@ -48,7 +48,7 @@ class PlotLayerModule extends ActionModule {
 		else false
 	}
   
-  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>1){
+  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  if(data.size>1){
     var xValue=0d
     for(d<-data) 
       xValue+=d.fieldValue(7).toDouble    
@@ -58,7 +58,7 @@ class PlotLayerModule extends ActionModule {
     true
   } else false
   
-  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>1){
+  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  if(data.size>1){
     var yValue=0d
     for(d<-data) 
       yValue+=d.fieldValue(8).toDouble    
@@ -68,9 +68,9 @@ class PlotLayerModule extends ActionModule {
     true
   } else false
   
-  def doSetCutRect (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>=1){
+  def doSetCutRect (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  if(data.nonEmpty&& param.size==2){
     val p1=param.head._2.toVector
-    val p2=param(1)._2.toVector    
+    val p2=param.last._2.toVector
     val firstLRef=data.head
     val scale= {
       val lrScale=firstLRef.fieldValue(1).toInt   	
@@ -91,7 +91,7 @@ class PlotLayerModule extends ActionModule {
     true
   } else  false
   
-  def doResetCutRect(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  if(data.size>=1){
+  def doResetCutRect(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  if(data.nonEmpty){
     for(d<-data;i<-0 to 3)      
       TransactionManager.tryWriteInstanceField(d.ref,(i+3).toByte,EMPTY_EX)
     true

@@ -12,9 +12,8 @@ import client.ui.ClientApp
 import definition.data.{FontStyleList, Reference, RenderContext}
 import javax.print.attribute.standard.PageRanges
 import javax.swing.{AbstractAction, BorderFactory, JComponent, KeyStroke}
-import util.MyListView
 
-import scala.swing._
+import scala.swing.{ListView, _}
 import scala.swing.event._
 import scala.util.control.NonFatal
 
@@ -128,9 +127,9 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
 
 
 
-  lazy val archiveList:MyListView[ArchivePageable]=new MyListView[ArchivePageable] {
+  lazy val archiveList:ListView[ArchivePageable]=new ListView[ArchivePageable] {
     peer.setModel(archiveListModel)
-    selection.intervalMode=MyListView.IntervalMode.Single
+    selection.intervalMode=ListView.IntervalMode.Single
     listenTo(selection)
     reactions += {
       case e:ListSelectionChanged[_] =>
@@ -139,8 +138,8 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
           setCurrentData(archiveListModel.archiveList(ix))
         }
     }
-    renderer=new MyListView.AbstractRenderer[ArchivePageable,ArchiveRenderer](new ArchiveRenderer){
-      def configure(list: MyListView[ArchivePageable], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int): Unit = {
+    renderer=new ListView.AbstractRenderer[ArchivePageable,ArchiveRenderer](new ArchiveRenderer){
+      def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int): Unit = {
         component.config(list,isSelected,focused,a,index)
       }
     }

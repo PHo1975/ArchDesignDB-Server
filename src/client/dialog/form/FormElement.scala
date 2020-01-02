@@ -128,8 +128,8 @@ object FormElement {
     }
   }
 
-  def readElements(node:xml.Node,context:FormCreateContext):Seq[FormElement] = {
-    node.child.filter(n=>validFormElements.contains(n.label)). map(anode=> FormElement.readElement(anode,context))
+  def readElements(node:xml.Node,context:FormCreateContext): Seq[FormElement] = {
+    node.child.filter(n=>validFormElements.contains(n.label)). map(anode=> FormElement.readElement(anode,context)).toSeq
   }
 
   def getElementByName(name: String, context: FormCreateContext): Component with FormElement = {

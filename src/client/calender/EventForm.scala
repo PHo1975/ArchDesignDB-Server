@@ -12,7 +12,7 @@ import javafx.scene.control.cell.TextFieldListCell
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.{ColumnConstraints, GridPane, Priority}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class EventForm(mod:CalendarModel) {
    var eventSubsID: Int = -1

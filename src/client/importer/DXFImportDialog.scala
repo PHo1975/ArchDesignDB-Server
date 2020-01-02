@@ -11,7 +11,7 @@ import util.StrToDouble
 import scala.swing.event.{ButtonClicked, EditDone, SelectionChanged}
 import scala.swing.{BorderPanel, BoxPanel, Button, CheckBox, ComboBox, Dialog, Label, ListView, Orientation, ScrollPane, Swing, TabbedPane, TextField, Window}
 
-class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dialog(w) {
+class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extends Dialog(w) {
   modal=true
   
   def showDialog(pos:Point):Boolean = {
@@ -27,13 +27,13 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Seq[File]) extends Dia
   val importBut=new Button("Importieren")
   val cancelBut=new Button("Abbruch")
   
-  val buttonPanel=new BoxPanel(Orientation.Horizontal){
+  val buttonPanel: BoxPanel =new BoxPanel(Orientation.Horizontal){
     contents+=importBut+=Swing.HGlue+=cancelBut
   }
   
   var okResult:Boolean=false
   
-  val filesListView=new ListView(files)
+  val filesListView=new ListView(files.toSeq)
   val filesLab: Label = ViewConstants.label("Dateien:")
   val scaleLab: Label = ViewConstants.label("Masstab:")
   val scaleValues: collection.Map[String, Int] = SystemSettings().enums("DrawingScales").enumValues

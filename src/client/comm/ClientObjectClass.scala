@@ -34,12 +34,12 @@ class ClientClasses (node:scala.xml.Node) extends AllClasses [ClientObjectClass]
 class ClientObjectClass (val name:String,val id:Int,val description:String,val comment:String,protected val ownFields:Seq[AbstractFieldDefinition],
 	protected val ownFieldSettings:Seq[FieldSetting], protected val ownPropFields:Seq[PropertyFieldDefinition],
 	 var ownBlockPropFields:Seq[BlockPropertyFieldDefinition]=Seq.empty,protected val theActions:Seq[ActionDescription],
-	 protected val superClasses:Seq[Int], val shortFormat:InstFormat,val longFormat:InstFormat,val resultFormat:InstFormat,val formBox:Option[FormBox],
+	 protected val superClasses:Array[Int], val shortFormat:InstFormat,val longFormat:InstFormat,val resultFormat:InstFormat,val formBox:Option[FormBox],
 	 val customInstanceEditor:Option[String],val importDescriptor:Option[String]=None)
 	 extends AbstractObjectClass {
   def ownActions: Seq[ActionDescription] = theActions
    var enumFields:Map[Int,EnumDefinition]= Map.empty // position of enum fields
-   var actionButtons:Seq[ActionStrokeButton]=Seq.empty
+   var actionButtons:Iterable[ActionStrokeButton]=Seq.empty
 
   lazy val simpleCreateMenuItems: Map[Int, Seq[CreateMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
     val buttons = pf.createChildDefs.filter(_.action.isEmpty).map(new CreateMenuButton(description, i.toByte, _))
@@ -57,9 +57,9 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
   	   enumFields=fields.view.zipWithIndex.collect(
   	       {case (enumField:EnumFieldDefinition,ix) if SystemSettings().enumByID.contains(enumField.enumID) =>(ix,SystemSettings().enumByID(enumField.enumID)) }).toMap
   		
-  		 actionButtons=(for(sc<-superClasses;superClass= AllClasses.get.getClassByID(sc).asInstanceOf[ClientObjectClass] ) 
-  		   yield superClass.actionButtons.filterNot(sca=> theActions.exists(_.name==sca.commandName))).flatten ++ 
-  		     theActions.map(new ActionStrokeButton(description,_))  		 
+  		 actionButtons =(for(sc<-superClasses; superClass= AllClasses.get.getClassByID(sc).asInstanceOf[ClientObjectClass])
+  		   yield superClass.actionButtons.filterNot(sca=> theActions.exists(_.name==sca.commandName))).flatten ++
+  		     theActions.map(new ActionStrokeButton(description,_))
   	 } catch {
 			 case NonFatal(e) => util.Log.e("resolveSuperFields",e)
        case other: Throwable => util.Log.e("resolveSuperFields", other)
@@ -84,7 +84,7 @@ object ClientObjectClass {
 		val name=(node \"@name").text
 		val id=(node \"@id").text.toInt
 		val actionsNode=node \"Actions"
-		val superClasses=AllClasses.stringToIntList ((node \"@superC").text)
+		val superClasses: Array[Int] =AllClasses.stringToIntList ((node \"@superC").text)
 		val instEditorName=readOptString(node ,"@edit")
 		var shortForm:InstFormat=null
 		

@@ -10,10 +10,10 @@ import client.model._
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.{ObjectReference, StringConstant}
 import definition.typ.CustomPanel
-import util.MyListView
+//import scala.swing.ListView
 
 import scala.swing.event.{ButtonClicked, ListSelectionChanged}
-import scala.swing.{BoxPanel, Button, Label, Orientation, ScrollPane, Swing, TextField}
+import scala.swing.{BoxPanel, Button, Label, ListView, Orientation, ScrollPane, Swing, TextField}
 
 
 class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel with PathControllable {
@@ -23,8 +23,8 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   override var name="Neues Symbol absetzen"
   val symbolLab: Label = ViewConstants.label("Symbole:")
   val pathModel=new PathModel
-  val pathList=new MyListView[InstanceData]()
-  val folderList=new MyListView[InstanceData]()
+  val pathList=new ListView[InstanceData]()
+  val folderList=new ListView[InstanceData]()
   val folderModel=new InstanceDataListModel(List(SymbolBrowserController.folderType))  
   val pathLineLabel=new PathLineLabel
   val pathController:PathController=new PathController(pathModel,pathList,this)
@@ -32,7 +32,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   val folderScroller=new AdaptedScroller(folderList)
     
   val symbolModel=new ListDataModel[SymbolStamp](List(SymbolBrowserController.symbolType),el=>new SymbolStamp(el))
-  val symbolList=new MyListView[SymbolStamp]()  
+  val symbolList=new ListView[SymbolStamp]()
   val symbolScroller=new ScrollPane{
     viewportView=symbolList
     preferredSize = new Dimension(ViewConstants.sidePanelWidth, 800)
@@ -70,19 +70,19 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
     }
   }
   
-  folderList.selection.intervalMode=MyListView.IntervalMode.Single
+  folderList.selection.intervalMode=ListView.IntervalMode.Single
   folderList.peer.setModel(folderModel)
   pathList.peer.setModel(pathModel)
-  pathList.selection.intervalMode=MyListView.IntervalMode.Single
+  pathList.selection.intervalMode=ListView.IntervalMode.Single
   symbolList.peer.setModel(symbolModel)
-  symbolList.selection.intervalMode=MyListView.IntervalMode.Single
+  symbolList.selection.intervalMode=ListView.IntervalMode.Single
   //symbolList.peer.setLayoutOrientation(JList.HORIZONTAL_WRAP)
   symbolList.peer.setVisibleRowCount(-1)
   symbolList.maximumSize=SymbolBrowserController.maximumSize
   maximumSize=SymbolBrowserController.maximumSize
-  symbolList.renderer=new MyListView.AbstractRenderer[SymbolStamp,SymbolRenderer](theRender){
-      def configure(list: MyListView[SymbolStamp], isSelected: Boolean, focused: Boolean, a: SymbolStamp, index: Int): Unit = {
-        if(a!=null) {component.setStyle(a);} else component.setEmpty()    }
+  symbolList.renderer=new ListView.AbstractRenderer[SymbolStamp,SymbolRenderer](theRender){
+      def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: SymbolStamp, index: Int): Unit = {
+        if(a!=null) {theRender.setStyle(a);} else theRender.setEmpty()    }
   }
   contents+=Swing.VStrut(10)+=folderLab+=pathScroller+=pathLineLabel+=Swing.VStrut(2)+=folderScroller +=Swing.VStrut(10)+=
     symbolLab += symbolScroller += createStampPanel += Swing.VGlue
@@ -90,8 +90,8 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   listenTo(folderList.selection)
   symbolList.listenTo(symbolList.selection)
   symbolList.reactions += {
-    case ListSelectionChanged(view,range,live)=> if(!live && !range.isEmpty&& symbolList.selection.items.size>0){      
-      selectedStamp=Some(symbolList.selection.items.get(0))
+    case ListSelectionChanged(view,range,live)=> if(!live && !range.isEmpty&& symbolList.selection.items.nonEmpty){
+      selectedStamp=Some(symbolList.selection.items(0))
       DialogManager.answerGiven(SymbolBrowserController.answer, new ObjectReference(symbolModel.theList(symbolList.selection.indices.head).ref))
     }
   }

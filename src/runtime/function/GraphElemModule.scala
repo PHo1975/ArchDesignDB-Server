@@ -152,7 +152,7 @@ object GraphElemModule{
     new Polygon(Seq(inst), Seq(PointList(plist).clockWise))
   }
 
-  def groupByOrdered[A, K](t: Traversable[A], f: A => K): mutable.Map[K, List[A]] = {
+  def groupByOrdered[A, K](t: Iterable[A], f: A => K): mutable.Map[K, List[A]] = {
     val map = mutable.LinkedHashMap[K, List[A]]().withDefault(_ => List[A]())
     for (i <- t) {
       val key = f(i)
@@ -162,8 +162,6 @@ object GraphElemModule{
   }
 
   def getUmfang(poly: Polygon, addStartPoint: Boolean): Expression = {
-
-
     val lengths: Seq[Double] = (poly.pathList.headOption match {
       case Some(pl) if pl.points.lengthCompare(1) > 0 =>
         val lastPointIterator: Iterator[Double] = new Iterator[Double] {
@@ -232,7 +230,7 @@ class LinearElemModule extends ActionModule {
   val takeOverAction=new ActionIterator("Format Übern",Some(DialogQuestion("Format übernehmen von welchem Objekt",
     Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,allowedClasses.map(_.toString).mkString(",") )))),doTakeOver,false,-1)
 
-  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     if(param.size==1) {
       val otherRef=param.head._2.toObjectReference
       val oInst=StorageManager.getInstanceData(otherRef)
@@ -287,14 +285,14 @@ class GraphElemModule extends ActionModule {
 	lazy val actions=List(moveAction,copyAction,rotateAction,rotateMultAction,mirrorAction,pointModAction,scaleAction,createSymbolAction)
 
 
-  def doMove(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doMove(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
 		if(param.size==2) {
 			val delta = param.head._2 match {
 			  case startPoint:VectorConstant=>
-					val endPoint=param(1)._2.toVector
+					val endPoint=param.last._2.toVector
 					endPoint-startPoint
-				case deltaX:DoubleConstant if param(1)._2.getType == DataType.DoubleTyp =>
-					new VectorConstant (deltaX.toDouble,param(1)._2.toDouble,0)				 
+				case deltaX:DoubleConstant if param.last._2.getType == DataType.DoubleTyp =>
+					new VectorConstant (deltaX.toDouble,param.last._2.toDouble,0)
 			  case _=> throw new IllegalArgumentException("Falscher Parametertyp verschieben "+param.head._2)
 			}				
 			//System.out.println("move delta:"+delta)
@@ -305,8 +303,9 @@ class GraphElemModule extends ActionModule {
 		else false
 	}
 
-  def doCopy(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
-		if(param.size==3||param.size==2) {
+  def doCopy(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+		if(para.size==3||para.size==2) {
+      val param=para.toSeq
 		  val (offset,numCopy)=if(param.head._2.getType==DataType.IntTyp)(1,param.head._2.toInt) else (0,1)
 			val delta = if(param(0+offset)._2.getType==DataType.VectorTyp )	{
 					val startPoint=param(0+offset)._2.toVector
@@ -318,7 +317,7 @@ class GraphElemModule extends ActionModule {
 				else throw new IllegalArgumentException(" move wrong parametertype ")	
 		  for(i<-1 to numCopy;theDelta=delta*i;d <-data) {
 				val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
-				var newInst=d.clone(createInst.ref,d.owners,Seq.empty)
+				var newInst=d.clone(createInst.ref,d.owners,Array.empty)
 				newInst=TypeInfos.moduleMap(d.ref.typ).copyElement(newInst,theDelta)					
 				TransactionManager.tryWriteInstanceData(newInst)
 			}			
@@ -328,10 +327,11 @@ class GraphElemModule extends ActionModule {
 	}
 
 
-  def doRotate(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doRotate(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
 	  //println("Rotate params:\n"+param.mkString(" | " ))
+    val param=para.toSeq
 	  val center=param.head._2.toVector
-	  val angle=param(1)._2 match {
+	  val angle=param.last._2 match {
 	    case d:DoubleConstant =>d.n*math.Pi/180d
 	    case p1:VectorConstant =>
 				val p2=param(2)._2.toVector
@@ -350,7 +350,8 @@ class GraphElemModule extends ActionModule {
 	  true
 	}
 
-  def doRotateMulti(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doRotateMulti(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
     val num=param.head._2.toInt
     val center=param(1)._2.toVector
     val angle=param(2)._2 match {
@@ -371,7 +372,7 @@ class GraphElemModule extends ActionModule {
       val rotator=GraphUtils.createRotator(center,rAngle)
       for(d<-data) {
         val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
-        val newInst = d.clone(createInst.ref, d.owners, Seq.empty)
+        val newInst = d.clone(createInst.ref, d.owners, Array.empty)
         TransactionManager.tryWriteInstanceData(newInst)
         TypeInfos.moduleMap(d.ref.typ).rotateElement(newInst, rAngle, rotator)
       }
@@ -379,7 +380,8 @@ class GraphElemModule extends ActionModule {
     true
   }
 
-  def doMirror(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doMirror(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
 	  val withCopies=param.head._2.getType==DataType.StringTyp          
 	  val (p1,p2)=param(if(withCopies)1 else 0)._2 match {
 	    case oref:ObjectReference =>
@@ -391,7 +393,7 @@ class GraphElemModule extends ActionModule {
 	  for(d<-data){
 	    val inst=if(withCopies) {
 	      val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
-				d.clone(createInst.ref,d.owners,Seq.empty)
+				d.clone(createInst.ref,d.owners,Array.empty)
 	    } else d
 	    val result=TypeInfos.moduleMap(d.ref.typ).mirrorElement(inst,mirrorLine.mirrorPoint)
 	    TransactionManager.tryWriteInstanceData(result)
@@ -407,7 +409,8 @@ class GraphElemModule extends ActionModule {
 	  math.atan2(p2.y-p1.y,p2.x-p1.x)
 	}
 
-  def doPointMod(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doPointMod(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+     val param=para.toSeq
 	   val delta = if(param(1)._2.getType==DataType.VectorTyp ){
 					val startPoint=param(1)._2.toVector
 					val endPoint=param(2)._2.toVector					
@@ -428,7 +431,8 @@ class GraphElemModule extends ActionModule {
 	  true
 	}
 
-  def doScale(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doScale(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
 	  val refPoint= param.head._2.toVector
 	  val sx=param(1)._2.toDouble
 	  val sy=param(2)._2.toDouble
@@ -438,7 +442,8 @@ class GraphElemModule extends ActionModule {
 	  true
 	}
 
-  def doCreateSymbol(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doCreateSymbol(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
     val parentFolder=param(2)._2.toObjectReference
     println("parentFolder "+parentFolder)
     val owner=Array(new OwnerReference(1,parentFolder))
@@ -450,7 +455,7 @@ class GraphElemModule extends ActionModule {
     val sowner=Array(new OwnerReference(0,symbolInst.ref))    
      for(d <-data) {
         val createInst=TransactionManager.tryCreateInstance(d.ref.typ,sowner,notifyRefandColl = false)
-        var newInst=d.clone(createInst.ref,sowner,Seq.empty)
+        var newInst=d.clone(createInst.ref,sowner,Array.empty)
         newInst=TypeInfos.moduleMap(d.ref.typ).copyElement(newInst,refPoint)          
         TransactionManager.tryWriteInstanceData(newInst)
       }         
@@ -486,9 +491,9 @@ class TextModule extends ActionModule with GraphActionModule {
 	}
 
   def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion(ModuleType.Graph,
-    "CreateText")), doCreateText)
+      "CreateText")), doCreateText)
 	
-	def doCreateText(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
+	def doCreateText(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
     if(parents.size>1) {Log.e("Multiple parents !"); false}
     else if(param.isEmpty) {Log.e("no param when Create Text");false}
     else{
@@ -514,10 +519,10 @@ class TextModule extends ActionModule with GraphActionModule {
     Seq(new AnswerDefinition("Suche nach", DataType.StringTyp,
       Some(DialogQuestion("Text ersetzen", Seq(new AnswerDefinition("Ersetzen mit", DataType.StringTyp, None)))))))), doReplace)
 	
-	def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+	def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
 	  if(param.size!=2) {Log.e("Ersetzen falsche parameter:"+param.mkString(","));false} else {
 	  val searchText: String =param.head._2.toString
-	  val replaceText: String =param(1)._2.toString
+	  val replaceText: String =param.last._2.toString
 	  for(d<-data;if d.ref.typ == theTypeID){
 	    val text=d.fieldValue(1).toString
 	    if(text.contains(searchText)){
@@ -533,16 +538,17 @@ class TextModule extends ActionModule with GraphActionModule {
       new AnswerDefinition("Muster ($)",DataType.StringTyp,Some(DialogQuestion("Nummerieren",Seq(numAnswer))))
   ))),doNum)
 
-  def doNum(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+  def doNum(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],para:Iterable[(String,Constant)]):Boolean =  {
+    val param=para.toSeq
     val (pattern,start,step)=param.head._2 match {
-      case IntConstant(st) ⇒ ("",st,param(1)._2.toInt)
-      case StringConstant(pa)⇒ (pa,param(1)._2.toInt,param(2)._2.toInt)
+      case IntConstant(st) => ("",st,param(1)._2.toInt)
+      case StringConstant(pa)=> (pa,param(1)._2.toInt,param(2)._2.toInt)
     }
     val placeHolderPos=pattern.indexOf('$')
     val (beforeText,afterText)=if(placeHolderPos== -1) ("","")
                                else (pattern.substring(0,placeHolderPos),pattern.substring(placeHolderPos+1,pattern.length))
     var value=start
-    for(elem ← data; if elem.ref.typ==theTypeID) {
+    for(elem <- data; if elem.ref.typ==theTypeID) {
       TransactionManager.tryWriteInstanceField(elem.ref,1,StringConstant(beforeText+value+afterText))
       value+=step
     }
@@ -551,7 +557,7 @@ class TextModule extends ActionModule with GraphActionModule {
   }
 
 
-  def doAlignHor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+  def doAlignHor(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean =
     if (data.size > 1) {
       var xValue = 0d
       for (d <- data)
@@ -562,7 +568,7 @@ class TextModule extends ActionModule with GraphActionModule {
       true
     } else false
 
-  def doAlignVert(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+  def doAlignVert(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean =
     if (data.size > 1) {
       var yValue = 0d
       for (d <- data)
@@ -573,7 +579,7 @@ class TextModule extends ActionModule with GraphActionModule {
       true
     } else false
 
-  def doDistribute(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+  def doDistribute(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean =
     if (data.size > 2) {
       //println("Verteilen "+param.mkString("|"))
       val horizontal = param.head._2.toString == horizontalText
@@ -583,7 +589,7 @@ class TextModule extends ActionModule with GraphActionModule {
         if (horizontal) vector.x else vector.y
       }
 
-      val sortedList = data.sortBy(getValue)
+      val sortedList = data.toSeq.sortBy(getValue)(Ordering.Double.TotalOrdering)
       val min: Double = getValue(sortedList.head)
       val max: Double = getValue(sortedList.last)
       val step = (max - min) / (data.size - 1)
@@ -598,7 +604,7 @@ class TextModule extends ActionModule with GraphActionModule {
       true
     } else false
 
-  def doEditText(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean =
+  def doEditText(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean =
     if (param.size == 1) {
       val text = StringConstant(param.head._2.toString)
       for (d <- data)
@@ -609,7 +615,7 @@ class TextModule extends ActionModule with GraphActionModule {
   def takeOverAction=new ActionIterator("Stil Übernehmen",Some(DialogQuestion("Textstil übernehmen von welchem Text",
     Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,TypeInfos.textElemType.toString )))),doTakeOver,false,buttonID = -1)
 
-  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     if(param.size==1) {
       val otherRef=param.head._2.toObjectReference
       val oInst=StorageManager.getInstanceData(otherRef)
@@ -646,10 +652,10 @@ class BitmapModule extends ActionModule with GraphActionModule {
 	}
 
   def createBitmapAction = new CreateActionImpl("Bitmap", Some(DialogQuestion("Bitmap erzeugen",
-    Seq(new AnswerDefinition("Dateipfad", DataType.StringTyp, Some(
-      DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))))))), doCreateBitmap)
+      Seq(new AnswerDefinition("Dateipfad", DataType.StringTyp, Some(
+        DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))))))), doCreateBitmap)
 
-	def doCreateBitmap(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
+	def doCreateBitmap(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
     if(parents.size>1) {Log.e("Multiple parents !");false} else {
     val path = param.head._2
 		val pos=param(1)._2
@@ -700,16 +706,16 @@ class LineModule extends ActionModule with GraphActionModule {
 
 
   def createLineAction = new CreateActionImpl("Linie", Some(CommandQuestion(ModuleType.Graph,
-    "LineTo")), doCreateLine)
+      "LineTo")), doCreateLine)
 	
-	def doCreateLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {		
+	def doCreateLine(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
   	//System.out.println("create line "+param.mkString)
   	//System.out.println("newTyp:"+newTyp+" theTyp:"+theTypeID)
   	makeLinesFromParams(parents,param,formFields)	    
 		true
 	}
 	
-	private def makeLinesFromParams(nparents:Seq[InstanceData],param:Seq[(String,Constant)],formFields:Seq[(Int,Constant)]): Unit = {
+	private def makeLinesFromParams(nparents:Iterable[InstanceData],param:Seq[(String,Constant)],formFields:Seq[(Int,Constant)]): Unit = {
 	  var lastPoint=param.head._2.toVector
     val parents = Array(new OwnerReference(0.toByte, nparents.head.ref))
     var i = 1
@@ -737,7 +743,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	  }
 	}
 	
-	private def makeLine(parents:Seq[InstanceData],p1:VectorConstant,p2:VectorConstant,formFields:Seq[(Int,Constant)]):InstanceData= 
+	private def makeLine(parents:Iterable[InstanceData],p1:VectorConstant,p2:VectorConstant,formFields:Seq[(Int,Constant)]):InstanceData=
 	  makeLine(Array(new OwnerReference(0.toByte,parents.head.ref)),p1,p2,formFields)
 	
 	private def makeLine(parentRefs:Array[OwnerReference],p1:VectorConstant,p2:VectorConstant,formFields:Seq[(Int,Constant)]):InstanceData={	 
@@ -750,15 +756,15 @@ class LineModule extends ActionModule with GraphActionModule {
 
 
   def createTangentAction = new CreateActionImpl("Tangente", Some(CommandQuestion(ModuleType.Graph,
-    "Tangent")), doCreateTangent)
+      "Tangent")), doCreateTangent)
 	
-	def doCreateTangent(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateTangent(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	 // System.out.println("create Tangent "+param.mkString)
 	  createTangent(parents,param.head._2.toObjectReference,param(1)._2.toVector,param(2)._2.toInt==0,formFields)
 	  true
 	}
 	
-	private def createTangent(parents:Seq[InstanceData],circleRef:Reference,point:VectorConstant,first:Boolean,formFields:Seq[(Int,Constant)]):Unit= {
+	private def createTangent(parents:Iterable[InstanceData],circleRef:Reference,point:VectorConstant,first:Boolean,formFields:Seq[(Int,Constant)]):Unit= {
 	  val cInst=StorageManager.getInstanceData(circleRef)
 	  val center=cInst.fieldValue(3).toVector
 	  val diameter=cInst.fieldValue(4).toDouble
@@ -797,10 +803,12 @@ class LineModule extends ActionModule with GraphActionModule {
 		}
 	}
 
-	def doExtend(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {	
-	  println("Do Extends data:"+data.mkString(" | ")+"\nparam:"+param.mkString(" | "))
+	def doExtend(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],para:Iterable[(String,Constant)]):Boolean =  {
+    import Ordering.Double.TotalOrdering
+	  println("Do Extends data:"+data.mkString(" | ")+"\nparam:"+para.mkString(" | "))
 	  //println("the Type:"+theTypeID)
-		if(param.size>1&&param.size<4 && param.head._2.getType==DataType.ObjectRefTyp) {
+		if(para.size>1&&para.size<4 && para.head._2.getType==DataType.ObjectRefTyp) {
+      val param=para.toSeq
 			val otherRef=param.head._2.toObjectReference
 			val oInst=StorageManager.getInstanceData(otherRef)
 			if(otherRef.typ==theTypeID){
@@ -814,8 +822,8 @@ class LineModule extends ActionModule with GraphActionModule {
 			    val p1=linst.fieldValue(3).toVector
 			    val p2=linst.fieldValue(4).toVector
 			    //println("p1:"+p1+" p2:"+p2)
-			    def dx=p2.x-p1.x
-			    def dy=p2.y-p1.y
+			    def dx: Double =p2.x-p1.x
+			    def dy: Double =p2.y-p1.y
 			    val d=ody*dx-odx*dy			    
 			    if(d!=0) {
 			    	val ua=(odx*(p1.y-op1.y)-ody*(p1.x-op1.x))/d
@@ -834,7 +842,7 @@ class LineModule extends ActionModule with GraphActionModule {
 			  if(param(2)._2.toBoolean){ // is editable
           val odxIsNull = Math.abs(odx) < GraphElemModule.nearNullTreshold
           val (firstPoint, lastPoint) = if (odxIsNull) //extend line is vertical
-				    (hitPoints.minBy(_.y),hitPoints.maxBy(_.y))	// find min/max vertical hitpoints		    
+				    (hitPoints.minBy(_.y),hitPoints.maxBy(_.y))	// find min/max vertical hitpoints
 				   else  (hitPoints.minBy(_.x),hitPoints.maxBy(_.x)) // find min/max horizontal hitpoints
           if ((odxIsNull && op1.y < op2.y) || (!odxIsNull && op1.x < op2.x)) { // p1 < p2 ?
 					  if(op1!=firstPoint) TransactionManager.tryWriteInstanceField(otherRef,3,firstPoint)
@@ -857,7 +865,7 @@ class LineModule extends ActionModule with GraphActionModule {
 					else if(scale<1) TransactionManager.tryWriteInstanceField(linst.ref,4,sp)
 				}
 			}
-		} else throw new IllegalArgumentException("Falsche Parameter "+param.mkString(","))
+		} else throw new IllegalArgumentException("Falsche Parameter "+para.mkString(","))
 		true
 	}
 
@@ -866,8 +874,8 @@ class LineModule extends ActionModule with GraphActionModule {
     Seq(new AnswerDefinition("Teillinie auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.lineElemType.toString)))),
     doCutPart, true)
 
-  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
-	  cutLine(param)
+  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
+	  cutLine(param.toSeq)
 	  true
 	}
 
@@ -898,7 +906,8 @@ class LineModule extends ActionModule with GraphActionModule {
   def parallelAction = new ActionIterator("Parallele Linie", Some(CommandQuestion(ModuleType.Graph,
     "ParLine")), doParallel, true)
 
-  def doParallel(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doParallel(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
 	  val (offset,numCopy)=if(param.head._2.getType==DataType.IntTyp)(1,param.head._2.toInt) else (0,1)
 	  if(data.size==1) {
 	    val oldInst=data.head
@@ -925,9 +934,9 @@ class LineModule extends ActionModule with GraphActionModule {
 		    Some(new DialogQuestion("Lot durch Punkt",Seq(	new AnswerDefinition("Zielpunkt wählen",DataType.VectorTyp,None)),false)),TypeInfos.lineElemType.toString)))),doCreateOrthoLine)*/
 
   def createOrthoLineAction = new CreateActionImpl("Lot-Linie", Some(CommandQuestion(ModuleType.Graph,
-    "OrthoLine")),doCreateOrthoLine,false)
+      "OrthoLine")), doCreateOrthoLine, false)
 	
-	def doCreateOrthoLine(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {	  
+	def doCreateOrthoLine(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  if(param.size==2) {	    
 	    val lineInst=StorageManager.getInstanceData(param.head._2.toObjectReference)
 	    val p1=lineInst.fieldValue(3).toVector
@@ -941,9 +950,9 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 
   def createRectAction = new CreateActionImpl("Rechteck", Some(CommandQuestion(ModuleType.Graph,
-    "Rectangle")), doCreateRect)
+      "Rectangle")), doCreateRect)
 	
-	def doCreateRect(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateRect(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  val oparents=Array(new OwnerReference(0.toByte,parents.head.ref))
 	  //println("create rect params: "+param.mkString("\n   "))
 	  if(param.size>=2) {
@@ -986,12 +995,12 @@ class LineModule extends ActionModule with GraphActionModule {
 	}
 
   def createParPolyAction = new CreateActionImpl("Paralleler Polygonzug", Some(CommandQuestion(ModuleType.Graph,
-    "ParPoly")), doCreateParPoly)
+      "ParPoly")), doCreateParPoly)
 	
 	 
     
 	
-	def doCreateParPoly(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateParPoly(u:AbstractUserSocket, parents:Iterable[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
 	  println("ParPoly "+param.mkString(" |"))
 	  val oparents=Array(new OwnerReference(0.toByte,parents.head.ref))
 	  val firstPointIndex=param.indexWhere(_._2.getType==DataType.VectorTyp)
@@ -1038,7 +1047,7 @@ class LineModule extends ActionModule with GraphActionModule {
 	
 	def cutElemsAction=new ActionIterator("Elemente schneiden",None,doCutElems,false)
 
-  def doCutElems(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doCutElems(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
 	  //println("Do Cut Part:"+data.mkString(" | ")+"\nparam:"+param.mkString(" | "))
 	  for(lineData<-data) {	  
 	  	val p1=lineData.fieldValue(3).toVector
@@ -1117,9 +1126,9 @@ class EllipseModule extends ActionModule with GraphActionModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit = pointModField(3, elem, delta, chPoints)
 
   def createEllipseCenterAction = new CreateActionImpl("Ellipse", Some(CommandQuestion(ModuleType.Graph,
-    "EllipseCenter")), doCreateEllipseCenter)
+      "EllipseCenter")), doCreateEllipseCenter)
 	
-	def doCreateEllipseCenter(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateEllipseCenter(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  //println("Create Ellipse param:" + param.mkString("  | ")+"\n Formfields:"+formFields.mkString(" | "))
 	  var currParam:Int= -1
 	  def nextParam(): Constant = {
@@ -1209,11 +1218,11 @@ class ArcModule extends ActionModule with GraphActionModule {
 	val actions =  Seq(makeParallelArc,cutPartAction)
 
   def createArcCenterAction = new CreateActionImpl("Mittelpunktkreis", Some(CommandQuestion(ModuleType.Graph,
-    "ArcCenter")), doCreateArcCenter)
+      "ArcCenter")), doCreateArcCenter)
 	
 	
 	
-	def doCreateArcCenter(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateArcCenter(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  println("Create Arc param:" + param.mkString("  | ")+"\n Formfields:"+formFields.mkString(" | "))
 	  val center=param.head._2.toVector
 	  val radius= param(1)._1 match {
@@ -1248,9 +1257,9 @@ class ArcModule extends ActionModule with GraphActionModule {
 	}
 
   def createArcGeneralAction = new CreateActionImpl("Allgemeiner Kreis", Some(CommandQuestion(ModuleType.Graph,
-    "ArcGeneral")), doCreateArcGeneral)
+      "ArcGeneral")), doCreateArcGeneral)
 	
-	def doCreateArcGeneral(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreateArcGeneral(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 	  false
 	}
 
@@ -1301,7 +1310,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 	
 	def makeParallelArc=new ActionIterator("Paralleler Kreis",parDistQuestion,doMakeParallelArc) 
 	
-	def doMakeParallelArc(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {
+	def doMakeParallelArc(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean= {
 	  for (elem<-data;if elem.ref.typ == theTypeID){
 	    val oldRadius=elem.fieldValue(4).toDouble  
 	    val dist=param.head._2.toDouble
@@ -1317,10 +1326,11 @@ class ArcModule extends ActionModule with GraphActionModule {
   def cutPartAction = new ActionIterator("Teilkreis löschen", Some(DialogQuestion("Teilkreis löschen",
     Seq(new AnswerDefinition("Teilkreis auswählen", DataType.ObjectRefTyp, GraphElemModule.cutPointQuestion, "S" + TypeInfos.arcElemType.toString)))), doCutPart, true)
 
-  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doCutPart(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
+    val param=para.toSeq
 		val arcRef=param.head._2.toObjectReference
-		val a1=param(1)._2.toVector.x
-		val a2=param(2)._2.toVector.x
+		val a1: Double =param(1)._2.toVector.x
+		val a2: Double =param(2)._2.toVector.x
 		val arcInst=new Circle(StorageManager.getInstanceData(arcRef))
 		println("Cut Arc a1:"+a1+" a2:"+a2)
 		val ownEndAngle=if(arcInst.endAngle<arcInst.startAngle) arcInst.endAngle+360d else arcInst.endAngle
@@ -1332,7 +1342,7 @@ class ArcModule extends ActionModule with GraphActionModule {
 			else { // in the middle
 				TransactionManager.tryWriteInstanceField(arcRef,6,new DoubleConstant(if(a1 > 360d) a1 % 360d else a1))
 				val newArc=TransactionManager.tryCreateInstance(TypeInfos.arcElemType,arcInst.data.owners,false)
-				val newInst=arcInst.data.clone(newArc.ref,newArc.owners,Seq.empty).
+				val newInst=arcInst.data.clone(newArc.ref,newArc.owners,Array.empty).
 					setField(5,DoubleConstant(if(a2>360d) a2 % 360d else a2)).
 				  setField(6,arcInst.data.fieldValue(6))
 				TransactionManager.tryWriteInstanceData(newInst)
@@ -1369,12 +1379,12 @@ class PolygonModule extends ActionModule with GraphActionModule {
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
 
   def createPolyAction = new CreateActionImpl("Füllfläche", Some(CommandQuestion(ModuleType.Graph,
-    "PolyTo")), doCreatePoly)
+      "PolyTo")), doCreatePoly)
 
 
 
 
-	def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	def doCreatePoly(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
     val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
     TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParams(inst.ref, param))
@@ -1382,12 +1392,12 @@ class PolygonModule extends ActionModule with GraphActionModule {
 		true
 	}
 
-  def intersectQuestion = DialogQuestion("Schnittfläche mit Polygon", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+  def intersectQuestion: DialogQuestion = DialogQuestion("Schnittfläche mit Polygon", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.polyElemType.toString)))
 
   def intersectAction=new ActionIterator("Schnittfläche",Some(intersectQuestion),doTrans(_.intersect(_)))
 
-  def cutQuestion = DialogQuestion("Polygonfläche abschneiden", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
+  def cutQuestion: DialogQuestion = DialogQuestion("Polygonfläche abschneiden", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.polyElemType.toString)))
 
   def cutAction=new ActionIterator("Abschneiden",Some(cutQuestion),doTrans(_.subtract(_)))
@@ -1397,7 +1407,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
 
   def addAction(): ActionIterator = new ActionIterator("Hinzufügen", Some(addQuestion()), doTrans(_.add(_)))
 
-  def doTrans(func: (Polygon, Polygon) => Polygon)(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doTrans(func: (Polygon, Polygon) => Polygon)(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
@@ -1412,7 +1422,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
 
   def setStartPointAction(): ActionIterator = new ActionIterator("Ausgangspunkt", Some(setStartPointQuestion()), doSetStartPoint)
 
-  def doSetStartPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {
+  def doSetStartPoint(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean= {
   	if(param.size==1 && param.head._2.getType==DataType.VectorTyp ) {
   		val startPoint=param.head._2.toVector
       for (d <- data)
@@ -1425,7 +1435,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
   def takeOverAction=new ActionIterator("Format Übern",Some(DialogQuestion("Format übernehmen von welchem Objekt",
     Seq(new AnswerDefinition("Objekt wählen",DataType.ObjectRefTyp,None,allowedClasses.map(_.toString).mkString(",") )))),doTakeOver,false,-1)
 
-  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doTakeOver(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     if(param.size==1) {
       val otherRef=param.head._2.toObjectReference
       val oInst=StorageManager.getInstanceData(otherRef)
@@ -1462,10 +1472,10 @@ class PolygonLineModule extends ActionModule with GraphActionModule {
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
 
   def createPolyLineAction = new CreateActionImpl("PolyLinie", Some(CommandQuestion(ModuleType.Graph,
-    "PolyLineTo")), doCreatePolyLine)
+      "PolyLineTo")), doCreatePolyLine)
 
 
-  def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
+  def doCreatePolyLine(u: AbstractUserSocket, parents: Iterable[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
     val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
     val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
     TransactionManager.tryWriteInstanceField(inst.ref, 3, GraphElemModule.polygonFromParamsToLine(inst.ref, param))
@@ -1508,9 +1518,9 @@ class MeasureLineModule extends PolygonLineModule {
     updateLengthValue(elem.ref, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
 
   override def createPolyLineAction = new CreateActionImpl("MessLinie", Some(CommandQuestion(ModuleType.Graph,
-    "PolyLineTo")), doCreatePolyLine)
+      "PolyLineTo")), doCreatePolyLine)
 
-  override def doCreatePolyLine(u: AbstractUserSocket, parents: Seq[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
+  override def doCreatePolyLine(u: AbstractUserSocket, parents: Iterable[InstanceData], param: Seq[(String, Constant)], newTyp: Int, formFields: Seq[(Int, Constant)]): Boolean = {
     val parentRef = Array(new OwnerReference(0.toByte, parents.head.ref))
     val inst = TransactionManager.tryCreateInstance(theTypeID, parentRef, notifyRefandColl = true)
     updateLengthValue(inst.ref, GraphElemModule.polygonFromParamsToLine(inst.ref, param))
@@ -1521,15 +1531,15 @@ class MeasureLineModule extends PolygonLineModule {
   def factorQuestion: DialogQuestion = DialogQuestion("Faktor eingeben", Seq(new AnswerDefinition("Faktor", DataType.DoubleTyp,
     None)))
 
-  def setFactorAction=new ActionIterator("Faktor eingeben",Some(factorQuestion),doSetFactor)
-  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
-    val factor=param(0)._2
+  def setFactorAction: ActionIterator =new ActionIterator("Faktor eingeben",Some(factorQuestion),doSetFactor)
+  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
+    val factor=param.head._2
     for(elem<-data)
       TransactionManager.tryWriteInstanceField(elem.ref,12,factor)
     true
   }
 
-  def doVerbinden(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def doVerbinden(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     if (param.size == 1) {
       val otherRef = param.head._2.toObjectReference
       val oInst = StorageManager.getInstanceData(otherRef)
@@ -1586,9 +1596,9 @@ class AreaPolygonModule extends PolygonModule {
     updateAreaValue(elem, elem.fieldValue(4).toPolygon.translatePoints(chPoints, delta))
 
   override def createPolyAction = new CreateActionImpl("Messfläche", Some(CommandQuestion(ModuleType.Graph,
-    "PolyTo")), doCreatePoly)
+      "PolyTo")), doCreatePoly)
 
-	override def doCreatePoly(u:AbstractUserSocket,parents:Seq[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
+	override def doCreatePoly(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
   	val inst=TransactionManager.tryCreateInstance(theTypeID,parentRef,notifyRefandColl = true)
     updateAreaValue(inst, GraphElemModule.polygonFromParams(inst.ref, param))
@@ -1596,16 +1606,16 @@ class AreaPolygonModule extends PolygonModule {
 		true
 	}
 
-  override def intersectQuestion = DialogQuestion("Schnittfläche mit Fläche", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
+  override def intersectQuestion: DialogQuestion = DialogQuestion("Schnittfläche mit Fläche", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
 
-  override def cutQuestion = DialogQuestion("Fläche abschneiden", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
+  override def cutQuestion: DialogQuestion = DialogQuestion("Fläche abschneiden", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
 
-  override def addQuestion() = DialogQuestion("Fläche hinzufügen", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
+  override def addQuestion(): DialogQuestion = DialogQuestion("Fläche hinzufügen", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
   
-  override def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean= {   
+  override def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean= {
     val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]
@@ -1616,7 +1626,7 @@ class AreaPolygonModule extends PolygonModule {
 
   def convertWohnflaecheAction=new ActionIterator("In Wohnfläche",None,convertToWohnflaeche)
 
-  def convertToWohnflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def convertToWohnflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     for(d<-data;if d.ref.typ==TypeInfos.areaPolyElemType){
       val inst=TransactionManager.tryCreateInstance(TypeInfos.wohnflaechenElementType,d.owners,notifyRefandColl = true)
       for(i<-1 to 9)
@@ -1634,7 +1644,7 @@ class AreaPolygonModule extends PolygonModule {
 
   def convertLineAction=new ActionIterator("In Messlinie",None,convertToMeasureLine)
 
-  def convertToMeasureLine(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def convertToMeasureLine(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     for (d <- data; if d.ref.typ == TypeInfos.areaPolyElemType) {
       val inst = TransactionManager.tryCreateInstance(TypeInfos.measureLineElemType, d.owners, notifyRefandColl = true)
       for (i <- 1 to 3)
@@ -1655,8 +1665,8 @@ class AreaPolygonModule extends PolygonModule {
     None)))
 
   def setFactorAction=new ActionIterator("Faktor eingeben",Some(factorQuestion),doSetFactor)
-  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
-    val factor=param(0)._2
+  def doSetFactor(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
+    val factor=param.head._2
     for(elem<-data)
       TransactionManager.tryWriteInstanceField(elem.ref,11,factor)
     true
@@ -1665,7 +1675,7 @@ class AreaPolygonModule extends PolygonModule {
 
 class WohnflaechenModul extends AreaPolygonModule {
   override def createPolyAction = new CreateActionImpl("Wohnfläche", Some(CommandQuestion(ModuleType.Graph,
-    "PolyTo")), doCreatePoly)
+      "PolyTo")), doCreatePoly)
 
   override def onFieldChanged(self: InstanceData, fieldNr: Byte, newValue: Expression): Unit = if (fieldNr == 13) {updateAreaValue(self, self.fieldValue(4).toPolygon)}
 
@@ -1677,7 +1687,7 @@ class WohnflaechenModul extends AreaPolygonModule {
 
   def convertToMessFlaecheAction=new ActionIterator("In MessFläche",None,convertToMessflaeche)
 
-  def convertToMessflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Seq[InstanceData], param: Seq[(String, Constant)]): Boolean = {
+  def convertToMessflaeche(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
     for(d<-data;if d.ref.typ==TypeInfos.wohnflaechenElementType){
       val inst=TransactionManager.tryCreateInstance(TypeInfos.areaPolyElemType,d.owners,notifyRefandColl = true)
       for(i<-1 to 9)

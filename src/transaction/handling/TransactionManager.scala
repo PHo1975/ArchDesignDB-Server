@@ -172,6 +172,15 @@ object TransactionManager {
 		notifyModuleChildAdded(owners,newInst)
 		newInst
 	}
+
+	def tryCreateBlock(typ:Int,owner:OwnerReference,data:Array[Byte]):Int= {
+		val inst=StorageManager.createBlockInstance(typ)
+		val ref=new Reference(typ,inst)
+		ActionList.addTransactionData(ref,CreateBlock(ref,data))
+		val ownerProps=ActionList.getInstanceProperties(owner.ownerRef).getOrElse(StorageManager.createInstanceProperties(owner.ownerRef))
+		//ownerProps.addChildInstance()
+		inst
+	}
 	
 	
 	private def notifyModuleChildAdded(owners:Array[OwnerReference],child:InstanceData):Unit= {
@@ -429,7 +438,7 @@ object TransactionManager {
 		//CommonSubscriptionHandler.instanceChanged(newInst)
 	}	
 	
-	private def passOnNewInstanceToCollFuncParents(newInst:InstanceData,ownerList:Seq[OwnerReference]):Unit =	{
+	private def passOnNewInstanceToCollFuncParents(newInst:InstanceData,ownerList:Iterable[OwnerReference]):Unit =	{
 		for(owner <-ownerList ) {
 			ActionList.getCollData(owner.ownerRef) match {
 				case Some(collData) =>
@@ -441,7 +450,7 @@ object TransactionManager {
 	}
 	
 	
-	private def passOnDeletedInstanceToCollFuncParents(instD:InstanceData,ownerList:Seq[OwnerReference]):Unit = {
+	private def passOnDeletedInstanceToCollFuncParents(instD:InstanceData,ownerList:Iterable[OwnerReference]):Unit = {
 		for(owner <-ownerList) 	{
   		//System.out.println(" "+owner.ownerRef)
 		  if(StorageManager.instanceExists(owner.ownerRef.typ,owner.ownerRef.instance))
@@ -989,7 +998,7 @@ object TransactionManager {
 			}
 		
 		var createInst=tryCreateInstance(instRef.typ ,newOwners,notifyRefandColl = false,pos = atPos,notifySubs = false,withStartValues = false) // new instance created by DB
-		createInst=instD.clone(createInst.ref,newOwners,Seq.empty)
+		createInst=instD.clone(createInst.ref,newOwners,Array.empty)
 		// Register FieldReferences to other instances		
 		for(i <- instD.fieldData.indices;theField=instD.fieldData(i);if !theField.isNullConstant)
 		{			

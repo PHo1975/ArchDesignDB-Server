@@ -10,7 +10,9 @@ import definition.comm.NotificationType
 import definition.data._
 import definition.expression.{IntConstant, VectorConstant}
 import definition.typ.AllClasses
+import util.Log
 
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
 
 
@@ -140,7 +142,7 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 	  scale=data.fieldValue(2).toInt
   }
 	var subsID:Int= -1
-	var _elemList:Seq[GraphElem]=IndexedSeq.empty  
+	protected var _elemList=new ArrayBuffer[GraphElem]()
 	var startTime:Long=_
 	var firstLoad=true
 	val ownerRef=new OwnerReference(0,ref) 
@@ -160,7 +162,8 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 			Swing.onEDT{				
 				ntype match {
 						case NotificationType.sendData|NotificationType.updateUndo =>
-							_elemList=data
+							_elemList.clear()
+							_elemList++=data
 							//println("Layer "+name+" elems loaded")
 							calcBounds()
 							//println("Layer "+name+" elems calcBounds")
@@ -175,19 +178,21 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 
 						case NotificationType.fieldChanged  =>
 							val searchRef=data.head.ref
-							_elemList=_elemList.map(el=>if(el.ref==searchRef)data.head else el)
+							_elemList.indexWhere(_.ref==searchRef) match{
+								case -1 => Log.e("Layer "+nref+"Field Changed unknown ref "+searchRef)
+									case i=> _elemList(i)=data.head
+							}
 							if(visible) controller.graphElementsChanged(this,data)
 						case NotificationType.instanceRemoved =>
 							val searchRef=data.head.ref
-							_elemList.find(searchRef==_.ref) match {
-								case Some(oldElem)=>
-									_elemList =_elemList.filter(searchRef!= _.ref)
+							_elemList.indexWhere(_.ref==searchRef) match{
+								case -1 => Log.e("Layer "+nref+"Field Deleted unknown ref "+searchRef)
+								case i=>
+									val oldElem=_elemList.remove(i)
 									if(visible)controller.graphElemRemoved(this,oldElem)
-								case _ =>
 							}
 						case NotificationType.childAdded =>
-							_elemList= _elemList :+ data.head
-							//checkElemBounds(data(0))
+							_elemList+= data.head
 							if(visible)controller.graphElemAdded(this,data.head)
 						case NotificationType.parentNotExistend => shutDown()
 				}
@@ -195,7 +200,7 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 		}
 	}
 
-  def elemList: Seq[GraphElem] = if (controller.layerModel.viewFilter.isDefined) _elemList.view.filter(controller.layerModel.viewFilter.get.elementMatch)
+  def elemList: Iterable[GraphElem] = if (controller.layerModel.viewFilter.isDefined) _elemList.view.filter(controller.layerModel.viewFilter.get.elementMatch)
 	 else _elemList
 
 
@@ -203,7 +208,7 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 		super.hide()
 		
 		ClientQueryManager.pauseSubscription(subsID)		
-		_elemList=IndexedSeq.empty				
+		_elemList.clear()
 	}
 
   override def shutDown(): Unit = {
@@ -211,7 +216,7 @@ class Layer(ncontroller: GraphViewController, nref: Reference, npath: Array[Stri
 	    ClientQueryManager.removeSubscription(subsID)
 	    subsID= -1
 	  }	  
-		_elemList=IndexedSeq.empty
+		_elemList.clear()
 		super.shutDown()
 	}
 

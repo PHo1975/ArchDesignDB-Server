@@ -25,7 +25,7 @@ class ListDataModel[T<:Referencable](typeFilter:Seq[Int],factory:InstanceData=>T
   
   def appliesFilter(data:Referencable): Boolean = typeFilter.isEmpty || typeFilter.contains(data.ref.typ)
   
-  def filtered(data:IndexedSeq[InstanceData]): Seq[InstanceData] = if(typeFilter.isEmpty) data
+  def filtered(data:IndexedSeq[InstanceData]): Iterable[InstanceData] = if(typeFilter.isEmpty) data
     else data.view.filter(appliesFilter)
   
   def load(superRef:Reference,propField:Int,loadReadyListener:()=>Unit=noListener): Unit ={

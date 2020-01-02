@@ -3,6 +3,7 @@ package client.plotdesign
 import client.dialog.SelectSender
 import client.graphicsView.AbstractSelectModel
 import definition.data.{EMPTY_REFERENCE, OwnerReference, Reference}
+import definition.expression.VectorConstant
 import definition.typ.SelectGroup
 
 class PDSelectModel(controller:PlotDesignController) extends SelectSender with AbstractSelectModel[LayerRef] {
@@ -28,12 +29,12 @@ class PDSelectModel(controller:PlotDesignController) extends SelectSender with A
 		listeners+=listener
 	}*/
   
-  def notifyListeners()={
+  def notifyListeners(): Unit ={
 	  val alsoSelected=controller.lastHittedElements
 	  selectListeners.foreach(_.selectionChanged(this,selGroupList,alsoSelected))
 	}
   
-  def addSelection(newElems:Iterable[LayerRef],toggle:Boolean) ={		
+  def addSelection(newElems:Iterable[LayerRef],toggle:Boolean): Unit ={
     //println("Add selection "+newElems.size+" "+toggle+" "+Thread.currentThread.getStackTrace().drop(2).take(10).mkString("\n"))
 		if(toggle) {
 			for(ne<-newElems) {
@@ -48,20 +49,20 @@ class PDSelectModel(controller:PlotDesignController) extends SelectSender with A
 	}	
 	 
 	
-	def setSelection(newElems:Iterable[LayerRef]) = {		
+	def setSelection(newElems:Iterable[LayerRef]): Unit = {
 	  //println("set selection "+Thread.currentThread.getStackTrace().drop(2).take(10).mkString("\n"))
 	  selGroup.children=newElems		
 		storeSelectionList()
 		notifyListeners()
 	}
 	
-	def elemRemoved(elem:LayerRef) = {	
+	def elemRemoved(elem:LayerRef): Unit = {
 		selGroup.children=selGroup.children.filter(_.ref!=elem.ref)
 		storeSelectionList()
 		notifyListeners()
 	}
 	
-	def elementChanged(newEl:LayerRef)=	if(selGroup.children.exists(_.ref==newEl.ref))
+	def elementChanged(newEl:LayerRef): Unit =	if(selGroup.children.exists(_.ref==newEl.ref))
 		  selGroup.children=selGroup.children.map(el=>if(el.ref==newEl.ref) newEl else el)		
 	
 	
@@ -76,10 +77,10 @@ class PDSelectModel(controller:PlotDesignController) extends SelectSender with A
 		storeSelectionList() 
 	}*/
 	
-	def selectionList=selGroup.children.toIterator
+	def selectionList: Iterator[LayerRef] =selGroup.children.iterator
   
-  def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double)={
-	  Seq.empty
+  def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double): Iterator[VectorConstant] ={
+	  Seq.empty[VectorConstant].iterator
 	}
 
 }

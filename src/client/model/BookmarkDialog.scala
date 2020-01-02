@@ -4,8 +4,8 @@ import java.awt.Dimension
 
 import definition.data.Reference
 
-import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, ListView, ScrollPane, Window}
 import scala.swing.event.{ButtonClicked, MouseClicked}
+import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, ListView, ScrollPane, Window}
 
 class BookmarkDialog(w:Window) extends Dialog(w) {
   val openBut=new Button("öffnen")
@@ -14,7 +14,7 @@ class BookmarkDialog(w:Window) extends Dialog(w) {
   val deleteBut=new Button("Löschen")
   val listView=new ListView[BMEntry]()
   var currentPath:Seq[Reference]=Nil
-  var openListener:(Seq[Reference])=>Unit = null
+  var openListener:Seq[Reference]=>Unit = null
   
   
   val mainPanel=new BorderPanel(){
@@ -75,11 +75,11 @@ class BookmarkDialog(w:Window) extends Dialog(w) {
     listView.selection.indices.headOption    
   }
   
-  private def updateListView() = {
+  private def updateListView(): Unit = {
     listView.listData_=(BookmarkFactory.pathList)
   }
   
-  def showBookmarks(ncurrentPath:Seq[Reference],openBMListener:(Seq[Reference])=>Unit)= {
+  def showBookmarks(ncurrentPath:Seq[Reference],openBMListener:(Seq[Reference])=>Unit): Unit = {
     currentPath=ncurrentPath   
     openListener=openBMListener
     updateListView()

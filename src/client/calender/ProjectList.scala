@@ -6,7 +6,7 @@ import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
 import javafx.collections.{FXCollections, ObservableList}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 
 

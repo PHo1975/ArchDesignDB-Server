@@ -181,13 +181,13 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 		outdefListView.selection.indices+=0
 	}
 
-	def whenNewoutputDefined(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[ResultElement]): Unit = {
+	def whenNewoutputDefined(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Iterable[ResultElement]): Unit = {
 	  resetOnClose=false
 	  close()
 	  PrintQuestionHandler.outputDefined(formIx,printer,pageSetting,portrait,w,h,paramData)
 	}
 
-	def whenOutputDefChanged(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Seq[ResultElement]): Unit = {
+	def whenOutputDefChanged(formIx: Int, printer: String, pageSetting: String, portrait: Boolean, w: Int, h: Int, paramData: Iterable[ResultElement]): Unit = {
 	  resetOnClose=false
 	  close()
 	  //println("when outputdef changed "+formIx)

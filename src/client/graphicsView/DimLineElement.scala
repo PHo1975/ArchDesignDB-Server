@@ -71,8 +71,9 @@ GraphElem(nref,ncolor) {
   	  maxx+=delta
   	  maxy+= delta
   	  new Rectangle2D.Double(minx,miny,maxx,maxy)
-  	}
-  override lazy val getEdiblePoints: IndexedSeq[VectorConstant] = points.map(_.refPoint) ++ points.flatMap(_.textPos) :+ mainRefPoint
+  }
+
+  override def getEdiblePoints: Iterator[VectorConstant] = points.iterator.map(_.refPoint) ++ points.iterator.flatMap(_.textPos) ++ List(mainRefPoint).iterator
   
   def getBounds(container: ElemContainer): Rectangle2D.Double = bounds
 

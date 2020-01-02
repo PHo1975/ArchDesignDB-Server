@@ -32,7 +32,7 @@ trait AbstractSelectModel[A] {
   def elemRemoved(el:A):Unit
   def elementChanged(el:A):Unit  
   def selectionContainsOneOf(testEls:Iterable[A]):Boolean  
-  def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):TraversableOnce[VectorConstant]
+  def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):Iterator[VectorConstant]
 }
 
 
@@ -139,7 +139,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
   def numSelected: Int = elMap.values.foldLeft(0)(_ + _.children.size)
 	
 	def selectionContainsOneOf(testEls:Iterable[(AbstractLayer,Iterable[GraphElem])]):Boolean=
-    testEls.exists{case((lay,elems))=> elems.exists(selectionList.contains)}
+    testEls.exists{case (lay,elems) => elems.exists(selectionList.contains)}
 
 
   def selectionBounds(): Rectangle2D.Double = {
@@ -153,7 +153,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 		bounds
 	}
 	
-	def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):TraversableOnce[VectorConstant]={
+	def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):Iterator[VectorConstant]={
 	  for(lay<-elMap.valuesIterator;el<-lay.children;points=el.getEdiblePoints;p<-points
         if p.x >= minX && p.y >= minY && p.x <= maxX && p.y <= maxY) yield p
 	}
@@ -166,7 +166,7 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 
   def hasSelection: Boolean = elMap.nonEmpty && elMap.values.exists(_.children.nonEmpty)
 	
-	def filter(filterFunc:(GraphElem)=>Boolean):Unit= {
+	def filter(filterFunc: GraphElem =>Boolean):Unit= {
 	  for((lay,selGroup)<-elMap){
 	    val newList=selGroup.children.filter(filterFunc)
 	    if(!newList.equals(selGroup.children)){

@@ -20,7 +20,7 @@ class SymbolElem(nref:Reference,ncolor:Int,stampRef:Reference,val angle:Double,v
   }  
   
   lazy val bounds=new Rectangle2D.Double
-  lazy val ediblePoints=Seq(pos)
+  lazy val ediblePoints=List(pos)
  
   def getBounds(container:ElemContainer):Rectangle2D.Double={
     LayerRef.calcWorldBounds(elems, container, bounds)
@@ -50,7 +50,7 @@ class SymbolElem(nref:Reference,ncolor:Int,stampRef:Reference,val angle:Double,v
     val rpy=py-pos.y
     elems.exists(_.hits(cont,rpx,rpy,dist))
   }   
-  override def getEdiblePoints:TraversableOnce[VectorConstant]= ediblePoints  
+  override def getEdiblePoints:Iterator[VectorConstant]= ediblePoints.iterator
   
   def hitPoint(cont:ElemContainer,px:Double,py:Double,dist:Double):Seq[(Byte,VectorConstant)]={
     val rpx=px-pos.x

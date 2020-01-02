@@ -40,7 +40,7 @@ class ProjectDataTableModel extends AbstractTableModel {
       column match {
         case 0 => dateFormat.format(record.day)
         case 1 => UserList.getUserName(record.user)
-        case 2 => (record.numBlocks/60)+"h "+(record.numBlocks%60)+"min"
+        case 2 => (record.numBlocks/60).toString+"h "+(record.numBlocks%60)+"min"
         case 3 => record.data//.asInstanceOf[AnyRef] 
         case _=> "wrong column"
       }

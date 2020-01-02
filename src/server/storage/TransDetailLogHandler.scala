@@ -10,7 +10,6 @@ import server.comm.UserList
 import server.config.FSPaths
 import util.UnsyncBAInputStream
 
-import scala.Option.option2Iterable
 import scala.util.control.NonFatal
 
 
@@ -168,7 +167,7 @@ object TransDetailLogHandler {
 			val multi=dataInStream.readBoolean
 			val action=dataInStream.readShort
 			val ct=dataInStream.readInt
-			callBack(time*60000l,userID,ref)
+			callBack(time*60000L,userID,ref)
 			if(trID!=trShouldBe) {println("wrong trID "+trID+" should be:"+trShouldBe); return }
 			trShouldBe+=1
 		} while(trID<endTransID&& trID<lastLoggedID)

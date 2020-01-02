@@ -6,7 +6,6 @@ import client.dataviewer.ViewConstants
 import client.dialog._
 import definition.expression.{Constant, IntConstant}
 
-import scala.collection.Seq
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
 

@@ -101,7 +101,7 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
       GraphElemConst.hitLine(points(2),points(3),px,py,dist)
   }
 
-  override def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[(Byte, VectorConstant)] = {
+  override def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Iterable[(Byte, VectorConstant)] = {
     points.flatMap(GraphElemConst.checkHit(px,py,dist,_))
   }
 

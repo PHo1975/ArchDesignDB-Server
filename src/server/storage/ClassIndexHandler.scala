@@ -9,7 +9,6 @@ import definition.data.{InstanceData, Reference, TransType}
 import server.config.FSPaths
 import util.UnsyncBAInputStream
 
-import scala.Array.canBuildFrom
 import scala.collection.immutable
 
 trait RecordListener {

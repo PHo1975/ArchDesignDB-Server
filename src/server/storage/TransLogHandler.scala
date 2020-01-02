@@ -127,7 +127,7 @@ object TransLogHandler {
 	  insertPos=0
 	}
 	
-	def readFullIndex():IndexedSeq[LogIndexSet] = {
+	def readFullIndex():ArrayBuffer[LogIndexSet] = {
 		theFile.seek(4)
     val retList= ArrayBuffer[LogIndexSet]()		
 		val endPos=getSeekPos(insertPos)

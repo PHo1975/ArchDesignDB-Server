@@ -24,8 +24,8 @@ import scala.util.control.NonFatal
  */
 
 trait AbstractLayerModel {
-  def checkElementPoints(checkFunc:(Formatable)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]
-  def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]
+  //def checkElementPoints(checkFunc:(Formatable)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]
+  def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Iterable[(Byte,VectorConstant)]):Iterable[(Byte,VectorConstant)]
   def isEmpty:Boolean  
 }
 
@@ -329,16 +329,16 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
 	}
 	
 		
-	def checkElementPoints(checkFunc: Formatable =>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
-		val ret1=layerList.flatMap(_.checkElementPoints(checkFunc))
+	/*def checkElementPoints(checkFunc: Formatable =>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
+		val ret1: mutable.Seq[(Byte, VectorConstant)] =layerList.flatMap(_.checkElementPoints(checkFunc))
 		val ret2= newElemLayer.checkElementPoints(checkFunc)
 		collection.mutable.ArrayBuffer()++=ret1++=ret2		
-	}
+	}*/
 	
-	def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
+	def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Iterable[(Byte,VectorConstant)]):Iterable[(Byte,VectorConstant)]= {
 		val ret1=layerList.flatMap(_.checkElementPointsWithLayer(checkFunc))
 		val ret2= newElemLayer.checkElementPointsWithLayer(checkFunc)
-		collection.mutable.ArrayBuffer()++=ret1++=ret2		
+		ret1.view++ret2
 	}
 	
 	
@@ -505,7 +505,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
           if (hitPoints.isEmpty) Some((p1, p2))
           else {
             // find next hitpoints
-            val sortedHitPoints = SortedMap[Double, VectorConstant]() ++ hitPoints
+            val sortedHitPoints = SortedMap[Double, VectorConstant]()(Ordering.Double.TotalOrdering) ++ hitPoints
             //println("CutPoints:"+sortedHitPoints.mkString(" \n"))
             val cutPoint1 = sortedHitPoints.filter(_._1 < clickScale).lastOption.fold(p1)(_._2)
             val cutPoint2 = sortedHitPoints.find(_._1 > clickScale).fold(p2)(_._2)
@@ -513,7 +513,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
           }
         }
 			case thisArc:ArcElement =>
-        val hitPoints = collection.mutable.SortedSet[Double]()
+        val hitPoints = collection.mutable.SortedSet[Double]()(Ordering.Double.TotalOrdering)
         for (layer <- layerList; if layer.visible; grEl <- layer.elemList) grEl match {
           case otherLine: AbstractLineElement =>
             for (p <- lineArcFullyIntersects(otherLine, thisArc)) {

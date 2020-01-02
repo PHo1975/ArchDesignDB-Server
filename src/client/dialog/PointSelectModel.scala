@@ -18,7 +18,7 @@ class PointSelectModel {
   
   def addPoint(point:VectorConstant):Unit=  selectList +=point
   
-  def addPoints(points:TraversableOnce[VectorConstant],clear:Boolean):Unit= {
+  def addPoints(points:Iterator[VectorConstant],clear:Boolean):Unit= {
     if(clear) selectList.clear()
     selectList++=points
     //println("add points "+selectList.mkString(", "))

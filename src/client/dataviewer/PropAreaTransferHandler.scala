@@ -35,7 +35,7 @@ class PropAreaTransferHandler(propMod:PropertyModel) extends TransferHandler{
   }
   
   override def importData(info:TransferHandler.TransferSupport):Boolean  =
-    if (!info.isDrop()) false
+    if (!info.isDrop) false
     else {
       val action = info.getDropAction
       var data: InstanceSelection = null

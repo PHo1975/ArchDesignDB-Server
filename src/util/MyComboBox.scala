@@ -36,12 +36,12 @@ class MyComboBox[A](items: Seq[A]) extends Component with Publisher {
   
   
   
-  def renderer: MyListView.Renderer[A] = new MyListView.Renderer[A] {
-  	  def componentFor(list: MyListView[A], isSelected: Boolean, focused: Boolean, a: A, index: Int) = {
+  def renderer: ListView.Renderer[A] = new ListView.Renderer[A] {
+  	  def componentFor(list: ListView[_ <: A], isSelected: Boolean, focused: Boolean, a: A, index: Int) = {
         Component.wrap(peer.getListCellRendererComponent(list.peer, a, index, isSelected, focused).asInstanceOf[JComponent])
       }
   	}
-  def renderer_=(r: MyListView.Renderer[A]): Unit = { peer.setRenderer(r.peer) }
+  def renderer_=(r: ListView.Renderer[A]): Unit = { peer.setRenderer(r.peer) }
 
   
   def editable: Boolean = peer.isEditable

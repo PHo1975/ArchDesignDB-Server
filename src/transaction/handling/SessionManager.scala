@@ -92,7 +92,7 @@ object SessionManager {
       //println("Backup")
       backupTask.backupDoneListener = Some(UsageStatFileHandler.updateStatistics _)
       if (isBackupDue(thisDate)) backupTask.run()
-      backupTimer.scheduleAtFixedRate(backupTask, gc.getTime(), 1000 * 60 * 60 * 24)
+      backupTimer.scheduleAtFixedRate(backupTask, gc.getTime, 1000 * 60 * 60 * 24)
       //UsageStatFileHandler.updateStatistics()
       util.Log.i("Max Trans:" + TransLogHandler.getTransID)
       WebServer.setLogConsole(logConsole)
@@ -107,7 +107,7 @@ object SessionManager {
           http_config.addCustomizer(new SecureRequestCustomizer())
 
           val https_config = new HttpConfiguration(http_config)
-          https_config.addCustomizer(new SecureRequestCustomizer(true, 31536000l, true))
+          https_config.addCustomizer(new SecureRequestCustomizer(true, 31536000L, true))
 
           val sslContextFactory = new SslContextFactory.Server()
           if (!FSPaths.keyStoreFile.exists) util.Log.e("keystore " + FSPaths.keyStoreFile + " existiert nicht")

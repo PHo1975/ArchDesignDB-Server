@@ -12,8 +12,8 @@ import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColu
 import javax.swing.{JComponent, JTextArea}
 import util.Log
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.swing.Swing
 import scala.util.control.NonFatal
 
@@ -112,7 +112,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     } else null
   }
 
-  def getColumns(range: Range): Iterable[SpreadSheetColumnData] = columnData.theMap.filterKeys(range.contains).values
+  def getColumns(range: Range): Iterable[SpreadSheetColumnData] = columnData.theMap.view.filterKeys(range.contains).values
 
   override def isCellEditable(row: Int, col: Int): Boolean = col < getColumnCount - 1 && col >= 0
 
@@ -321,7 +321,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     }  
   
   def createColumnData(col:Int,width:Int):Unit={
-    ClientQueryManager.createInstances(Array(controller.columnOwnerRef),Seq((SpreadSheet.spreadSheetColumnType,
+    ClientQueryManager.createInstances(Array(controller.columnOwnerRef),mutable.Seq((SpreadSheet.spreadSheetColumnType,
       Array(IntConstant(col), EMPTY_EX, IntConstant(width), EMPTY_EX))))
   }
 

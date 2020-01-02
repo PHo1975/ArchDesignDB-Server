@@ -221,7 +221,7 @@ object SpreadSheetProxy {
   
   lazy val nullString= StringConstant("")
   
-  def deleteSpreadSheetCells(data:Seq[InstanceData]):Unit= {
+  def deleteSpreadSheetCells(data:Iterable[InstanceData]):Unit= {
     if(data.isEmpty) return
     // assumption that all data are in the same spread sheet    
     val proxy=new SpreadSheetProxy(data.head.owners.head.ownerRef)

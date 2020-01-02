@@ -49,7 +49,7 @@ object SimpleProfiler {
   
   def printTimeList(): Unit = lock.synchronized{
   	println("\n timeList:")
-  	println(timeList.reverseMap(a => a._1 + " :" + a._2.toString + " ms").mkString("\n"))
+  	println(timeList.reverseIterator.map(a => a._1 + " :" + a._2.toString + " ms").mkString("\n"))
   	println
   	timeList=Nil
   }

@@ -31,7 +31,7 @@ class DataEater extends YPosHolder {
   val pagesList=collection.mutable.ArrayBuffer[PageData]()  
   
   var form:FormDescription = _	
-  var paramValues:Seq[ResultElement]=Nil
+  var paramValues:Iterable[ResultElement]=Nil
   
   var elementList=collection.mutable.ArrayBuffer[PrintElement]()
   
@@ -47,7 +47,7 @@ class DataEater extends YPosHolder {
   var hasPrintElements:Boolean=false
   var currentContext:PrintContext=_
   
-  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Seq[ResultElement]): Unit = {
+  def initPrinting(pWidth:Float,pHeight:Float,nform:FormDescription,ctx:PrintContext,nvalues:Iterable[ResultElement]): Unit = {
   	pageWidth=pWidth
   	pageHeight=pHeight
   	paramValues=nvalues
@@ -184,7 +184,7 @@ class DataEater extends YPosHolder {
     elementList++=newElems
   }
   
-  def addPrintElement(newElem:PrintElement): ArrayBuffer[PrintElement] = {
+  def addPrintElement(newElem:PrintElement): Unit = {
     if(!hasPrintElements)hasPrintElements=true
     elementList += newElem
   }

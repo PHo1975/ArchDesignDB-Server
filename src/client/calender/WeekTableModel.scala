@@ -2,6 +2,8 @@ package client.calender
 
 import client.calender.CalendarHelper.handleEvent
 import client.comm.ClientQueryManager
+
+import scala.collection.mutable
 //import com.sun.javafx.scene.control.skin.LabeledText
 import definition.comm.UserInfo
 import definition.data.{InstanceData, OwnerReference, Referencable, Reference}
@@ -20,9 +22,8 @@ import javafx.scene.layout.{GridPane, HBox, Priority}
 import javafx.scene.text.Text
 import util.StrToInt
 
-import scala.Array.canBuildFrom
-import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
+import scala.jdk.CollectionConverters._
 
 
 
@@ -53,7 +54,7 @@ case class RowData(var hour:Int,var daysInfo:Array[SimpleObjectProperty[Seq[Cale
      case _=>hour.toString+":00"     
    })
 
-  def update(ndaysInfo: Array[SimpleObjectProperty[Seq[CalendarEvent]]]) = RowData(hour, ndaysInfo)
+  def update(ndaysInfo: Array[SimpleObjectProperty[Seq[CalendarEvent]]]): RowData = RowData(hour, ndaysInfo)
 }
 
 class FirstRowCell extends TableCell[RowData,String] {
@@ -161,7 +162,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   val hourList: ObservableList[RowData] = FXCollections.observableList[RowData](new java.util.ArrayList[RowData])
   var view: TableView[RowData] = _
   var currentProjects:List[DataSource]=Nil
-  var visibleUsers:Seq[Int]=Nil
+  var visibleUsers:mutable.Seq[Int]=mutable.Seq.empty
   var startDate:Option[Int]=None
   var endDate:Option[Int]=None
   var firstDayOfWeek: DateConstant = _
@@ -185,7 +186,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   firstCol.setStyle("-fx-alignment: TOP_RIGHT;")  
   firstCol.setCellValueFactory(cellDataFactory[RowData,String](p=>p.getValue.hourObserv))  
   firstCol.setCellFactory(callback(t=> new FirstRowCell))
-  val weekDays=Array("Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag")
+  val weekDays: Array[String] =Array("Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag")
 
   def setMouseOverColumn(c: TableColumn[_, Seq[CalendarEvent]]): Unit = mouseOverColumn = c
 
@@ -218,12 +219,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     col.setSortable(false) 
     col.setEditable(true)
     col.setCellFactory(callback(t=> {new CalendarCell(this,model)}))
-    /*col.setOnEditStart(handleEvent(e=> {
-      for(char<-startEditChar) {
-        println("Edit start with Char :"+char)
-        startEditChar=None
-      } 
-    }))*/
+
     col.setOnEditCommit(handleEvent(e=> {
       val row=e.getRowValue
       //println("set on commit:"+e.getEventType()+" "+e.getNewValue()+ " "+view.isEditable())
@@ -364,13 +360,13 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
                }
            }                
 	       } else if (event.getDragboard.hasContent(CalendarHelper.AddressDragFormat) &&event.getX>firstColWidth){
-		       event.getDragboard().getContent(CalendarHelper.AddressDragFormat) match {
+		       event.getDragboard.getContent(CalendarHelper.AddressDragFormat) match {
 		         case add:Address=> if(currentItem==null||currentItem.isEmpty){ // address dragged to an empty cell		           
 		            val buttons= eventFromAddressMenuItems.map(new MenuItem(_))
 		            val callBack=handleEvent[ActionEvent](e=> {
 		              e.getSource match {
 		                case m:MenuItem=> ClientQueryManager.runInPool{
-		                  createEvent(if(mouseOverRow<14) mouseOverRow+7 else 0,newDay,m.getText()+" "+add.name) match {
+		                  createEvent(if(mouseOverRow<14) mouseOverRow+7 else 0,newDay,m.getText+" "+add.name) match {
 		                    case Some(eventRef)=>
                           ClientQueryManager.secondUseInstances(List(add.ref), add.owner, new OwnerReference(1,eventRef), -1)
                         case None =>
@@ -379,7 +375,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
 		              }
 		            })
 		            for(b<-buttons) b.setOnAction(callBack)
-		            new ContextMenu(buttons :_*).show(view,Side.LEFT,event.getX+100,event.getY())
+		            new ContextMenu(buttons :_*).show(view,Side.LEFT,event.getX+100,event.getY)
 		         } else { // address dragged on an existing event
 		           ClientQueryManager.secondUseInstances(List(add.ref), add.owner,new OwnerReference(1,currentItem.head.ref), -1)
 		         } 
@@ -393,7 +389,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
      event.consume()
    })
     
-   onChanged(model.tabPane.getSelectionModel().selectedIndexProperty(),(b:Number,a:Number)=>{
+   onChanged(model.tabPane.getSelectionModel.selectedIndexProperty(), (b:Number, a:Number)=>{
      if(b.intValue()==0&&a.intValue()==1) {
        //println("DayReport opened")
        loadDayReport()
@@ -402,7 +398,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   }
 
   def createAddress(): Any = {
-    (model.window.treeView.getSelectionModel().getSelectedItem() match {
+    (model.window.treeView.getSelectionModel.getSelectedItem match {
       case p:ProjectTreeItem =>None
       case f:FolderTreeItem =>Some(f.getValue.ref)      
       case a:MyTreeItem[_] => a.getParent match{
@@ -420,12 +416,12 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }
 
   def deleteAddress(): Unit = {
-    (model.window.treeView.getSelectionModel().getSelectedItem() match {
-      case p:ProjectTreeItem =>None
-      case f:FolderTreeItem =>None      
+    (model.window.treeView.getSelectionModel.getSelectedItem match {
+      case _:ProjectTreeItem =>None
+      case _:FolderTreeItem =>None
       case a:MyTreeItem[_] => a.getParent match{
-        case p:ProjectTreeItem => None
-        case o=>Some(a.getValue)
+        case _:ProjectTreeItem => None
+        case _=>Some(a.getValue)
       }
       case _=>None
       }) match {
@@ -441,11 +437,11 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
 
 
   def initProjectListView(aview: ListView[DataSource], treeView: TreeView[AdTreeNode]): Unit = {
-    onListChanged[DataSource](aview.getSelectionModel().getSelectedItems(),(c)=>{
+    onListChanged[DataSource](aview.getSelectionModel.getSelectedItems, c=>{
       c.getList match {
         case od:ObservableList[_]=>
           setProjects(od.toArray.toList.asInstanceOf[List[DataSource]])
-          treeView.getRoot() match {
+          treeView.getRoot match {
             case null =>
             case root:MyTreeItem[_]=> root.shutDown();treeView.setRoot(null)
             case o=>util.Log.e("Unknown root type "+o)
@@ -464,19 +460,19 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
       }      
     })
     aview.setOnDragOver(handleEvent(e=>{
-      if( e.getDragboard().hasContent(CalendarDragFormat)) e.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
+      if( e.getDragboard.hasContent(CalendarDragFormat)) e.acceptTransferModes(TransferMode.COPY_OR_MOVE:_*)
       e.consume()
     }))
     
     aview.setOnDragDropped(handleEvent(e=>{
-    if( e.getDragboard().hasContent(CalendarDragFormat)) {
+    if( e.getDragboard.hasContent(CalendarDragFormat)) {
       e.getDragboard.getContent(CalendarDragFormat) match {
         case ce:CalendarEvent =>    
           e.getTarget match {
-            case t:Text =>t.getParent().getId match {
+            case t:Text =>t.getParent.getId match {
               case StrToInt(prjID)=> model.projectList.findProject(prjID) match {
                 case Some(targetProject)=> 
-                  e.getTransferMode() match {
+                  e.getTransferMode match {
                     case TransferMode.MOVE=>
                       val thisProject=model.projectList.findProject(ce.projID).get
                       ClientQueryManager.moveInstances(List(ce.ref), new OwnerReference(0, thisProject.getMonthParentRef(ce.day)),
@@ -497,7 +493,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   }
 
   def initUserListView(aview: ListView[UserInfo]): Unit = {
-    onListChanged[UserInfo](aview.getSelectionModel().getSelectedItems(),(c)=>{
+    onListChanged[UserInfo](aview.getSelectionModel.getSelectedItems, c=>{
       c.getList match {
         case od:ObservableList[_]=>
           visibleUsers = od.asScala map (_.id)
@@ -510,7 +506,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
 
   def initAddressTreeView(treeView: TreeView[AdTreeNode]): Unit = {
     treeView.setOnDragDetected(handleEvent(e=>{
-      val selectedItem=treeView.getSelectionModel().getSelectedItem() match {
+      val selectedItem=treeView.getSelectionModel.getSelectedItem match {
         case tr:MyTreeItem[_]=> tr.getValue match {
           case ad:Address=>
             val db=treeView.startDragAndDrop(TransferMode.ANY:_*)
@@ -548,7 +544,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     if (currentProjects.size == 1) model.reportTab.setDisable(getSelectedDate.isEmpty)
     else {
       model.reportTab.setDisable(true)
-      model.tabPane.getSelectionModel().select(0)
+      model.tabPane.getSelectionModel.select(0)
       model.reportForm.loadReport(None)
     }
     //println("load project:"+nproj+" ")
@@ -573,7 +569,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   
   private def isVisibleDate(day:DateConstant)=day.julian>=firstDayOfWeek.julian&&day.julian<=lastDayOfWeek.julian 
   
-  def dateFromDB(d:InstanceData,startMonth:Int)= DateConstant(d.fieldValue.head.toInt,startMonth%100,startMonth/100)
+  def dateFromDB(d:InstanceData,startMonth:Int): DateConstant = DateConstant(d.fieldValue.head.toInt,startMonth%100,startMonth/100)
 
   def addEvent(d: InstanceData, startMonth: Int, projID: Int, forceRedraw: Boolean = false): Unit = {
     val day=dateFromDB(d,startMonth)   
@@ -604,7 +600,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   } 
   
   private def showEventForm(event:CalendarEvent): Unit = {
-    if(model.tabPane.getSelectionModel().getSelectedIndex()!=0) model.tabPane.getSelectionModel().select(0) 
+    if(model.tabPane.getSelectionModel.getSelectedIndex!=0) model.tabPane.getSelectionModel.select(0)
     model.eventForm.loadEvent(event)   
   }
 
@@ -623,10 +619,10 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     if(currentProjects.nonEmpty)
 	    for(startMonth<-startDate){       
 	       if(currentProjects.size==1)
-           currentProjects.head.loadMonth(true,()=>{
+           currentProjects.head.loadMonth(loadDayReports = true, ()=>{
            CalendarHelper.runInFx{loadDayReport()}})
 	       else uniCallBackLoop[DataSource](currentProjects,(el,callback)=> {
-	         el.loadMonth(false,callback)
+	         el.loadMonth(loadDayReports = false,callback)
          })
 	    }   
   }
@@ -657,8 +653,8 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
   
   
   def getSelectedDate:Option[DateConstant]= {
-    val sc=view.getSelectionModel.getSelectedCells()
-    if(sc.size>0&&firstDayOfWeek!=null) Some(firstDayOfWeek.addDays(sc.get(0).getColumn()-1)) 
+    val sc=view.getSelectionModel.getSelectedCells
+    if(sc.size>0&&firstDayOfWeek!=null) Some(firstDayOfWeek.addDays(sc.get(0).getColumn-1))
     else None
   }
 
@@ -668,7 +664,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     getSelectedDate match {
       case Some(date)=>
         model.reportTab.setDisable(false)
-        if( model.tabPane.getSelectionModel().getSelectedIndex()==1){
+        if( model.tabPane.getSelectionModel.getSelectedIndex==1){
           if(startDateDayReports.month%100==date.month&& startDateDayReports.month/100==date.year &&
               startDateDayReports.hasReportForDay(date.day)) model.reportForm.loadReport(Some(startDateDayReports.getReportForDay(date.day)))
           else if(endDateDayReports.month%100==date.month&& endDateDayReports.month/100==date.year &&
@@ -679,7 +675,7 @@ class WeekTableModel(model:CalendarModel) extends CellInfoReceiver[Seq[CalendarE
     }
   } else { 
     model.reportTab.setDisable(true)
-    model.tabPane.getSelectionModel().select(0)
+    model.tabPane.getSelectionModel.select(0)
   }
   
   def createDayReport():Option[Reference] = {

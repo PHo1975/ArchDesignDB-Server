@@ -9,7 +9,7 @@ object RafTest {
   var currBufferPos=20
   val buffer: Array[Byte] =Array.fill[Byte](recordSize)((Math.random*256d).toByte)
   val bigBuffer: Array[Byte] =Array.fill[Byte](recordSize*numBuffers)(0)
-  var time:Long=0l
+  var time:Long=0L
 
   def log(st:String): Unit ={
     val newTime=System.currentTimeMillis()

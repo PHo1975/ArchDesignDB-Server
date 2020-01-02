@@ -18,7 +18,13 @@ object JavaUtils {
   val GAEBDateFormat=new SimpleDateFormat("yyyy-MM-dd")
   val imageSymbol="*"
   def toJavaDate(date:DateConstant)= new Date((date.julian-DateConstant.julian1970)*86400000)
-  def joinStrings(list:Seq[String],minSize:Int):Seq[String]={
+
+
+  /** Creates a new list of Strings
+  * where each String is longer than minSize
+  * if one String is shorter, it will be concatenated with the next String in the list.
+*/
+  def joinStrings(list:Iterable[String],minSize:Int):Iterable[String]={
     var currentString:String=""
     val newList=new ArrayBuffer[String]()
     for(item<-list)

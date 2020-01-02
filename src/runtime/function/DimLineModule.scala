@@ -31,10 +31,10 @@ class DimLineModule extends ActionModule with GraphActionModule {
     Seq(new AnswerDefinition("Nullpunkt auswählen", DataType.VectorTyp, Some(DialogQuestion("Wert bei Nullpunkt",
       Seq(new AnswerDefinition("Delta-Wert:", DataType.DoubleTyp, None)))))))),doSetMainRef)
   
-	def createDimLineAction=new CreateActionImpl("Maßlinie",Some(CommandQuestion(ModuleType.Graph,
-    "CreateDimLine")),doCreateDimLine)
+	def createDimLineAction=new CreateActionImpl("Maßlinie", Some(CommandQuestion(ModuleType.Graph,
+      "CreateDimLine")), doCreateDimLine)
 	
-	def doCreateDimLine(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean=
+	def doCreateDimLine(u:AbstractUserSocket, parents:Iterable[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean=
     if(param.size<4) false else {
 		val parentRef=Array(new OwnerReference(0.toByte,parents.head.ref))
 		//println("DimLine params:"+param.mkString("\n"))
@@ -96,15 +96,16 @@ class DimLineModule extends ActionModule with GraphActionModule {
   } 
   
 	
-  def doMoveMainLine(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+  def doMoveMainLine(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =  {
     if(param.size==2) {
+      val param2=param.tail.head
 			val delta = param.head._2 match {
 			  case startPoint:VectorConstant=>
-					val endPoint=param(1)._2.toVector
+					val endPoint=param2._2.toVector
 					endPoint-startPoint
-				case deltaX:DoubleConstant if param(1)._2.getType == DataType.DoubleTyp =>
-					new VectorConstant (deltaX.toDouble,param(1)._2.toDouble,0)				 
-			  case _=> throw new IllegalArgumentException("Falscher Parametertyp verschieben "+param.head._2+", "+param(1)._2)
+				case deltaX:DoubleConstant if param2._2.getType == DataType.DoubleTyp =>
+					new VectorConstant (deltaX.toDouble,param2._2.toDouble,0)
+			  case _=> throw new IllegalArgumentException("Falscher Parametertyp verschieben "+param.head._2+", "+param.last._2)
 			}		
 			for(d <-data;if d.ref.typ == theTypeID)
 			  TransactionManager.tryWriteInstanceField(d.ref,1,d.fieldValue(1).toVector+delta)						  
@@ -114,7 +115,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
   }
   
   
-  def doChangeHelpLines(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+  def doChangeHelpLines(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
     if(param.size<2) false else {
     val helpPolyPoints=param map (_._2.toVector)
     val polyEdges=(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
@@ -140,9 +141,9 @@ class DimLineModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doChangeRefPoint(u:AbstractUserSocket,data:InstanceData,param:Seq[(String,Constant)]):Boolean =  {
+  def doChangeRefPoint(u:AbstractUserSocket,data:InstanceData,param:Iterable[(String,Constant)]):Boolean =  if(param.size==2){
     val changePoint=param.head._2.toInt
-    val newPos=param(1)._2.toVector
+    val newPos=param.last._2.toVector
     data.fieldValue(4) match {
     	case blob:BlobConstant =>
 				val dimList=DimensionPoint.createDimLineList(blob)
@@ -153,7 +154,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
 			case _ =>
     }   
     true
-  }
+  } else false
    
   def moveElement(elem:InstanceData,delta:VectorConstant):Unit = {
 		TransactionManager.tryWriteInstanceField(elem.ref,1,elem.fieldValue(1).toVector+delta)
@@ -257,7 +258,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
    * @param func  a function(ObjReference,StartPoint,MainDir,HelpDir,DimList)
    * 
    */
-  private def updateDimList(data:Seq[InstanceData],func:(Reference,VectorConstant,VectorConstant,VectorConstant,Seq[DimensionPoint])=>Unit): Unit = {
+  private def updateDimList(data:Iterable[InstanceData],func:(Reference,VectorConstant,VectorConstant,VectorConstant,Seq[DimensionPoint])=>Unit): Unit = {
     for (d<-data;if d.ref.typ == theTypeID) {
       val position=d.fieldValue(1).toVector
       val angle=d.fieldValue(3).toDouble
@@ -272,10 +273,10 @@ class DimLineModule extends ActionModule with GraphActionModule {
     }
   }
   
-  def doAddDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+  def doAddDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
     if(param.size!=2) false else {
     val newPoint=param.head._2.toVector
-    val helpPoint=param(1)._2.toVector
+    val helpPoint=param.last._2.toVector
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
       val mline=Line3D(position, mainLineVect)
       val hline=Line3D(newPoint, hdirVect)
@@ -291,10 +292,10 @@ class DimLineModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doDelDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+  def doDelDimPoint(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
     if(param.size!=2) false else {
     val point=param.head._2.toVector
-    val lcd=param(1)._2.toDouble
+    val lcd=param.last._2.toDouble
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
       val mline=Line3D(position, mainLineVect)
       val newDimList=if(dimList.size<3) dimList else dimList.filter(dimElem => {
@@ -307,7 +308,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doSetMainRef(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =
+  def doSetMainRef(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
     if(param.size!=2) false else {
     //println("Set Main Ref "+param.mkString("| "))
     val point=param.head._2.toVector

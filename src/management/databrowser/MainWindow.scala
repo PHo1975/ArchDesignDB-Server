@@ -16,9 +16,8 @@ import server.storage.{ServerObjectClass, StorageManager, TransLogHandler}
 import transaction.handling.SessionManager
 import util.Log
 
-import scala.Array.fallbackCanBuildFrom
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.swing.event.ButtonClicked
 import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dimension, GridPanel, MainFrame, Orientation, Rectangle, ScrollPane, SimpleSwingApplication, Swing, Table}
 import scala.util.control.NonFatal

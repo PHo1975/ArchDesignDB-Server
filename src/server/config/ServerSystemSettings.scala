@@ -17,15 +17,17 @@ import scala.util.control.NonFatal
  * 
  */
 class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
-	val _systemTypes: mutable.Map[String, Int] = collection.mutable.Map[String, Int]()
+	val _systemTypes: collection.mutable.Map[String, Int] = collection.mutable.Map[String, Int]()
 	
-	var userFolders:Map[String,Reference]= if(StorageManager.instanceExists(FSPaths.userRootRef.typ,FSPaths.userRootRef.instance)) StorageManager.getInstPropList(FSPaths.userRootRef, 1).map(
-      ref =>  (StorageManager.getInstanceData(ref).fieldValue.head.toString, ref)).toMap else {
-		Log.e("User root not found "+FSPaths.userRootRef)
-		Map.empty
-	}
+	var userFolders: mutable.Map[String, Reference] =collection.mutable.Map[String,Reference]()
+	if(StorageManager.instanceExists(FSPaths.userRootRef.typ,FSPaths.userRootRef.instance))
+		for (ref<-StorageManager.getInstPropList(FSPaths.userRootRef, 1))
+       userFolders(StorageManager.getInstanceData(ref).fieldValue.head.toString)=ref
+		else Log.e("User root not found "+FSPaths.userRootRef)
 
-	var enums: mutable.LinkedHashMap[String, EnumDefinition] = collection.mutable.LinkedHashMap[String, EnumDefinition]("Undefined" -> NOENUM)
+
+
+	var enums: collection.mutable.LinkedHashMap[String, EnumDefinition] = collection.mutable.LinkedHashMap[String, EnumDefinition]("Undefined" -> NOENUM)
 	var enumByID: Map[Int, EnumDefinition] = collection.Map[Int, EnumDefinition]()
 	val topProperties:InstanceProperties= try { 
 	  //System.out.println("Init topProperties settingsRef:"+settingsRef)
@@ -56,13 +58,13 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	
 	
 	def systemTypes(key:String):Int =  _systemTypes.getOrElse(key, {
-	   Log.e("cant find SystemType "+key+"\n"+Thread.currentThread.getStackTrace().take(10).mkString("\n  "))
+	   Log.e("cant find SystemType "+key+"\n"+Thread.currentThread.getStackTrace.take(10).mkString("\n  "))
 	   0
 	 })
 	
 	def getCustomSettings(folderName:String):IndexedSeq[InstanceData]= {
 		//println("CustomFoldersList:"+customFolderList)
-		for(folder <-customFolderList;if folder.fieldValue(0).toString.equalsIgnoreCase(folderName))
+		for(folder <-customFolderList;if folder.fieldValue.head.toString.equalsIgnoreCase(folderName))
 			StorageManager.getInstanceProperties(folder.ref) match {
 			case Some(data) => return data.propertyFields(1).propertyList.map{StorageManager.getInstanceData}
 			case None => return IndexedSeq.empty
@@ -72,7 +74,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	}
 	
 	lazy val clientSettingsMap:Map[String,String]=(for(data <-getCustomSettings("ClientSettings")) 
-		yield data.fieldValue(0).toString -> data.fieldValue(1).toString).toMap
+		yield data.fieldValue.head.toString -> data.fieldValue(1).toString).toMap
 
 	override lazy val holidays: IndexedSeq[HolidayDefinition] = getCustomSettings("Holidays") map (new HolidayDefinition(_))
 		
@@ -108,7 +110,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	}
 	
 	
-  def getUserRoot(userName:String):Reference=  userFolders.getOrElse(userName,{
+  def getUserRoot(userName:String):Reference=  userFolders.getOrElseUpdate(userName,{
     val userType=_systemTypes.get("UserStore") match {
       case Some(ut)=> ut
       case None=> Log.e("\nSystem Type 'UserStorage' is not defined, assume type 5 \n");5
@@ -119,20 +121,19 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
     }
     var inst:InstanceData= null
     TransactionManager.doTransaction(-1, ActionNameMap.getActionID("createUserFolder"), FSPaths.userRootRef, true, userType,{
-			inst = TransactionManager.tryCreateInstance(userType, Array(new OwnerReference(1, FSPaths.userRootRef)), false).setField(0, StringConstant(userName))
+			inst = TransactionManager.tryCreateInstance(userType, Array(new OwnerReference(1, FSPaths.userRootRef)), notifyRefandColl = false).setField(0, StringConstant(userName))
 	    TransactionManager.tryWriteInstanceData(inst)
 	    if(FSPaths.libraryRootRef.instance>0) {
 	      val libraryInst=ActionList.getInstanceData(FSPaths.libraryRootRef)
-	      TransactionManager.trySecondUseInstances(List(FSPaths.libraryRootRef), libraryInst.owners.head, new OwnerReference(2,inst.ref), -1,false)  
+	      TransactionManager.trySecondUseInstances(List(FSPaths.libraryRootRef), libraryInst.owners.head, new OwnerReference(2,inst.ref), -1,collNotifyOwners = false)
 	    }
-	    
-	    userFolders=userFolders + ((userName,inst.ref))
+
 	    getClientSetting("UserSystemFolders") match {
 	      case ""=>
 	      case fn=>
 					val ownerRef=Array(new OwnerReference(3,inst.ref))
 					for(folderName<-fn.split(',')) {
-						val finst = TransactionManager.tryCreateInstance(folderType, ownerRef, false).setField(0, StringConstant(folderName))
+						val finst = TransactionManager.tryCreateInstance(folderType, ownerRef, notifyRefandColl = false).setField(0, StringConstant(folderName))
             TransactionManager.tryWriteInstanceData(finst)
           }
 			}

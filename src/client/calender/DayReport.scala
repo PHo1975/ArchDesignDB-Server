@@ -10,8 +10,8 @@ import javafx.scene.image.ImageView
 import javafx.scene.input.{KeyCode, KeyEvent, TransferMode}
 import javafx.scene.layout.{ColumnConstraints, GridPane, HBox, Priority}
 
-import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
+import scala.jdk.CollectionConverters._
 
 
 

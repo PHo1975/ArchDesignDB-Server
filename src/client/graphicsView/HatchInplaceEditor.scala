@@ -6,9 +6,9 @@ import client.dataviewer.InstanceRenderer
 import client.dialog.InplaceFieldEditor
 import definition.expression.{Constant, Expression}
 import javax.swing.{DefaultCellEditor, JTable}
-import util.{MyComboBox, MyListView}
+import util.MyComboBox
 
-import scala.swing.Table
+import scala.swing.{ListView, Table}
 
 
 class HatchInplaceEditor() extends InplaceFieldEditor{
@@ -17,16 +17,16 @@ class HatchInplaceEditor() extends InplaceFieldEditor{
   val previewPrototype=new HatchLabelPreview
   
   val editor = new DefaultCellEditor(styleCombo.peer) {  	
-  	override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ) = {  		
+  	override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ) = {
   		styleCombo.selection.index=value match {
   		  case c:Constant => if(c.toInt>=HatchHandler.hatchList.size)-1 else c.toInt
   		  case _ => -1
   		}
   		styleCombo.peer
   	}
-  	override def getCellEditorValue():java.lang.Object =
+  	override def getCellEditorValue:java.lang.Object =
   	{
-  		styleCombo.peer.getSelectedItem() match {
+  		styleCombo.peer.getSelectedItem match {
   		  case ls:HatchStyle=>ls.ix.asInstanceOf[AnyRef]
   		  case _=> 0.asInstanceOf[AnyRef]
   		}
@@ -47,8 +47,8 @@ class HatchInplaceEditor() extends InplaceFieldEditor{
     }
   }  
   	
-	styleCombo.renderer=new MyListView.AbstractRenderer[HatchStyle,HatchLabelPreview](previewPrototype){
-		def configure(list: MyListView[HatchStyle], isSelected: Boolean, focused: Boolean, a: HatchStyle, index: Int): Unit = {
+	styleCombo.renderer=new ListView.AbstractRenderer[HatchStyle,HatchLabelPreview](previewPrototype){
+		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: HatchStyle, index: Int): Unit = {
 		  val hatch=if(a==null) HatchHandler.undefinedHatch else a
 			component.setValue(hatch.ix,hatch.name)
 		}		

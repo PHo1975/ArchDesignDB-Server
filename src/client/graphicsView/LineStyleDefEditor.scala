@@ -188,7 +188,7 @@ class DirectStylePreviewPan extends Component {
   opaque=true  
   preferredSize=new Dimension(40,25)
 
-  def setStyle(dotList: Seq[Float]): Unit = {
+  def setStyle(dotList: Iterable[Float]): Unit = {
     if (dotList.isEmpty || !dotList.exists(_ != 0)) stroke = new BasicStroke(1f)
     else stroke=new BasicStroke(1f,BasicStroke.CAP_BUTT ,BasicStroke.JOIN_BEVEL,10f,dotList.map(z=> z / client.graphicsView.ScaleModel._dotPitch.toFloat).toArray,0f)
     repaint()

@@ -8,6 +8,7 @@ import definition.typ.AllClasses
 import javax.swing.SwingWorker
 
 import scala.collection.Map
+import scala.collection.mutable._
 import scala.swing.Window
 
 class DescriptorHolder(val className:String,id:Int) {
@@ -31,7 +32,7 @@ object FileImportManager {
    * @param droppedTarget instance of the target object, if known
    * 
    */
-  def canImport(fileNames:Seq[File],targetType:Int,droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean = {
+  def canImport(fileNames:Seq[File], targetType:Int, droppedTarget:Option[InstanceData], ownerRef:OwnerReference):Boolean = {
     if(descriptorMap.contains(targetType)) {
       println("canimport "+targetType)
       val descriptor=descriptorMap(targetType).descriptor
@@ -46,7 +47,7 @@ object FileImportManager {
         if(wPos.y+height>(screenSize.height-60)) screenSize.height-height-60 else wPos.y)
   }
   
-  def showImportDialog(window:Window, wpos:Point,files:Seq[File],targetType:Int,dropTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean= {
+  def showImportDialog(window:Window, wpos:Point, files:Seq[File], targetType:Int, dropTarget:Option[InstanceData], ownerRef:OwnerReference):Boolean= {
     if(descriptorMap.contains(targetType)) {
       val descriptor=descriptorMap(targetType).descriptor
       val settings= descriptor.showImportDialog(window,wpos,files,dropTarget)

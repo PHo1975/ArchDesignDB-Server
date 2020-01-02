@@ -13,8 +13,8 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
   override val createActions=List(createSymbolAction) 
   val actions: Seq[ActionIterator] =Seq(replaceAction,breakUpAction,alignHor,alignVert,distributeAction)
   
-  def createSymbolAction=new CreateActionImpl("Symbol",Some(new CommandQuestion(ModuleType.Graph,
-  "CreateSymbol")),doCreateSymbol)
+  def createSymbolAction=new CreateActionImpl("Symbol", Some(new CommandQuestion(ModuleType.Graph,
+    "CreateSymbol")), doCreateSymbol)
   
   def replaceAction=new ActionIterator("Symbol austauschen",Some(new CommandQuestion(ModuleType.Graph,
   "ChangeSymbol")),doReplace)
@@ -25,7 +25,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     doDistribute)
   def breakUpAction=new ActionIterator("Symbol aufbrechen",None,doBreakUp)
   
-  def doCreateSymbol(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
+  def doCreateSymbol(u:AbstractUserSocket, parents:Iterable[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
     //println("do Symbol parents "+parents.mkString(", ")+"\n params:"+param.mkString("; "))
     val layer=parents.head
     val symbolRef=param.head._2
@@ -40,7 +40,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+  def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =  {
     val symbolRef=param.head._2
     for(d<-data)
       TransactionManager.tryWriteInstanceField(d.ref,1,symbolRef)
@@ -65,7 +65,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
   
   override def pointMod(elem:InstanceData,delta:VectorConstant,chPoints:Set[VectorConstant]): Unit = pointModField(5,elem,delta,chPoints)
   
-  def doBreakUp(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+  def doBreakUp(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =  {
     for(d<-data;if d.ref.typ == theTypeID){
       val symbolRef=d.fieldValue(1).toObjectReference
       val angle=d.fieldValue(2).toDouble*Math.PI/180d
@@ -76,7 +76,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
       for(props<-StorageManager.getInstanceProperties(symbolRef);grElemRef<-props.propertyFields(0).propertyList;
         grElem=ActionList.getInstanceData(grElemRef)){
         val createInst=TransactionManager.tryCreateInstance(grElemRef.typ,owners,notifyRefandColl = false)
-        var newInst=grElem.clone(createInst.ref,owners,Seq.empty)
+        var newInst=grElem.clone(createInst.ref,owners,Array.empty)
         val module=TypeInfos.moduleMap(grElemRef.typ)
         newInst=module.copyElement(newInst,pos)          
         TransactionManager.tryWriteInstanceData(newInst)
@@ -88,7 +88,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   }
 
-  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>1){
+  def doAlignHor (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean = if(data.size>1){
     var xValue =0d
     for(d<-data)
       xValue+=d.fieldValue(5).toVector.x
@@ -98,7 +98,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   } else false
 
-  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>1){
+  def doAlignVert (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean = if(data.size>1){
     var yValue=0d
     for(d<-data)
       yValue+=d.fieldValue(5).toVector.y
@@ -108,7 +108,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
     true
   } else false
 
-  def doDistribute (u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean = if(data.size>2){
+  def doDistribute (u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean = if(data.size>2){
     //println("Verteilen "+param.mkString("|"))
     val horizontal= param.head._2.toString==horizontalText
 
@@ -117,7 +117,7 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
       if(horizontal) vector.x else vector.y
     }
 
-    val sortedList=data.sortBy(getValue)
+    val sortedList=data.toSeq.sortBy(getValue)(Ordering.Double.TotalOrdering)
     val min:Double=getValue(sortedList.head)
     val max:Double=getValue(sortedList.last)
     val step=(max-min)/(data.size-1)

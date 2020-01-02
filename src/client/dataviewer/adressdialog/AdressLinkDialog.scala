@@ -14,7 +14,7 @@ import javax.swing.JTree
 import javax.swing.event.{TreeSelectionEvent, TreeSelectionListener}
 import javax.swing.tree.{DefaultMutableTreeNode, TreeNode, TreePath, TreeSelectionModel}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.swing.Table.{ElementMode, IntervalMode}
 import scala.swing.event.{ButtonClicked, EditDone}
 import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dialog, Orientation, ScrollPane, Swing, Table, TextField, Window}

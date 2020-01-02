@@ -6,7 +6,7 @@ import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression._
 import definition.typ.DataType
 
-import scala.collection.immutable.{ListMap, Map}
+import scala.collection.immutable.Map
 import scala.collection.{immutable, mutable}
 
 
@@ -17,8 +17,8 @@ case class SymbolParam(ref:Reference,name:String,typ:DataType.Value,defaultValue
 
 
 class SymbolStamp (stampData:InstanceData) extends Referencable {
-  var params: ListMap[Any, SymbolParam] = new collection.immutable.ListMap[Reference,SymbolParam] ++
-    (ClientQueryManager.queryInstance(stampData.ref, 1) map(inst=>(inst.ref.instance ,new SymbolParam(inst) )))  
+  var params: Map[Int, SymbolParam] =
+    (ClientQueryManager.queryInstance(stampData.ref, 1).view.map(inst=>(inst.ref.instance ,new SymbolParam(inst) ))).toMap
     
   val templates: immutable.IndexedSeq[InstanceData] = ClientQueryManager.queryInstance(stampData.ref,0)
   val ref: Reference =stampData.ref

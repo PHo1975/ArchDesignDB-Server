@@ -16,10 +16,10 @@ import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, Orientat
 import javax.swing._
 import javax.swing.border.TitledBorder
 import javax.swing.table.TableCellEditor
-import util.{MyComboBox, MyListView}
+import util.MyComboBox
 
 import scala.swing.event.{ButtonClicked, ListSelectionChanged, SelectionChanged}
-import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, CheckBox, Component, Dialog, Label, Orientation, RadioButton, ScrollPane, Swing, Table, Window}
+import scala.swing.{BorderPanel, BoxPanel, Button, ButtonGroup, CheckBox, Component, Dialog, Label, ListView, Orientation, RadioButton, ScrollPane, Swing, Table, Window}
 
 /**
  * 
@@ -42,7 +42,7 @@ class BoolRenderer extends CheckBox {
 
 class NewOutdefDialog (w:Window) extends Dialog(w)  {	
 	
-	private var outputDefinedFunc:(Int,String,String,Boolean,Int,Int,Seq[ResultElement])=>Unit = _
+	private var outputDefinedFunc:(Int,String,String,Boolean,Int,Int,Iterable[ResultElement])=>Unit = _
 	var combosAdjusting=false
 	var resetOnClose=false
 	val cancelBut=new Button("Abbruch")
@@ -87,8 +87,8 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 	}	
 	
 	val printerCombo=new MyComboBox[String](PrintModel.printerList)
-	val formListView=new MyListView[FormDescription](){
-		selection.intervalMode=MyListView.IntervalMode.Single
+	val formListView=new ListView[FormDescription](){
+		selection.intervalMode=ListView.IntervalMode.Single
 		maximumSize=new Dimension(Short.MaxValue,0)
 	}
 	formListView.border=BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder,"Druckformular auswählen:",TitledBorder.LEFT,TitledBorder.ABOVE_TOP)
@@ -237,16 +237,16 @@ class NewOutdefDialog (w:Window) extends Dialog(w)  {
 		combosAdjusting=false		
 	}
 
-	def getCurrentForm: FormDescription = formListView.selection.items.get(0)
+	def getCurrentForm: FormDescription = formListView.selection.items(0)
 
-	def showDialog(newTitle: String, noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[ResultElement]) => Unit, nresetOnClose: Boolean): Unit = {
+	def showDialog(newTitle: String, noutputDefinedFunc: (Int, String, String, Boolean, Int, Int,Iterable[ResultElement]) => Unit, nresetOnClose: Boolean): Unit = {
 		title=newTitle
 		outputDefinedFunc=noutputDefinedFunc		
 		resetOnClose=nresetOnClose
 		visible=true
 	}
 
-	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Seq[ResultElement]) => Unit, odef: OutputDefinition): Unit = {
+	def showEditDialog(noutputDefinedFunc: (Int, String, String, Boolean, Int, Int, Iterable[ResultElement]) => Unit, odef: OutputDefinition): Unit = {
 		loadOutDefSettings(odef)		
 		showDialog("Ausgabedefinition ändern",noutputDefinedFunc,resetOnClose)
 	}

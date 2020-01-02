@@ -79,11 +79,11 @@ object ActionList extends DataRetriever {
             val (propPos,propSize)=propData match {
               case Some(pdata)=>
               StorageManager.writeInstanceProperties(pdata,writeIndex = false) // if propdata is defined, write
-              case None => (0l,0)
+              case None => (0L,0)
             }
             val (collPos,collSize)=collData match {
               case Some(c)=>  StorageManager.writeCollectingFuncData (c,writeIndex = false)
-              case None => (0l,0)
+              case None => (0L,0)
             }
             val (linkPos,linkSize)=linkData match {
               case Some(l)=>  StorageManager.writeReferencingLinks(l,writeIndex = false)

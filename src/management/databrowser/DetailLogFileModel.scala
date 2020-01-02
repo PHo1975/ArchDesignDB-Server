@@ -28,7 +28,7 @@ object DetailLogFileModel extends AbstractTableModel {
        case _ => classOf[String]
    }
    
-   def printTime(time:Int)=  util.JavaUtils.shortDateTimeFormat.format(new Date(time*60000l))
+   def printTime(time:Int)=  util.JavaUtils.shortDateTimeFormat.format(new Date(time*60000L))
    
    
    def getValueAt(row:Int,col:Int) = {

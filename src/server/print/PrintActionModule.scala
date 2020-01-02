@@ -28,7 +28,7 @@ class PrintActionModule extends ActionModule {
 	val actions=List(outputAction)	
 	 
 	
-	def doOutputWindow(u:AbstractUserSocket, parent:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]):Boolean =
+	def doOutputWindow(u:AbstractUserSocket, parent:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]):Boolean =
 		if(data.isEmpty) false
 		else {
 		val outDefs= getOutDefs(data.head.ref)		

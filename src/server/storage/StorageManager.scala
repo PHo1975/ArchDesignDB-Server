@@ -33,14 +33,14 @@ object StorageManager {
   protected val propFileHandler=new ContainerFileHandler("PropData.dat",InstanceProperties.read)
   protected val linkFileHandler=new ContainerFileHandler("ExternLinks.dat",ReferencingLinks.read)
   protected val collFuncFileHandler=new ContainerFileHandler("collFuncs.dat",CollFuncResultSet.read)
-	protected val blockFileHandler=new ContainerFileHandler("Block.dat",null)
+	protected val blockFileHandler=new ContainerFileHandler[BlockData]("Block.dat",null)
   private val fileLock = new Object()
   var shuttedDown=false
   var inited=false
   var serverClassList:Map[Int,ServerObjectClass]=_
 	var blockClassList:Map[Int,BlockClass]=_
   protected var _ixHandlerList: mutable.HashMap[Int, ClassIndexHandler] = collection.mutable.HashMap[Int, ClassIndexHandler]()
-	protected var _blockIxHandlerList= collection.mutable.HashMap[Int,BlockIndexHandler]()
+	protected var _blockIxHandlerList: mutable.Map[Int, BlockIndexHandler] = collection.mutable.HashMap[Int,BlockIndexHandler]()
 
   def init(scl:ServerClassList ): Unit = {
 		println("storagemanager init")
@@ -140,7 +140,7 @@ object StorageManager {
 				IllegalArgumentException("get Block instance "+ref+" is deleted")
 		try {
 			val block=new BlockData(ref,new Array(handler.theClass.blocksize))
-			dataFileHandler.readInBuffer(dataPos,handler.theClass.blocksize).copyToArray(block.data,0,handler.theClass.blocksize)
+			blockFileHandler.readInBuffer(dataPos,handler.theClass.blocksize).copyToArray(block.data,0,handler.theClass.blocksize)
 			block
 		} catch { case NonFatal(er)=> util.Log.e("loading ref:"+ref,er);null
 		case eo:EOFException=>util.Log.e("loading ref:"+ref,eo);null}
@@ -157,7 +157,11 @@ object StorageManager {
 		(pos,size)
 	}
 
-
+  def writeBlock(data:BlockData,created:Boolean): Unit = {
+		val (pos,size)=blockFileHandler.writeInstance(data)
+		blockHandler(data.ref.typ).writeData(data.ref.instance,pos,created)
+		//(pos,size)
+	}
 
 	// *************************************************************************************
 	//                                       PROPERTIES
@@ -387,8 +391,8 @@ object StorageManager {
 				val (transType, npos, nlength) = TransLogHandler.getLastLivingData(ref.typ, ref.instance,
 					TransLogHandler.getInsertPos - 1, List(TransType.created.id, TransType.dataChanged.id))
 				//System.out.println("Last Living "+ref+" is: pos:"+npos+" size:"+nlength)
-				if (transType == -1) return new InstanceData(ref, IndexedSeq(), Array(), Seq.empty, false)
-				pos = npos;
+				if (transType == -1) return new InstanceData(ref, IndexedSeq(), Array(), Array.empty, false)
+				pos = npos
 				length = nlength
 
 			}
@@ -514,7 +518,7 @@ object StorageManager {
 		          if(ownerRecord.ownerField !=pfIx){
                 util.Log.e("wrong ownerField " +ownerRecord+" in ownersRecord of Instance "+data.ref+" should be "+pfIx)
 		            data.owners(oix)=new OwnerReference(pfIx,ownerRef)
-		            writeInstance(data,false)
+		            writeInstance(data,created = false)
 		          }
 		        }
 		        else {
@@ -523,8 +527,8 @@ object StorageManager {
 	              val suOwnerRecord=data.secondUseOwners(suix)
 	               if(suOwnerRecord.ownerField !=pfIx) {
                    util.Log.e("wrong ownerField " +suOwnerRecord+" in SUOwnersRecord of Instance "+data.ref+" should be "+pfIx)
-	                 val newOwners=for(i<-data.secondUseOwners.indices) yield if(i==suix)new OwnerReference(pfIx,ownerRef) else data.secondUseOwners(i)
-	                 writeInstance(data.changeSecondUseOwners(newOwners),false)
+	                 val newOwners  =for(i<-data.secondUseOwners.view.indices) yield if(i==suix)new OwnerReference(pfIx,ownerRef) else data.secondUseOwners(i)
+	                 writeInstance(data.changeSecondUseOwners(newOwners.toArray),created = false)
 	               }
 	            }
 	            else util.Log.e("Cant find the real Owner "+ownerRef+" in Owner- and SUOwner-Records of child:"+data+" ("+data.ref+")")
@@ -551,7 +555,7 @@ object StorageManager {
       util.Log.w("DelOrphans check "+handler.theClass.name+" "+dList.size)
   	  for((inst,dPos,dLen)<-dList) try{
   	    val ref=new Reference(typ,inst)
-  	    val instObj=dataFileHandler.readWithBool(ref,dPos,dLen,false )
+  	    val instObj=dataFileHandler.readWithBool(ref,dPos,dLen,boolValue = false )
   	    if(instObj.owners.nonEmpty || instObj.secondUseOwners.nonEmpty){
 	  	    val newOwners=instObj.owners.filter(aOwner=> {
 	  	      if(!instanceExists(aOwner.ownerRef.typ,aOwner.ownerRef.instance)) {util.Log.e("owner "+aOwner+" of "+ref+" does not exist");false}
@@ -614,7 +618,7 @@ object StorageManager {
       util.Log.w("Find Orphans check  "+handler.theClass.name+" "+dList.size)
   	  for((inst,dPos,dLen)<-dList) try{
   	    val ref=new Reference(typ,inst)
-  	    val instObj=dataFileHandler.readWithBool(ref,dPos,dLen,false )
+  	    val instObj=dataFileHandler.readWithBool(ref,dPos,dLen,boolValue = false )
   	    if(instObj.owners.nonEmpty || instObj.secondUseOwners.nonEmpty){
 	  	    instObj.owners.foreach(aOwner=> {
 	  	      if(!instanceExists(aOwner.ownerRef.typ,aOwner.ownerRef.instance)) {util.Log.e("owner "+aOwner+" of "+ref+" does not exist");false}
@@ -655,7 +659,7 @@ object StorageManager {
   def addField(addClassType: ServerObjectClass, atPos: Int): Unit = fileLock.synchronized {
 	  for(ref<-ixHandler(addClassType.id).getInstancesRefs) {
 	    val data=getInstanceData(ref).addField(atPos)
-	    writeInstance(data,false)
+	    writeInstance(data,created = false)
 	  }
 	  val lastFieldName=addClassType.fields(atPos-1).name
 	  for(succ<-AllClasses.get.getDirectSuccessorsFor(addClassType.id))
@@ -708,7 +712,7 @@ object StorageManager {
 		  		chandler.writeData(childRef.instance ,cpos, clen, ctrans==TransType.created.id,withLog = false)
 		  		//chandler.instCache.removeInstanceData(childRef.instance )
           util.Log.w(" done.")
-	      } catch {case NonFatal(e) => util.Log.e(" error:"+e.getMessage(),e)}
+	      } catch {case NonFatal(e) => util.Log.e(" error:"+e.getMessage,e)}
       } else util.Log.e("child :"+childRef+" still exists")
 	}
 

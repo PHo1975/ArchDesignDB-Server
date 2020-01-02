@@ -7,6 +7,7 @@ import definition.data.{LogIndexSet, TransType}
 import javax.swing.table.AbstractTableModel
 import server.storage._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.swing.Swing
 
 /**
@@ -14,7 +15,7 @@ import scala.swing.Swing
  */
 object LogFileModel extends AbstractTableModel {
 	
-   var transList:IndexedSeq[LogIndexSet]=IndexedSeq.empty
+   var transList:ArrayBuffer[LogIndexSet]=ArrayBuffer.empty
    
    
    
@@ -22,7 +23,7 @@ object LogFileModel extends AbstractTableModel {
        transList.length 	 
    }
    
-   override def getColumnClass(col:Int) = col match {
+   override def getColumnClass(col:Int): Class[_ >: Int with TransType.Value with Integer with Long] = col match {
   	   case 0 => classOf[Int]
   		 case 1 => classOf[TransType.Value]
   		 case 2 => classOf[Int]  		 

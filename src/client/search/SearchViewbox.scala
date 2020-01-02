@@ -10,9 +10,8 @@ import client.model.{AbstractTableViewbox, AdaptedScroller, PathController, Path
 import definition.comm.{PropertyGroup, StringValue}
 import definition.data.{EMPTY_REFERENCE, InstanceData, Referencable, Reference}
 import definition.typ.SelectGroup
-import util.{Log, MyListView}
+import util.Log
 
-import scala.swing.ListView.IntervalMode
 import scala.swing.event.{EditDone, ListSelectionChanged}
 import scala.swing.{BoxPanel, ListView, Orientation, ScrollPane, Swing, TextField}
 import scala.util.control.NonFatal
@@ -33,7 +32,7 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
   val dataviewController = new DataViewController(this)
 
   val pathMod = new PathModel()
-  val pathView = new MyListView[InstanceData]()
+  val pathView = new ListView[InstanceData]()
   //pathView.xLayoutAlignment=0d
   pathView.yLayoutAlignment = 1d
   val pathController: PathController = new PathController(pathMod, pathView, dataviewController)
@@ -42,7 +41,7 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
   dataviewController.registerSelectListener(SelectEventDispatcher)
 
   list.peer.setModel(model)
-  list.selection.intervalMode = IntervalMode.Single
+  list.selection.intervalMode = ListView.IntervalMode.Single
   contents += new BoxPanel(Orientation.Horizontal) {
     contents += ViewConstants.label("Suche:  ") += searchBox
   } += new ScrollPane() {
@@ -59,7 +58,7 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
           try {
             pathController.loadPath(tree.map(_.ref), () => {}, Some(item.ref))
           } catch {
-            case NonFatal(er) => Log.e("load:", er); println(er + "\n")
+            case NonFatal(er) => Log.e("load:", er); println(er.toString + "\n")
             case o: Throwable => println("other:" + o)
           }
 

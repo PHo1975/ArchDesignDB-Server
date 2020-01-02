@@ -118,7 +118,7 @@ class ParamTabMod extends AbstractTableModel  {
   override def isCellEditable(row:Int,col:Int): Boolean =	col==2
 
   
-  def getParams:Seq[ResultElement]= paramValues.map(a=>ResultElement(a._1,a._3))
+  def getParams:Iterable[ResultElement]= paramValues.map(a=>ResultElement(a._1,a._3))
 
 	
 }

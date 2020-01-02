@@ -35,7 +35,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   var pointListener:PointClickListener=_
   var objSelectListener:Option[ObjectSelectListener]=None
   var selectPointsListener:Option[SelectPointsListener]=None
-  var objSelectClassConstraints:Seq[Int]=Seq.empty
+  var objSelectClassConstraints:Iterable[Int]=Seq.empty
   var objSelectMode: ObjectSelectMode.Value =ObjectSelectMode.SingleObject
   var lastSelectedPoint:VectorConstant=new VectorConstant(0,0,0)
   var bracketMode:Boolean = false
@@ -213,7 +213,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       case Some(rs)=>GraphElemConst.checkHit(clickPosX, clickPosY, pcd, rs)
       case None =>Nil
     }
-    val hittedPoints: Seq[(Byte, VectorConstant)] =GraphElemConst.checkHit(clickPosX,clickPosY,pcd,NULLVECTOR) ++ // check for basepoint of coordinate system
+    val hittedPoints: Iterable[(Byte, VectorConstant)] =GraphElemConst.checkHit(clickPosX,clickPosY,pcd,NULLVECTOR) ++ // check for basepoint of coordinate system
           layerModel.checkElementPointsWithLayer((el,layer)=>el.hitPoint(layer,clickPosX, clickPosY, pcd))++rubberList
 
     if(hittedPoints.nonEmpty) {
@@ -251,11 +251,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   protected def findMatchingPoint(clickPosX: Double, clickPosY: Double, middleButton: Boolean): VectorConstant = {
     val matching=getNearestPoint(clickPosX,clickPosY)
     matching.hitBoth match {
-      case Some(pos)⇒ pos
-      case None ⇒
+      case Some(pos)=> pos
+      case None =>
         findCrossPoint(clickPosX,clickPosY) match {
-          case Some(cp)⇒ cp
-          case None ⇒
+          case Some(cp)=> cp
+          case None =>
             matching match {
               case MatchingPoints(None,Some(nearestX),Some(nearestY)) if middleButton =>
               new VectorConstant(nearestX.x,nearestY.y,0)
@@ -272,11 +272,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   protected def findOnlyMatchingPoint(clickPosX:Double,clickPosY:Double,middleButton:Boolean):Option[VectorConstant] = {
     val matching=getNearestPoint(clickPosX,clickPosY)
         matching.hitBoth match {
-          case pos @ Some(_) ⇒ pos
-          case None ⇒
+          case pos @ Some(_) => pos
+          case None =>
             findCrossPoint(clickPosX,clickPosY) match {
-              case cp @ Some(_)⇒ cp
-              case None ⇒
+              case cp @ Some(_)=> cp
+              case None =>
                 matching match {
                   case MatchingPoints(None,Some(nearestX),Some(nearestY)) if middleButton =>
                     //System.out.println("project both")
@@ -447,7 +447,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       deselectZoomInBut()
       scaleModel.zoomIn(startPoint,endPoint)
       isZoomingIn=false
-    } else if(rightButton) singleClick(startPoint,control,shift,rightButton,false)
+    } else if(rightButton) singleClick(startPoint,control,shift,rightButton,middleButton = false)
     else if(!middleButton){
       val onlyInside=startPoint.x<endPoint.x // catch only Objects inside of the rectangle when
       // moving the mouse from left to right. When moving from right to left, catch all cutting objects
@@ -463,13 +463,13 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
         case ViewportState.SelectState =>	 checkSelection(minX,minY,maxX,maxY,onlyInside,control)
 
         case ViewportState.SelectPoints =>
-          val points=selectModel.getPointsInRectangle(minX,minY,maxX,maxY)
+          val points: Iterator[VectorConstant] =selectModel.getPointsInRectangle(minX,minY,maxX,maxY)
           //println("PS points in rectangle "+points)
-          if(points.nonEmpty)
+          if(points.hasNext)
             pointSelectModel.addPoints(points,!control)
           if(!pointSelectModel.bracketMode) processSelectedPoints()
           refreshCanvas()
-        case ViewportState.AskPoint|ViewportState.AskPointOrObject=> singleClick(startPoint, control, shift, rightButton,false)
+        case ViewportState.AskPoint|ViewportState.AskPointOrObject=> singleClick(startPoint, control, shift, rightButton,middleButton = false)
         case _ =>
       }
     }

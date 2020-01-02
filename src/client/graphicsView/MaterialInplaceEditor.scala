@@ -7,9 +7,9 @@ import client.dataviewer.{InstanceRenderer, ViewConstants}
 import client.dialog.InplaceFieldEditor
 import definition.expression.{Constant, Expression}
 import javax.swing.{DefaultCellEditor, JComboBox, JTable}
-import util.{MyComboBox, MyListView}
+import util.MyComboBox
 
-import scala.swing.{BorderPanel, Label, Table}
+import scala.swing.{BorderPanel, Label, ListView, Table}
 
 
 class MaterialInplaceEditor() extends InplaceFieldEditor{
@@ -26,7 +26,7 @@ class MaterialInplaceEditor() extends InplaceFieldEditor{
   		styleCombo.peer
   	}
 
-    override def getCellEditorValue(): java.lang.Object = {
+    override def getCellEditorValue: java.lang.Object = {
   		styleCombo.peer.getSelectedItem() match {
   		  case ls:MaterialDef=>ls.ix.asInstanceOf[AnyRef]
   		  case _=> 0.asInstanceOf[AnyRef]
@@ -52,8 +52,8 @@ class MaterialInplaceEditor() extends InplaceFieldEditor{
   }
   
   	
-	styleCombo.renderer=new MyListView.AbstractRenderer[MaterialDef,HatchLabelPreview](previewPrototype){
-		def configure(list: MyListView[MaterialDef], isSelected: Boolean, focused: Boolean, a: MaterialDef, index: Int): Unit = {
+	styleCombo.renderer=new ListView.AbstractRenderer[MaterialDef,HatchLabelPreview](previewPrototype){
+		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: MaterialDef, index: Int): Unit = {
 		  val mat=if(a==null)MaterialHandler.undefinedMaterial else a
 			component.setValue(mat.hatch,mat.name)
 		}		
@@ -70,7 +70,7 @@ class HatchLabelPreview extends BorderPanel{
    add(label,BorderPanel.Position.Center)
 
   def setValue(nhatch: Int, ltext: String): Unit = {
-     hatchPreview.setHatch(HatchHandler.quickGetHatch(nhatch),true,true)
+     hatchPreview.setHatch(HatchHandler.quickGetHatch(nhatch),paperStyle = true,update = true)
      label.text=" "+ltext     
      label.background=background
      label.foreground=foreground

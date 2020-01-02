@@ -17,7 +17,7 @@ import org.eclipse.jetty.util.security.Constraint
 import server.config.FSPaths
 import util.{Log => MyLog}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**

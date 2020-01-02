@@ -8,7 +8,7 @@ import javafx.collections.ObservableList
 import javafx.scene.control.TreeItem
 import javafx.util.StringConverter
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait AdTreeNode extends Referencable{
   def name:String  

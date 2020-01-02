@@ -12,15 +12,15 @@ class SymbolFillerModule extends ActionModule with GraphActionModule {
   override val createActions=List(createSymbolAction) 
   val actions: Seq[ActionIterator] =Seq(replaceAction)
   
-  def createSymbolAction=new CreateActionImpl("SymbolFiller",Some(new CommandQuestion(ModuleType.Graph,
-  "CreateSymbolFiller")),doCreateSymbol)
+  def createSymbolAction=new CreateActionImpl("SymbolFiller", Some(new CommandQuestion(ModuleType.Graph,
+    "CreateSymbolFiller")), doCreateSymbol)
   
   def replaceAction=new ActionIterator("Symbol austauschen",Some(new CommandQuestion(ModuleType.Graph,
   "ChangeSymbol")),doReplace)
   
   
   
-  def doCreateSymbol(u:AbstractUserSocket, parents:Seq[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
+  def doCreateSymbol(u:AbstractUserSocket, parents:Iterable[InstanceData], param:Seq[(String,Constant)], newTyp:Int, formFields:Seq[(Int,Constant)]):Boolean= {
     //println("do Symbol parents "+parents.mkString(", ")+"\n params:"+param.mkString("; "))
     val layer=parents.head
     val symbolRef=param.head._2
@@ -39,7 +39,7 @@ class SymbolFillerModule extends ActionModule with GraphActionModule {
     true
   }
   
-  def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean =  {
+  def doReplace(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =  {
     val symbolRef=param.head._2
     for(d<-data)
       TransactionManager.tryWriteInstanceField(d.ref,1,symbolRef)

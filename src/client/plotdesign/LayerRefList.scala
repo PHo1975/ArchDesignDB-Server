@@ -74,7 +74,7 @@ class LayerRefList(controller:PlotDesignController) extends AbstractLayerModel {
    
    //def doNothing()={}
    
-   def calcBounds()= listLock.synchronized{
+   def calcBounds(): Unit = listLock.synchronized{
      val pb=controller.pageModel.bounds
      var x1=pb.x
      var y1=pb.y
@@ -90,7 +90,7 @@ class LayerRefList(controller:PlotDesignController) extends AbstractLayerModel {
      controller.calcAllBounds()     
    }   
    
-   def shutDown() = listLock.synchronized { if(subsID!= -1) {
+   def shutDown(): Unit = listLock.synchronized { if(subsID!= -1) {
      ClientQueryManager.removeSubscription(subsID)
      subsID= -1
      list foreach (_.shutDown())
@@ -99,11 +99,11 @@ class LayerRefList(controller:PlotDesignController) extends AbstractLayerModel {
    
    def filterSelection(filterFunc:(LayerRef)=>Boolean):Seq[LayerRef] = list.filter(filterFunc)
    
-   def checkElementPoints(checkFunc:(Formatable)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)] = {
+   /*def checkElementPoints(checkFunc:(Formatable)=>Iterable[(Byte,VectorConstant)]):Iterable[(Byte,VectorConstant)] = {
      list.flatMap(checkFunc)
-   }
+   }*/
    
-   def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Seq[(Byte,VectorConstant)]):Seq[(Byte,VectorConstant)]= {
+   def checkElementPointsWithLayer(checkFunc:(Formatable,ElemContainer)=>Iterable[(Byte,VectorConstant)]):Iterable[(Byte,VectorConstant)]= {
      list.flatMap(e=>checkFunc(e,null))
    }
    

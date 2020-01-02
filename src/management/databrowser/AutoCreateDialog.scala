@@ -13,8 +13,8 @@ import javax.swing.{BorderFactory, JComboBox}
 import server.config.AutoCreateInfo
 import server.storage.ServerObjectClass
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.jdk.CollectionConverters._
 import scala.swing.Table.LabelRenderer
 import scala.swing._
 import scala.swing.event.{ButtonClicked, TableRowsSelected}
@@ -210,8 +210,8 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 		}
 		lastSelectedRow=Some(newIx)	  
 	}
-	def setStartValuesToEntry(sv:Seq[(Byte,Expression)]): Unit = for(r<-lastSelectedRow ) {
-		ccModel.currentValues(r)=ccModel.currentValues(r).copy(startValues=sv)
+	def setStartValuesToEntry(starValues:Seq[(Byte,Expression)]): Unit = for(r<-lastSelectedRow) {
+		ccModel.currentValues(r)=ccModel.currentValues(r).copy(startValues=starValues)
 	}
 	
 
@@ -245,8 +245,8 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 			dirty=false
 		}
 
-		def getRowCount(): Int = currentValues.size+1
-		def getColumnCount(): Int = 3  
+		def getRowCount: Int = currentValues.size+1
+		def getColumnCount: Int = 3
 		override def isCellEditable(row:Int,col:Int): Boolean = col>0
 
 		def deleteRow(ix:Int): Unit = {
@@ -321,7 +321,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 		
 		override def deleteRow(ix:Int): Unit = {
 		  super.deleteRow(ix)
-		  setStartValuesToEntry(currentValues.clone)
+		  setStartValuesToEntry(currentValues.toSeq)
 		}
 
 		override def setValueAt(newValue:Object, rowIndex: Int, columnIndex: Int): Unit = 
@@ -340,7 +340,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 						case 2=> oldEntry.copy(_2=StringParser.parse(newValue.toString,DataType.StringTyp).withException)
 					}
 					currentValues(rowIndex)=newEntry
-					setStartValuesToEntry(currentValues.clone)
+					setStartValuesToEntry(currentValues.toSeq)
 					dirty=true
 					this.fireTableDataChanged()
 				} 
@@ -351,7 +351,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 						case 2=> ((-1).toByte,StringParser.parse(newValue.toString,DataType.StringTyp).withException)
 					}
 					currentValues += newEntry
-					setStartValuesToEntry(currentValues.clone)
+					setStartValuesToEntry(currentValues.toSeq)
 					dirty=true
 					this.fireTableDataChanged()
 				}

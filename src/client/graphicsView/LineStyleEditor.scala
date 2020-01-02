@@ -11,9 +11,9 @@ import definition.data.LineStyle
 import definition.expression.{Constant, Expression, IntConstant}
 import javax.swing.table.TableCellEditor
 import javax.swing.{DefaultCellEditor, JCheckBox, JComboBox, JTable}
-import util.{MyComboBox, MyListView}
+import util.MyComboBox
 
-import scala.swing.{Button, CheckBox, Color, Component, Dimension, Graphics2D, GridPanel, Label, Panel, Table}
+import scala.swing.{Button, CheckBox, Color, Component, Dimension, Graphics2D, GridPanel, Label, ListView, Panel, Table}
 
 
 class BoolEditor extends InplaceFieldEditor {
@@ -30,7 +30,7 @@ class BoolEditor extends InplaceFieldEditor {
   		}
   		myCheck.peer
   	}
-  	override def getCellEditorValue():java.lang.Object =  	{
+  	override def getCellEditorValue:java.lang.Object =  	{
   		if (myCheck.selected)java.lang.Boolean.TRUE.asInstanceOf[AnyRef]
   		else  java.lang.Boolean.FALSE.asInstanceOf[AnyRef]  		
   	}
@@ -156,8 +156,8 @@ class InplaceStyleEditor() extends InplaceFieldEditor{
     }
   }  
   	
-	styleCombo.renderer=new MyListView.AbstractRenderer[LineStyle,StylePreviewPan](previewPrototype){
-		def configure(list: MyListView[LineStyle], isSelected: Boolean, focused: Boolean, a: LineStyle, index: Int): Unit = {
+	styleCombo.renderer=new ListView.AbstractRenderer[LineStyle,StylePreviewPan](previewPrototype){
+		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: LineStyle, index: Int): Unit = {
 			component.setStyle(a,index)
 		}		
 	}   

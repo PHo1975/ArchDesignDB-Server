@@ -132,7 +132,8 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
   override def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[(Byte, VectorConstant)] =
     poly.pathList.iterator.flatMap(_.points.flatMap(GraphElemConst.checkHit(px, py, dist, _))).toSeq
 
-  override def getEdiblePoints: Seq[VectorConstant] = for (pa <- poly.pathList; p <- pa.points) yield p
+  override def getEdiblePoints: Iterator[VectorConstant] = poly.pathList.foldLeft(List[VectorConstant]().iterator){(prev,item)=>prev++item.points.iterator}
+    //for (pa <- poly.pathList; p <- pa.points) yield p
 
   override def intersectsRect(cont: ElemContainer, rect: Rect2dDouble): Boolean = area.intersects(rect)
 }

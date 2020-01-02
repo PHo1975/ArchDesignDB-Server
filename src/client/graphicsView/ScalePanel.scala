@@ -44,7 +44,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 		scc.renderer = new ListView.AbstractRenderer[(Int, Double), Label](ViewConstants.label()) {
 			def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: (Int,Double), index: Int): Unit = {
 				val rel=a._2
-						component.text=if(rel<1)"1 : "+math.round(1d/rel) else math.round(rel)+" : 1"
+						component.text=if(rel<1)"1 : "+math.round(1d/rel) else math.round(rel).toString+" : 1"
 			}		
 		} 
 		scc
@@ -266,8 +266,8 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
       new Rectangle2D.Double(t1.x,t1.y,t2.x-t1.x,t2.y-t1.y)
     }
     
-    def createPolyShape(spoints:Seq[VectorConstant])= {
-			val plist = PointList(spoints)
+    def createPolyShape(spoints:Iterable[VectorConstant])= {
+			val plist = PointList(spoints.toSeq)
       new Area(new Polygon(Nil,List(plist)).toPathTransformed(transform))
     }
         
@@ -292,7 +292,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
           //shape=createRect(p1,points(1))                    
           (Math.abs(delta.x*delta.y),(Math.abs(delta.x)+Math.abs(delta.y))*2)
         } else if(points.size>2){
-					val plist = PointList(points)
+					val plist = PointList(points.toSeq)
           val areaPoly=new Polygon(Nil,List(plist))
           //shape=new Area(areaPoly.toPathTransformed ( transform ))                    
           (Math.abs(areaPoly.getAreaValue),plist.getUmfang)

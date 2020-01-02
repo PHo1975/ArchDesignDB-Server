@@ -14,10 +14,9 @@ import definition.comm.{ListValue, PropertyGroup}
 import definition.data.{InstanceData, Reference}
 import definition.typ.SelectGroup
 import javax.swing._
-import util.MyListView
 
 import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Button, Component, Container, Dimension, Insets, Orientation, Panel, SequentialContainer, Swing}
+import scala.swing.{BoxPanel, Button, Component, Container, Dimension, Insets, ListView, Orientation, Panel, SequentialContainer, Swing}
 import scala.util.control.NonFatal
 
 
@@ -49,7 +48,7 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
 	val dataviewController=new DataViewController(this)
 	
 	val pathMod=new PathModel()
-	val pathView=new MyListView[InstanceData]()		
+	val pathView=new ListView[InstanceData]()
 	pathView.xLayoutAlignment=0d
 	pathView.yLayoutAlignment=1d
 	var viewbox: Viewbox = _
@@ -157,13 +156,13 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
     
   private def showBookmarkDialog():Unit= {
     //println("show BookmarkDialog ")
-    val pos=dataviewController.formPanel.peer.getLocationOnScreen()
+    val pos=dataviewController.formPanel.peer.getLocationOnScreen
     bookmarkDialog.bounds=new java.awt.Rectangle(pos.x,pos.y,400,400)
     //for(path<-pathMod.dataList)
     	bookmarkDialog.showBookmarks(pathMod.dataList.map(_.ref),openBookmarks)
   }
   
-  private def openBookmarks(path:Seq[Reference])= Swing.onEDT{
+  private def openBookmarks(path:Seq[Reference]): Unit = Swing.onEDT{
     if(path.nonEmpty){
       //println("open Bookmarks "+path)
       pathController.shutDown()

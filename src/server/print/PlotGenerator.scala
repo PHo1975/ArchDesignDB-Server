@@ -12,7 +12,7 @@ import server.config.FSPaths
 import server.storage.{ServerObjectClass, StorageManager}
 import util.{CollUtils, Log}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 class PlotGenerator extends CustomGenerator {
@@ -139,7 +139,7 @@ class PlotGenerator extends CustomGenerator {
 
              PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle,
-               (if(nr==0d) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr) + ". "+name)+
+               (if(nr==0d) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr.toString) + ". "+name)+
                "\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")
            }
 

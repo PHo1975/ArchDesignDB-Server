@@ -6,10 +6,10 @@ import client.dialog.{DialogManager, PanelPart}
 import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression.{DoubleConstant, ObjectReference, StringConstant}
 import definition.typ.{AnswerDefinition, CustomPanel, DataType, SelectGroup}
-import util.MyListView.IntervalMode
-import util.{MyListView, StrToDouble}
+import util.StrToDouble
 
-import scala.swing._
+import scala.swing.ListView.IntervalMode
+import scala.swing.{ListView, _}
 import scala.swing.event.ButtonClicked
 
 
@@ -33,7 +33,7 @@ class CostTransferPanel extends BoxPanel(Orientation.Vertical) with CustomPanel 
   var lvRef:Reference=_
 
 
-  val bieterListView=new MyListView[BieterData]
+  val bieterListView=new ListView[BieterData]
   bieterListView.selection.intervalMode=IntervalMode.Single
   val bieterScroller=new ScrollPane {
     viewportView=bieterListView
@@ -55,7 +55,7 @@ class CostTransferPanel extends BoxPanel(Orientation.Vertical) with CustomPanel 
   reactions+={
     case ButtonClicked(`vergabeBut`)=>if(bieterListView.selection.items.size==1) {
       DialogManager.addAnswer(CostTransferPanel.answer1,
-        new ObjectReference(bieterListView.selection.items.get(0).psColData.ref))
+        new ObjectReference(bieterListView.selection.items(0).psColData.ref))
       DialogManager.addAnswer(CostTransferPanel.answer2, StringConstant(aufschlagEPField.text))
       DialogManager.addAnswer(CostTransferPanel.answer2, StringConstant(nachlassField.text))
       DialogManager.addAnswer(CostTransferPanel.answer2,dcFromText(skontoField.text.replace("%","")))

@@ -69,7 +69,7 @@ class Toast(message:String,component:JComponent,window:Window) extends Dialog(wi
         }
       } catch {case e:InterruptedException=>  util.Log.e("toast ",e);}
     }
-  },4l,TimeUnit.SECONDS)
+  },4L,TimeUnit.SECONDS)
 
 }
 
@@ -121,5 +121,5 @@ object FollowMouseToast {
     new NFollowMouseToast(message,relComponent).visible=true
   }
 
-  def reset():Unit = for(t ← currentToast) t.shutDown()
+  def reset():Unit = for(t <- currentToast) t.shutDown()
 }

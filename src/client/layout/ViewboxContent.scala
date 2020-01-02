@@ -5,7 +5,6 @@ package client.layout
 
 import definition.comm.PropertyGroup
 
-import scala.collection.mutable._
 import scala.swing.Component
 
 /** abstract definition of a content component that fits in a viewbox
@@ -40,15 +39,13 @@ trait ViewboxContent extends Component {
 case class ViewboxContentType(id:Int, name:String, buttonText:String,tooltipText:String, factory:()=>ViewboxContent)
 
 object ViewboxContentTypeList {
-  val list: ArrayBuffer[ViewboxContentType] = ArrayBuffer[ViewboxContentType]()
+  var list: List[ViewboxContentType] = Nil
 
-  def addType(newType: ViewboxContentType): Unit = {
-		list +=newType
-	}
+	def addType(newType: ViewboxContentType): Unit =
+		list=list :+ newType
 
   def getType(typeName: String): Option[ViewboxContentType] =
 	  list.find(_.name==typeName)
-
 
   def size: Int = list.size
 }

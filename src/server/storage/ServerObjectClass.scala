@@ -36,7 +36,7 @@ case class ServerCCD(editorName:String,childClassID:Int,actionName:String="*") e
 
 class ServerObjectClass (var name:String,var id:Int,var description:String="",var comment:String="",var ownFields:Seq[AbstractFieldDefinition]=Seq.empty,
 	  var ownFieldSettings:Seq[FieldSetting]=Seq.empty,
-	  var ownPropFields:Seq[PropertyFieldDefinition]=Seq.empty,var ownBlockPropFields:Seq[BlockPropertyFieldDefinition]=Seq.empty, var superClasses:Seq[Int]=Seq.empty,
+	  var ownPropFields:Seq[PropertyFieldDefinition]=Seq.empty,var ownBlockPropFields:Seq[BlockPropertyFieldDefinition]=Seq.empty, var superClasses:Array[Int]=Array.empty,
 	 var moduleName:String="",val actionModule:ActionModule=EmptyModule,var shortFormat:InstFormat=NOFORMAT,var longFormat:InstFormat=NOFORMAT,
 	 var resultFormat:InstFormat=NOFORMAT,	 val formBox:Option[FormBox]=None,var customInstanceEditor:Option[String]=None,
 	 val ownAutoCreateInfos:Seq[AutoCreateInfo]=Seq.empty,var importDescriptor:Option[String]=None)
@@ -106,7 +106,7 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
    * @param ref reference to the new instance
    */
   def createInstance(ref: Reference,owner:Array[OwnerReference],withStartValues:Boolean):InstanceData =  {
-  	val fieldExpressions:collection.IndexedSeq[Expression]=
+  	val fieldExpressions:IndexedSeq[Expression]=
   		for(i <-fields.indices) yield 
   			if(withStartValues) {
   				val sv=fieldSetting(i).startValue
@@ -115,7 +115,7 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
   			}
   			else Expression.generateNullConstant(fields(i).typ )
 		//TransactionManager.logStep("Generated")
-  	new InstanceData(ref,fieldExpressions,owner,Seq.empty,false)
+  	new InstanceData(ref,fieldExpressions,owner,Array.empty,false)
   }
   
   /** creates an empty InstanceProperty of this class
@@ -164,7 +164,7 @@ object ServerObjectClass {
 			case _=> 0
 		}
 	  val actionName=readOptString(node , "@actionName")
-	  new ServerCCD(editor,childClass,actionName)  
+	  ServerCCD(editor, childClass, actionName)
   }
   
 	def fromXML(node: scala.xml.Node):ServerObjectClass = 	{		
@@ -187,7 +187,7 @@ object ServerObjectClass {
 		  yield PropertyFieldDefinition.fromXML(bfield,createCCDFromXML)
 		val blockPropNode= node \ "BP"
 		val blockPropData= for(bpfield <-blockPropNode\ "BlockProperty")
-			yield BlockPropertyFieldDefinition.fromXML((bpfield))
+			yield BlockPropertyFieldDefinition.fromXML(bpfield)
 		val acNode=node \"AC"
 		val acData=for(afield <- acNode \ "AutoCreate") yield AutoCreateInfo.fromXML(afield)
 		val formNode=node \"Forms"

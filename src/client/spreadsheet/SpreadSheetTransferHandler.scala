@@ -194,7 +194,7 @@ class SpreadSheetTransferable(val ssRef:Reference,val startCol:Int,val startRow:
   
    def toCSV: String = (for(row<-0 until numRows) yield {
       (  for(col<-0 until numCols) yield cellValues(row*numCols+col) match {
-          	case Some(CellTuple(expression,format))=>'"'+expression.getValue.toString+'"'
+          	case Some(CellTuple(expression,format))=>"\""+expression.getValue.toString+'"'
           	case _=> "\"\""
           }
        ).mkString(";")       

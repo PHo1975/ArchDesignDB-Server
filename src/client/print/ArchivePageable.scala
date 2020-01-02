@@ -11,9 +11,9 @@ import client.dataviewer.ViewConstants
 import definition.data.{FontStyleList, InstanceData, PageData, RenderContext}
 import definition.expression.{BlobConstant, DateConstant}
 import javax.swing.BorderFactory
-import util.{Log, MyListView}
+import util.Log
 
-import scala.swing.{Alignment, GridPanel, Label}
+import scala.swing.{Alignment, GridPanel, Label, ListView}
 
 /**
  * 
@@ -75,14 +75,14 @@ class ArchiveRenderer() extends GridPanel(2,1 ) {
 		pageLabel.background=c
 	}
 
-	def config( list:MyListView [_], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int): Unit = {
+	def config( list:ListView [_], isSelected: Boolean, focused: Boolean, a: ArchivePageable, index: Int): Unit = {
 		opaque=true
 		dateLabel.opaque=true
 		val now=DateConstant()
 		val dist=now.dayDistance(a.date)
 		dateLabel .text=if(dist==0) "Heute" else if(dist== -1) "Gestern" else  a.date.toDateString
 		dateLabel.horizontalAlignment=Alignment.Center
-		pageLabel .text=a.pagesList.size+" Seiten "
+		pageLabel .text=a.pagesList.size.toString+" Seiten "
 		pageLabel.horizontalAlignment=Alignment.Center
 		if (isSelected)		{
 			background=Color.blue//list.selectionBackground

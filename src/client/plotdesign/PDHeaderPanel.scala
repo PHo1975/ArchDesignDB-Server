@@ -48,7 +48,7 @@ class PDHeaderPanel(val controller:PlotDesignController) extends BoxPanel(scala.
   versionBut.tooltip="Versionen verwalten"
   versionBut.margin=miniInsets
 
-  val printerBox=new MyComboBox[String](controller.pageModel.printServiceNames)
+  val printerBox=new MyComboBox[String](controller.pageModel.printServiceNames.toSeq)
   val maxComboSize=new java.awt.Dimension(90,40)
   printerBox.maximumSize=maxComboSize
   val sizeBox: MyComboBox[MediaSizeWrapper] = new MyComboBox(List(MediaSizeWrapper(MediaSizeName.ISO_A4))) {

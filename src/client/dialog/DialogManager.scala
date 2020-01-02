@@ -356,7 +356,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 									case dq: DialogQuestion => answerArea.loadAnswerDefinitions(dq) // update pointpanel precision
 									case _ =>
 								}
-								listener(answerList)
+								listener(answerList.toSeq)
               case None=>
 								customAnswerListener=customAnswerListener.tail
 								lastQuestion match {
@@ -364,7 +364,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 										answerList.remove(answerList.size-1)
 										listener(Seq(answer))
 										loadQuestion(lquestion)
-									case None => listener(answerList)//;processResults()
+									case None => listener(answerList.toSeq)//;processResults()
                 }
 						}
           }
@@ -385,7 +385,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		//Thread.dumpStack()
 		if(isServerEnquiry){
 			isServerEnquiry=false
-			ClientQueryManager.answerEnquiry(answerList)
+			ClientQueryManager.answerEnquiry(answerList.toSeq)
 		} else {
       currentAction match {
         case Some(ca) if (ca.question.isDefined && ca.question.get.repeat) || ca.rebound =>
@@ -408,11 +408,11 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 							lc.createActionSubmitted(if(createdNewElements==0) 1 else createdNewElements)
 							val formatValues= lc.getCreationFormatValues(ct)
 							for(ca<-currentAction;owner<-lc.ownerRef)
-								ClientQueryManager.executeCreateAction(owner.ref,ct,propField,ca.name,answerList,formatValues)
+								ClientQueryManager.executeCreateAction(owner.ref,ct,propField,ca.name,answerList.toSeq,formatValues)
 						case None=>
 		  		}
 		  	case None=> for(ca<-currentAction;group <-actionGroups )
-		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,answerList)
+		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,answerList.toSeq)
 		  }	
       if(!hasRebound)reset()
       if(repeatWithoutCAS) for(ca<-currentAction) repeatAction(ca,createType,propField)

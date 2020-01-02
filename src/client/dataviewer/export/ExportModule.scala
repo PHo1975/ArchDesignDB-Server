@@ -191,7 +191,7 @@ object GAEB83Module extends ExportModule {
                 <BoQ ID="AO">
                   <BoQInfo>
                     <Name>{stripLength(rootInst.fieldValue(2).toString,20)}</Name>
-                    <LblBoQ>{ownerInfo.fieldValue(1)+"-"+rootInst.fieldValue(2).toString}</LblBoQ>
+                    <LblBoQ>{ownerInfo.fieldValue(1).toString+"-"+rootInst.fieldValue(2).toString}</LblBoQ>
                     <Date>{util.JavaUtils.GAEBDateFormat.format(today)}</Date>
                     <OutlCompl>AllTxt</OutlCompl>
                     <BoQBkdn>

@@ -18,18 +18,18 @@ object GewerkActionModule {
   val gewerkTyp=135
 
   
-  def doNum(ozField:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+  def doNum(ozField:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]): Boolean =  {
     val step=param.head._2.toInt
-    val firstValue=data.head.fieldValue(ozField).toInt
-    var (startElem,startValue)= if(firstValue==0) (0,0) else (1,firstValue)     
-    for (i <-startElem until data.size;elem=data(i)) {
-      startValue+=step
-      TransactionManager.tryWriteInstanceField(elem.ref,ozField,IntConstant(startValue))
+    var firstValue=data.head.fieldValue(ozField).toInt
+    val ndata=if(firstValue==0) data else data.drop(1)
+    for (elem <-ndata) {
+      firstValue+=step
+      TransactionManager.tryWriteInstanceField(elem.ref,ozField,IntConstant(firstValue))
     }
     true
   }
 
-  def doRemoveMeasure(posPropField:Int) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+  def doRemoveMeasure(posPropField:Int) (u:AbstractUserSocket, owner:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]): Boolean =  {
     val measureExpression=AllClasses.get.getClassByID(posTyp).fieldSetting(3).startValue
     val measureTerm=measureExpression.getTerm
     for (gewerk<-data) {
@@ -59,7 +59,7 @@ object GewerkActionModule {
 
   }
 
-  def doRemovePS(posPropField:Int) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+  def doRemovePS(posPropField:Int) (u:AbstractUserSocket, owner:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]): Boolean =  {
     for (gewerk<-data)
       loopGewerkRemovePS(posPropField,gewerk.ref)
     true
@@ -107,7 +107,7 @@ class PosActionModule extends ActionModule {
 
   def setObjectType(otype:Int): Unit = { }
 
-  def doFactor(field:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]): Boolean =  {
+  def doFactor(field:Byte) (u:AbstractUserSocket, owner:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]): Boolean =  {
     val factor=param.head._2
 
     for(el<-data){
@@ -140,7 +140,8 @@ class LVActionModule extends ActionModule {
   val removeMeasureAction=new ActionIterator("Massen entfernen",None,doRemoveMeasure(2))
   val removePSAction=new ActionIterator("Preise entfernen",None,doRemovePS(2))
 
-  def doVergabe(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  {
+  def doVergabe(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],para:Iterable[(String,Constant)]): Boolean =  {
+    val param=para.toSeq
     val zusstellTyp=allcl.getClassByName("Kostenzusammenstellung").get.id
     val auftragTyp=allcl.getClassByName("Auftrag").get.id
     val reGewerkTyp=allcl.getClassByName("Re-Gewerk").get.id
@@ -175,7 +176,7 @@ class LVActionModule extends ActionModule {
       for(projectRef<-StorageManager.getNextParentOfType(lv.ref,projectTyp);
           kostenZusRef<-StorageManager.searchFoldersForType(projectRef,2,zusstellTyp)){
         println("Zus: "+StorageManager.getInstanceData(kostenZusRef).fieldValue.head.toString)
-        val auftrag=TransactionManager.tryCreateInstance(auftragTyp,Array(new OwnerReference(1,kostenZusRef)),true)
+        val auftrag=TransactionManager.tryCreateInstance(auftragTyp,Array(new OwnerReference(1,kostenZusRef)),notifyRefandColl = true)
         TransactionManager.tryWriteInstanceField(auftrag.ref,0,lv.fieldValue(1))
         TransactionManager.tryWriteInstanceField(auftrag.ref,1,lv.fieldValue(2))
         TransactionManager.tryWriteInstanceField(auftrag.ref,5,datum)
@@ -200,12 +201,12 @@ class LVActionModule extends ActionModule {
             //println("child "+psInst.ref+" lv:"+lvInst.ref+" "+lvInst)
             childRef.typ match {
               case `psGewerkTyp` =>
-                val reGewerk=TransactionManager.tryCreateInstance(reGewerkTyp,auftragParent,true)
+                val reGewerk=TransactionManager.tryCreateInstance(reGewerkTyp,auftragParent,notifyRefandColl = true)
                 TransactionManager.tryWriteInstanceField(reGewerk.ref,2,lvInst.fieldValue(1))
                 TransactionManager.tryWriteInstanceField(reGewerk.ref,3,lvInst.fieldValue(2))
                 loopGewerk(Array(new OwnerReference(0,reGewerk.ref)),childRef)
               case `psPreisTyp`  =>
-                val rePos=TransactionManager.tryCreateInstance(rePosTyp,auftragParent,true)
+                val rePos=TransactionManager.tryCreateInstance(rePosTyp,auftragParent,notifyRefandColl = true)
                 if(lvInst.fieldValue(1)!=EMPTY_EX) TransactionManager.tryWriteInstanceField(rePos.ref,2,lvInst.fieldValue(1))
                 if(lvInst.fieldValue(2)!=EMPTY_EX) TransactionManager.tryWriteInstanceField(rePos.ref,3,lvInst.fieldValue(2))
                 if(lvInst.fieldValue(3)!=EMPTY_EX) TransactionManager.tryWriteInstanceField(rePos.ref,4,lvInst.fieldData(3).getValue)
@@ -230,7 +231,7 @@ class LVActionModule extends ActionModule {
     true
   }
 
-  def doUbertrag(u:AbstractUserSocket,owner:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]): Boolean =  {
+  def doUbertrag(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  {
     val bieterCol=StorageManager.getInstanceData(param.head._2.toObjectReference.ref)
 
     def loopGewerk(colParent:Reference):Unit={

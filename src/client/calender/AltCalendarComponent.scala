@@ -17,8 +17,8 @@ import javafx.scene.shape.{Line, Rectangle}
 import javafx.scene.text.{Text, TextAlignment}
 import util.{Log, StrToInt}
 
-import scala.collection.JavaConverters._
 import scala.collection.immutable
+import scala.jdk.CollectionConverters._
 
 class AltCalendarComponent(mod:CalendarModel) extends VBox {
   import client.calender.CalendarHelper._

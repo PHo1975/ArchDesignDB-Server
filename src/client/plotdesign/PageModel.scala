@@ -7,9 +7,9 @@ import definition.comm.NotificationType
 import definition.data.{InstanceData, OutputDefinition, OwnerReference, Reference}
 import definition.expression.{BoolConstant, IntConstant, StringConstant}
 import definition.typ.SystemSettings
-import javax.print.{PrintService, PrintServiceLookup}
-import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
 import javax.print.attribute.standard._
+import javax.print.attribute.{HashPrintRequestAttributeSet, PrintRequestAttributeSet}
+import javax.print.{PrintService, PrintServiceLookup}
 import javax.swing.DefaultComboBoxModel
 
 import scala.swing.Swing
@@ -47,8 +47,8 @@ class PageModel(val controller:PlotDesignController) {
   val trayModel=new DefaultComboBoxModel[MediaTrayWrapper]
 	
   
-  lazy val printServiceNames:IndexedSeq[String]={    
-    if(printServices==null) IndexedSeq.empty
+  lazy val printServiceNames: Array[String] ={
+    if(printServices==null) Array.empty[String]
     else printServices.map(_.getName)
   }
   
@@ -69,9 +69,9 @@ class PageModel(val controller:PlotDesignController) {
              odefSubsID=ClientQueryManager.createSubscription(ref,0) {(command,data)=> listLock.synchronized {Swing.onEDT{
 					    command match {
 					      case NotificationType.sendData|NotificationType.updateUndo =>
-                  if(data.size>0) loadOdef(data)
+                  if(data.nonEmpty) loadOdef(data)
                   if(command==NotificationType.sendData){
-					          if(data.size==0) createOdef(ref)
+					          if(data.isEmpty) createOdef(ref)
 					          doneListener()
 					        }
                 case NotificationType.fieldChanged =>if(ignoreChangesAfterCreating==0) loadOdef(data) else

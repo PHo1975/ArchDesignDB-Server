@@ -9,7 +9,6 @@ import definition.expression.UnitNumber.ordering
 import definition.expression._
 import util.{Log, StrToInt}
 
-import scala.collection.Seq
 import scala.swing.Window
 import scala.util.control.NonFatal
 
@@ -30,7 +29,7 @@ class GAEBImporter extends FileImportDescriptor {
 	/** checks if the given files can be inserted. File type checks are done by ImportManager
 	 * 
 	 */
-	def canImport(files:Seq[File],droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean= {
+	def canImport(files:Iterable[File],droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean= {
     true
   }
 	
@@ -40,7 +39,7 @@ class GAEBImporter extends FileImportDescriptor {
 	 *  @param dropTarget on what object are the files dropped
 	 *  @return a list of setting data, to start the import, or Nil to stop it 
 	 */
-	def showImportDialog(window:Window, wpos:Point,files:Seq[File],dropTarget:Option[InstanceData]):Seq[AnyRef]= {
+	def showImportDialog(window:Window, wpos:Point,files:Iterable[File],dropTarget:Option[InstanceData]):Seq[AnyRef]= {
 	  List(Some)
 	}
 	
@@ -82,7 +81,7 @@ class GAEBImporter extends FileImportDescriptor {
 			def readLine: String = {
 				val res = reader.readLine
 				if (res != null)
-					bytesRead += res.length + 2l
+					bytesRead += res.length + 2L
 				val progress = {
 					val prog = (bytesRead * 100 / fileSize).toInt
 					if (prog > 100) 100 else prog

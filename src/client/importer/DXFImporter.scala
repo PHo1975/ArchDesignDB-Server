@@ -39,7 +39,7 @@ class FieldBuffer(set:DXFSettings){
 			case 10 => lastX=fieldValue.trim.toDouble+set.dx
 			case 20 => pointBuffer+=new VectorConstant(lastX,fieldValue.trim.toDouble+set.dy,0d)//;println("add Point: "+pointBuffer.last)
 			case 93|98 => if(pointBuffer.nonEmpty){
-				polyBuffer += PointList(pointBuffer)
+				polyBuffer += PointList(pointBuffer.toSeq)
 				pointBuffer.clear()
 			}
 			case 0 => Log.e("Code 0 in fill, value: "+fieldValue)
@@ -66,12 +66,12 @@ class DXFImporter extends FileImportDescriptor {
 
 	def allowedFileTypes: Seq[(String, String)] = Seq(("DXF-Zeichnung", "DXF"))
 
-	def canImport(files: Seq[File], droppedTarget: Option[InstanceData], ownerRef: OwnerReference): Boolean = {
+	def canImport(files: Iterable[File], droppedTarget: Option[InstanceData], ownerRef: OwnerReference): Boolean = {
 		//println("Can import "+files+" DT:"+droppedTarget+" or:"+ownerRef+" hr:"+ hasRightFileTypes(files))
 		hasRightFileTypes(files)
 	}
 
-	def showImportDialog(window: Window, wpos: Point, files: Seq[File], dropTarget: Option[InstanceData]): Seq[AnyRef] = {
+	def showImportDialog(window: Window, wpos: Point, files: Iterable[File], dropTarget: Option[InstanceData]): Seq[AnyRef] = {
 		val settings = new DXFSettings
 		settings.drawingScale = 50
 		val dialog = new DXFImportDialog(window, settings, files)
@@ -122,7 +122,7 @@ class DXFImporter extends FileImportDescriptor {
 		}
 	}
 
-	def importFile(file: File, baseObject: Reference, settings: Seq[AnyRef], progressListener: (Int) => Boolean): Boolean =
+	def importFile(file: File, baseObject: Reference, settings: Seq[AnyRef], progressListener: Int => Boolean): Boolean =
 		settings match {
 			case Seq(set: DXFSettings) =>
 				createMissingLineStyles(set)
@@ -155,7 +155,7 @@ class DXFImporter extends FileImportDescriptor {
 					val res = reader.readLine
 					lineNumber += 1
 					if (res != null)
-						bytesRead += res.length + 2l
+						bytesRead += res.length + 2L
 					val progress = {
 						val prog = (bytesRead * 100 / fileSize).toInt
 						if (prog > 100) 100 else prog
@@ -297,7 +297,7 @@ class DXFImporter extends FileImportDescriptor {
 									polyFields(0) = IntConstant(if (solid) AcadColor.getColor(color) else -1)
 									polyFields(1) = EMPTY_EX
 									polyFields(2) = EMPTY_EX
-									polyFields(3) = new Polygon(Nil, fieldBuffer.polyBuffer)
+									polyFields(3) = new Polygon(Nil, fieldBuffer.polyBuffer.toSeq)
 									polyFields(4) = IntConstant(AcadColor.getColor(color))
 									polyFields(5) = if (solid) EMPTY_EX else IntConstant(set.hatchStyleMapping(patternName))
 									polyFields(6) = EMPTY_EX

@@ -27,7 +27,7 @@ class PolyLineFieldEditor extends FieldEditor {
   lazy val panel = new BoxPanel(scala.swing.Orientation.Vertical) {
     opaque = false
     val labels = List("Dicke", "Ausricht", "Opak")
-    val pans: Seq[PanelPart] = (fieldComponents, labels).zipped.map((c, l) => {
+    val pans: Seq[PanelPart] = fieldComponents.lazyZip(labels).map((c, l) => {
       val pp = new PanelPart(l, c)
       pp.maximumSize = new Dimension(FieldEditor.panelSize.width, FieldEditor.panelSize.height)
       pp

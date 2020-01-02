@@ -533,7 +533,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
   def polyTo(gc:GraphViewController):Unit={
     var lastPoint: VectorConstant = null
-    var lastPoints = collection.mutable.ArrayBuffer[VectorConstant]()
+    var lastPoints = List[VectorConstant]()
 
     def lineDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
@@ -552,7 +552,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
     DialogManager.startIntermediateQuestion(lineQuestion(polyToText, create = true), answerList => {
       lastPoint = answerList.head.result.toVector
-      lastPoints += lastPoint
+      lastPoints= lastPoints :+  lastPoint
       gc.setCustomDragger(lineDragger)
       DialogManager.startIntermediateQuestion(lineNextPointQuestion(polyToText), answerList => {
         lastPoint = answerList.last.result match {
@@ -561,7 +561,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           else lastPoint + new VectorConstant(0d, d.toDouble, 0d)
           case o => throw new IllegalArgumentException("Wrong answer:" + o)
         }
-        lastPoints += lastPoint
+        lastPoints=lastPoints :+ lastPoint
         gc.setCustomDragger(polyDragger)
       })
     })
@@ -569,7 +569,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
   def polyLineTo(gc: GraphViewController): Unit = {
     var lastPoint: VectorConstant = null
-    var lastPoints = collection.mutable.ArrayBuffer[VectorConstant]()
+    var lastPoints = List[VectorConstant]()
 
     /*def lineDragger(pos:VectorConstant,g:Graphics2D)= {
       val sm=gc.scaleModel
@@ -586,7 +586,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
     DialogManager.startIntermediateQuestion(lineQuestion(polyToText, create = true), answerList => {
       lastPoint = answerList.head.result.toVector
-      lastPoints += lastPoint
+      lastPoints=lastPoints :+ lastPoint
       gc.setCustomDragger(polyDragger)
       DialogManager.startIntermediateQuestion(lineNextPointQuestion(polyToText), answerList => {
         lastPoint = answerList.last.result match {
@@ -595,7 +595,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           else lastPoint + new VectorConstant(0d, d.toDouble, 0d)
           case o => throw new IllegalArgumentException("Wrong answer:" + o)
         }
-        lastPoints += lastPoint
+        lastPoints=lastPoints :+ lastPoint
         gc.setCustomDragger(polyDragger)
       })
     })
@@ -948,7 +948,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
   def parPoly(gc: GraphViewController): Unit = {
     val numNames=Seq("Zweiter","Dritter","Vierter","Fünfter","Sechster","Siebter")
-    val distances=collection.mutable.ArrayBuffer[Double]()
+    var distances=List[Double]()
     var step:Int= 0
     var startPoint:VectorConstant=null
     var llst:Option[VectorConstant]=None
@@ -980,7 +980,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         val newPoint=answerList.last.result.toVector
         if(newPoint==lastPoint) DialogManager.processResults()
         else {
-        	val normVectors=getNormVectors(lastPoint,newPoint)
+        	val normVectors  =getNormVectors(lastPoint,newPoint)
         	llst match {
         		case Some(lp)=> // following points
         			val oldNormVectors=getNormVectors(lp,lastPoint)
@@ -1004,11 +1004,6 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         	lastPoint=newPoint
         	gc.setCustomDragger((pos,g)=>if(pos!=lastPoint){
         		val sm=gc.scaleModel
-        		//val normVectors=getNormVectors(lastPoint,pos)
-        		/*for(Seq(a,b)<-intersectionPoints.sliding(2,1)) {
-        	  for(i<-a.indices;val pa=a(i);val pb=b(i))
-        	    g.drawLine(sm.xToScreen(pa.x),sm.yToScreen(pa.y),sm.xToScreen(pb.x),sm.yToScreen(pb.y))
-        	}*/
         		val lp=llst.get
         		val nnv=getNormVectors(lastPoint,pos)
         		val oldNormVectors=getNormVectors(lp,lastPoint)
@@ -1030,7 +1025,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     def reactAnswer(answerList:Seq[ResultElement]):Unit= {
       answerList.last.result match {
         case DoubleConstant(d)=>
-          distances += answerList.last.result.toDouble + distances.last
+          distances=distances :+ answerList.last.result.toDouble + distances.last
           step += 1
           DialogManager.startIntermediateQuestion(parPolyDistNextQuestion(numNames(step)),reactAnswer)
         case v:VectorConstant => reactStartPoint(v)
@@ -1038,7 +1033,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
     }
     DialogManager.startIntermediateQuestion(parPolyDistQuestion, answerList=> {
-      distances += answerList.last.result.toDouble
+      distances=distances :+ answerList.last.result.toDouble
       DialogManager.startIntermediateQuestion(parPolyDistNextQuestion(numNames.head),reactAnswer )
     })
   }

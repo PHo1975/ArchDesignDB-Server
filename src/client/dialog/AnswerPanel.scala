@@ -79,7 +79,7 @@ class BoolAnswerPanel  extends AnswerPanel {
 
 
 class OptionAnswerPanel extends AnswerPanel {
-  var buttons:Seq[StrokableButton]=Nil
+  var buttons:Array[StrokableButton]=Array.empty
   
   reactions += {
     case b: ButtonClicked => DialogManager.answerGiven(ansParm, StringConstant(b.source.text)); visible = false
@@ -97,7 +97,7 @@ class OptionAnswerPanel extends AnswerPanel {
 		
 		//println("option panel buttons:"+buttons.map(_.text).mkString(" | "))
 		contents++=buttons
-    listenTo(buttons: _*)
+    listenTo(buttons.toIndexedSeq: _*)
     contents += Swing.VGlue
 	}
 

@@ -6,7 +6,7 @@ import client.comm.ClientQueryManager
 import definition.data.{InstanceData, Reference}
 import definition.expression._
 
-import scala.collection.immutable
+import scala.collection.{immutable, mutable}
 import scala.util.control.NonFatal
 
 object HorAlign extends Enumeration {
@@ -322,7 +322,7 @@ object SpreadSheetFormat {
 
 
   def createFormat(range: SpreadSheetRange, format: SpreadSheetFormat, controller: SpreadSheetController): Unit = {
-    ClientQueryManager.createInstances(controller.formatOwnerRefArray,Seq((SpreadSheet.spreadSheetFormatSetType,
+    ClientQueryManager.createInstances(controller.formatOwnerRefArray,mutable.Seq((SpreadSheet.spreadSheetFormatSetType,
         range.toConstants ++Array(IntConstant(format.getFormatCode),
             boolStToConst(format.numberFormat),boolStToConst(format.font),boolFloatToConst(format.fontSize),
             boolIntToConst(format.fontColor),boolIntToConst(format.backgroundColor),EMPTY_EX,format.writeBorders))))

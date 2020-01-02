@@ -19,23 +19,23 @@ trait FileImportDescriptor {
    */
 	def allowedFileTypes:Seq[(String,String)]
 	
-	protected def getFileExtension(fileName:String)= {
+	protected def getFileExtension(fileName:String): String = {
 	  val pix=fileName.lastIndexOf('.')
 	  if(pix== -1) "" else fileName.substring(pix+1,fileName.length)
 	}
 	
 	def acceptFile(file:File):Boolean= {
 	  if(file==null){util.Log.e("Acceptfile ==null");return false}
-	  val ext= getFileExtension(file.getName()) 
+	  val ext= getFileExtension(file.getName)
 	  allowedFileTypes.exists(_._2.equalsIgnoreCase(ext))
 	}
 	
-	protected def hasRightFileTypes(files:Seq[File]):Boolean= files.exists(acceptFile)
+	protected def hasRightFileTypes(files:Iterable[File]):Boolean= files.exists(acceptFile)
 	
 	/** checks if the given files can be inserted. File type checks are done by ImportManager
 	 * 
 	 */
-	def canImport(files:Seq[File],droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean
+	def canImport(files:Iterable[File],droppedTarget:Option[InstanceData],ownerRef:OwnerReference):Boolean
 	
 	/**
 	 *  shows an import Dialog at the given place
@@ -43,7 +43,7 @@ trait FileImportDescriptor {
 	 *  @param dropTarget on what object are the files dropped
 	 *  @return a list of setting data, to start the import, or Nil to stop it 
 	 */
-	def showImportDialog(window:Window, wpos:Point,files:Seq[File],dropTarget:Option[InstanceData]):Seq[AnyRef]
+	def showImportDialog(window:Window, wpos:Point,files:Iterable[File],dropTarget:Option[InstanceData]):Seq[AnyRef]
 	
 	
 	/** imports a single file to the database
@@ -52,13 +52,13 @@ trait FileImportDescriptor {
 	 * @param progressListener a function to be called after every import step, and to give the current success of the file import in percent
 	 * @return success of the file import 
 	 */
-	def importFile(file:File,baseObject:Reference,settings:Seq[AnyRef],progressListener:(Int)=>Boolean):Boolean
+	def importFile(file:File,baseObject:Reference,settings:Seq[AnyRef],progressListener: Int =>Boolean):Boolean
 	
 	
 	/** gets or creates the base object where all objects should be imported 
 	 *
 	 */
-	def getBaseObject(ownerRef:OwnerReference,dropTarget:Option[InstanceData],file:File)= 
+	def getBaseObject(ownerRef:OwnerReference,dropTarget:Option[InstanceData],file:File): Reference =
 	  dropTarget match {
 	    case Some(d)=> d.ref  // add to drop object
 	    case None => // create new object
@@ -66,7 +66,7 @@ trait FileImportDescriptor {
 				val fn=file.getName
 				val dotIx=fn.lastIndexOf('.')
 				val na=if(dotIx< 0) fn else fn.substring(0,dotIx)
-				ClientQueryManager.writeInstanceField(ref,dbNameField,new StringConstant(na))
+				ClientQueryManager.writeInstanceField(ref,dbNameField,StringConstant(na))
 				ref
 		}
 	

@@ -1,7 +1,7 @@
 package server.webserver
 
 
-import java.io.{ByteArrayOutputStream, DataOutput, DataOutputStream}
+import java.io.{ByteArrayOutputStream, DataOutput, DataOutputStream, EOFException}
 import java.nio._
 import java.util.concurrent._
 
@@ -100,6 +100,36 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     super.onWebSocketError(cause)
     Log.e(cause)
   }
+
+  private def readInt(array:Array[Byte],pos:Int):Int={
+    val ch1 = array(pos)
+    val ch2 = array(pos+1)
+    val ch3 = array(pos+2)
+    val ch4 = array(pos+3)
+    if ((ch1 | ch2 | ch3 | ch4) < 0) throw new EOFException
+    else return (ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0)
+  }
+
+  /** is called when a Block is changed
+  *
+*/
+  override def   onWebSocketBinary( payload:Array[Byte], offset:Int, len:Int): Unit = if(len>=17){
+    super.onWebSocketBinary(payload,offset,len)
+    val blockTyp=readInt(payload,offset)
+    val blockClass=AllClasses.get.blockClassList(blockTyp)
+    if(len!=blockClass.blocksize+17) Log.e("Block class "+blockClass+" wrong Size, expected:"+blockClass.blocksize+"+17, found:"+len)
+    else {
+      val blockInst = readInt(payload, offset + 4)
+      val ownerRef = OwnerReference(payload(offset + 8), Reference(readInt(payload, offset + 9), readInt(payload, offset + 13)))
+      val data=new Array[Byte](blockClass.blocksize)
+      payload.copyToArray(data,offset+17,blockClass.blocksize)
+      if (blockInst == -1) { // new Block, create it
+        createBlock(blockTyp,ownerRef,data)
+      } else { // block changed
+
+      }
+    }
+  } else Log.e("OnWebSocket length too short "+len)
 
   override def hashCode: Int = userEntry.hashCode()+mySession.hashCode()
 
@@ -380,15 +410,15 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     case Array(Reference(owner),StrToInt(propField),StrToInt(createType),actionName,paramText,formatText) =>
       val formatList:Array[(Int,Constant)]   = if(formatText.trim.length<2)Array.empty else formatText.split ('\u01c1').map (strToFormatValues)
       intExecute(Array(owner),actionName,paramText,createType,propField.toByte,formatList,createAction = true)
-    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Seq.empty, createAction = false)
+    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Array.empty, createAction = false)
     case _=> Log.e("Execute action wrong syntax:"+data+"\n size:"+data.split("\\|").length)
   }
 
-  def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Seq[(Int,Constant)], createAction: Boolean): Unit = {
+  def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Array[(Int,Constant)], createAction: Boolean): Unit = {
     val paramList:Array[(String,Constant)] =if(paramText.trim.length==0)Array.empty else paramText.split ('\u01c1').map (strToParam)
     var error: CommandError = null
-    val instList = for (r <- rList
-                        if StorageManager.instanceExists (r.typ, r.instance) ) yield StorageManager.getInstanceData (r)
+    val instList: Array[InstanceData] = for (r <- rList
+                                             if StorageManager.instanceExists (r.typ, r.instance)) yield StorageManager.getInstanceData (r)
     try {
       if (instList.isEmpty) throw new IllegalArgumentException ("Instanzliste ist leer  bei " + actionName + " " + paramText)
       val ret = TransactionManager.doTransaction (userEntry.id, ActionNameMap.getActionID (actionName),
@@ -411,7 +441,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
               case b: ActionIterator => // Iterator, runs through all instances in given order
                 b.func (this, EMPTY_OWNERREF, instList, paramList)
 
-              case c: CreateActionImpl if createAction => c.func (this, instList, paramList, newType, formList)
+              case c: CreateActionImpl if createAction => c.func (this, instList, paramList.toSeq, newType, formList.toSeq)
               case e => Log.e ("unknown type " + e + " " + createAction)
             }
           }
@@ -440,7 +470,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
 
 
-  protected def simplyCreateInstance(parentList:Seq[InstanceData],newType:Int,propField:Byte): Unit = {
+  protected def simplyCreateInstance(parentList:Array[InstanceData],newType:Int,propField:Byte): Unit = {
     val ownerRef=new OwnerReference(propField,parentList.head.ref)
    TransactionManager.tryCreateInstance(newType,Array(ownerRef),notifyRefandColl = true)
   }
@@ -481,6 +511,19 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
       case _=> Log.e("create wrong syntax:"+data)
     }
+
+  protected def createBlock(typ:Int,ownerRef:OwnerReference,data:Array[Byte])= {
+    var error:CommandError=null
+    var result:Int = -1
+    try {
+      val ret=TransactionManager.doTransaction(userEntry.id,ClientCommands.createBlock.id.toShort,
+        ownerRef.ownerRef ,false,typ, {
+          val inst=TransactionManager.tryCreateBlock(typ,ownerRef,data)
+        })
+    } catch {
+      case NonFatal(e)=>
+    }
+  }
 
 
   protected def deleteInstance(data:String): Unit =

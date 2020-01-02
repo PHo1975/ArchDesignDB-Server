@@ -18,8 +18,8 @@ import definition.typ.AllClasses
 import javax.swing._
 import util.ExportContainer
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**  Created by Peter Holzer
@@ -81,7 +81,7 @@ class TableTransferHandler(tableMod:TypeTableModel) extends TransferHandler {
          } else // no Instanceselection flavor:
          if (support.getDataFlavors.exists(_.isFlavorJavaFileListType())) {
            val flavor = support.getDataFlavors.filter(_.isFlavorJavaFileListType()).head
-           var fileList: Seq[File] = null
+           var fileList: mutable.Seq[File] = null
            try {
              fileList = support.getTransferable.getTransferData(flavor).asInstanceOf[java.util.List[File]].asScala
            }
@@ -189,8 +189,8 @@ class TableTransferHandler(tableMod:TypeTableModel) extends TransferHandler {
       else if(info.getDataFlavors.exists(_.isFlavorJavaFileListType())) {
            val flavor=info.getDataFlavors.filter(_.isFlavorJavaFileListType()).head
            val fileList=info.getTransferable.getTransferData(flavor).asInstanceOf[java.util.List[File]]
-           val droppedObj=if(tabLoc.getRow>=tableMod.dataList.size)None else Some(tableMod.dataList(tabLoc.getRow))
-           FileImportManager.showImportDialog(ClientApp.top,tableMod.table.peer.getLocationOnScreen(),fileList.asScala,tableMod.typ,droppedObj,tableMod.propMod.ownerRef)
+           val droppedObj=tableMod.dataList.lift(tabLoc.getRow)
+           FileImportManager.showImportDialog(ClientApp.top,tableMod.table.peer.getLocationOnScreen,fileList.asScala,tableMod.typ,droppedObj,tableMod.propMod.ownerRef)
          }
       else if (info.isDataFlavorSupported(InstanceSelection.oldDBFlavor)){
            val data= info.getTransferable.getTransferData(InstanceSelection.oldDBFlavor).asInstanceOf[Array[ExportContainer]]

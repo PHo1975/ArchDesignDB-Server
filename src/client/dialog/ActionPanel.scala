@@ -50,7 +50,7 @@ object ActionPanel extends BoxPanel(scala.swing.Orientation.Vertical) with Selec
     case _=>0
   }
 
-  def insertButtons(newButtons: Seq[StrokableButton]): Unit = {
+  def insertButtons(newButtons: Iterable[StrokableButton]): Unit = {
     contents.clear()
     var groupID = 0
     for (but <- newButtons) {
@@ -81,7 +81,7 @@ object ActionPanel extends BoxPanel(scala.swing.Orientation.Vertical) with Selec
 
         if (hasSelection && groupList.head.children.head.ref.instance != -1) {
           // ignore invalidate dummy instances
-          buttons = theClass.actionButtons.sortBy(getButtonID)
+          buttons = theClass.actionButtons.toSeq.sortBy(getButtonID)
           visible = true
           restoreButtonBindings()
           insertButtons(buttons)

@@ -15,6 +15,7 @@ import javax.swing.border.CompoundBorder
 import javax.swing.table.AbstractTableModel
 import javax.swing.{BorderFactory, ImageIcon}
 
+import scala.collection.mutable
 import scala.swing.Table
 
 
@@ -29,8 +30,8 @@ class XTabSidePanelModel(val controller: XTabSidePanelController) extends Abstra
     val Some((topColumnClass, topParentColPropField)) = propFieldInheritsFromType(topParent.typ, XTabColType)
     val Some((dataCellType, dataCellPropField)) = propFieldInheritsFromType(controller.ydataModel.typ, XTabCellType)
     val dataCellClass: ClientObjectClass = AllClasses.get.getClassByID(dataCellType).asInstanceOf[ClientObjectClass]
-    val dataCellColumns: Seq[AbstractFieldDefinition] = dataCellClass.fields
-    val isNoteColumn: Seq[Boolean] = dataCellColumns.map(_.name.contains("Note_"))
+    val dataCellColumns: mutable.Seq[AbstractFieldDefinition] = dataCellClass.fields
+    val isNoteColumn: mutable.Seq[Boolean] = dataCellColumns.map(_.name.contains("Note_"))
     val numDataCellFields: Int = dataCellColumns.size
     val yParent: Reference = pathToTopParent.head
     val Some((subHeaderType, yParentPropField)) = propFieldInheritsFromType(yParent.typ, XTabCellType)

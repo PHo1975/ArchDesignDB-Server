@@ -95,7 +95,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 							colData.setSubLevelCellData (data.head)					  
 					  case _ =>
 							//println("Data First:" +data.head.ref+" sublLevelCellData:")
-							columnList.foreach(co=> println(co.subLevelCellData+" "+co.subLevelCellData.ref))
+							columnList.foreach(co=> println(co.subLevelCellData.toString+" "+co.subLevelCellData.ref))
 							throw new IllegalArgumentException(" can't find sub header data "+data.head.ref+" in column list")
 					}
 				case _ =>
@@ -327,7 +327,7 @@ class XTabColModel (mod:XTabSidePanelModel) {
 						val owners=Array(new OwnerReference(s.dataCellPropField,yOwnerRef),
 							new OwnerReference(s.dataCellPropFieldInSubHeaders,subLevelCellData.ref))
 							val fieldsList=s.dataCellClass.emptyFieldListWithSingleField( field, expr)
-							ClientQueryManager.createInstances( owners,Seq((s.dataCellType,fieldsList)),checkLinks = true)
+							ClientQueryManager.createInstances( owners,mutable.Seq((s.dataCellType,fieldsList)),checkLinks = true)
 					}
 				}			  			  
 			}

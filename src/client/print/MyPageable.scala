@@ -290,8 +290,8 @@ abstract class APageable extends Pageable with Printable {
       g.clipRect(cl.x.toInt+1,cl.y.toInt+1,cl.width.toInt-1,cl.height.toInt-1)
       g2.setStroke(new BasicStroke(0.2f))
       val page=pagesList(pageIndex)
-      val (basic,decorated)=page.elementList.span(_.getElementType!=PrintElType.DecoreMarker)
-			printRotated(g2,basic,elems=>{ printClipGroups(g2, elems)	})
+      val (basic: Seq[PrintElement],decorated: Seq[PrintElement])=page.elementList.span(_.getElementType!=PrintElType.DecoreMarker)
+			printRotated(g2,basic, (elems: Seq[PrintElement]) =>{ printClipGroups(g2, elems)	})
       printSorted(g2,decorated)
 			g.setClip(oldClip)
       Printable.PAGE_EXISTS
@@ -306,7 +306,7 @@ abstract class APageable extends Pageable with Printable {
         if(el.getElementType==PrintElType.ClipRestoreElement){
           //println("Clip Group Ending "+i+" groupstart:"+groupStart)
           list(groupStart).print(g2,context)
-          printSorted(g2,list.view(groupStart+1,i))
+          printSorted(g2,list.view.slice(groupStart+1,i))
           el.print(g2,context)
           isClip=false
           groupStart=i+1
@@ -314,7 +314,7 @@ abstract class APageable extends Pageable with Printable {
       } else {
         if(el.getElementType==PrintElType.ClipPrintElement){
           //println("Clip Group Beginning "+i+" groupstart:"+groupStart)
-          if(groupStart<i) printSorted(g2,list.view(groupStart,i))
+          if(groupStart<i) printSorted(g2,list.view.slice(groupStart,i))
           isClip=true
           groupStart=i
         }
@@ -323,7 +323,7 @@ abstract class APageable extends Pageable with Printable {
     if(isClip) Log.e("Clip Restore missing")
     //println("End GroupStart:"+groupStart)
     if(groupStart<list.length)
-      printSorted(g2,list.view(groupStart,list.length))
+      printSorted(g2,list.view.slice(groupStart,list.length))
   }
 
 	protected def printRotated(g:Graphics2D,elems:Seq[PrintElement],callBack:(Seq[PrintElement])=>Unit):Unit = {

@@ -18,7 +18,7 @@ import javax.swing.border.Border
 import javax.swing.event._
 import javax.swing.table.{AbstractTableModel, JTableHeader, TableCellEditor}
 
-import scala.Option.option2Iterable
+import scala.collection.mutable
 import scala.swing.event.{ListSelectionEvent => _, _}
 import scala.swing.{Alignment, BoxPanel, Button, Component, Label, Orientation, Panel, SequentialContainer, Swing, Table}
 import scala.util.control.NonFatal
@@ -538,7 +538,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 		calcSize()
 		//System.out.println(" add selfadded:"+selfAdded+" EditActionNotDone:"+editActionNotDone)
 		if(selfAdded){ 
-			propMod.mainController.selectionChanged(TypeTableModel.this,propMod,Array(newInst))
+			propMod.mainController.selectionChanged(TypeTableModel.this,propMod,Seq(newInst))
 			selfAdded=false
 			if(editActionNotDone!=null)	{
 				oldEnterAction.actionPerformed(editActionNotDone)
@@ -642,7 +642,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			//System.out.println("Parsed "+(System.currentTimeMillis()-time))
 			if(rowIndex==dataList.size) { // create new
 				selfAdded=true
-				ClientQueryManager.createInstances(Array(propMod.getOwnerRef),Seq((typ,objClass.emptyFieldListWithSingleField(columnIndex-1,expr))),checkLinks = true)
+				ClientQueryManager.createInstances(Array(propMod.getOwnerRef),mutable.Seq((typ,objClass.emptyFieldListWithSingleField(columnIndex-1,expr))),checkLinks = true)
 			}
 			else{
 				val ref= dataList(rowIndex).ref

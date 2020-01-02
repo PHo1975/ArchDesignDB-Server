@@ -31,7 +31,7 @@ case class ConnectionEntry(app:String, thread:JavaClientSocket, queryHandler:Abs
   def sendUndoLockInfo(undoName:String): Unit =thread.sendUndoLockInfo(undoName)
   def releaseUndoLock(): Unit =thread.releaseUndoLock()
 
-  def getRemoteAddress: String = thread.socket.getRemoteSocketAddress + " " + thread.socket.getInetAddress.getCanonicalHostName
+  def getRemoteAddress: String = thread.socket.getRemoteSocketAddress.toString + " " + thread.socket.getInetAddress.getCanonicalHostName
 
   def getPort: String = thread.socket.getPort.toString
   def shutDown(): Unit ={
@@ -97,7 +97,7 @@ object UserList extends ChangeSender {
   }
 
   def addUser(newUser:UserInfo): Unit = {
-    theMap = theMap + (newUser.id -> newUser)		//orderedList=list.values.toSeq.sortBy(_.id)
+    theMap(newUser.id)=newUser		//orderedList=list.values.toSeq.sortBy(_.id)
     notifyListeners()
   }
 

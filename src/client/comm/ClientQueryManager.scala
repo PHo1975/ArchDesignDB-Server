@@ -14,7 +14,6 @@ import definition.expression._
 import definition.typ._
 import util.Log
 
-import scala.collection.immutable.IndexedSeq
 import scala.swing.Swing
 import scala.util.control.NonFatal
 
@@ -34,7 +33,7 @@ object ClientQueryManager {
 	
 	type FactUpdateFunc[T<: Referencable]=(NotificationType.Value,IndexedSeq[T])=>Unit
 
-  type SearchListener = (AbstractSearchResult) => Unit
+  type SearchListener = AbstractSearchResult => Unit
 
 
   sealed trait Subscriber
@@ -65,7 +64,7 @@ object ClientQueryManager {
 	private val storeSettingsListenerMap= collection.mutable.HashSet[() => Unit]()
   private var searchListener: Option[SearchListener] = None
 
-  val EmptyResultListener: (CommandResult) => Unit = (result: CommandResult) => {}
+  val EmptyResultListener: CommandResult => Unit = (result: CommandResult) => {}
   
 	var undoLockListener:Option[(Boolean, String) => Unit]=None
 	
@@ -293,7 +292,7 @@ object ClientQueryManager {
 	 * @param checkLinks check link references, if false: WARNING: only for constant instance values, 
 	 *   link references are not checked/created with this command !!!	 * 
 	 */
-	def createInstances(owners:Array[OwnerReference], data:Seq[(Int,Array[Expression])],checkLinks:Boolean=false,
+	def createInstances(owners:Array[OwnerReference], data:Iterable[(Int,Array[Expression])],checkLinks:Boolean=false,
 											resultListener:CommandResult=>Unit=EmptyResultListener):Unit = {
 	  sock.sendData(ClientCommands.createInstances ) { out =>	    
 	    out.writeInt(owners.length)
@@ -311,15 +310,15 @@ object ClientQueryManager {
 	}
 	
 	
-	def copyInstances(refList:Seq[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int):Unit = {
+	def copyInstances(refList:Iterable[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int):Unit = {
 		copyOrMove(refList,fromOwner,toOwner,atPos,ClientCommands.copyInstances )
 	}
 	
-	def moveInstances(refList:Seq[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int):Unit = {
+	def moveInstances(refList:Iterable[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int):Unit = {
 		copyOrMove(refList,fromOwner,toOwner,atPos,ClientCommands.moveInstances )
 	}
 	
-	def copyOrMove(refList:Seq[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int,command:ClientCommands.Value):Unit= runInPool{		
+	def copyOrMove(refList:Iterable[Reference],fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int,command:ClientCommands.Value):Unit= runInPool{
 		sock.sendData(command ) { out =>
 		  out.writeShort(refList.size)
 		  for(ref <-refList) ref.write(out)
@@ -482,8 +481,8 @@ object ClientQueryManager {
 				runInPool{a.func(NotificationType.sendData,data)}
 			} else runInPool{a.func(NotificationType.parentNotExistend,IndexedSeq.empty)}
 					
-			case b:FactSubscriber[_] => if(subsID > -1){
-				val data=readListWithFactory(in,b.factory)				
+			case b:FactSubscriber[Referencable] @unchecked=> if(subsID > -1){
+				val data: IndexedSeq[Referencable] =readListWithFactory(in,b.factory)
 				runInPool{b.func(NotificationType.sendData,data)}
 			} else runInPool{b.func(NotificationType.parentNotExistend,IndexedSeq.empty)}			
 		}			
@@ -516,16 +515,16 @@ object ClientQueryManager {
 						case NotificationType.instanceRemoved =>
 							val ref = Reference(in)
 							runInPool(subscriber.func(NotificationType.instanceRemoved,
-								IndexedSeq(new InstanceData(ref, IndexedSeq(), Array(), Seq.empty, false)))) // empty instance
+								IndexedSeq(new InstanceData(ref, IndexedSeq(), Array.empty, Array.empty, false)))) // empty instance
 						case NotificationType.sendData | NotificationType.updateUndo =>
 							val list = readList(in)
 							//System.out.println(" send Data:"+list)
 							runInPool(subscriber.func(nt, list))
 							case NotificationType.parentNotExistend =>
                 val ref = Reference(in)
-                runInPool(subscriber.func(nt,IndexedSeq(new InstanceData(ref, IndexedSeq(), Array(), Seq.empty, false))))
+                runInPool(subscriber.func(nt,IndexedSeq(new InstanceData(ref, IndexedSeq(), Array.empty, Array.empty, false))))
 					}
-				case factSubs: FactSubscriber[_] =>
+				case factSubs: FactSubscriber[Referencable] @unchecked=>
 					val nt = NotificationType(in.readInt)
 					//print("fact ":+nt)
 					nt match {
@@ -583,7 +582,7 @@ object ClientQueryManager {
   def answerEnquiry(params: Seq[ResultElement]): Unit = {
 		sock.sendData(ClientCommands.answerEnquiry) { out =>
 			out.writeInt(params.size)
-			params foreach((x) => {out.writeUTF(x.paramName); x.result.write(out)})
+			params foreach(x => {out.writeUTF(x.paramName); x.result.write(out)})
 		}
 	}	
 	
@@ -674,7 +673,7 @@ object ClientQueryManager {
 			stepList+= newElem
 			//System.out.println(newElem.toString)
 		}		
-		if(stepListReader!=null) Swing.onEDT{stepListReader.loadStepList(stepList)}
+		if(stepListReader!=null) Swing.onEDT{stepListReader.loadStepList(stepList.toSeq)}
     util.Log.w("send ready ")
 			
 	}

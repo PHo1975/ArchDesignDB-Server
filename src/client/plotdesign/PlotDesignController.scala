@@ -1,5 +1,5 @@
 package client.plotdesign
-import java.awt.datatransfer.Transferable
+import java.awt.datatransfer.{DataFlavor, Transferable}
 import java.awt.event.{ComponentAdapter, ComponentEvent}
 import java.awt.geom.{Point2D, Rectangle2D}
 import java.awt.{Color, Graphics2D, Point}
@@ -182,7 +182,7 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
     canvas.repaint()
   }
   
-  def addLayers(layerRefs:Seq[Reference],pos:Point): Unit = if(layerRefs.nonEmpty){
+  def addLayers(layerRefs:Iterable[Reference],pos:Point): Unit = if(layerRefs.nonEmpty){
     createDropPos.x=scaleModel.xToWorld(pos.x)
     createDropPos.y=scaleModel.yToWorld(pos.y)
     
@@ -207,7 +207,7 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
   def getChoosableElements(onlyEdible:Boolean,clickPosX:Double,clickPosY:Double):Seq[LayerRef]= {
     val lcd=getCurrentLineCatchDistance
     layerRefList.filterSelection(_.hits(clickPosX,clickPosY,lcd) ).
-		      filter(a=>objSelectClassConstraints.contains(a.ref.typ))
+		      filter(a=>objSelectClassConstraints.iterator.contains(a.ref.typ))
   }
   
   def filterSelection(clickPosX:Double,clickPosY:Double,lcd:Double):Seq[LayerRef]= {
@@ -364,14 +364,14 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
 	    case instData:InstanceSelection=> action match {
   			case TransferHandler.MOVE |
   			 TransferHandler.COPY | TransferHandler.LINK =>
-					addLayers(instData.selection.filter(aref=>layerTypes.contains(aref.typ)),pos.getDropPoint())
+					addLayers(instData.selection.filter(aref=>layerTypes.contains(aref.typ)),pos.getDropPoint)
 					true
 				case _ => false
   		}  
 	  }
   
   }
-  lazy val flavors=Array(InstanceSelection.flavor)
+  lazy val flavors: Array[DataFlavor] =Array(InstanceSelection.flavor)
   
   
   // interface Print Receiver

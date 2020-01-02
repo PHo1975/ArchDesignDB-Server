@@ -228,13 +228,13 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       if(ViewConstants.showHitPoints==1)
       controller.findCrossPoint( controller.scaleModel.xToWorld(currentMousePos.x),
         controller.scaleModel.yToWorld(currentMousePos.y)) match {
-        case Some(crossPoint) ⇒
+        case Some(crossPoint) =>
           val cx=controller.scaleModel.xToScreen(crossPoint.x).toInt
           val cy=controller.scaleModel.yToScreen(crossPoint.y).toInt
           g.drawLine(cx-rh2,cy-rh2,cx+rh2,cy+rh2)
           g.drawLine(cx+rh2,cy-rh2,cx-rh2,cy+rh2)
 
-        case None ⇒ // no crosspoint, draw hint points along the fadenkreuz
+        case None => // no crosspoint, draw hint points along the fadenkreuz
           drawFadenKreuzHitpoints(g,rh,rh2)
       } else drawFadenKreuzHitpoints(g,rh,rh2)
 		}
@@ -274,7 +274,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       //case ViewportState.InPlaceEdit =>g.drawString("IPE "+controller.inplaceTextElement.get.text,30,30)
       case _ =>
     }
-    g.drawString(st + (if (controller.bracketMode) " (S)" else ""), 30, 30)
+    g.drawString(st.toString + (if (controller.bracketMode) " (S)" else ""), 30, 30)
     // draw all elements
     for (lay <- controller.layerModel.layerList) {
       val lColor = if (lay.edible) null else ColorMap.lockedColor

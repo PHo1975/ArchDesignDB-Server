@@ -23,7 +23,7 @@ object UsageStatFileHandler {
   val outStream=new DataOutputStream(bufferStream)
   val gc=new GregorianCalendar
   val mins=1000*60*5
-  val dayMins=1000l*60*60*24
+  val dayMins=1000L*60*60*24
   
   var resultMap=mutable.HashMap[(Short,Int),Array[Byte]]()
   

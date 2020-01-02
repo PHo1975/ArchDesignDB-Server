@@ -24,10 +24,10 @@ object BookmarkFactory {
   
   lazy val standardPath:Seq[Reference]=List(UserSettings.rootRef)
   
-  def pathList:Seq[BMEntry]={
+  def pathList:ArrayBuffer[BMEntry]={
     if(!hasSetup) loadSettings()
     _pathList
-  } 
+  }
   
   def loadSettings():Unit=  {
     //System.out.println("bookmarkFactory load settings ")
@@ -77,7 +77,7 @@ object BookmarkFactory {
       val result=path1(i).compareTo(path2(i))
       //println("Result "+i+": "+result)
       if(result<0) return true
-      if(result>0) return false
+      else if(result>0) return false
     }
     //println("Size:" +(path1.size<path2.size))
     path1.size<path2.size

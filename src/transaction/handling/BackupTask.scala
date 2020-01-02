@@ -1,8 +1,8 @@
 package transaction.handling
 
 import java.io.{File, FileInputStream, FileOutputStream}
-import java.util.{Date, GregorianCalendar, TimerTask}
 import java.util.zip.{ZipEntry, ZipOutputStream}
+import java.util.{Date, GregorianCalendar, TimerTask}
 
 import definition.data.EMPTY_REFERENCE
 import server.config.FSPaths
@@ -35,7 +35,7 @@ trait BackupThread {
 	  for(i<-0 until files.size)  try {			    
 		    if (isCancelled) {  return}
 		    println("Backup "+i+" "+files(i))
-		    val entry=new ZipEntry(dirFile.getName()+File.separator+files(i).getName())
+		    val entry=new ZipEntry(dirFile.getName+File.separator+files(i).getName)
 		    zipFile.putNextEntry(entry)
 		    var inFile:FileInputStream=null
 		    var readBytes=0
@@ -46,11 +46,11 @@ trait BackupThread {
 		        if(readBytes>0)zipFile.write(buffer, 0, readBytes)
           }
 			  } 
-		    catch {case NonFatal(ex) =>println(ex+" "+ex.getMessage())}
-			    finally if (inFile != null) inFile.close
+		    catch {case NonFatal(ex) =>println(ex.toString+" "+ex.getMessage)}
+			    finally if (inFile != null) inFile.close()
 			    zipFile.closeEntry()
 			    updateProgress(100*i/files.size)					    
-			  }catch {case NonFatal(ex)=>println(ex+" "+ex.getMessage())} 
+			  }catch {case NonFatal(ex)=>println(ex.toString+" "+ex.getMessage)}
 		}  
  }
 
@@ -75,8 +75,8 @@ class BackupTask extends TimerTask with BackupThread {
 				 loopDirectory(FSPaths.dataDir,zipFile)         
        })       
      }
-     catch {case NonFatal(ex)=>println(ex+" "+ex.getMessage())}
-     finally if (zipFile != null) zipFile.close
+     catch {case NonFatal(ex)=>println(ex.toString+" "+ex.getMessage)}
+     finally if (zipFile != null) zipFile.close()
      util.Log.w("backup at "+SessionManager.backupFormatter.format(new Date(System.currentTimeMillis())))
      for(l<-backupDoneListener)l()
      FSPaths.setLastBackup(System.currentTimeMillis())     

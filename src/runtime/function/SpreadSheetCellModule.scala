@@ -13,11 +13,11 @@ class SpreadSheetCellModule extends ActionModule {
   
   val actions = List(deleteAction) 
   
-  def doDelete(u:AbstractUserSocket, parent:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]):Boolean = {
+  def doDelete(u:AbstractUserSocket, parent:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]):Boolean = {
     SpreadSheetProxy.deleteSpreadSheetCells(data)	   	  		
   	true
   }
   
-  def setObjectType(typeID:Int)={}
+  def setObjectType(typeID:Int): Unit ={}
 
 }

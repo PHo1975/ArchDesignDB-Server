@@ -7,7 +7,7 @@ import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression.StringConstant
 import javax.swing.tree.{DefaultMutableTreeNode, DefaultTreeModel, TreePath}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.swing.Swing
 
 trait SomeNode{

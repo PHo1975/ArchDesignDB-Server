@@ -30,7 +30,7 @@ class VokabelGroupModule extends ActionModule {
   val vertiefeEnglisch=new ActionImpl("Vertiefe Englisch",None,doLerneDeutsch(1,de_Richtung = false))
   val sortiere=new ActionImpl("Sortieren",None,doSortiere)
   
-  val aQuestion=DialogQuestion("was heisst", Seq(new AnswerDefinition("Was Heisst :", DataType.StringTyp, None)))
+  val aQuestion: DialogQuestion =DialogQuestion("was heisst", Seq(new AnswerDefinition("Was Heisst :", DataType.StringTyp, None)))
   
   val actions=List(lernAlleDeutsch,vertiefeDeutsch,lernAlleEnglisch,vertiefeEnglisch,sortiere) 
   
@@ -42,9 +42,9 @@ class VokabelGroupModule extends ActionModule {
   
   
   
-  def doLerneDeutsch(nurLevel:Int,de_Richtung:Boolean)(u:AbstractUserSocket,data:InstanceData,param:Seq[(String,Constant)]):Boolean = {
+  def doLerneDeutsch(nurLevel:Int,de_Richtung:Boolean)(u:AbstractUserSocket,data:InstanceData,param:Iterable[(String,Constant)]):Boolean = {
   	init()
-  	var vokListe=Random.shuffle(StorageManager.loadChildren(data.ref,vokabelTyp,0).map(new Vokabel(_)))
+  	var vokListe: Iterable[Vokabel] =Random.shuffle(StorageManager.loadChildren(data.ref,vokabelTyp,0).map(new Vokabel(_)))
 		val unknownWords = ArrayBuffer[Vokabel]()
   	val numVoks=vokListe.count(el=>(if(de_Richtung)el.dg else el.eg)>=nurLevel)
 		System.out.println("lerne Deutsch "+data)
@@ -54,6 +54,7 @@ class VokabelGroupModule extends ActionModule {
 			unknownWords.clear()
 		}
 
+		@scala.annotation.tailrec
 		def getNextDeutschWert:String = {
   		if(vokListe.isEmpty){
 				if(unknownWords.nonEmpty) copyUnknownWords()
@@ -62,7 +63,7 @@ class VokabelGroupModule extends ActionModule {
   		val head=vokListe.head
   		var dw=if(de_Richtung) head.deutsch else head.englisch
   		var level=if(de_Richtung)head.dg else head.eg
-  		while((dw.length==0||level<nurLevel)&& vokListe.lengthCompare(1) > 0) {
+  		while((dw.length==0||level<nurLevel)&& vokListe.size>1) {
   			vokListe=vokListe.drop(1)
   			val head=vokListe.head
   			dw=if(de_Richtung) head.deutsch else head.englisch
@@ -116,7 +117,7 @@ class VokabelGroupModule extends ActionModule {
   	}				
 		true
 	}
-  def doSortiere(u:AbstractUserSocket, data:InstanceData, param:Seq[(String,Constant)]):Boolean = {
+  def doSortiere(u:AbstractUserSocket, data:InstanceData, param:Iterable[(String,Constant)]):Boolean = {
     TransactionManager.sortProperty(new OwnerReference(0,data.ref), 0)
     false
   }

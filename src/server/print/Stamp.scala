@@ -399,7 +399,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 	}
 	def foreachIndexed(f:(Int,StampElement)=>Unit): Unit = {
 		var ix=0
-		def func(el:StampElement)={f(ix,el);ix+=1}
+		def func(el:StampElement): Unit ={f(ix,el);ix+=1}
 		frontChildren.foreach(func)
 		centerChildren.foreach(func)
 		bottomChildren.foreach(func)
@@ -409,7 +409,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 	def size: Int = frontChildren.size+centerChildren.size+bottomChildren.size
 	
 	
-	def flatMap[A](f:(StampElement)=>Traversable[A]): Seq[A] = {
+	def flatMap[A](f:(StampElement)=>Iterable[A]): Seq[A] = {
 		frontChildren.flatMap(f)++ centerChildren.flatMap(f)++ bottomChildren.flatMap(f)
 	}
 	
@@ -443,7 +443,7 @@ class StampBox(form:FormDescription,val horOrient:Boolean,val width:Float,val he
 		var springSize=0f
 		
 		
-		val backgroundRect:Seq[PrintElement]=if(measure) Seq.empty else centerChildren.collect({case e:StampFiller => e}).headOption.map(el=> 
+		val backgroundRect:Seq[PrintElement]=if(measure) Seq.empty else centerChildren.collectFirst { case e: StampFiller => e }.map(el=>
 		  FillPrintElement(new Rectangle2D.Float(x, currY.currentYPos, restWidth, restHeight), Color.black, 0, new Color(el.backgroundColor))	).toSeq
 
 		if(horOrient){

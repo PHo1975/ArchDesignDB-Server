@@ -111,9 +111,9 @@ trait AbstractQueryHandler{
 							val instList = getInstances(childRefs)
 							out.writeInt(instList.size) // only write size after all children are found
 							//System.out.println("readlist "+instList)
-							for (i <- instList.indices) {
-								instList(i).ref.write(out)
-								instList(i).writeWithChildInfo(out)
+							for (i <- instList) {
+								i.ref.write(out)
+								i.writeWithChildInfo(out)
 							}
 						}
 						else {
@@ -154,7 +154,7 @@ trait AbstractQueryHandler{
 		//System.out.println("push ready")
 	}
 
-	protected def getInstances(childRefs:IndexedSeq[Reference]):Seq[InstanceData] =
+	protected def getInstances(childRefs:IndexedSeq[Reference]):Iterable[InstanceData] =
 		if(childRefs.size>10&& !MainServerSocket.noBulkAction) {
 			var retList=new collection.mutable.ArrayBuffer[InstanceData]()
 			var bulkStart= 0

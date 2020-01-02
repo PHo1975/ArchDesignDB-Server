@@ -10,7 +10,7 @@ import transaction.handling.{ActionList, TransactionManager}
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
-class MyActionIterator(nname:String,nfunc:(AbstractUserSocket,OwnerReference,Seq[InstanceData],Seq[(String,Constant)]) => Boolean) extends 
+class MyActionIterator(nname:String,nfunc:(AbstractUserSocket,OwnerReference,Iterable[InstanceData],Iterable[(String,Constant)]) => Boolean) extends
   ActionIterator(nname,None,nfunc)  {
     override def hiddenFromPanel=true
   }
@@ -28,14 +28,14 @@ class SpreadSheetModule extends ActionModule{
    val actions = List(deleteCellsAction,addColumnsAction,removeColumnsAction,addRowsAction,removeRowsAction,insertCellsAction,
        setResultCellAction) 
   
-  def doDelete(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = {    
+  def doDelete(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = {
     SpreadSheetProxy.deleteSpreadSheetCells(data)
   	true
   }
   
-  def doAddColumns(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = {
+  def doAddColumns(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = if(param.size==2){
     val startCol=param.head._2.toInt
-    val endCol=param(1)._2.toInt
+    val endCol=param.last._2.toInt
     val range=startCol to endCol
     val size=endCol-startCol+1
     val proxy=new SpreadSheetProxy(data.head.ref)
@@ -46,8 +46,8 @@ class SpreadSheetModule extends ActionModule{
           else ChangeCol(col+size)
     })          
     proxy.iterateRanges {
-      case ColsSelection(oldCols) => insertRange(oldCols, range, true)
-      case RangeSelection(oldCols, _) => insertRange(oldCols, range, true)
+      case ColsSelection(oldCols) => insertRange(oldCols, range, asCol = true)
+      case RangeSelection(oldCols, _) => insertRange(oldCols, range, asCol = true)
 
       case SingleCellSelection(col, _) => if (col >= startCol) ChangeCols(Range(col + size, col + size))
       else NoChange
@@ -55,17 +55,17 @@ class SpreadSheetModule extends ActionModule{
     }
     
     for(col<-startCol to endCol){    
-          val newInst=TransactionManager.tryCreateInstance(SpreadSheetProxy.SSColumnType,proxy.colDataOwnerArray,false, -1)
+          val newInst=TransactionManager.tryCreateInstance(SpreadSheetProxy.SSColumnType,proxy.colDataOwnerArray,notifyRefandColl = false, -1)
           TransactionManager.tryWriteInstanceField(newInst.ref,0,IntConstant(col))
           if(oldColumnData.contains(col))
             TransactionManager.tryWriteInstanceField(newInst.ref,2,oldColumnData(col).fieldValue(2))        
     }
   	true
-  }
+  } else false
   
-  def doRemoveColumns(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = {
+  def doRemoveColumns(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = if(param.size==2){
     val startCol=param.head._2.toInt
-    val endCol=param(1)._2.toInt
+    val endCol=param.last._2.toInt
     val range=startCol to endCol
     val size=endCol-startCol+1
     //println("remove column start"+startCol+" end:"+endCol+" size:"+size)
@@ -76,8 +76,8 @@ class SpreadSheetModule extends ActionModule{
           else ChangeCol(col-size)
         })
     proxy.iterateRanges {
-      case ColsSelection(oldCols) => removeRange(oldCols, range, true)
-      case RangeSelection(oldCols, _) => removeRange(oldCols, range, true)
+      case ColsSelection(oldCols) => removeRange(oldCols, range, asCol = true)
+      case RangeSelection(oldCols, _) => removeRange(oldCols, range, asCol = true)
       case SingleCellSelection(col, _) => if (col >= startCol) {
         if (col <= endCol) Delete
         else ChangeCols(Range(col - size, col - size))
@@ -85,11 +85,11 @@ class SpreadSheetModule extends ActionModule{
       case _ => NoChange
     }
   	true
-  }
+  } else false
   
-  def doAddRows(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = { 
+  def doAddRows(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = if(param.size==2){
     val startRow=param.head._2.toInt
-    val endRow=param(1)._2.toInt
+    val endRow=param.last._2.toInt
     val range=startRow to endRow
     val size=endRow-startRow+1
     val proxy=new SpreadSheetProxy(data.head.ref)
@@ -98,18 +98,18 @@ class SpreadSheetModule extends ActionModule{
           else ChangeRow(row+size)
         })
     proxy.iterateRanges {
-      case RowsSelection(oldRows) => insertRange(oldRows, range, false)
-      case RangeSelection(_, oldRows) => insertRange(oldRows, range, false)
+      case RowsSelection(oldRows) => insertRange(oldRows, range, asCol = false)
+      case RangeSelection(_, oldRows) => insertRange(oldRows, range, asCol = false)
       case SingleCellSelection(_, row) => if (row >= startRow) ChangeRows(Range(row + size, row + size))
       else NoChange
       case _ => NoChange
     }
   	true
-  }
+  } else false
   
-  def doRemoveRows(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = { 
+  def doRemoveRows(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = {
      val startRow=param.head._2.toInt
-    val endRow=param(1)._2.toInt
+    val endRow=param.last._2.toInt
     val range=startRow to endRow
     val size=endRow-startRow+1
     val proxy=new SpreadSheetProxy(data.head.ref)
@@ -119,8 +119,8 @@ class SpreadSheetModule extends ActionModule{
           else ChangeRow(row-size)
         })
         proxy.iterateRanges {
-          case RowsSelection(oldRows) => removeRange(oldRows, range, false)
-          case RangeSelection(_, oldRows) => removeRange(oldRows, range, false)
+          case RowsSelection(oldRows) => removeRange(oldRows, range, asCol = false)
+          case RangeSelection(_, oldRows) => removeRange(oldRows, range, asCol = false)
           case SingleCellSelection(_, row) => if (row >= startRow) if (row <= endRow) Delete
           else ChangeRows(Range(row - size, row - size))
           else NoChange
@@ -130,7 +130,8 @@ class SpreadSheetModule extends ActionModule{
   }
   
   
-  def doInsertCells(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = {  
+  def doInsertCells(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],para:Iterable[(String,Constant)]):Boolean = {
+    val param=para.toSeq
     val proxy=new SpreadSheetProxy(data.head.ref)
     val startCol=param.head._2.toInt
     val endCol=param(1)._2.toInt
@@ -177,15 +178,15 @@ class SpreadSheetModule extends ActionModule{
   }
   
   
-  def doSetResultCell(u:AbstractUserSocket,parent:OwnerReference,data:Seq[InstanceData],param:Seq[(String,Constant)]):Boolean = { 
+  def doSetResultCell(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = if(param.size==2){
     val proxy=new SpreadSheetProxy(data.head.ref)
     val col=param.head._2.toInt
-    val row=param(1)._2.toInt
+    val row=param.last._2.toInt
     val targetCell=proxy.aquireCellAt(col,row)    
 	  TransactionManager.tryWriteInstanceField(data.head.ref,0,
 	      new FieldReference(Some(SSDoubleCellType),Some(targetCell.ref.instance),2.toByte))
     true
-  }
+  } else false
   
   
   
@@ -213,6 +214,6 @@ class SpreadSheetModule extends ActionModule{
 
 
 object Inst{
-  def unapply(ref:Reference)=Some(ActionList.getInstanceData(ref))
+  def unapply(ref:Reference): Option[InstanceData] =Some(ActionList.getInstanceData(ref))
 }
 

@@ -7,7 +7,7 @@ import javafx.scene.layout.{HBox, VBox}
 import javafx.scene.text.Text
 import javafx.stage.{Modality, Stage, StageStyle, Window}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class  FxMessageBox(buttonTexts:Seq[String]) extends Stage {  
 	initModality(Modality.WINDOW_MODAL)

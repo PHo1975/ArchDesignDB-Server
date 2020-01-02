@@ -9,7 +9,7 @@ import java.util.jar.JarFile
 import client.dataviewer.ViewConstants
 import javax.swing.ImageIcon
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object IconManager extends ImageObserver {
   val startPath="client/icons/"

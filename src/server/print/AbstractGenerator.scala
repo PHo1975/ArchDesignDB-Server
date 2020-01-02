@@ -12,7 +12,7 @@ import util.Log
 
 trait AbstractGenerator {
   def iterate(instData:InstanceData,dataEater:DataEater,context:PrintContext,firstData:Boolean):Unit
-  def map[B](f: AbstractGenerator => B): Seq[B]
+  def map[B](f: AbstractGenerator => B): Iterable[B]
   def optionName:Option[String]=None
 }
 
@@ -32,7 +32,7 @@ class SinglePageGenerator(val form:FormDescription,val generatorClass:String,val
 		//decoratePage(instData,dataEater,context)
   }
 
-	def map[B](f: AbstractGenerator => B): Seq[B] = Seq.empty
+	def map[B](f: AbstractGenerator => B): Iterable[B] = Seq.empty
 }
 
 
@@ -107,7 +107,7 @@ class PrintIterator(val form:FormDescription, val propField:Byte, val forType:In
 		}
 	}
 	
-	def map[B](f: (AbstractGenerator) => B): Seq[B]= {
+	def map[B](f: (AbstractGenerator) => B): Iterable[B]= {
 	  val buffer=collection.mutable.ArrayBuffer[B]()
 	  buffer+=f(this)
 	  buffer++=childIterators.flatMap(_.map(f))

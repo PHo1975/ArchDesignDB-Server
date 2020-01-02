@@ -15,7 +15,7 @@ import scala.xml.Elem
  */
 
 class ActionImpl(val name:String, override val question:Option[ParamQuestion],
-								 val func:(AbstractUserSocket,InstanceData,Seq[(String,Constant)]) => Boolean, val rebound:Boolean=false, val buttonID:Int= 0) extends ActionTrait  {
+								 val func:(AbstractUserSocket,InstanceData,Iterable[(String,Constant)]) => Boolean, val rebound:Boolean=false, val buttonID:Int= 0) extends ActionTrait  {
 	def isIterator=false
 	def toXML: Elem =   {
   	 <Action  name={name} iter={"0"} reb={if(rebound)"1" else "0"} id={buttonID.toString} >
@@ -36,7 +36,7 @@ class ActionImpl(val name:String, override val question:Option[ParamQuestion],
  * @param buttonID number to order the buttons
  */
 class ActionIterator(val name:String,override val question:Option[ParamQuestion],
-	val func:(AbstractUserSocket,OwnerReference,Seq[InstanceData],Seq[(String,Constant)]) => Boolean,val rebound:Boolean=false,val buttonID:Int= 0) extends ActionTrait  {
+	val func:(AbstractUserSocket,OwnerReference,Iterable[InstanceData],Iterable[(String,Constant)]) => Boolean,val rebound:Boolean=false,val buttonID:Int= 0) extends ActionTrait  {
 	def isIterator=true	
 	def toXML: Elem = {
   	 <Action  name={name} iter={"1"} reb={if(rebound)"1" else "0"} id={buttonID.toString} >
@@ -50,9 +50,7 @@ class ActionIterator(val name:String,override val question:Option[ParamQuestion]
 }
 
 
-class CreateActionImpl(val name:String,override val question:Option[ParamQuestion],
-    // func params: Socket, list of parents,list of parameters, list of form fields
-	val func:(AbstractUserSocket,Seq[InstanceData],Seq[(String,Constant)],Int,Seq[(Int,Constant)]) => Boolean,val rebound:Boolean=false) extends ActionTrait  {
+class CreateActionImpl(val name: String, override val question: Option[ParamQuestion], val func: (AbstractUserSocket, Iterable[InstanceData], Seq[(String, Constant)], Int, Seq[(Int, Constant)]) => Boolean, val rebound: Boolean = false) extends ActionTrait  {
 	def isIterator=false
 	def buttonID=0
 	def toXML: Elem =   {

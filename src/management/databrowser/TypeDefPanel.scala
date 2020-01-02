@@ -16,7 +16,7 @@ import server.config.FSPaths
 import server.storage._
 import transaction.handling.{SessionManager, TransactionManager}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.swing.event._
 import scala.swing.{Color, _}
 import scala.util.control.NonFatal
@@ -379,14 +379,14 @@ object TypeDefPanel extends BorderPanel {
     val numOwnFields=theClass.getNumOwnFields
 		val fieldSettingsList=theClass.getFieldSettingsList
 		val inheritedFields=theClass.fields.view.dropRight(numOwnFields)
-		inheritedFieldMod.setValues(inheritedFields,
+		inheritedFieldMod.setValues(inheritedFields.toSeq,
 			fieldSettingsList.dropRight(numOwnFields),0)
-		ownFieldMod.setValues(theClass.fields.view.takeRight(numOwnFields),
+		ownFieldMod.setValues(theClass.fields.view.takeRight(numOwnFields).toSeq,
 			fieldSettingsList.takeRight(numOwnFields),inheritedFields.size)
 		
 		val numOwnPropFields=theClass.getNumOwnPropFields
-		inheritedPropMod.setValues(theClass.propFields.view.dropRight(numOwnPropFields))
-		ownPropMod.setValues(theClass.propFields.view.takeRight(numOwnPropFields))
+		inheritedPropMod.setValues(theClass.propFields.view.dropRight(numOwnPropFields).toSeq)
+		ownPropMod.setValues(theClass.propFields.view.takeRight(numOwnPropFields).toSeq)
 		childDefMod.setValues(Seq.empty,null,0)	
   }
   
@@ -407,7 +407,7 @@ object TypeDefPanel extends BorderPanel {
   this.add(actionPan,BorderPanel.Position.South)
   
   class FieldTable(mod:TableModel,cm:TableColumnModel=null) extends Table {
-		val stringEditor=new MultilineEditor(peer)	{
+		val stringEditor: MultilineEditor =new MultilineEditor(peer)	{
 			def setEditorValue(value:Object): String = if(value==null) "" else value.toString
 		}
 		model=mod
@@ -432,13 +432,15 @@ class ClassNameRenderer extends JLabel with TableCellRenderer {
   	override def invalidate(): Unit = {}
   	override def revalidate(): Unit = {}
   	def getTableCellRendererComponent(table:JTable, a:Object, isSelected: Boolean, focused: Boolean,  row: Int,col:Int):java.awt.Component = {
-			val theText = if ((a == null) || (!a.isInstanceOf[java.lang.Integer])) ""
-  		else {
-  			val aValue=a.asInstanceOf[java.lang.Integer].intValue
-			  if(aValue<0) "None" 
-			  else if(aValue==0)	"Any"
-				else AllClasses.get.getClassByID(aValue).name
-  		}
+			val theText = a match {
+					case intV:java.lang.Integer=>
+						val aValue=intV.intValue()
+						if(aValue<0) "None"
+						else if(aValue==0)	"Any"
+						else AllClasses.get.getClassByID(aValue).name
+					case null=> ""
+					case other =>""
+			}
   	  setText(theText)
   	  setToolTipText(theText)
   		this

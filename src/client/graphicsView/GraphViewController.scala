@@ -179,16 +179,16 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	
 	override def findCrossPoint(clickPosX:Double,clickPosY:Double):Option[VectorConstant]= {
     val lcd=getCurrentLineCatchDistance
-    val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(onlyEdible = false, el ⇒ el.ref.typ==GraphElemConst.lineClassID &&
+    val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(onlyEdible = false, el => el.ref.typ==GraphElemConst.lineClassID &&
       el.hits(this,clickPosX,clickPosY,lcd)).flatMap(_._2)
     if (lines.size>1) {
       val firstLine=lines.head.asInstanceOf[LineElement]
       val firstLineDelta=firstLine.delta
       val iter=lines.iterator
       iter.next()
-      iter.find{case el:LineElement ⇒ !el.delta.isLinearyDependentFrom(firstLineDelta);case _ ⇒ false } match {
-        case Some(secondLine:LineElement)⇒ Some(firstLine.toLine3D.intersectionWith(secondLine.toLine3D))
-        case _ ⇒ None
+      iter.find{case el:LineElement => !el.delta.isLinearyDependentFrom(firstLineDelta);case _ => false } match {
+        case Some(secondLine:LineElement)=> Some(firstLine.toLine3D.intersectionWith(secondLine.toLine3D))
+        case _ => None
       }
     }
     else None
@@ -204,7 +204,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 			    Nil
 			  }
 	  else { layerModel.filterLayersSelection(onlyEdible,el=>el.hits(this,clickPosX,clickPosY,lcd) ).
-	    flatMap(_._2).filter(a=>(a.ref!=null)&& objSelectClassConstraints. contains(a.ref.typ)&&
+	    flatMap(_._2).filter(a=>(a.ref!=null)&& objSelectClassConstraints.iterator.contains(a.ref.typ)&&
 	        (if(objSelectMode==ObjectSelectMode.SingleObjectNotSelected) !selectModel.selectionList.contains(a) else true))
 	  } 
 	}

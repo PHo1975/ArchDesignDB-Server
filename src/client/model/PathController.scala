@@ -7,9 +7,8 @@ import java.awt.{Color, Dimension}
 
 import client.dataviewer.{DataViewController, ViewConstants}
 import definition.data._
-import util.MyListView
 
-import scala.swing._
+import scala.swing.{ListView, _}
 import scala.swing.event._
 
 
@@ -60,7 +59,7 @@ class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientatio
 /** manages the connection of a PathModel and a ListView
  * 
  */
-class PathController (val model:PathModel, val view:MyListView[InstanceData],val listener:PathControllable) {
+class PathController (val model:PathModel, val view:ListView[InstanceData],val listener:PathControllable) {
 	
 	private val lock=new Object
 	def lineHeight=25
@@ -72,18 +71,19 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 	view.focusable=false
 	view.peer.setModel(model)
 	view.peer.setDragEnabled(true)
-	view.selection.intervalMode=MyListView.IntervalMode.Single	
+	view.selection.intervalMode=ListView.IntervalMode.Single
 	
 	view.background=new Color(225,225,230)
 	view.selectionForeground=new Color(0,0,40)
 	view.selectionBackground=new Color(210,210,215)
 	
 	view.listenTo(view.selection)
-	view.renderer=new MyListView.AbstractRenderer[InstanceData,PathLineRenderer](renderPrototype){
-		def configure(list: MyListView[InstanceData], isSelected: Boolean, focused: Boolean, a: InstanceData, index: Int): Unit = {
-			component.config(isSelected,focused,a,index)
+	view.renderer=new ListView.AbstractRenderer[InstanceData,PathLineRenderer](renderPrototype){
+		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: InstanceData, index: Int): Unit = {
+			renderPrototype.config(isSelected,focused,a,index)
 		}
-		
+
+
 	}
 	view.reactions += {
 		case e:ListSelectionChanged[_] =>
@@ -106,13 +106,13 @@ class PathController (val model:PathModel, val view:MyListView[InstanceData],val
 			} else None			
 			oldIndex=newPos
 			// notify listener
-			listener.openData(model.getInstanceAt(newPos).ref,selectRef,newPos,None,true)
+			listener.openData(model.getInstanceAt(newPos).ref,selectRef,newPos,None,withCustomEditor = true)
 		}		
 		notifySizeListeners()
 	}
 
 
-  def loadPath(newPath: Seq[Reference], doneListener: () => Unit, selectRef: Option[Reference] = None): Unit = lock.synchronized {
+  def loadPath(newPath:Seq[Reference], doneListener: () => Unit, selectRef: Option[Reference] = None): Unit = lock.synchronized {
 	  var firstTime=true
 
     def selectLastLine(sendPath: Seq[Reference]): Unit = Swing.onEDT {

@@ -16,11 +16,11 @@ class BaseClassModule extends ActionModule {
 	val deleteAction=new ActionIterator("Objekt Löschen",None,doDelete,false,1000)
   val actions = List(deleteAction) 
   
-  def doDelete(u:AbstractUserSocket, parent:OwnerReference, data:Seq[InstanceData], param:Seq[(String,Constant)]):Boolean = {
+  def doDelete(u:AbstractUserSocket, parent:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]):Boolean = {
   	for(inst <-data) 	TransactionManager.tryDeleteInstance(inst.ref,Some(parent),None)  	
   	true
   }
 	
-	def setObjectType(typeID:Int)={}
+	def setObjectType(typeID:Int): Unit ={}
 
 }

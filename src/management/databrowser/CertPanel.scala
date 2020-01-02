@@ -17,9 +17,9 @@ import util.{CollUtils, Log}
 import org.shredzone.acme4j._
 import org.shredzone.acme4j.util.{CSRBuilder, KeyPairUtils}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.io.Source
+import scala.jdk.CollectionConverters._
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, TextArea}
 import scala.util.control.NonFatal

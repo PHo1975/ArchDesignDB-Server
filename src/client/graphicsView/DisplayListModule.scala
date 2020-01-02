@@ -24,25 +24,26 @@ object NoChange extends ChangeInfo
 case class Delete(ref:Reference) extends ChangeInfo
 case class Change(line:LineElement) extends ChangeInfo
 
+
+
 class DisplayListModule extends ActionModule {
 
-  var lineTyp= -1
-  var dlistTyp= -1
+  var lineTyp: Int = -1
+  var dlistTyp: Int = -1
   
   SessionManager.registerSetupListener(() => {
 		lineTyp=AllClasses.get.getClassIDByName("LineElem")
 	})
 
-	def setObjectType(typeID:Int)= {
+	def setObjectType(typeID:Int): Unit = {
     dlistTyp=typeID	
   }
 
 	val cleanupAction=new ActionImpl("säubern",None,doCleanup)
 
 	def actions = List(cleanupAction) 
-	
 
-	def doCleanup(u:AbstractUserSocket, data:InstanceData, param:Seq[(String,Constant)]):Boolean = {
+	def doCleanup(u:AbstractUserSocket, data:InstanceData, param:Iterable[(String,Constant)]):Boolean = {
 	  val owner=Some(new OwnerReference(0.toByte,data.ref))	
 	  val vertVect=new VectorConstant(0,1,0)
 	  val horVect=new VectorConstant(1,0,0)
@@ -51,7 +52,7 @@ class DisplayListModule extends ActionModule {
 		for (props<-StorageManager.getInstanceProperties(data.ref);elRef<-props.propertyFields.head.propertyList ){
 		  val elData=try {StorageManager.getInstanceData(elRef)} catch {case NonFatal(e)=>util.Log.e("cleanup",e); null
 			case other:Throwable =>println(other);System.exit(0);null}
-		  if(elData==null ) TransactionManager.internRemovePropertyFromOwner(elRef, owner.get, false)
+		  if(elData==null ) TransactionManager.internRemovePropertyFromOwner(elRef, owner.get)
 		  else elRef.typ match {
 		    case TypeInfos.lineElemType =>
 					var p1=elData.fieldValue (3).toVector
@@ -107,7 +108,7 @@ class DisplayListModule extends ActionModule {
 		  }
 		} 
 		// check overlapping lines
-	  for((dirVector,lineList)<-linesMap){ // iterate over groups of parallel lines
+	  for((_,lineList)<-linesMap){ // iterate over groups of parallel lines
 	    //println("\n\n lines parallel to "+dirVector+" :")
 	    val commonRayMap=collection.mutable.HashMap[LineElement,ArrayBuffer[LineElement]]()
 	    for(line<-lineList)
@@ -133,7 +134,7 @@ class DisplayListModule extends ActionModule {
 		true
 	}
 	
-	def isLineDeleted(line:LineElement)=line.ref.typ==0
+	def isLineDeleted(line:LineElement): Boolean =line.ref.typ==0
 	
 	/** combines the overlap check between all lines from the list
 	 *  @return true if some lines were changed

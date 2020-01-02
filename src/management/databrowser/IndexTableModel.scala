@@ -35,7 +35,7 @@ object IndexTableModel extends AbstractTableModel {
   	if(rowIndex>=ixList.length) return null
   	val a =ixList(rowIndex) 
   	columnIndex match 	{
-			case 0 ⇒ java.lang.Integer.valueOf(rowIndex)
+			case 0 => java.lang.Integer.valueOf(rowIndex)
   		case 1 => a.inst.toString
   		case 2 => a.dataPos.toString
   		case 3 => a.dataLength.toString
@@ -51,7 +51,7 @@ object IndexTableModel extends AbstractTableModel {
   
   override def getColumnName(col:Int): String =
   	col match 	{
-			case 0 ⇒ "ix"
+			case 0 => "ix"
   		case 1 => "Inst-ID"
   		case 2 => "DPos"
   		case 3 => "DLen"

@@ -154,13 +154,13 @@ class GraphElemTransferable extends Transferable with Serializable{
       outBuffer.println(lineStyles)
     appendStream("header2.dat",outBuffer)
     println("header 2")
-    for(line ← buffer) outBuffer.println(line)
+    for(line <- buffer) outBuffer.println(line)
     appendStream("footer.dat",outBuffer)
     println("ready out")
     outBuffer.close()
     wishFile
   } catch {
-    case NonFatal(er) ⇒ Log.e("create DXF File ",er);null
+    case NonFatal(er) => Log.e("create DXF File ",er);null
   }
 
 

@@ -4,13 +4,12 @@ import java.awt.Dimension
 
 import client.dataviewer.ViewConstants
 import management.databrowser.MainWindow
-import util.MyListView
 
 import scala.swing.event.ButtonClicked
-import scala.swing.{BorderPanel, BoxPanel, Button, Label, Orientation, ScrollPane, Swing}
+import scala.swing.{BorderPanel, BoxPanel, Button, Label, ListView, Orientation, ScrollPane, Swing}
 
 class StatPanel extends BoxPanel(Orientation.Vertical) {
-  val projList=new MyListView[String]
+  val projList=new ListView[String]
   val projMod=new ProjListModel
   projList.peer.setModel(projMod)
   val projScroller=new ScrollPane{
