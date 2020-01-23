@@ -41,7 +41,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   var bracketMode:Boolean = false
   var showTempElements=false
   var selectObject_addModifiableInfo=false
-  var customDragger:Option[(VectorConstant,Graphics2D)=>Unit]=None
+  protected var customDragger:Option[(VectorConstant,Graphics2D)=>Unit]=None
   var customDraggerToast:Option[(CustomToast,(CustomToast,Int,Int,VectorConstant)=>Unit)]=None
   //var measureMode=MeasureMode.NoMeasure
   //var measurePoints:Seq[VectorConstant]=Nil
@@ -103,9 +103,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   def setCustomDragger(ncustomDragger: (VectorConstant, Graphics2D) => Unit): Unit = {
-    customDragger=Some(ncustomDragger)
+    customDragger=Option(ncustomDragger)
     refreshCanvas()
   }
+
+  def getCustomDragger: Option[(VectorConstant, Graphics2D) => Unit] =customDragger
 
 
   def createDraggerToast(listener:(CustomToast,Int,Int,VectorConstant)=>Unit):CustomToast = {
@@ -128,7 +130,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
     refreshCanvas()
   }
 
-  def askForObjectSelection(listener:ObjectSelectListener,constraints:String):Unit={
+  /**
+  *  @return true if there is also a combines pointSelection question
+*/
+  def askForObjectSelection(listener:ObjectSelectListener,constraints:String):Boolean={
+    var result=false
     //println("ask for object selection "+constraints)
     checkIPEMode()
     objSelectListener=Some(listener)
@@ -171,7 +177,9 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       else constraintsString.trim.split(',').map(_.toInt)
     }
     //println("Ask for ObjectSeleection objSelectClassConstraints:"+objSelectClassConstraints)
+    if(viewportState==ViewportState.AskPoint) result=true
     changeViewportState(if(_viewportState==ViewportState.AskPoint)ViewportState.AskPointOrObject else ViewportState.ChoseObject,withStopModus)
+    result
   }
 
 
@@ -307,7 +315,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   override def createActionSubmitted(numEl: Int): Unit = if (numEl > 0) {
-    //System.out.println("CreateActionStarted "+numEl+" selMod:"+selectModel)
+    System.out.println("CreateActionSubmitted "+numEl+" selMod:"+selectModel)
     _hasCreateActionStarted=true
     numCreatedElements=numEl
     if(selectModel!=null){
@@ -317,7 +325,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
   override def resetCreateAction(): Unit = {
     super.resetCreateAction()
-    //System.out.println(" reset cas "+hasCreateActionStarted)
+    System.out.println(" reset cas "+hasCreateActionStarted)
     //System.out.println(Thread.currentThread().getStackTrace.drop(1).take(10).mkString("\n ")+"\n")
     //System.out.println("--")
     if(_hasCreateActionStarted)
@@ -486,7 +494,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   }
 
   override def actionStopped():Unit= {
-    //println("ViewController actionStopped "+_viewportState)
+    println("ViewController actionStopped "+_viewportState)
     checkIPEMode()
     resetCustomDragger()
     clearNewElements()
@@ -513,6 +521,8 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
     else false
   }
 
+  protected def showCreatePopup():Unit={}
+
   def singleClick(where:Point,control:Boolean,shift:Boolean,rightButton:Boolean,middleButton:Boolean):Unit = {
     // check for single element selection
     if(scaleModel==null) util.Log.e("ScaleModel==null "+getClass.getName)
@@ -530,7 +540,8 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
           case ViewportState.InPlaceEdit => stopIPEMode()
           case ViewportState.SelectPoints=> flipPointSelectionBracketMode()
           case ViewportState.SelectState=> // context menu
-            if(canvas!=null)ActionPanel.showRightMenu(where,canvas)
+            if(canvas!=null) if (ActionPanel.hasSelection) ActionPanel.showRightMenu(where,canvas)
+            else showCreatePopup()
           case _ =>
         }
       } else _viewportState match {

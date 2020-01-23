@@ -153,7 +153,7 @@ object TransactionManager {
 			Option(newLinkDataForThis), collData, copyInfo))
 		// notify owners
 		for(owner <-owners)
-			internAddPropertyToOwner(newInst,owner,pos,!notifySubs)
+			internAddPropertyToOwner(newInst.ref,owner,pos,!notifySubs)
 		if(notifyRefandColl)
 			for(i <- newInst.fieldData.indices;if !newInst.fieldData(i).isNullConstant)
 				passOnChangedValue(newInst,i.toByte,EMPTY_EX,newInst.fieldData(i).getValue,withRefLinks = false)
@@ -173,15 +173,32 @@ object TransactionManager {
 		newInst
 	}
 
+	/** tries to create a block instance
+	* @param typ class type of the block instance
+	* @param ownerReference Reference to the owner of the block. The number of the block propertyField lies behind the common propertyFields
+  *
+*/
 	def tryCreateBlock(typ:Int,owner:OwnerReference,data:Array[Byte]):Int= {
-		val inst=StorageManager.createBlockInstance(typ)
-		val ref=new Reference(typ,inst)
-		ActionList.addTransactionData(ref,CreateBlock(ref,data))
-		val ownerProps=ActionList.getInstanceProperties(owner.ownerRef).getOrElse(StorageManager.createInstanceProperties(owner.ownerRef))
-		//ownerProps.addChildInstance()
-		inst
+		val ownerClass = AllClasses.get.getClassByID(owner.ownerRef.typ)
+		if (owner.ownerField < ownerClass.propFields.size)
+			throw new IllegalArgumentException("Create Block wrong owner field " + owner + ", can not be lower than common prop fields number " + ownerClass.propFields.length)
+			else if(owner.ownerField>=ownerClass.propFields.length+ownerClass.blockPropFields.length)
+			throw new IllegalArgumentException("Create Block wrong owner field " + owner + ", common prop fields number " + ownerClass.propFields.length+", block prop field number "+ownerClass.blockPropFields.length)
+		else {
+			val inst = StorageManager.createBlockInstance(typ)
+			val ref = new Reference(typ, inst)
+			ActionList.addTransactionData(ref, CreateBlock(ref, data))
+			internAddPropertyToOwner(ref, owner, -1)
+			inst
+		}
 	}
-	
+
+
+	def tryWriteBlock(ref:Reference,data:Array[Byte]): Unit ={
+		ActionList.addTransactionData(ref,ChangeBlock(ref,data))
+	}
+
+
 	
 	private def notifyModuleChildAdded(owners:Array[OwnerReference],child:InstanceData):Unit= {
 	  for(owner<-owners) {
@@ -195,15 +212,10 @@ object TransactionManager {
 	
 		
 	// internal routine
-	private def internAddPropertyToOwner(newInst:InstanceData,owner:OwnerReference,pos:Int,refreshDestination:Boolean=false): Unit = {
-		val newProp= (ActionList.getInstanceProperties(owner.ownerRef) match {
-				// Property data found				
-				case Some(a) => a 
-				// so far no Property data there, create an empty one
-				case _ => StorageManager.createInstanceProperties(owner.ownerRef)
-			} // and add the new child to the prop list
-			).addChildInstance(owner.ownerField ,newInst.ref,pos) 
-			
+	private def internAddPropertyToOwner(newRef:Reference,owner:OwnerReference,pos:Int,refreshDestination:Boolean=false): Unit = {
+		val newProp= ActionList.getInstanceProperties(owner.ownerRef).getOrElse( StorageManager.createInstanceProperties(owner.ownerRef)).
+			 // and add the new child to the prop list
+			addChildInstance(owner.ownerField ,newRef,pos)
 		  ActionList.addTransactionData(owner.ownerRef,DataChangeAction(None,Some(newProp),None,None, if(refreshDestination)RefreshDestinationOwner.some else None))		  
 	}
 	
@@ -732,130 +744,153 @@ object TransactionManager {
 	 * @param fromOwner the ownerReference this instance should be deleted from, if None, delete the instance completely
 	 * @param dontNotifyOwner When notifying the parents of that instance, ignore the given parent
 	 */
-	def tryDeleteInstance(ref:Reference,fromOwner:Option[OwnerReference],dontNotifyOwner:Option[Reference]):Boolean =	{
+	def tryDeleteInstance(ref:Reference,fromOwner:Option[OwnerReference],dontNotifyOwner:Option[Reference]):Boolean = {
 		//System.out.println("delete instance "+ref+" from Owner:"+fromOwner)
-  	if(!canModify ) throw new IllegalArgumentException("try delete No transaction defined ")
-  	val instD=ActionList.getInstanceData(ref)
-  	if (instD==null) {
-      util.Log.e("Delete Instance, cant find: "+ref)
-  		return false
-  	}
-		
-  	// mark this instance as deleted  	
-  	if(fromOwner.isDefined) { // only delete from a single owner  		
-  		if(instD.secondUseOwners.contains(fromOwner.get))
-  		{ // delete from seconduser list, dont change the instance beyond that
-  			internRemovePropertyFromOwner(ref,fromOwner.get)
-  			passOnDeletedInstanceToCollFuncParents(instD,fromOwner.toList)
-  			val newSU=instD.secondUseOwners.filterNot(_ == fromOwner.get)
-  			val newInst=instD.changeSecondUseOwners(newSU)
-				ActionList.addTransactionData(ref, DataChangeAction(Some(newInst), None, None, None, None, Some(fromOwner.get))) // store that target
-  			return true
-  		} 
-  		else if(instD.owners .contains(fromOwner.get)) {
-  			if(instD.secondUseOwners.nonEmpty){ // deletion from standard user list, but secondusers still use it
-  				internRemovePropertyFromOwner(ref,fromOwner.get)
-  				passOnDeletedInstanceToCollFuncParents(instD,fromOwner.toList)
-  				val newOwners=instD.owners.filterNot(_ ==fromOwner.get) :+ instD.secondUseOwners.head
-  				val newSUOwners=instD.secondUseOwners.drop(1)
-  				// raise one of the su owners to a general owner
-  				val newInst=instD.clone(ref,newOwners,newSUOwners)
+		if (!canModify) throw new IllegalArgumentException("try delete No transaction defined ")
+		val instD = ActionList.getInstanceData(ref)
+		if (instD == null) {
+			util.Log.e("Delete Instance, cant find: " + ref)
+			false
+		}	else {
+			// mark this instance as deleted
+			if (fromOwner.isDefined) { // only delete from a single owner
+				if (instD.secondUseOwners.contains(fromOwner.get)) { // delete from seconduser list, dont change the instance beyond that
+					internRemovePropertyFromOwner(ref, fromOwner.get)
+					passOnDeletedInstanceToCollFuncParents(instD, fromOwner.toList)
+					val newSU = instD.secondUseOwners.filterNot(_ == fromOwner.get)
+					val newInst = instD.changeSecondUseOwners(newSU)
 					ActionList.addTransactionData(ref, DataChangeAction(Some(newInst), None, None, None, None, Some(fromOwner.get))) // store that target
-  				return true
-  			}  			
-  			// else do the standard procedure and delete the instance fully
-  		} // can not find fromOwner
-  		else if(instD.secondUseOwners.nonEmpty) throw new IllegalArgumentException("cant delete "+ref+" from unknown owner "+fromOwner.get+" secondUseOwners:"+instD.secondUseOwners.mkString)
-  		else{
-        util.Log.e("cant delete "+ref+" from unknown owner "+fromOwner.get+", no SecondUsers found, deleting clompletely")
-  		  if(dontNotifyOwner match {case Some(dno)=> fromOwner.get.ownerRef!=dno;case _ =>true}) 			
-  			internRemovePropertyFromOwner(ref,fromOwner.get)
-  		} 
-  	}// fromowner.isdefined
-  	  // no fromOwner defined => remove from all Owners
-  	for(owner <-instD.owners)  	  
-  		if(dontNotifyOwner match {case Some(dno)=> owner.ownerRef!=dno;case _ =>true}) 			
-  			internRemovePropertyFromOwner(ref,owner)
-  	for(owner <-instD.secondUseOwners)  	  
-  		if(dontNotifyOwner match {case Some(dno)=> owner.ownerRef!=dno;case _ =>true}) 			
-  			internRemovePropertyFromOwner(ref,owner)
-  	passOnDeletedInstanceToCollFuncParents(instD,instD.owners)
-  	passOnDeletedInstanceToCollFuncParents(instD,instD.secondUseOwners)
+					return true
+				}
+				else if (instD.owners.contains(fromOwner.get)) {
+					if (instD.secondUseOwners.nonEmpty) { // deletion from standard user list, but secondusers still use it
+						internRemovePropertyFromOwner(ref, fromOwner.get)
+						passOnDeletedInstanceToCollFuncParents(instD, fromOwner.toList)
+						val newOwners = instD.owners.filterNot(_ == fromOwner.get) :+ instD.secondUseOwners.head
+						val newSUOwners = instD.secondUseOwners.drop(1)
+						// raise one of the su owners to a general owner
+						val newInst = instD.clone(ref, newOwners, newSUOwners)
+						ActionList.addTransactionData(ref, DataChangeAction(Some(newInst), None, None, None, None, Some(fromOwner.get))) // store that target
+						return true
+					}
+					// else do the standard procedure and delete the instance fully
+				} // can not find fromOwner
+				else if (instD.secondUseOwners.nonEmpty) throw new IllegalArgumentException("cant delete " + ref + " from unknown owner " + fromOwner.get + " secondUseOwners:" + instD.secondUseOwners.mkString)
+				else {
+					util.Log.e("cant delete " + ref + " from unknown owner " + fromOwner.get + ", no SecondUsers found, deleting clompletely")
+					if (dontNotifyOwner match {
+						case Some(dno) => fromOwner.get.ownerRef != dno;
+						case _ => true
+					})
+						internRemovePropertyFromOwner(ref, fromOwner.get)
+				}
+			} // fromowner.isdefined
+			// no fromOwner defined => remove from all Owners
+			for (owner <- instD.owners)
+				if (dontNotifyOwner match {
+					case Some(dno) => owner.ownerRef != dno;
+					case _ => true
+				})
+					internRemovePropertyFromOwner(ref, owner)
+			for (owner <- instD.secondUseOwners)
+				if (dontNotifyOwner match {
+					case Some(dno) => owner.ownerRef != dno;
+					case _ => true
+				})
+					internRemovePropertyFromOwner(ref, owner)
+			passOnDeletedInstanceToCollFuncParents(instD, instD.owners)
+			passOnDeletedInstanceToCollFuncParents(instD, instD.secondUseOwners)
 
 
-		ActionList.addTransactionData(ref, DeleteAction(instD))
-  	
-  	// remove link information at external source instances
-  	for(afield <-instD.fieldData) // check all fields for FieldReferences
-  	{
-  		// fieldReferences
-  		val refList= afield.getElementList[FieldReference](DataType.FieldRefTyp,Nil) // get all FielReferences from that term
-  		for(fref <-refList) // remove all external links
-  			removeLinkRef(ref,fref)
-  		// parentReferences
-  		if(dontNotifyOwner.isEmpty) {
-  			val prefList=afield.getElementList[ParentFieldRef](DataType.ParentRefTyp,Nil)
-  			for(fref <-prefList)
-  				removeAnyRef(ref,instD.owners(fref.ownerIx ).ownerRef,fref.fieldNr)  		
-  		}
-  	}
-  	// remove link information from external target instances pointing here
-  	ActionList.getReferencingLinks(ref) match {			
-  		case Some(refLinks) =>
-				for ((fieldNr,list) <- refLinks.links) //  walk through all fields
-          for(aref <- list;if !aref.isParentRef ) // wall through the list of fieldRefs for a field
-          {
-            val targetRef=aref.getReference
-            if(targetRef!=ref) // ignore if the link points from the same instance
-            {
-              val targetData=ActionList.getInstanceData(targetRef)
-              if(targetData!=null) {
-                val theField=targetData.fieldData(aref.field). // get the term that contains the linkref
-                  replaceExpression {
-										case aFieldRef: FieldReference =>
-											val relink = resolveLinkRef(targetRef, aFieldRef)
-											//System.out.println("checking ref:"+aFieldRef+" resolved:"+relink+" with:"+ref);
-											if (relink == ref) aFieldRef.cachedValue // replace the reference with the cached value
-											else aFieldRef // wrong reference, leave it
+			ActionList.addTransactionData(ref, DeleteAction(instD))
 
-										case other => other // dont change any other elements
-                }
-								ActionList.addTransactionData(targetRef, DataChangeAction(Some(targetData.setField(aref.field, theField)))) // store that target
-              }
-            }
-          }
-			case _ => // go drink a beer
-  	}	
-  	
-  	//TODO delete instance from caches !!!
-  	
-  	// delete Children
-  	ActionList.getInstanceProperties(ref) match {
-  		case Some(propdat) => 
-  		val myRef=Some(ref)
-				for (pfieldIx <-propdat.propertyFields.indices) {
-          val oRef=Some(new OwnerReference(pfieldIx.toByte,ref))
-          for( child <-propdat.propertyFields(pfieldIx).propertyList )
-            try {
-              tryDeleteInstance(child,oRef,myRef)
-            } catch {
-              case NonFatal(e) => util.Log.e("Error when deleting child "+child,e)
-            }
-          }
-			case None =>
-  	}
-  	
-  	// notify listeners in owners
-  	for(owner <-instD.owners) {
-  	  val ownerClass=AllClasses.get.getClassByID(owner.ownerRef.typ).asInstanceOf[ServerObjectClass]
-	    if(ownerClass.actionModule.notifyChildRemoved) {
-	      val ownerInst=ActionList.getInstanceData(owner.ownerRef)
-	      if(ownerInst!=null) // if the owner instance still exists
-	      		ownerClass.actionModule.onChildRemoved(ownerInst,owner.ownerField,instD.ref)
-	    }
-  	}  	
-  	true
-  }
+			// remove link information at external source instances
+			for (afield <- instD.fieldData) // check all fields for FieldReferences
+			{
+				// fieldReferences
+				val refList = afield.getElementList[FieldReference](DataType.FieldRefTyp, Nil) // get all FielReferences from that term
+				for (fref <- refList) // remove all external links
+					removeLinkRef(ref, fref)
+				// parentReferences
+				if (dontNotifyOwner.isEmpty) {
+					val prefList = afield.getElementList[ParentFieldRef](DataType.ParentRefTyp, Nil)
+					for (fref <- prefList)
+						removeAnyRef(ref, instD.owners(fref.ownerIx).ownerRef, fref.fieldNr)
+				}
+			}
+			// remove link information from external target instances pointing here
+			ActionList.getReferencingLinks(ref) match {
+				case Some(refLinks) =>
+					for ((fieldNr, list) <- refLinks.links) //  walk through all fields
+						for (aref <- list; if !aref.isParentRef) // wall through the list of fieldRefs for a field
+						{
+							val targetRef = aref.getReference
+							if (targetRef != ref) // ignore if the link points from the same instance
+							{
+								val targetData = ActionList.getInstanceData(targetRef)
+								if (targetData != null) {
+									val theField = targetData.fieldData(aref.field). // get the term that contains the linkref
+										replaceExpression {
+											case aFieldRef: FieldReference =>
+												val relink = resolveLinkRef(targetRef, aFieldRef)
+												//System.out.println("checking ref:"+aFieldRef+" resolved:"+relink+" with:"+ref);
+												if (relink == ref) aFieldRef.cachedValue // replace the reference with the cached value
+												else aFieldRef // wrong reference, leave it
+
+											case other => other // dont change any other elements
+										}
+									ActionList.addTransactionData(targetRef, DataChangeAction(Some(targetData.setField(aref.field, theField)))) // store that target
+								}
+							}
+						}
+				case _ => // go drink a beer
+			}
+
+			//TODO delete instance from caches !!!
+
+			// delete Children
+			ActionList.getInstanceProperties(ref) match {
+				case Some(propdat) =>
+					val myClass = AllClasses.get.getClassByID(ref.typ)
+					val myRef = Some(ref)
+					for (pfieldIx <- propdat.propertyFields.indices) {
+						val oRef = Some(new OwnerReference(pfieldIx.toByte, ref))
+						if (pfieldIx < myClass.propFields.length) {
+							for (child <- propdat.propertyFields(pfieldIx).propertyList)
+								try {
+									tryDeleteInstance(child, oRef, myRef)
+								} catch {
+									case NonFatal(e) => util.Log.e("Error when deleting child " + child, e)
+								}
+						} else if (pfieldIx < myClass.propFields.length + myClass.blockPropFields.length) {
+							for (child <- propdat.propertyFields(pfieldIx).propertyList)
+								try {
+									tryDeleteBlock(child, oRef.get)
+								} catch {
+									case NonFatal(e) => util.Log.e("Error when deleting block child " + child, e)
+								}
+						}
+					}
+				case None =>
+			}
+
+			// notify listeners in owners
+			for (owner <- instD.owners) {
+				val ownerClass = AllClasses.get.getClassByID(owner.ownerRef.typ).asInstanceOf[ServerObjectClass]
+				if (ownerClass.actionModule.notifyChildRemoved) {
+					val ownerInst = ActionList.getInstanceData(owner.ownerRef)
+					if (ownerInst != null) // if the owner instance still exists
+						ownerClass.actionModule.onChildRemoved(ownerInst, owner.ownerField, instD.ref)
+				}
+			}
+			true
+		}
+	}
+
+	def tryDeleteBlock(ref:Reference,owner:OwnerReference):Unit= {
+    ActionList.addTransactionData(ref,DeleteBlock(ref))
+		internRemovePropertyFromOwner(ref,owner)
+	}
 	
 	
 	
@@ -881,7 +916,7 @@ object TransactionManager {
 		val instData=ActionList.getInstanceData(subRef)
 		val differentOwners= fromOwner!=toOwner
 		if(differentOwners) {
-			internAddPropertyToOwner(instData,toOwner,pos,refreshDestination = true)
+			internAddPropertyToOwner(instData.ref,toOwner,pos,refreshDestination = true)
 			internRemovePropertyFromOwner(subRef,fromOwner,differentOwners)
 			// change the owner ref inside of the instance data
 			var newInst= instData.changeSingleOwner(fromOwner,toOwner)
@@ -908,9 +943,8 @@ object TransactionManager {
 			passOnNewInstanceToCollFuncParents(newInst,List(toOwner))
 			passOnDeletedInstanceToCollFuncParents(instData,List(fromOwner))
 			
-		} else {
-			movePropertyToPos(subRef,fromOwner,pos)
-		}
+		} else movePropertyToPos(subRef,fromOwner,pos)
+
 	}
 	
 	/** checks if the Reference given as toOwner is a child of source
@@ -936,7 +970,7 @@ object TransactionManager {
 		var pos=atPos
 		var lastInst:Int=0		
 		for(ref <-instList) {
-			lastInst=tryCopyInstance(ref,fromOwner,toOwner,pos,collNotifyOwners = true)
+			lastInst=tryCopyInstance(ref,fromOwner,toOwner,pos)
 			if(atPos> -1) pos +=1
 		}
 		lastInst
@@ -947,11 +981,10 @@ object TransactionManager {
 	 * @return instanceid of the new instance
 	 * 
 	 */
-	private def tryCopyInstance(instRef:Reference,fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int,
-	                    collNotifyOwners:Boolean):Int = {
+	private def tryCopyInstance(instRef:Reference,fromOwner:OwnerReference,toOwner:OwnerReference,atPos:Int):Int = {
 		//System.out.println("try copy instance:"+instRef+" "+atPos+" "+collNotifyOwners)
 		if(!canModify ) throw new IllegalArgumentException("No transaction defined ")
-		val instID=internTryCopyInstance(instRef,fromOwner,toOwner,atPos,collNotifyOwners)
+		val instID=internTryCopyInstance(instRef,fromOwner,toOwner,atPos,collNotifyOwners = true)
 		if(instID==0) util.Log.e("instID==0 when trying to copy "+instRef+" from:"+fromOwner+" to:"+toOwner)
 		else copyChildren(instRef,new Reference(instRef.typ,instID))
 		instID
@@ -1097,20 +1130,34 @@ object TransactionManager {
 	private def copyChildren(instRef:Reference,createdInstRef:Reference):Unit = {
 	  if(createdInstRef.instance ==0) throw new IllegalArgumentException("Copy Children createdInstRef="+createdInstRef)
 		// now copy all owned child instances
-    val prFieldDefs=AllClasses.get.getClassByID(instRef.typ).propFields
+		val theClass=AllClasses.get.getClassByID(instRef.typ)
+    val prFieldDefs=theClass.propFields
+
 		ActionList.getInstanceProperties(instRef) match {
 			case Some(prop) => // if this instances has child instances
 				// copy first level children
-				for(fieldNr <- prop.propertyFields.indices;if !prFieldDefs(fieldNr).volatile){ // go through all prop fields
+				for(fieldNr <- prop.propertyFields.indices;if (fieldNr<prFieldDefs.length) && !prFieldDefs(fieldNr).volatile ){ // go through all prop fields
 				  val crOref=new OwnerReference(fieldNr.toByte,createdInstRef)
 				  val instOref=new OwnerReference(fieldNr.toByte,instRef)
-					val fieldData=prop.propertyFields(fieldNr) // get the data for the prop field
+					val fieldData: PropertyFieldData =prop.propertyFields(fieldNr) // get the data for the prop field
 					for(childRef <-fieldData.propertyList;if StorageManager.instanceExists(childRef.typ,childRef.instance )) // go through all children of that field
 						internTryCopyInstance(childRef,instOref, // copy them to the new instance
 							crOref,-1,collNotifyOwners = false)
 				}
+				// coopy block children
+				for(blockField<-theClass.blockPropFields.indices;prFieldNr=blockField+prFieldDefs.length;if prFieldNr<prop.propertyFields.length){
+					val newOwnerRef=new OwnerReference(prFieldNr,createdInstRef)
+					val fieldData=prop.propertyFields(prFieldNr)
+					for(childRef<-fieldData.propertyList){
+						val bd=StorageManager.getBlockData(childRef)
+						val inst = StorageManager.createBlockInstance(childRef.typ)
+						val ref = new Reference(childRef.typ, inst)
+						ActionList.addTransactionData(ref, CreateBlock(ref, bd.data))
+						internAddPropertyToOwner(ref, newOwnerRef, -1)
+					}
+				}
 				// copy children of children
-				for(fieldNr <- prop.propertyFields.indices;if !prFieldDefs(fieldNr).volatile) // go through all prop fields
+				for(fieldNr <- prop.propertyFields.indices;if (fieldNr<prFieldDefs.length) && !prFieldDefs(fieldNr).volatile) // go through all prop fields
 				{
 					val fieldData=prop.propertyFields(fieldNr) // get the data for the prop field
 					for(childRef <-fieldData.propertyList;if StorageManager.instanceExists(childRef.typ,childRef.instance) ) // go through all children of that field
@@ -1146,7 +1193,7 @@ object TransactionManager {
 			if(instD.owners.contains(toOwner)||instD.secondUseOwners.contains(toOwner)) throw new IllegalArgumentException("Second use not possible: child "+instD.ref+" is already owned by "+toOwner)
 			val newSUOwners=instD.secondUseOwners :+toOwner
 			val newInst=instD.changeSecondUseOwners(newSUOwners)
-			internAddPropertyToOwner(newInst,toOwner,pos,refreshDestination = true)
+			internAddPropertyToOwner(newInst.ref,toOwner,pos,refreshDestination = true)
 			if(collNotifyOwners)
 				passOnNewInstanceToCollFuncParents(newInst,Seq(toOwner))
 			ActionList.addTransactionData(instRef, DataChangeAction(Some(newInst), None, None, None))

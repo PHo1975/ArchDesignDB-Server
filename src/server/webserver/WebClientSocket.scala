@@ -126,7 +126,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       if (blockInst == -1) { // new Block, create it
         createBlock(blockTyp,ownerRef,data)
       } else { // block changed
-
+        writeBlock(Reference(blockTyp,blockInst),data)
       }
     }
   } else Log.e("OnWebSocket length too short "+len)
@@ -182,9 +182,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         case "DeleteInstance"=>deleteInstance(data)
         case "Root"=> sendRoot(data)
         case "SubscribeBlocks"=>subscribeBlocks(data)
-        case "CreateBlock"=>
-        case "ChangeBlock"=>
-        case "DeleteBLock"=>
+        case "DeleteBLock"=>deleteBlock(data)
         case _=>Log.e("unknown Command "+command+" data:"+data)
       }
       case Array("SendTypes")=> sendTypes()
@@ -395,6 +393,15 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
 
+  protected def writeBlock(ref:Reference,data:Array[Byte]): Unit=try {
+    TransactionManager.doTransaction(userEntry.id,ClientCommands.changeBlock.id.toShort,ref,false,-1,{
+       TransactionManager.tryWriteBlock(ref,data)
+    })
+  }catch {
+    case NonFatal(e)=> Log.e("write Block "+ref,e)
+  }
+
+
   protected def strToParam(st:String): (String, Constant) = {
     val ix=st.indexOf("\u2192")
     (st.substring(0,ix),Expression.decode(st.substring(ix+1,st.length))._1.getValue)
@@ -487,7 +494,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
           val ret=TransactionManager.doTransaction(userEntry.id,ClientCommands.createInstance.id.toShort,
             ownerArray.head.ownerRef ,false,typ,{
               val inst= TransactionManager.tryCreateInstance(typ,ownerArray,notifyRefandColl = true)
-              if (inst==null)	error=new CommandError("Unknown Issue",ClientCommands.createInstance.id,0)
+              if (inst==null)	error=new CommandError("cant create Inst typ:"+typ,ClientCommands.createInstance.id,0)
               else result=inst.ref.instance
             })
           for(transError <-ret) error=new CommandError(transError.getMessage,ClientCommands.createInstance.id,0)
@@ -512,16 +519,32 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
       case _=> Log.e("create wrong syntax:"+data)
     }
 
-  protected def createBlock(typ:Int,ownerRef:OwnerReference,data:Array[Byte])= {
+
+  protected def createBlock(typ:Int,ownerRef:OwnerReference,data:Array[Byte]): Unit = {
     var error:CommandError=null
-    var result:Int = -1
+    var inst:Int = -1
     try {
       val ret=TransactionManager.doTransaction(userEntry.id,ClientCommands.createBlock.id.toShort,
         ownerRef.ownerRef ,false,typ, {
-          val inst=TransactionManager.tryCreateBlock(typ,ownerRef,data)
+          inst=TransactionManager.tryCreateBlock(typ,ownerRef,data)
+          if(inst== -1) error = new CommandError("cant create block "+typ+" owner:"+ownerRef,ClientCommands.createBlock.id,0)
         })
+      for(transError<-ret) error=new CommandError(transError.getMessage,ClientCommands.createBlock.id,0)
     } catch {
       case NonFatal(e)=>
+        Log.e("creating Block typ "+typ+" owner:"+ownerRef,e)
+        error=new CommandError(e.getMessage,ClientCommands.createBlock.id,0)
+    }
+    sendData(ServerCommands.sendCommandResponse ) {out =>
+      if(error!=null) {
+        out.writeBoolean(true)
+        error.write(out)
+      }
+      else {
+        out.writeBoolean(false) // no errors
+        out.writeBoolean(true)
+        IntConstant(inst).write(out) // the result value
+      }
     }
   }
 
@@ -548,6 +571,21 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     transBuffers=Some(b)
     b
   })
+
+  protected def deleteBlock(data:String):Unit= {
+    data.split("\\|") match{
+      case Array(Reference(ref),OwnerReference(owner))=> try {
+        val ret=TransactionManager.doTransaction(userEntry.id,ClientCommands.deleteBlock.id.toShort,
+        ref,false,0,{
+          TransactionManager.tryDeleteBlock(ref,owner)
+        })
+        for(error<-ret) Log.e("delete block",error)
+      } catch {
+        case NonFatal(e)=> Log.e("delete Block",e)
+      }
+      case _ => Log.e("delete bLock wrong syntax:"+data)
+    }
+  }
 
 
 

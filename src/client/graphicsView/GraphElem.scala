@@ -243,7 +243,7 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
 		val oldTrans=g.getTransform
 		if(outAngle!=0d) g.rotate(-outAngle,xpos,ypos)		
 		val fontHeight=((GraphElemConst.toMM(font.getSize2D)*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
-    val tl = new TextLayout(rtext, font.deriveFont(fontHeight), g.getFontRenderContext())
+    val tl = new TextLayout(rtext, font.deriveFont(fontHeight), g.getFontRenderContext)
     StringUtils.fillTextLayout(g, tl, xpos, ypos, wide = true)
 		g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
     tl.draw(g, xpos, ypos)
@@ -298,7 +298,14 @@ abstract class LinearElement(nref:Reference,ncolor:Int,val lineWidth:Int,val lin
 	}
 }
 
+ class TwoStepIterator[A](first:A,second:A) extends Iterator[A] {
+   protected var state:Byte=0.toByte
+   override def hasNext: Boolean = state < 2
 
+   override def next(): A = if(state==0)
+   {state=(state+1).toByte;first} else if(state==1){state=(state+1).toByte;second}
+   else throw new IllegalArgumentException("Iterator has finished")
+ }
 
 abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val startPoint:VectorConstant,val endPoint:VectorConstant) extends 
 		LinearElement(nref,ncolor,nlineWidth,nlineStyle) {
@@ -309,7 +316,7 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
 
   override def toString: String = "Line " + (if (nref == null) "" else nref.sToString()) + " (" + startPoint.shortToString + "," + endPoint.shortToString + ", Col:" + color + ", Style:" + lineStyle + " width:" + lineWidth + ")"
 	
-	override lazy val getEdiblePoints: Iterator[VectorConstant] =List(startPoint,endPoint).iterator
+	override def getEdiblePoints: Iterator[VectorConstant] =new TwoStepIterator(startPoint,endPoint)
 
   override def hits(cont: ElemContainer, px: Double, py: Double, dist: Double): Boolean = {
 	  GraphElemConst.hitLine(startPoint,endPoint,px,py,dist)

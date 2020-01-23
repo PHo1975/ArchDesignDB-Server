@@ -17,7 +17,7 @@ import scala.swing._
  */
 class ConsolePanel(debug: Boolean) extends BorderPanel {
 	val textArea=new TextArea
-  val doc: Document = textArea.peer.getDocument()
+  val doc: Document = textArea.peer.getDocument
   textArea.font = ViewConstants.tableFont
 	textArea.editable=false
 	val timeFormat=new SimpleDateFormat("dd| HH:mm ")
@@ -27,9 +27,9 @@ class ConsolePanel(debug: Boolean) extends BorderPanel {
 	},BorderPanel.Position.Center)
   util.Log.addLogListener((st:String,error:Boolean) => printWithTimeStamp(st+"\n",error))
 
-  def printError(errorText: String): Unit = printWithTimeStamp(errorText,true)
+  protected def printError(errorText: String): Unit = printWithTimeStamp(errorText,error = true)
 
-  def printWithTimeStamp(text: String, error: Boolean): Unit =  Swing.onEDT {
+  protected def printWithTimeStamp(text: String, error: Boolean): Unit =  Swing.onEDT {
     textArea.append( timeFormat.format(new Date()) + (if (error) " Error: " else " ") + text)
   }
 

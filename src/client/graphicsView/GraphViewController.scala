@@ -65,7 +65,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
      ipePane=new InplaceEditPanel(this)
      Swing.onEDT{
        ipePane.setup()       
-       Log.w("ipe:"+ipePane+" peer:"+ipePane.peer)
+       //Log.w("ipe:"+ipePane+" peer:"+ipePane.peer)
        ipePane.visible=false
        layerPane.panel.add(ipePane.peer,Integer.valueOf(2))
        //System.out.println("setup IPE "+layerPane.peer.getSize())
@@ -283,14 +283,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	  layerModel.newElemLayer.addTempElement(newElem)
 	}
 	
-	def keyPressed(e:KeyPressed):Unit = {
-		//System.out.println("key typed "+e)
-	  //resetCAS()
-	  /*if(measureMode!=MeasureMode.NoMeasure){ 
-	    setMeasureMode(MeasureMode.NoMeasure) 
-	  	return     
-	  }*/
-	  
+	def keyPressed(e:KeyPressed):Unit =
 		_viewportState match {
 			case ViewportState.SelectState =>
 				e.key match {
@@ -321,9 +314,9 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 			  case _=>
 			}// System.out.println(o)
 		}		
-	}
 
-  def showCreatePopup(): Unit = {
+
+  override def showCreatePopup(): Unit = {
     val mousePos = MouseInfo.getPointerInfo.getLocation
     val canvasPos = theCanvas.getLocationOnScreen
 		requestFocus()
@@ -371,7 +364,8 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   }
 
   def clearNewElements(): Unit = {
-    layerModel.newElemLayer.shutDown()
+    layerModel.newElemLayer.clear()
+		canvas.repaint()
     showTempElements=false   
   }
 

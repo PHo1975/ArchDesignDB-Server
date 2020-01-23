@@ -220,7 +220,8 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
 }
 
 object LayerPanelController {
-  lazy val lineHeight: Int = 20 * ViewConstants.fontScale / 100
+  //lazy val lineHeight: Int = 20 * ViewConstants.fontScale / 100
+  def lineHeight: Int =ViewConstants.defaultRowHeight-1
   val eyeIcon: ImageIcon = IconManager.createImageIcon("eye.gif")
   val editIcon: ImageIcon = IconManager.createImageIcon("editsmall.gif")
   val newElemIcon: ImageIcon = IconManager.createImageIcon("newElem.gif")

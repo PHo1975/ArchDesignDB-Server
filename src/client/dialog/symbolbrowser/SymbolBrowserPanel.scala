@@ -33,7 +33,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
     
   val symbolModel=new ListDataModel[SymbolStamp](List(SymbolBrowserController.symbolType),el=>new SymbolStamp(el))
   val symbolList=new ListView[SymbolStamp]()
-  val symbolScroller=new ScrollPane{
+  val symbolScroller: ScrollPane =new ScrollPane{
     viewportView=symbolList
     preferredSize = new Dimension(ViewConstants.sidePanelWidth, 800)
   }
@@ -49,7 +49,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   var lastIndent=0
   var selectedStamp:Option[SymbolStamp]=None
   
-  val createStampPanel=new BoxPanel(Orientation.Vertical) {
+  val createStampPanel: BoxPanel =new BoxPanel(Orientation.Vertical) {
     val createFolderButton=new Button("Unterordner anlegen:")
     val chooseFolderButton=new Button("Ordner wählen")
     maximumSize=SymbolBrowserController.maximumSize    

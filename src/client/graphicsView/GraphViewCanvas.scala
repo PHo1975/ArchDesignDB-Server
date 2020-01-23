@@ -59,44 +59,44 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 	})
 
   listenTo(mouse.clicks, mouse.moves, keys, this)
-	reactions+={
-		case e:MousePressed =>
-			val rightButton=e.peer.getButton== java.awt.event.MouseEvent.BUTTON3
+	reactions+= {
+    case e: MousePressed =>
+      val rightButton = e.peer.getButton == java.awt.event.MouseEvent.BUTTON3
       val middleButton = (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON2_DOWN_MASK) > 0
       if (middleButton) oldSwipePoint = e.point
       swiped = false
-			requestFocusInWindow()
-			currentMousePos=null
-			dragStartPoint=e.point
-			dragToPoint=null
-			repaint()
+      requestFocusInWindow()
+      currentMousePos = null
+      dragStartPoint = e.point
+      dragToPoint = null
+      repaint()
       isDragDropping = false
-			cursor=Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)
-			controller.viewportState match {
+      cursor = Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)
+      controller.viewportState match {
         case ViewportState.SelectState => if (!rightButton && !middleButton) {
-			    hasSelectionClicked=controller.isSelectionAtPos(dragStartPoint)
-			  }
-			  case _ =>
-			}
-		case e:MouseEntered =>
-			inside=true
-			currentMousePos=e.point
-			drawCrossHair()
+          hasSelectionClicked = controller.isSelectionAtPos(dragStartPoint)
+        }
+        case _ =>
+      }
+    case e: MouseEntered =>
+      inside = true
+      currentMousePos = e.point
+      drawCrossHair()
 
-		case e:MouseDragged =>
-			val middleButton= (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON2_DOWN_MASK) > 0
-			val rightButton= (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON3_DOWN_MASK) > 0
+    case e: MouseDragged =>
+      val middleButton = (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON2_DOWN_MASK) > 0
+      val rightButton = (e.peer.getModifiersEx & java.awt.event.InputEvent.BUTTON3_DOWN_MASK) > 0
       val control = (e.modifiers & Key.Modifier.Control) > 0
       val inDistanceDragDrop = inDistance(dragStartPoint, e.point, ViewConstants.dragTreshold)
       if (!inDistanceDragDrop && middleButton && control && (!controller.isZoomingIn)) {
-				controller.isZoomingIn=true
+        controller.isZoomingIn = true
         isDragDropping = false
-			} else {
-			  if(controller.viewportState==ViewportState.SelectState &&hasSelectionClicked&& !middleButton && !rightButton && !isDragDropping){
-			    isDragDropping=true
-			    controller.transferHandler.exportAsDrag(peer, e.peer, if(control)TransferHandler.COPY else TransferHandler.MOVE)
-			  }
-			}
+      } else {
+        if (controller.viewportState == ViewportState.SelectState && hasSelectionClicked && !middleButton && !rightButton && !isDragDropping) {
+          isDragDropping = true
+          controller.transferHandler.exportAsDrag(peer, e.peer, if (control) TransferHandler.COPY else TransferHandler.MOVE)
+        }
+      }
       if (!inDistanceDragDrop && middleButton && !control && !isDragDropping) {
         val dx = e.point.x - oldSwipePoint.x
         val dy = e.point.y - oldSwipePoint.y
@@ -104,56 +104,63 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
         oldSwipePoint = e.point
         swiped = true
       } else if (!isDragDropping && !rightButton && (!middleButton || (middleButton && control))) {
-				if(dragToPoint!=null) drawDragGraphics()
-				dragToPoint=e.point
-				drawDragGraphics()
-			}
+        if (dragToPoint != null) drawDragGraphics()
+        dragToPoint = e.point
+        drawDragGraphics()
+      }
 
-		case e:MouseClicked =>
-			val control=(e.modifiers & Key.Modifier.Control)>0
-			val shift=(e.modifiers & Key.Modifier.Shift)>0
-			if(e.clicks==2&& dragStartPoint!=null) controller.doubleClick(dragStartPoint,control,shift)
+    case e: MouseClicked =>
+      val control = (e.modifiers & Key.Modifier.Control) > 0
+      val shift = (e.modifiers & Key.Modifier.Shift) > 0
+      if (e.clicks == 2 && dragStartPoint != null) controller.doubleClick(dragStartPoint, control, shift)
 
-		case e:MouseReleased =>
-			val control=(e.modifiers & Key.Modifier.Control)>0
-			val shift=(e.modifiers & Key.Modifier.Shift)>0
-			val middleButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON2
-			val rightButton= e.peer.getButton == java.awt.event.MouseEvent.BUTTON3
-			if(dragStartPoint!=null)
+    case e: MouseReleased =>
+      val control = (e.modifiers & Key.Modifier.Control) > 0
+      val shift = (e.modifiers & Key.Modifier.Shift) > 0
+      val middleButton = e.peer.getButton == java.awt.event.MouseEvent.BUTTON2
+      val rightButton = e.peer.getButton == java.awt.event.MouseEvent.BUTTON3
+      if (dragStartPoint != null)
         if (dragToPoint != null && !inDistance(dragStartPoint, dragToPoint, ViewConstants.dragTreshold)) { // it was dragged
-					controller.dragCompleted(dragStartPoint,dragToPoint,control,shift,rightButton,middleButton)
-					dragStartPoint=null
-				} else { // it was NOT dragged
+          controller.dragCompleted(dragStartPoint, dragToPoint, control, shift, rightButton, middleButton)
+          dragStartPoint = null
+        } else { // it was NOT dragged
           if (!swiped)
-					controller.singleClick(dragStartPoint,control,shift,rightButton,middleButton)
-				}
-			cursor=dotCurs
-			//drawCrossHairInPaint=true
-			currentMousePos=e.point
-			repaint()
+            controller.singleClick(dragStartPoint, control, shift, rightButton, middleButton)
+        }
+      cursor = dotCurs
+      //drawCrossHairInPaint=true
+      currentMousePos = e.point
+      repaint()
 
-		case e:MouseMoved =>
-      if (!inside) inside = true
-			else if(currentMousePos!=null) drawCrossHair()
-			currentMousePos=e.point
-			controller.viewportState match {
-				case ViewportState.AskPoint | ViewportState.AskPointOrObject => pointHitPos=controller.checkPointHit(e.point)
-				case _ => //if(controller.measureMode!=MeasureMode.NoMeasure) pointHitPos=controller.checkPointHit(e.point)
-			}
-			drawCrossHair()
-			for((toast,listener)<-controller.customDraggerToast )	{
-        val pos = if (pointHitPos != null)
-          pointHitPos.hitBoth match {
-            case Some(hb) => hb;
-            case None => e.point
-          }
-                else e.point
-			  val worldPos=if(pointHitPos!=null && pointHitPos.hitWorld.isDefined) pointHitPos.hitWorld.get else
-			    new VectorConstant(controller.scaleModel.xToWorld(pos.x),controller.scaleModel.yToWorld(pos.y),0)
-			  listener(toast,pos.x,pos.y,worldPos)
-			}
+    case e: MouseMoved =>
+      var stopit = false
+      if (!inside) {inside = true;println(" not inside")}
+      else if (currentMousePos != null) {
+        if (currentMousePos != e.point) drawCrossHair()
+        else {stopit = true}
+      }
+      if (!stopit) {
+        //println("Moved "+e.point)
+        currentMousePos = e.point
+        controller.viewportState match {
+          case ViewportState.AskPoint | ViewportState.AskPointOrObject => pointHitPos = controller.checkPointHit(e.point)
+          case _ => //if(controller.measureMode!=MeasureMode.NoMeasure) pointHitPos=controller.checkPointHit(e.point)
+        }
+        drawCrossHair()
+        for ((toast, listener) <- controller.customDraggerToast) {
+          val pos = if (pointHitPos != null)
+            pointHitPos.hitBoth match {
+              case Some(hb) => hb;
+              case None => e.point
+            }
+          else e.point
+          val worldPos = if (pointHitPos != null && pointHitPos.hitWorld.isDefined) pointHitPos.hitWorld.get else
+            new VectorConstant(controller.scaleModel.xToWorld(pos.x), controller.scaleModel.yToWorld(pos.y), 0)
+          listener(toast, pos.x, pos.y, worldPos)
+        }
+      }
 
-		case e:MouseExited =>
+		case _:MouseExited =>
 			currentMousePos=null
 			if(dragStartPoint!=null) {
         controller.dragStopped()
@@ -164,9 +171,9 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 
 		case e:KeyPressed => controller.keyPressed(e)
 		
-		case e:FocusLost => repaint()
+		case _:FocusLost => repaint()
 
-		case e:FocusGained => controller.focusGained()
+		case _:FocusGained => controller.focusGained()
 
 
   }
@@ -193,14 +200,14 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
           case ViewportState.ChoseObject => drawObjectHover(g)
           case _ => //if(controller.measureMode!=MeasureMode.NoMeasure) drawHitPoints(g)
         }
-        for (dr <- controller.customDragger) {
+        for (dr <- controller.getCustomDragger) if(dr!=null) {
           val pos = if (controller.bracketMode) controller.lastSelectedPoint
           else new VectorConstant(controller.scaleModel.xToWorld(currentMousePos.x), controller.scaleModel.yToWorld(currentMousePos.y), 0)
           dr(pos, g)
-        }
+        } else util.Log.e("customdragger == null")
       } catch {
         case NonFatal(e) => util.Log.e("Error Crosshair ", e)
-        case other: Throwable => println(other); System.exit(0); null
+        case other: Throwable => println(other); System.exit(0)
       }
       g.setPaintMode()
     }
@@ -287,8 +294,8 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
             }
           for (elem <- lay.elemList) // hide inplace-Text-Element
             elem match {
-              case e: TextElement =>
-              case d: DimLineElement =>
+              case _: TextElement =>
+              case _: DimLineElement =>
               case _ => elem.draw(g, controller.scaleModel, lColor)
             }
           for (elem <- lay.elemList) // hide inplace-Text-Element
@@ -356,7 +363,6 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     // draw selected Points
     g.setPaint(Color.green)
     val _selPD = selPD * ViewConstants.fontScale / 100
-    //g.setXORMode(Color.red.darker)
     for (p <- controller.pointSelectModel.selectList) {
       val px = controller.scaleModel.xToScreen(p.x)
       val py = controller.scaleModel.yToScreen(p.y)

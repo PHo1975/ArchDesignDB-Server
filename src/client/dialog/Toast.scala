@@ -84,7 +84,7 @@ class NFollowMouseToast(message:String,relComponent:JComponent) extends Dialog(C
   peer.setFocusableWindowState(false)
   peer.pack()
   contents=label
-  size=label.preferredSize
+  //size=label.preferredSize
   label.opaque=true
   label.background=Color.white
   currentToast=Some(this)
@@ -121,5 +121,15 @@ object FollowMouseToast {
     new NFollowMouseToast(message,relComponent).visible=true
   }
 
-  def reset():Unit = for(t <- currentToast) t.shutDown()
+  def appendToastText(message:String):Unit= {
+    for(t<-currentToast) {
+      t.label.text=t.label.text+" "+message
+      t.size=t.label.preferredSize
+    }
+  }
+
+  def reset():Unit = for(t <- currentToast){
+    t.shutDown()
+    currentToast=None
+  }
 }

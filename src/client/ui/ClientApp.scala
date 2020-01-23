@@ -8,6 +8,7 @@ import java.net._
 
 import client.comm._
 import client.dataviewer._
+import client.dialog.DialogManager.reset
 import client.dialog._
 import client.graphicsView._
 import client.layout._
@@ -348,9 +349,15 @@ object ClientApp extends App {
       } else {hideBut.selected = true; setHide(true)}
       //super.startup(args)
       top.visible = true
+      KeyStrokeManager.registerReceiver(new KeyStrokeReceiver {
+        override def commandName: String = "Cancel"
+        override def setStroke(stroke: KeyStroke): Unit = {}
+        override def groupName: String = "Dialog"
+        override def strokeHit(): Unit = reset()
+      })
     }
 
-    sock.startupFinishListener += (() => Swing.onEDT {
+    sock.addStartupFinishListener(() => Swing.onEDT {
       //println("startup finished")
       val storeList = UserSettings.getListProperty[PropertyGroup]("WindowSettings", "Boxes")
       //println("storeList loaded "+ storeList.size)

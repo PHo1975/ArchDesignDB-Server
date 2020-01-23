@@ -204,8 +204,8 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 		  })
       toast.setContent(panel)
       controller.setCustomDragger(dragger)
-      DialogManager.startIntermediateQuestion(nextPointQuestion, _ =>{
-        lastPos=answerList.last.result.toVector
+      DialogManager.startIntermediateQuestion(nextPointQuestion, newAnswers =>{
+        lastPos=newAnswers.last.result.toVector
         //println("LastPos :"+lastPos+" answerList.size:"+answerList.size)
         controller.setCustomDragger(dragger)
       },storeAnswer = false)
@@ -220,10 +220,10 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 		val areaLabel = ViewConstants.label()
 		val umfangLabel = ViewConstants.label()
     val sm=controller.scaleModel
-    val transform=GraphElemConst.transform(sm) _
+    val transform: VectorConstant => VectorConstant =GraphElemConst.transform(sm)
     val points=ArrayBuffer[VectorConstant]()
     //val noSize=new Dimension(0,0)
-    val panSize=new Dimension(200* ViewConstants.fontScale / 100,50* ViewConstants.fontScale / 100)
+    //val panSize=new Dimension(200* ViewConstants.fontScale / 100,50* ViewConstants.fontScale / 100)
     var showPanel=false
     val dragColor=StyleService.getAlphaColor(Color.blue.brighter.brighter.getRGB)
     //var shape:Shape=null
@@ -237,11 +237,11 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
        border=BorderFactory.createCompoundBorder(
            BorderFactory.createLineBorder(Color.LIGHT_GRAY,2),
            BorderFactory.createEmptyBorder(5,5,5,5))
-       preferredSize=panSize
+       preferredSize=new Dimension(200* ViewConstants.fontScale / 100,50* ViewConstants.fontScale / 100)
     }
 
 		val nextPointQuestion = DialogQuestion("Fläche messen", Seq(new AnswerDefinition("nächster Punkt", DataType.VectorTyp, None)), repeat = true)
-		val question = DialogQuestion("Fläche messen", Seq(new AnswerDefinition("StartPunkt", DataType.VectorTyp, None)))
+		val question = DialogQuestion("Fläche messen", Seq(new AnswerDefinition("Startpunkt", DataType.VectorTyp, None)))
     
     def dragger(pos:VectorConstant,g:Graphics2D): Unit = {
       val outShape= if(points.size==1) createRect(points.head,pos) else
@@ -276,13 +276,15 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
       val toast=controller.createDraggerToast((ntoast,x,y,_)=>{
 				areaLabel.text=f"Fläche: $areaValue%.8f m2"
 				umfangLabel.text=f"Umfang: $umfangValue%.6f m"
+				panel.revalidate()
+
         ntoast.updatePos(x+15*ViewConstants.fontScale/100, y+2)
-        ntoast.visible=showPanel
+        //ntoast.visible=showPanel
       })
       toast.setContent(panel)
       controller.setCustomDragger(dragger)
-      DialogManager.startIntermediateQuestion(nextPointQuestion, _ =>{
-        val newPoint=answerList.last.result.toVector
+      DialogManager.startIntermediateQuestion(nextPointQuestion, al2 =>{
+        val newPoint=al2.last.result.toVector
         points+=newPoint
         //println("click:"+answerList.last.result+"  points: "+points.mkString(","))
         val (area,umfang)=if(points.size==2) {

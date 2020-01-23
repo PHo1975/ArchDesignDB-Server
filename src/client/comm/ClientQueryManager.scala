@@ -395,7 +395,10 @@ object ClientQueryManager {
 	def executeAction(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[ResultElement]):Unit= {
     //System.out.println("executeAction owner:"+owner+" instList:"+instList+" action:"+actionName+" p:"+params.mkString)
 	  _executeAction(owner,instList,actionName,params)
-		commandResultQueue.take()
+		commandResultQueue.take() match {
+			case HasError(e)=> Log.e("result error "+e)
+			case _ =>
+		}
 	}
 
   def executeActionResult(owner:OwnerReference,instList:Iterable[Referencable],actionName:String,params:Seq[ResultElement],
@@ -434,7 +437,11 @@ object ClientQueryManager {
 			for(ix<-formatValues.indices;x=formatValues(ix))
 			  {if(x._2==null) util.Log.e("Format value nr "+ix+" ==null");out.writeInt(x._1); x._2.write(out)}
 		}
-		commandResultQueue.take() 	
+		commandResultQueue.take()  match {
+			case HasError(e)=> Log.e("create result error "+e)
+				case _ =>
+		}
+
 	}
 	
 	
@@ -555,6 +562,7 @@ object ClientQueryManager {
 		if(hasError) {
 			val error=CommandError.read(in)
 			commandResultQueue.put(HasError(error))
+			printErrorMessage("Command Response")
 			printErrorMessage( error.getMessage)
 		}
 		else {

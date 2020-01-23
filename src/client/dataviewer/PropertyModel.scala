@@ -7,11 +7,12 @@ import java.awt.Color
 import java.awt.event.InputEvent
 
 import client.comm._
-import client.dialog.{CreateActionList, CreateActionMenuButton, CreateMenuButton}
+import client.dialog.{CreateActionList, CreateActionMenuButton, CreateMenuButton, DialogManager}
 import definition.comm._
 import definition.data._
 import definition.typ._
 import javax.swing.border._
+import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.{BorderFactory, JComponent, JPopupMenu}
 
 import scala.collection.mutable
@@ -22,11 +23,25 @@ class TitlePopupMenu(title:String) extends Component {
 	override lazy val peer : JPopupMenu = new JPopupMenu(title)	
 	def add(item:MenuItem,separator:Boolean) : Unit = { peer.add(item.peer); if (separator) peer.addSeparator() }
 
-	def show(comp: JComponent): Unit = peer.show(comp, 3, 3)
+	def show(comp: JComponent): Unit = {
+		peer.show(comp, 3, 3)
+	}
 
-	def show(comp: JComponent, x: Int, y: Int): Unit = peer.show(comp, x, y)
+	def show(comp: JComponent, x: Int, y: Int): Unit = {
+		peer.show(comp, x, y)
+	}
 
-	def show(): Unit = peer.setVisible(true)
+	peer.addAncestorListener(new AncestorListener {
+		override def ancestorAdded(ancestorEvent: AncestorEvent): Unit = {
+			DialogManager.setVisiblePopup(TitlePopupMenu.this)
+		}
+
+		override def ancestorRemoved(ancestorEvent: AncestorEvent): Unit = {}
+
+		override def ancestorMoved(ancestorEvent: AncestorEvent): Unit = {}
+	})
+
+	//def show(): Unit = peer.setVisible(true)
 	
 	focusable=false
 

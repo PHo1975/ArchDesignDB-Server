@@ -62,7 +62,7 @@ object ActionList extends DataRetriever {
       //System.out.println("actions:\n"+theList.mkString("\n"))
       for(trans <- theList.valuesIterator)
         trans match {
-          case CreateAction(_,instData,propData,linkData,collData,cmi) => // Instances get created during the Try-Phase of the transaction
+          case CreateAction(_, instData, propData, linkData, collData, cmi) => // Instances get created during the Try-Phase of the transaction
             val (dataPos,dataLength)=instData match {
               case Some(data)=>
               val sendData =if(propData.isDefined && propData.get.hasChildren !=data.hasChildren) data.setHasChildren(propData.get.hasChildren)
@@ -93,7 +93,7 @@ object ActionList extends DataRetriever {
             StorageManager.ixHandler(d.ref.typ).writeAllFields(d.ref.instance,dataPos,dataLength,propPos,propSize,linkPos,linkSize,collPos,collSize,created = true)
 
 
-          case DataChangeAction(instData,propData,linkData,collData,cmi,deleteFromUser) =>
+          case DataChangeAction(instData, propData, linkData, collData, cmi, deleteFromUser) =>
             for(i <- instData){
               val sendData = if(propData.isDefined && propData.get.hasChildren !=i.hasChildren) i.setHasChildren(propData.get.hasChildren)
                  else i
@@ -125,7 +125,12 @@ object ActionList extends DataRetriever {
               CommonSubscriptionHandler.instanceDeleted(owner,inst.ref)
             for(owner <-inst.secondUseOwners)
               CommonSubscriptionHandler.instanceDeleted(owner,inst.ref)
-          //TODO: delete link, property and collFunc data !
+          case CreateBlock(ref, data) =>
+          StorageManager.writeBlock(new BlockData(ref,data),created = true)
+          case ChangeBlock(ref, data)=>
+          StorageManager.writeBlock(new BlockData(ref,data),created = false)
+          case DeleteBlock(ref)=>
+          StorageManager.deleteBlockInstance(ref.typ,ref.instance)
       }
       // notify property changes for move and copy
       if(hasMoveOrCopy ) {
@@ -161,6 +166,7 @@ object ActionList extends DataRetriever {
             //if(pos != -1) a.atPosition=pos
           case x: DeleteAction => throw new IllegalArgumentException("Delete after create for "+ref)
           case x: CreateAction =>  throw new IllegalArgumentException("Create after create for "+ref)
+          case f=> throw new IllegalArgumentException("wrong Action Type "+f)
         }
 
         case b:DataChangeAction => newRec match {
@@ -174,9 +180,20 @@ object ActionList extends DataRetriever {
             if(deFrOw.isDefined) b.deleteFromOwner=deFrOw
           case x: DeleteAction => theList += (ref ->newRec) // replace the datachange action with the delete
           case x: CreateAction =>  throw new IllegalArgumentException("Creating an existing instance "+ref)
+          case f=> throw new IllegalArgumentException("wrong Action Type "+f)
         }
-
         case a:DeleteAction => // drop the new action when the instance should already be deleted
+
+        case _:CreateBlock=> newRec match {
+          case x:ChangeBlock=> theList+= (ref -> CreateBlock(x.ref,x.data))
+          case w=> throw new IllegalArgumentException("wrong Action type: "+w)
+        }
+        case _:ChangeBlock=> newRec match {
+          case d:DeleteBlock=> theList += (ref -> newRec)
+          case c:ChangeBlock => theList += (ref -> newRec)
+          case w=> throw new IllegalArgumentException("wrong Action type: "+w)
+        }
+        case _:DeleteBlock => // drop the new action when the block should already be deleted
       }
     // no data for that ref yet, add the new TransactionData
     else theList += (ref -> newRec)
@@ -188,25 +205,27 @@ object ActionList extends DataRetriever {
   def getInstanceData(ref:Reference):InstanceData = {
     if (theList.contains(ref))
       theList(ref)  match {
-      case CreateAction(_,Some(data),_,_,_,_) => return data
-      case DataChangeAction(Some(data),_,_,_,_,_) => return data
-      case a:DeleteAction => return null
-      case _ => // drink another beer
+      case CreateAction(_,Some(data),_,_,_,_) => data
+      case DataChangeAction(Some(data),_,_,_,_,_) => data
+      case d:DataChangeAction=> if(StorageManager.instanceExists(ref.typ, ref.instance))
+        StorageManager.getInstanceData(ref) else throw new IllegalArgumentException("ActionList get Instance cant find instance:"+ref)
+      case a:DeleteAction => null
+      case w => throw new IllegalArgumentException("wrong Action type: "+w)
     }
-    if(StorageManager.instanceExists(ref.typ, ref.instance))
+    else if(StorageManager.instanceExists(ref.typ, ref.instance))
       StorageManager.getInstanceData(ref)
-    else {throw new IllegalArgumentException("ActionList get Instance cant find instance:"+ref)}
+    else throw new IllegalArgumentException("ActionList get Instance cant find instance:"+ref)
   }
 
 
   def getInstanceProperties(ref:Reference):Option[InstanceProperties] = {
     if (theList.contains(ref))
       theList(ref) match {
-      case CreateAction(_,_, a @ Some(_),_,_,_) => return a
-      case DataChangeAction(_,a @ Some(_),_,_,_,_) => return a
-      case _ => // ignore
+      case CreateAction(_,_, a @ Some(_),_,_,_) =>  a
+      case DataChangeAction(_,a @ Some(_),_,_,_,_) =>  a
+      case _ => StorageManager.getInstanceProperties(ref) // ignore
     }
-    StorageManager.getInstanceProperties(ref)
+    else StorageManager.getInstanceProperties(ref)
   }
 
   /** checks if there are data for referencing links in the actionlist
@@ -215,22 +234,21 @@ object ActionList extends DataRetriever {
   def getReferencingLinks(ref:Reference):Option[ReferencingLinks] = {
     if(theList.contains(ref))
       theList(ref) match {
-         case CreateAction(_,_,_, a @ Some(_),_,_) => /*System.out.println("get links hit create");*/ return a
-         case DataChangeAction(_,_,a@ Some(_),_,_,_) => /*System.out.println("get links hit change");*/ return a
-         case _ =>
+         case CreateAction(_,_,_, a @ Some(_),_,_) =>  a
+         case DataChangeAction(_,_,a@ Some(_),_,_,_) => a
+         case _ => StorageManager.getReferencingLinks(ref)
       }
-    StorageManager.getReferencingLinks(ref)
+    else StorageManager.getReferencingLinks(ref)
   }
 
-  def getCollData(ref:Reference):Option[CollFuncResultSet] =
-  {
+  def getCollData(ref:Reference):Option[CollFuncResultSet] =   {
     if (theList.contains(ref))
       theList(ref) match {
-      case CreateAction(_,_,_,_,a@ Some(_),_) => return a
-      case DataChangeAction(_,_,_,b @ Some(_),_,_) => return b
-      case _ => // ignore
+      case CreateAction(_,_,_,_,a@ Some(_),_) =>  a
+      case DataChangeAction(_,_,_,b @ Some(_),_,_) => b
+      case _ =>StorageManager.getCollectingFuncData(ref)// ignore
     }
-    StorageManager.getCollectingFuncData(ref)
+    else StorageManager.getCollectingFuncData(ref)
   }
 
 

@@ -21,10 +21,10 @@ object SymbolBrowserController {
   //private var graphController:Option[GraphViewController]=None
   
   lazy val panel=new SymbolBrowserPanel
-  lazy val chooseSymbolQuestion = CustomPanelQuestion(panel)
+  lazy val chooseSymbolQuestion: CustomPanelQuestion = CustomPanelQuestion(panel)
   lazy val symbolRootFolder: Option[InstanceData] = GraphSettingsHandler.getMainFolder("Symbole")
   lazy val placeSymbolPanel=new SymbolPlacementPanel
-  lazy val placeSymbolQuestion = CustomPanelQuestion(placeSymbolPanel)
+  lazy val placeSymbolQuestion: CustomPanelQuestion = CustomPanelQuestion(placeSymbolPanel)
   
   def createSymbol(gc:GraphViewController):Unit= {
     panel.createStampMode=false

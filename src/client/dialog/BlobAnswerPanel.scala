@@ -14,7 +14,7 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
   
   val bracketBut=new ToggleButton("Summe")
   var active=false
-  var selectModel: PointSelectModel = _
+  //var selectModel: PointSelectModel = _
   
   def pointsSelected(points:Seq[VectorConstant]):Unit= {
     DialogManager.answerGiven(ansParm,BlobConstant.fillData(out=> {

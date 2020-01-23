@@ -30,15 +30,13 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	val out =  new DataOutputStream(new BufferedOutputStream(socket.getOutputStream))
 	private val outStreamLock : AnyRef = new Object()
 	private val inStreamLock = new Object()
-	
-	var wantRun=true	
+	var wantRun=true
+	var userSettingsRead=false
 	//private var isSetup=false
-	type CommandHandlerFunc= (DataInputStream)=>Unit
+	type CommandHandlerFunc= DataInputStream =>Unit
 	
 	var classesReadListener:()=>Unit = _
-
-	val startupFinishListener: ArrayBuffer[() => Unit] = ArrayBuffer[() => Unit]()
-  
+	protected val startupFinishListener: ArrayBuffer[() => Unit] = ArrayBuffer[() => Unit]()
   var connectionBrokenListener:()=>Unit = _
 	
 	private val commandHandlerMap=new scala.collection.mutable.HashMap[ServerCommands.Value,CommandHandlerFunc]()
@@ -59,7 +57,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 			 if(retValue !="welcome" ) util.Log.e("not welcome, message: "+retValue)
        else {
          util.Log.w("Logged in to " + serverAddress)
-         sendData(ClientCommands.getSystemSettings) { out =>}
+         sendData(ClientCommands.getSystemSettings) { _ =>}
          //Thread.`yield`()
          handleCommands(in)
        }
@@ -134,12 +132,10 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
     val cc=new ClientClasses(xml.XML.loadString(new String(fullBuffer,"UTF-8")))
 		AllClasses.set(cc, resolve = false)
 		println(" Classes read  uncompressedsize:"+uncompressedSize+" size:"+numBytes)
-		sendData(ClientCommands.getUserSettings  ){out:DataOutputStream =>{}}
+		sendData(ClientCommands.getUserSettings  ){_:DataOutputStream =>{}}
 	}
 	
-	
 	private def readUserSettings(in:DataInputStream): Unit = {
-
 		val editable=in.readBoolean()
 		val userID=in.readInt()
 		val startRef=Reference(in)
@@ -148,16 +144,23 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		genDataHandlerMap(GeneratorType.printGenerator )=PrintQuestionHandler
 		if(classesReadListener!=null)classesReadListener()
 		ClientQueryManager.notifySetupListeners()
+		userSettingsRead=true
 		for(s<-startupFinishListener)s()
 		println("read User settings done")
-	}		
+	}
+
+	def addStartupFinishListener(sfl:()=>Unit): Any ={
+		if(userSettingsRead) sfl()
+		else startupFinishListener+= sfl
+	}
+
 	
 	
 	
 	
 	// ************************************ COMMANDS ***************************************
 
-	def registerCommandHandler(command: ServerCommands.Value)(func: (DataInputStream) => Unit): Unit = {
+	def registerCommandHandler(command: ServerCommands.Value)(func: DataInputStream => Unit): Unit = {
 		commandHandlerMap.put(command,func)
 	}
 	
@@ -177,11 +180,11 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		// logout
     util.Log.w("Logging out")
 		wantRun=false
-		sendData(ClientCommands.logOut ) {out =>}
+		sendData(ClientCommands.logOut ) {_ =>}
 		System.exit(0)
 	}
 
-	def sendData(command: ClientCommands.Value)(func: (DataOutputStream) => Unit): Unit = {
+	def sendData(command: ClientCommands.Value)(func: DataOutputStream => Unit): Unit = {
 		try {
 			outStreamLock.synchronized {
 				out.writeByte(command.id.toByte)

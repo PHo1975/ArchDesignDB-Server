@@ -21,7 +21,6 @@ class PointSelectModel {
   def addPoints(points:Iterator[VectorConstant],clear:Boolean):Unit= {
     if(clear) selectList.clear()
     selectList++=points
-    //println("add points "+selectList.mkString(", "))
   } 
   
   def turnOnBracketMode():Unit={

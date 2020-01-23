@@ -14,6 +14,9 @@ class NewElemLayer(ncontroller: GraphViewController) extends Layer(ncontroller, 
   	controller.graphElemAdded(this,elem)  	
   }
 
+  def clear():Unit={
+    _elemList.clear()
+  }
 
   override def shutDown(): Unit =if(_elemList.nonEmpty){
     _elemList.clear()

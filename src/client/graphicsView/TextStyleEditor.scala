@@ -113,7 +113,7 @@ class TextStyleEditor extends FieldEditor {
     }
 
     override def internSetSearchValue(style: Int): Unit = {
-      println("internSetSearchValue " + GraphElemConst.styleIsBold(style) + " isSet: " + isBoldSet)
+     // println("internSetSearchValue " + GraphElemConst.styleIsBold(style) + " isSet: " + isBoldSet)
     	if(isBoldSet!=None){
     		if(isBoldSet==null) isBoldSet=Some(GraphElemConst.styleIsBold(style))
     		else if (isBoldSet.get!=GraphElemConst.styleIsBold(style)) isBoldSet=None
@@ -141,7 +141,7 @@ class TextStyleEditor extends FieldEditor {
     }
   
     override def updateSearchValue():Unit = {
-      println("updateSearchvale isBoldSet " + isBoldSet)
+      //println("updateSearchvale isBoldSet " + isBoldSet)
       if (isBoldSet == null || isBoldSet.isEmpty) {boldBut.selected = false; boldBut.foreground = Color.GRAY}
     		else {boldBut.foreground=Color.BLACK;boldBut.selected=isBoldSet.get   }
       if (isItalicSet == null || isItalicSet.isEmpty) {italicBut.selected = false; italicBut.foreground = Color.GRAY}

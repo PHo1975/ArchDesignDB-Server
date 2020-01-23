@@ -41,7 +41,7 @@ abstract class MultilineEditor(theTable:JTable,validator:Option[MyInputValidator
 	val textArea=new JTextArea(document)
 
 	//val usedActionKeys=Array(KeyEvent.VK_ENTER,KeyEvent.VK_ESCAPE,KeyEvent.VK_F2,KeyEvent.VK_TAB)
-	val usedActionKeyStrokes=Array(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0),
+	val usedActionKeyStrokes: Array[KeyStroke] =Array(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0),
 		KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0),
 		KeyStroke.getKeyStroke(KeyEvent.VK_F2,0),
 		KeyStroke.getKeyStroke(KeyEvent.VK_TAB,0),

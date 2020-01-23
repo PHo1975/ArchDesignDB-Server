@@ -47,9 +47,11 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 		elMap.clear()
 		controller.lastHittedElements=Nil
 	  controller.clearNewElements()
-		controller.stopModus()
 		controller.canvas.repaint()
-		if(notify) notifyListeners(true)
+		if(notify) {
+			controller.stopModus()
+			notifyListeners(true)
+		}
 	}
 	
 	/** removes all elements from the given Layer from the selection
@@ -153,10 +155,9 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 		bounds
 	}
 	
-	def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):Iterator[VectorConstant]={
-	  for(lay<-elMap.valuesIterator;el<-lay.children;points=el.getEdiblePoints;p<-points
-        if p.x >= minX && p.y >= minY && p.x <= maxX && p.y <= maxY) yield p
-	}
+	def getPointsInRectangle(minX:Double,minY:Double,maxX:Double,maxY:Double):Iterator[VectorConstant]=
+		elMap.valuesIterator.flatMap(_.children).flatMap(_.getEdiblePoints).filter(p=>p.x >= minX && p.y >= minY && p.x <= maxX && p.y <= maxY)
+
 	
 	def getDragDropSelection:GraphElemTransferable = {
 	  new GraphElemTransferable((for((layer,selGroup)<-elMap;if selGroup.children.nonEmpty)

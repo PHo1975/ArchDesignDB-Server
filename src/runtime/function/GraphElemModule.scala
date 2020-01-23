@@ -720,11 +720,13 @@ class LineModule extends ActionModule with GraphActionModule {
     val parents = Array(new OwnerReference(0.toByte, nparents.head.ref))
     var i = 1
     while (i < param.size) {
-	    val np=param(i)
-	    val nextPoint=np match {
+	    val np: (String, Constant) =param(i)
+	    val nextPoint: VectorConstant =np match {
 	      case (_,v:VectorConstant)=> v
 	      case ("dx",d:DoubleConstant) =>  lastPoint + new VectorConstant(d.toDouble,0d,0d)
+        case ("dx",n:IntConstant)=> lastPoint+new VectorConstant(n.toDouble,0d,0d)
 	      case ("dy",d:DoubleConstant) =>	 lastPoint + new VectorConstant(0d,d.toDouble,0d)
+        case ("dy",n:IntConstant)=> lastPoint + new VectorConstant(0d,n.toDouble,0d)
         case ("Winkel", d: DoubleConstant) =>
           i += 1
           param(i)._2 match {
@@ -735,7 +737,7 @@ class LineModule extends ActionModule with GraphActionModule {
               lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
           }
 
-	      case o => throw new IllegalArgumentException("Wrong parameter "+o)
+	      case o => throw new IllegalArgumentException("Wrong parameter "+o+" "+o.getClass.getName)
 	    }
 	    makeLine(parents,lastPoint,nextPoint,formFields)
 	    lastPoint=nextPoint

@@ -27,7 +27,7 @@ trait StrokableButton extends AbstractButton with KeyStrokeReceiver {
   def initListener(): Unit = peer.addHierarchyListener { e => {
     if ((e.getChangeFlags & HierarchyEvent.SHOWING_CHANGED) > 0) {
       // println("show change "+StrokableButton.this.commandName+" "+StrokableButton.this.peer.isShowing()+" ch:"+e.getChanged().getClass.toString)
-      if (!StrokableButton.this.peer.isShowing())
+      if (!StrokableButton.this.peer.isShowing)
         KeyStrokeManager.unregisterReceiver(StrokableButton.this)
     }
   }

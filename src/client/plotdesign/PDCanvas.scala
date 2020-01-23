@@ -160,7 +160,7 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 			case _ =>
 		}
 		try{
-		  for(dr<-controller.customDragger){
+		  for(dr<-controller.getCustomDragger){
 				val pos= if(controller.bracketMode) controller.lastSelectedPoint
 				else new VectorConstant(controller.scaleModel.xToWorld(currentMousePos.x),controller.scaleModel.yToWorld(currentMousePos.y),0)
 				dr(pos,g)

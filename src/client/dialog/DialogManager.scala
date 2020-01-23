@@ -5,7 +5,7 @@ package client.dialog
 
 import java.awt.{Color, Dimension}
 
-import client.comm.{ClientQueryManager, KeyStrokeManager, KeyStrokeReceiver}
+import client.comm.ClientQueryManager
 import client.dataviewer._
 import client.graphicsView.AbstractSelectModel
 import client.print.PrintQuestionHandler
@@ -13,7 +13,7 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression.Constant
 import definition.typ._
-import javax.swing.{BorderFactory, KeyStroke}
+import javax.swing.BorderFactory
 import util.Log
 
 import scala.swing._
@@ -34,6 +34,8 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
   protected var propField:Byte=0
 	protected var createdNewElements=0
 	var dialogIsActive=false
+	protected var visiblePopup: Option[TitlePopupMenu]=None
+
 	protected var isServerEnquiry=false
 	protected var hasRebound=false
 	var selectedInstances:Iterable[SelectGroup[_<:Referencable]] = _
@@ -56,7 +58,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	questionField.border=BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.lightGray),BorderFactory.createEmptyBorder(1,1,1,1))
 
 
-	lazy val selectLabScroller = new ScrollPane {
+	lazy val selectLabScroller: ScrollPane = new ScrollPane {
 		opaque = true
 		background = Color.yellow
 	  viewportView=selectField
@@ -70,7 +72,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 
 	val errorField=new MultiLineLabel()
 	
-	val errorScroller=new ScrollPane {
+	val errorScroller: ScrollPane =new ScrollPane {
 			viewportView=errorField
 		errorField.background = ViewConstants.leftPanelColor
 			errorField.foreground=new Color(200,0,0)
@@ -89,7 +91,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	val cancelBut=new Button("Aktion abbrechen")	
 	val answerList=new scala.collection.mutable.ArrayBuffer[ResultElement]()	
 	
-  lazy val dialogPanel = new BoxPanel(Orientation.Vertical ) {
+  lazy val dialogPanel: BoxPanel = new BoxPanel(Orientation.Vertical ) {
 	  xLayoutAlignment=0.5f
 	  opaque=false
 		border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),
@@ -102,15 +104,6 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
      case ButtonClicked(`cancelBut`) => reset()
     }
 		maximumSize = new Dimension(ViewConstants.sidePanelWidth, Short.MaxValue)
-
-    ClientApp.sock.startupFinishListener+=(()=> {
-      KeyStrokeManager.registerReceiver(new KeyStrokeReceiver {
-        override def commandName: String = "Cancel"
-        override def setStroke(stroke: KeyStroke): Unit = {}
-        override def groupName: String = "Dialog"
-        override def strokeHit(): Unit = reset()
-      })
-	  })
   }  
 
   cancelBut.visible=false
@@ -127,6 +120,9 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		ClientApp.fieldEditPan.visible=false
 		dialogPanel.revalidate()
 	}
+
+	def setVisiblePopup(popup:TitlePopupMenu):Unit =visiblePopup=Some(popup)
+
 	
 	def sidePanelDialogEnd():Unit= {	  
 		dialogPanel.visible=false
@@ -145,9 +141,15 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		
 	def reset():Unit= lock.synchronized{
 	 //println("\nReset isactive:"+dialogIsActive+" "+answerList.mkString+" is repeating:"+isQuestionRepeating+" hasRep:"+hasRebound)
+
+    println("reset Dialog")
 		//println(Thread.currentThread().getStackTrace.slice(1, 16).mkString("\n "))
-   println("reset ")
 	  resetDraggerToast()
+		FollowMouseToast.reset()
+		for(popup<-visiblePopup) {
+			popup.visible = false
+			visiblePopup=None
+		}
 		if(dialogIsActive) {
       dialogIsActive=false
 			if(isQuestionRepeating&& answerList.nonEmpty) { // when stopped during repeating, keep the results that are already there
@@ -381,9 +383,10 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	
 	def processResults():Unit = {
     var repeatWithoutCAS=false
-		System.out.println("process Results :"+answerList.mkString("\n")+"\n currentAction:"+currentAction+"\n actionGroups:"+actionGroups+"\ncreateType:"+createType)
+		//System.out.println("process Results answers:"+answerList.mkString("\n")+"\n currentAction:"+currentAction+"\n actionGroups:"+actionGroups+"\ncreateType:"+createType)
 		//Thread.dumpStack()
 		if(isServerEnquiry){
+
 			isServerEnquiry=false
 			ClientQueryManager.answerEnquiry(answerList.toSeq)
 		} else {
@@ -400,20 +403,25 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 					}
 				case _ => hasRebound=false
 			}
-      println("createType "+createType+" currentAction:"+currentAction)
+      //println("createType "+createType+" currentAction:"+currentAction)
 		  createType match {
 		  	case Some(ct)=>
 		  		CreateActionList.lastContainer match {
 		  			case Some(lc) =>
+							//println("last container "+lc+" createdNewElements:"+createdNewElements+" lc.owner:"+lc.ownerRef)
 							lc.createActionSubmitted(if(createdNewElements==0) 1 else createdNewElements)
 							val formatValues= lc.getCreationFormatValues(ct)
-							for(ca<-currentAction;owner<-lc.ownerRef)
+							for(ca<-currentAction;owner<-lc.ownerRef) {
+								Log.w("Execute create action "+ca)
 								ClientQueryManager.executeCreateAction(owner.ref,ct,propField,ca.name,answerList.toSeq,formatValues)
+							}
 						case None=>
 		  		}
-		  	case None=> for(ca<-currentAction;group <-actionGroups )
+		  	case None=> for(ca<-currentAction;group <-actionGroups ) {
+					Log.w("Execute Action "+ca)
 		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,answerList.toSeq)
-		  }	
+				}
+			}
       if(!hasRebound)reset()
       if(repeatWithoutCAS) for(ca<-currentAction) repeatAction(ca,createType,propField)
 		}

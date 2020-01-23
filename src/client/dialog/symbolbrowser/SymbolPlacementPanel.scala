@@ -19,13 +19,9 @@ class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPa
     case ex:Expression=>ex.getValue.toDouble
   }
 
-  val angleEdit=new ActiveTextField{
-    def fieldChanged(st: String): Unit = angle = parse(st)
-  }
+  val angleEdit: ActiveTextField = (st: String) => angle = parse(st)
   
-  val scaleEdit=new ActiveTextField{
-    def fieldChanged(st: String): Unit = scale = parse(st)
-  }
+  val scaleEdit: ActiveTextField = (st: String) => scale = parse(st)
   
   val noRotateBut=new Button("/\\")
   val rotateLeftBut=new Button("<-")
@@ -36,7 +32,7 @@ class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPa
   buttonPanel.contents+=noRotateBut+=rotateLeftBut+=rotateRightBut+=rotate180But
   buttonPanel.maximumSize=new Dimension(Short.MaxValue,35)
   buttonPanel.xLayoutAlignment=0.5d
-  listenTo(noRotateBut,rotateLeftBut,rotateRightBut,rotate180But)
+  listenTo(/*angleEdit.keys,scaleEdit.keys,*/noRotateBut,rotateLeftBut,rotateRightBut,rotate180But)
   val pointPanel=new PointAnswerPanel
   val part1=new PanelPart("Winkel",angleEdit)
   val part2=new PanelPart("Zoom",scaleEdit)
@@ -57,6 +53,7 @@ class SymbolPlacementPanel extends BoxPanel(Orientation.Vertical) with  CustomPa
     case ButtonClicked(`rotateLeftBut`)=> angleEdit.text="90.0";angle=90d
     case ButtonClicked(`rotateRightBut`)=> angleEdit.text="-90.0";angle= -90d
     case ButtonClicked(`rotate180But`)=> angleEdit.text="180.0";angle=180d
+    //case KeyPressed(_, Key.Escape, _, _) => DialogManager.reset()
   }  
   
   def open():Unit= {
