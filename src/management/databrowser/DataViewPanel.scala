@@ -20,27 +20,27 @@ import scala.swing.event._
  */
 object DataViewPanel extends BorderPanel 
 {
-	val ixTable = new Table()	{
+	val ixTable: Table = new Table()	{
 		model=IndexTableModel				
 		selection.intervalMode=Table.IntervalMode.Single
 	}	
 	
-	val fieldTable= new Table()	{
+	val fieldTable: Table = new Table()	{
 		model=InstFieldTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 	
-	val propTable=new Table()	{
+	val propTable: Table =new Table()	{
 		model=InstPropTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
-	
-	val refTable=new Table(){
+
+	val refTable: Table =new Table(){
 		model=RefLinksTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 
-  val collFuncTable = new Table() {
+  val collFuncTable: Table = new Table() {
 		model=CollFuncTableModel
 		selection.intervalMode=Table.IntervalMode.Single
 	}
@@ -85,12 +85,15 @@ object DataViewPanel extends BorderPanel
 		},BorderPanel.Position.Center)
 		add (new BorderPanel(){
 			//preferredSize=new Dimension(200,300)
-      add(new BorderPanel(){
-        add(ViewConstants.label("Property Data"), BorderPanel.Position.North)
-        add (new ScrollPane(){
+      add(new BoxPanel(Orientation.Vertical){
+				contents+=
+        ViewConstants.label("Property Data")+=
+        new ScrollPane(){
           viewportView=propTable
           preferredSize=new Dimension(200,150)
-        },BorderPanel.Position.Center)
+        }/*+= ViewConstants.label("BlockProperty Data")+=new ScrollPane(){
+					preferredSize=new Dimension(200,150)
+				}*/
       },BorderPanel.Position.North)
 			add (new BorderPanel(){
 				preferredSize=new Dimension(200,150)
@@ -99,7 +102,7 @@ object DataViewPanel extends BorderPanel
 					viewportView=collFuncTable
 					preferredSize=new Dimension(200,100)
 				},BorderPanel.Position.Center)
-        add(ViewConstants.label("Ref"), BorderPanel.Position.South)
+        add(ViewConstants.label("Ref Data"), BorderPanel.Position.South)
 			},BorderPanel.Position.Center)
 			add(new ScrollPane(){
 					viewportView=refTable
@@ -142,14 +145,15 @@ object DataViewPanel extends BorderPanel
           case _=>Array[OwnerReference]()
         }
 			case _=> Array[OwnerReference]()
-	       
 	  }
-	  
+	  println("ParentRefs "+parentRefArray)
 		TransactionManager.doTransaction(0,ClientCommands.createInstance.id.toShort,Reference(0,0),false,
 			InstFieldTableModel.theClass.id,{
-        TransactionManager.tryCreateInstance(InstFieldTableModel.theClass.id, parentRefArray, true)
-		  //TransactionManager.tryWriteInstanceData(inst)	
-		}		)
+        val data=TransactionManager.tryCreateInstance(InstFieldTableModel.theClass.id, parentRefArray, true)
+				Log.e("Instance created "+data)
+		  TransactionManager.tryWriteInstanceData(data)
+			}
+		)
     IndexTableModel.readTheList()
 	}
 

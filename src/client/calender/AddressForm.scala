@@ -11,22 +11,22 @@ import javafx.scene.layout.{HBox, Priority, VBox}
 
 trait ActiveInputControl {
   self:TextInputControl=>
-  def doneCallBack:(String)=>Unit
+  def doneCallBack: String =>Unit
   var oldText:String=""      
     onChanged[java.lang.Boolean](focusedProperty(),(o,n)=>if(n==false)editDone())    
     
-    def _setText(text:String)={
+    def _setText(text:String): Unit ={
       self.setText(text)
       oldText=text
     }
     
-    def editDone()= if(getText!=oldText) {
+    protected def editDone(): Unit = if(getText!=oldText) {
       oldText=getText
       doneCallBack(getText)    
     }
 }
 
-class ActiveField(val doneCallBack:(String)=>Unit) extends TextField with ActiveInputControl {  	
+class ActiveField(val doneCallBack: String =>Unit) extends TextField with ActiveInputControl {
     setOnAction(handleEvent(e=>editDone()))        
   } 
 
@@ -34,32 +34,32 @@ trait Indexed{
   def ix:Int
 }
 
-class IndexedActiveField(val ix:Int,dcb:(String)=>Unit) extends ActiveField(dcb) with Indexed
+class IndexedActiveField(val ix:Int,dcb: String =>Unit) extends ActiveField(dcb) with Indexed
 
-class ActiveTextArea(val doneCallBack:(String)=>Unit) extends TextArea with ActiveInputControl {
+class ActiveTextArea(val doneCallBack: String =>Unit) extends TextArea with ActiveInputControl {
    setWrapText(true)
    setOnKeyTyped(handleEvent(e=>{
-     e.getCode() match {
-       case KeyCode.ENTER if e.isControlDown() => editDone();e.consume()
+     e.getCode match {
+       case KeyCode.ENTER if e.isControlDown => editDone();e.consume()
        case KeyCode.F2 =>editDone();e.consume()
        case _=>
      }
    }))   
 }
 
-class IndexedActiveArea(val ix:Int,dcb:(String)=>Unit) extends ActiveTextArea(dcb) with Indexed
+class IndexedActiveArea(val ix:Int,dcb: String =>Unit) extends ActiveTextArea(dcb) with Indexed
 
 
 
-class LabeledActiveField(name:String,lWidth:Double,doneCallBack:(String)=>Unit) extends HBox {    
+class LabeledActiveField(name:String,lWidth:Double,doneCallBack: String =>Unit) extends HBox {
     val label=new Label(name)    
-    label.getStyleClass().add("adress-form-label")
+    label.getStyleClass.add("adress-form-label")
     val textField=new ActiveField(doneCallBack)
-    textField.getStyleClass().add("adress-form-textField")
+    textField.getStyleClass.add("adress-form-textField")
     if(lWidth> -1) label.setPrefWidth(lWidth)   
     HBox.setHgrow(textField, Priority.SOMETIMES)    
     getChildren.addAll(label,textField)    
-    def setText(text:String)= textField._setText(text)       
+    def setText(text:String): Unit = textField._setText(text)
   }  
 
 
@@ -72,19 +72,19 @@ class AddressForm(mod:CalendarModel) extends VBox {
   
   getChildren.addAll(fields:_*)  
   
-  def handleKey(e:KeyEvent,func:(Int)=>Unit):Unit= e.getTarget() match{
+  def handleKey(e:KeyEvent,func: Int =>Unit):Unit= e.getTarget match{
         case f:ActiveField=>f.getParent match {
           case fo:FormActiveField=> func(fo.dbFieldNr)          
-          case o => 
+          case _ =>
         } 
-        case o => 
+        case _ =>
       } 
     
   
   addEventFilter(KeyEvent.KEY_PRESSED,
-  handleEvent[KeyEvent](e => e.getCode() match {
-    case KeyCode.ENTER|KeyCode.DOWN=> handleKey(e,(fieldNr)=>fields(if(fieldNr>7)0 else fieldNr+1).textField.requestFocus() )
-    case KeyCode.UP=> handleKey(e,(fieldNr)=>fields(if(fieldNr<1)8 else fieldNr-1).textField.requestFocus() )      
+  handleEvent[KeyEvent](e => e.getCode match {
+    case KeyCode.ENTER|KeyCode.DOWN=> handleKey(e,fieldNr=>fields(if(fieldNr>7)0 else fieldNr+1).textField.requestFocus() )
+    case KeyCode.UP=> handleKey(e,fieldNr=>fields(if(fieldNr<1)8 else fieldNr-1).textField.requestFocus() )
     case o => 
   }))
   
@@ -102,17 +102,17 @@ class AddressForm(mod:CalendarModel) extends VBox {
         fields(6).setText(ad.fax)
         fields(7).setText(ad.email)
         fields(8).setText(ad.pers)
-      case o=>fields.foreach(_.setText(""))
+      case _=>fields.foreach(_.setText(""))
     }   
   }
-  class FormActiveField(nname:String,val dbFieldNr:Int) extends LabeledActiveField(nname,labelWidth,(text)=>{
+  class FormActiveField(nname:String,val dbFieldNr:Int) extends LabeledActiveField(nname,labelWidth,text=>{
     currentAddress match {      
-      case Some(ad:Address)=> ClientQueryManager.writeInstanceField(ad.ref, dbFieldNr.toByte, new StringConstant(text))    
+      case Some(ad:Address)=> ClientQueryManager.writeInstanceField(ad.ref, dbFieldNr.toByte, StringConstant(text))
      
       case Some(fo:Folder)=>
         // create new Address
         val inst=ClientQueryManager.createInstance(mod.addressType, Array(new OwnerReference(1,fo.ref)))
-        ClientQueryManager.writeInstanceField(Reference(mod.addressType,inst),dbFieldNr.toByte,new StringConstant(text))
+        ClientQueryManager.writeInstanceField(Reference(mod.addressType,inst),dbFieldNr.toByte,StringConstant(text))
       case _=> // do nothing
     }
   })

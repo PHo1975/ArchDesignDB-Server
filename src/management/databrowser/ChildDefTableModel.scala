@@ -67,7 +67,7 @@ class ChildDefTableModel extends ActivableAbstractTableModel {
   	fireTableDataChanged()
   	isDirty=true
   	val newPropField=propMod.propFieldList(propRow).setChildDefs(childDefList)
-  	propMod.updateList(MainWindow.updateSeq(propMod.propFieldList,propRow,newPropField))
+  	propMod.updateList(propMod.propFieldList.updated(propRow,newPropField))
   }
   
   

@@ -41,3 +41,6 @@ extends SingleSubscription(connectionEntry,id,null) {
 	}
 	override def toString: String = "PathSubs(id:"+id+ " path: "+path.mkString+")"
 }
+
+case class BlockSubscription(override val connectionEntry:AbstractConnectionEntry,override val id:Int,override val parentRef:Reference,propField:Byte )
+	extends SubscriptionInfo(connectionEntry,id,parentRef)

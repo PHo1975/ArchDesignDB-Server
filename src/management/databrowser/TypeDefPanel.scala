@@ -34,7 +34,7 @@ class FormatLine(labelWidth:Int,labelText:String,getter:()=> String,setter: (Str
 		def update(): Unit = edit.text=getter()
 		listenTo(edit)
 		reactions+= {
-			case e:EditDone => setter(edit.text)
+			case _:EditDone => setter(edit.text)
 		}	
 		maximumSize=new Dimension(Short.MaxValue,30)
 	}
@@ -46,10 +46,10 @@ object TypeDefPanel extends BorderPanel {
   
 	var isCreating:Boolean=false
 	var theClass:ServerObjectClass =EmptyServerClass		
-	val nameEdit=new ReactiveTextField((s)=> theClass.name =s)
-	val descriptionEdit=new ReactiveTextField((s)=> theClass.description =s)
-	val commentEdit=new ReactiveTextField((s)=> theClass.comment =s)
-	val idEdit=new ReactiveTextField((s)=>theClass.id=s.toInt)
+	val nameEdit=new ReactiveTextField(s=> theClass.name =s)
+	val descriptionEdit=new ReactiveTextField(s=> theClass.description =s)
+	val commentEdit=new ReactiveTextField(s=> theClass.comment =s)
+	val idEdit=new ReactiveTextField(s=>theClass.id=s.toInt)
 	val classesListview = new ListView[(Int,String)]
 	classesListview.selection.intervalMode=ListView.IntervalMode.Single
 	val superClassesListview = new ListView[(Int,String)]
@@ -75,7 +75,7 @@ object TypeDefPanel extends BorderPanel {
 	lazy val autoCreateDialog=new AutoCreateDialog(management.databrowser.MainWindow.top)
 	lazy val addFieldDialog=new AddFieldDialog(management.databrowser.MainWindow.top) 
 	
-	val fieldColMod=new FieldColumnModel{
+	val fieldColMod: FieldColumnModel =new FieldColumnModel{
 	    createColumn(0,"ix",25)
     	createColumn(1,"Name",110)
     	createColumn(2,"Typ",70)
@@ -95,7 +95,7 @@ object TypeDefPanel extends BorderPanel {
 
 	val inheritedPropMod=new PropFieldTableModel(false)
 	val ownPropMod= new PropFieldTableModel(true)
-	val propFieldColMod=new FieldColumnModel{
+	val propFieldColMod: FieldColumnModel =new FieldColumnModel{
     	createColumn(0,"Name",80)
     	createColumn(1,"single",30)
     	createColumn(2,"Allowed Class",130)
@@ -108,8 +108,28 @@ object TypeDefPanel extends BorderPanel {
 	val classNameRenderer=new ClassNameRenderer
 	inheritedPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
 	ownPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
-	val childDefMod=new ChildDefTableModel	
-	val childDefColMod=new FieldColumnModel{
+	val classEditor=new ClassNameEditor(new JComboBox,"Any")
+	MainWindow.registerClassListListener(classEditor)
+	ownPropTable.peer.setDefaultEditor(classOf[java.lang.Integer], classEditor)
+
+
+	val inheritedBLockPropMod=new BlockPropFieldTableModel(false)
+	val ownBLockPropMod=new BlockPropFieldTableModel(true)
+	val blockPropColMod: FieldColumnModel =new FieldColumnModel{
+		createColumn(0,"Name",100)
+		createColumn(1,"BlockClass",130)
+	}
+	val inheritedBlockPropTable=new FieldTable(inheritedBLockPropMod,blockPropColMod)
+	val ownBlockPropTable=new FieldTable(ownBLockPropMod,blockPropColMod)
+	val blockClassNameRenderer=new BlockClassNameRenderer
+	inheritedBlockPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer],blockClassNameRenderer)
+	ownBlockPropTable.peer.setDefaultRenderer(classOf[java.lang.Integer],blockClassNameRenderer)
+	val blockClassEditor=new ClassNameEditor(new JComboBox,"None")
+	MainWindow.registerBlockClassListListener(blockClassEditor)
+	ownBlockPropTable.peer.setDefaultEditor(classOf[java.lang.Integer],blockClassEditor)
+
+	val childDefMod=new ChildDefTableModel
+	val childDefColMod: FieldColumnModel =new FieldColumnModel{
     	createColumn(0,"EditorName",100)
     	createColumn(1,"ChildClass",100)
     	createColumn(2,"ActionName",110)    	
@@ -117,26 +137,23 @@ object TypeDefPanel extends BorderPanel {
 	val childDefTable=new FieldTable(childDefMod,childDefColMod)
 	childDefTable.peer.setDefaultRenderer(classOf[java.lang.Integer], classNameRenderer)
 	val childDefColor: Color =childDefTable.background
-	val disableModels=List(inheritedFieldMod,ownFieldMod,inheritedPropMod,ownPropMod,childDefMod)
-	
-	val classEditor=new ClassNameEditor(new JComboBox)
-	ownPropTable.peer.setDefaultEditor(classOf[java.lang.Integer], classEditor)
+	val disableModels=List(inheritedFieldMod,ownFieldMod,inheritedPropMod,ownPropMod,childDefMod,inheritedBLockPropMod,ownBLockPropMod)
 	childDefTable.peer.setDefaultEditor(classOf[java.lang.Integer], classEditor)
+
 	
 	
-	
-	val formatStringLines=Array(
-		new FormatLine(100,"Short Format",()=>theClass.shortFormat.toString,(s)=>theClass.shortFormat =InstFormat.fromString(s)),
-		new FormatLine(100,"Long Format",()=>theClass.longFormat.toString,(s)=>theClass.longFormat =InstFormat.fromString(s)),
-		new FormatLine(100,"Result Format",()=>theClass.resultFormat.toString,(s)=>theClass.resultFormat =InstFormat.fromString(s))	)
-	val moduleLine=new FormatLine(100,"ActionModule",()=>theClass.moduleName,(s)=>theClass.moduleName=s)
+	val formatStringLines: Array[FormatLine] =Array(
+		new FormatLine(100,"Short Format",()=>theClass.shortFormat.toString,s=>theClass.shortFormat =InstFormat.fromString(s)),
+		new FormatLine(100,"Long Format",()=>theClass.longFormat.toString,s=>theClass.longFormat =InstFormat.fromString(s)),
+		new FormatLine(100,"Result Format",()=>theClass.resultFormat.toString,s=>theClass.resultFormat =InstFormat.fromString(s))	)
+	val moduleLine=new FormatLine(100,"ActionModule",()=>theClass.moduleName,s=>theClass.moduleName=s)
 	val instanceEditorLine=new FormatLine(100,"InstanceEditor",
-		()=>theClass.customInstanceEditor match {case Some(n)=>n;case _=> ""},(s)=>theClass.customInstanceEditor=if(s.length==0)None else Some(s))
+		()=>theClass.customInstanceEditor match {case Some(n)=>n;case _=> ""},s=>theClass.customInstanceEditor=if(s.length==0)None else Some(s))
 	val importDescriptorLine=new FormatLine(100,"ImportDescriptor",
-		()=>theClass.importDescriptor match {case Some(n)=>n;case _=> ""},(s)=>theClass.importDescriptor=if(s.length==0) None else Some(s))
+		()=>theClass.importDescriptor match {case Some(n)=>n;case _=> ""},s=>theClass.importDescriptor=if(s.length==0) None else Some(s))
 	
 	
-	val basicsPan = new BoxPanel(Orientation.Vertical) {
+	val basicsPan: BoxPanel = new BoxPanel(Orientation.Vertical) {
 	  contents +=new BoxPanel(Orientation.Horizontal ) {						
 			idEdit.inputVerifier=checkID
 			contents += ViewConstants.label("id:") += idEdit += Swing.HStrut(10) += ViewConstants.label("Name:") += nameEdit += Swing.HStrut(10) +=
@@ -147,17 +164,17 @@ object TypeDefPanel extends BorderPanel {
 		}
 	} 
 	
-	val superClassesPan = new BoxPanel(Orientation.Horizontal) {	
+	val superClassesPan: BoxPanel = new BoxPanel(Orientation.Horizontal) {
 		val overTopBorder: TitledBorder = BorderFactory.createTitledBorder("Superclasses")
 		overTopBorder.setTitlePosition(TitledBorder.ABOVE_TOP)
 		border=overTopBorder
-		val leftScroller=new ScrollPane {
+		val leftScroller: ScrollPane =new ScrollPane {
 			viewportView=classesListview
 		}
-		val centerPan= new BoxPanel(Orientation.Vertical){
+		val centerPan: BoxPanel = new BoxPanel(Orientation.Vertical){
 			contents+=addSuperClassBut+=removeSuperClassBut+=Swing.VGlue
 		}
-		val rightScroller=new ScrollPane {
+		val rightScroller: ScrollPane =new ScrollPane {
 			viewportView=superClassesListview
 		}		
 		contents+=leftScroller+=centerPan+=rightScroller
@@ -180,7 +197,7 @@ object TypeDefPanel extends BorderPanel {
 		}
 	}
 	
-	val formatStringPan = new BoxPanel(Orientation.Vertical) {
+	val formatStringPan: BoxPanel = new BoxPanel(Orientation.Vertical) {
 		val overTopBorder: TitledBorder = BorderFactory.createTitledBorder("Format Strings")
 		overTopBorder.setTitlePosition(TitledBorder.ABOVE_TOP)
 		border=overTopBorder
@@ -194,7 +211,7 @@ object TypeDefPanel extends BorderPanel {
 		} 	
 		
 	
-	val fieldPan = new BorderPanel {
+	val fieldPan: BorderPanel = new BorderPanel {
 		val overTopBorder: TitledBorder = BorderFactory.createTitledBorder("Fields")
 		overTopBorder.setTitlePosition(TitledBorder.ABOVE_TOP)
 		border=overTopBorder
@@ -209,7 +226,7 @@ object TypeDefPanel extends BorderPanel {
 	}
 	
 	
-	val propFieldPan = new BoxPanel(Orientation.Horizontal) {
+	val propFieldPan: BoxPanel = new BoxPanel(Orientation.Horizontal) {
 		val overTopBorder: TitledBorder = BorderFactory.createTitledBorder("PropertyFields")
 		overTopBorder.setTitlePosition(TitledBorder.ABOVE_TOP)
 		border=overTopBorder
@@ -227,8 +244,8 @@ object TypeDefPanel extends BorderPanel {
 		listenTo(inheritedPropTable.selection)
 		listenTo(ownPropTable.selection)
 		reactions+= {
-					case TableRowsSelected(table,range,live)=> if (!live){						
-						var row=table.peer.getSelectedRow
+					case TableRowsSelected(table,_,live)=> if (!live){
+						val row = table.peer.getSelectedRow
 						if(row> -1){							
 							val mod=table.model.asInstanceOf[PropFieldTableModel]
 							//System.out.println("select row:"+row+" size:"+mod.propFieldList .size)
@@ -252,8 +269,21 @@ object TypeDefPanel extends BorderPanel {
 					}
 				}
 	}
+
+	val blockPropFieldPan: BoxPanel= new BoxPanel(Orientation.Horizontal) {
+		val overTopBorder: TitledBorder = BorderFactory.createTitledBorder("Block PropertyFields")
+		overTopBorder.setTitlePosition(TitledBorder.ABOVE_TOP)
+		border=overTopBorder
+		contents+=new UnWheelingScroller(){
+			val header: Component =makeHeaderComp(inheritedBlockPropTable)
+			viewportView=new BoxPanel(Orientation.Vertical){
+				contents+=header+=inheritedBlockPropTable+=ownBlockPropTable
+			}
+			preferredSize=new Dimension(310,100)
+		}
+	}
 	
-	val actionPan=new BoxPanel(Orientation.Horizontal) {
+	val actionPan: BoxPanel =new BoxPanel(Orientation.Horizontal) {
 		border=BorderFactory.createEmptyBorder(10,5,10,5)
 		val checkBut=new Button("Check out")
 		checkBut.tooltip="Updates ClassInfo and prints out XML"
@@ -280,21 +310,21 @@ object TypeDefPanel extends BorderPanel {
 	def safeClass(): Unit = {
 		updateClassInfo()
 		//if(isCreating) {
-		SessionManager.scl .classList=SessionManager.scl.classList+(theClass.id -> theClass)
+		SessionManager.scl.addClass(theClass)//classList=SessionManager.scl.classList+(theClass.id -> theClass)
 		MainWindow.generateDataList()
 		//}			
-		scala.xml.XML.save(FSPaths.configDir+"types.xml",SessionManager.scl.saveToXML(),"UTF-8",true,null)
+		scala.xml.XML.save(FSPaths.configDir+"types.xml",SessionManager.scl.saveToXML(),"UTF-8",xmlDecl = true,null)
 	}
 	
 	def addField(fieldName:String,fieldType:DataType.Value): Unit = {
 	  updateClassInfo()
 	  theClass.ownFields=theClass.ownFields:+ new FieldDefinition(fieldName,fieldType)
-	  SessionManager.scl .classList=SessionManager.scl.classList+(theClass.id -> theClass)
-		scala.xml.XML.save(FSPaths.configDir + "types.xml", SessionManager.scl.saveToXML(), "UTF-8", true, null)
+	  SessionManager.scl.addClass(theClass)//classList=SessionManager.scl.classList+(theClass.id -> theClass)
+		scala.xml.XML.save(FSPaths.configDir + "types.xml", SessionManager.scl.saveToXML(), "UTF-8", xmlDecl = true, null)
 	  println("ClassInfo stored")
 	  StorageManager.addField(theClass,theClass.fields.size)
 	  println("Field added to all existing Instances, starting Reorg")
-	  TransactionManager.doReorgDB((ix,name)=>System.out.println("Reorg "+name))
+	  TransactionManager.doReorgDB((_,name)=>System.out.println("Reorg "+name))
 	  System.exit(0)
 	}
 	
@@ -320,12 +350,12 @@ object TypeDefPanel extends BorderPanel {
 	  if(JOptionPane.showConfirmDialog(peer, "Do you really want to add an Property Field Array Element in the first position?")== JOptionPane.OK_OPTION) {
 	    StorageManager.addPropertyField(theClass)
 	    println("Starting reorg, then quit ...")
-	    TransactionManager.doReorgDB((ix,name)=>System.out.println("Reorg "+name))
+	    TransactionManager.doReorgDB((_,name)=>System.out.println("Reorg "+name))
 	    System.exit(0)
 	  }
 	}
 	
-	val generalPan = new BoxPanel(Orientation.Vertical) {
+	val generalPan: BoxPanel = new BoxPanel(Orientation.Vertical) {
 		val belowTopBorder: TitledBorder = BorderFactory.createTitledBorder("General Info")
 		belowTopBorder.setTitlePosition(TitledBorder.BELOW_TOP)
 		border=belowTopBorder
@@ -342,9 +372,9 @@ object TypeDefPanel extends BorderPanel {
 		else true
 	} 
 	
-	val mainScroller=new ScrollPane{
+	val mainScroller: ScrollPane =new ScrollPane{
 		viewportView= new BoxPanel(Orientation.Vertical){
-			override lazy val peer = new javax.swing.JPanel with SuperMixin with javax.swing.Scrollable {       
+			override lazy val peer = new javax.swing.JPanel with SuperMixin with javax.swing.Scrollable {
 				val l = new javax.swing.BoxLayout(this, Orientation.Vertical.id)
 				setLayout(l)
 				def getPreferredScrollableViewportSize: Dimension=getPreferredSize 
@@ -353,7 +383,7 @@ object TypeDefPanel extends BorderPanel {
 				def getScrollableBlockIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int = 200  
 				def getScrollableUnitIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int= 10  
 			}
-			contents+=generalPan+=formatStringPan+=fieldPan+=propFieldPan
+			contents+=generalPan+=formatStringPan+=fieldPan+=propFieldPan+=blockPropFieldPan
 		}
 	}
   
@@ -387,7 +417,9 @@ object TypeDefPanel extends BorderPanel {
 		val numOwnPropFields=theClass.getNumOwnPropFields
 		inheritedPropMod.setValues(theClass.propFields.view.dropRight(numOwnPropFields).toSeq)
 		ownPropMod.setValues(theClass.propFields.view.takeRight(numOwnPropFields).toSeq)
-		childDefMod.setValues(Seq.empty,null,0)	
+		childDefMod.setValues(Seq.empty,null,0)
+		inheritedBLockPropMod.setValues(theClass.blockPropFields.view.dropRight(theClass.getNumOwnBlockPropFields).toSeq)
+		ownBLockPropMod.setValues(theClass.blockPropFields.view.takeRight(theClass.getNumOwnBlockPropFields).toSeq)
   }
   
   def updateInheritedFields(): Unit = {
@@ -439,24 +471,41 @@ class ClassNameRenderer extends JLabel with TableCellRenderer {
 						else if(aValue==0)	"Any"
 						else AllClasses.get.getClassByID(aValue).name
 					case null=> ""
-					case other =>""
+					case _ =>""
 			}
   	  setText(theText)
   	  setToolTipText(theText)
   		this
 		}
-	}  
+	}
 
-class ClassNameEditor(box:JComboBox[String]) extends DefaultCellEditor(box) with ClassListListener {
+class BlockClassNameRenderer extends JLabel with TableCellRenderer {
+	override def invalidate(): Unit = {}
+	override def revalidate(): Unit = {}
+	def getTableCellRendererComponent(table:JTable, a:Object, isSelected: Boolean, focused: Boolean,  row: Int,col:Int):java.awt.Component = {
+		val theText = a match {
+			case intV:java.lang.Integer=>
+				val aValue=intV.intValue()
+				if(aValue<0) "None"
+				else if (AllClasses.get.blockClassList.contains(aValue)) AllClasses.get.blockClassList(aValue).name
+				else "Unknown class "+aValue
+			case null=> ""
+			case _ =>""
+		}
+		setText(theText)
+		setToolTipText(theText)
+		this
+	}
+}
+
+class ClassNameEditor(box:JComboBox[String],zeroElemName:String) extends DefaultCellEditor(box) with ClassListListener {
   	var classList:Seq[Int]=Seq.empty
   	var classNameList: Array[String] =Array[String]()
   	def classListChanged(list:Seq[(Int,String)]): Unit = {
   	   classList=0 +: list.map(_._1)
-  	   classNameList="Any" +: list.map(_._2).toArray
+  	   classNameList=zeroElemName +: list.map(_._2).toArray
   	   box.setModel(new DefaultComboBoxModel(classNameList))
-  	 } 	   	  	
-  	MainWindow.registerClassListListener(this)
-  	
+  	 }
   	override def getTableCellEditorComponent(table: JTable,value: Object,isSelected:Boolean,row:Int,column:Int ): JComboBox[_] = {
   		val editor:JComboBox[_] =super.getTableCellEditorComponent( table, value, isSelected, row, column ).asInstanceOf[JComboBox[_]]
 			editor.setSelectedIndex( classList.indexOf(value.asInstanceOf[java.lang.Integer].intValue) )
@@ -470,5 +519,6 @@ class ClassNameEditor(box:JComboBox[String]) extends DefaultCellEditor(box) with
   		else classList(ix).asInstanceOf[AnyRef]
   	}
   }
+
 
 

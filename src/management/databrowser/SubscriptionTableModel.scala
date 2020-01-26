@@ -22,9 +22,11 @@ class SubscriptionTableModel extends AbstractTableModel {
       case 1=> AllClasses.refToString(subs.parentRef)
       case 2=> subs match {
         case a:PathSubscription=>"Path:"+a.path.map(_.sToString).mkString("; ")
-        case s:SingleSubscription=>"Single"
+        case s:SingleSubscription=>"Single "
         case p:PropSubscription=>
           "PropField:"+p.propertyField+" "+AllClasses.get.getClassByID(subs.parentRef.typ).propFields(p.propertyField).name
+        case o:BlockSubscription=>
+          "Block"+o.propField+" "+AllClasses.get.getClassByID(subs.parentRef.typ).propFields(o.propField).name
       }
       case _=> null
     }

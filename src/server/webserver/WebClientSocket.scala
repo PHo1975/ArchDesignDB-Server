@@ -102,27 +102,38 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   }
 
   private def readInt(array:Array[Byte],pos:Int):Int={
-    val ch1 = array(pos)
-    val ch2 = array(pos+1)
-    val ch3 = array(pos+2)
-    val ch4 = array(pos+3)
-    if ((ch1 | ch2 | ch3 | ch4) < 0) throw new EOFException
-    else return (ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0)
+    val ch1 = (array(pos)& 0xff)
+    val ch2 = (array(pos+1)& 0xff)
+    val ch3 = (array(pos+2)& 0xff)
+    val ch4 = (array(pos+3)& 0xff)
+    //println("readint "+ ch1+" "+ch2+" "+ch3+" "+ch4)
+    if ((ch1 | ch2 | ch3 | ch4) < 0){ println("Lowww");throw new EOFException("Wrong Values")}
+    else (ch1 << 24.toByte) + (ch2 << 16.toByte) + (ch3 << 8.toByte) + (ch4 <<0)
   }
 
   /** is called when a Block is changed
   *
 */
-  override def   onWebSocketBinary( payload:Array[Byte], offset:Int, len:Int): Unit = if(len>=17){
+  override def onWebSocketBinary( payload:Array[Byte], offset:Int, len:Int): Unit = if(len>=17){
     super.onWebSocketBinary(payload,offset,len)
+    println("OnWebSocketBinary p:"+payload.size+" offset:"+offset+" len:"+len)
+    //println("payload:"+payload.mkString("|"))
     val blockTyp=readInt(payload,offset)
+    println("blockTyp "+blockTyp)
     val blockClass=AllClasses.get.blockClassList(blockTyp)
     if(len!=blockClass.blocksize+17) Log.e("Block class "+blockClass+" wrong Size, expected:"+blockClass.blocksize+"+17, found:"+len)
     else {
       val blockInst = readInt(payload, offset + 4)
-      val ownerRef = OwnerReference(payload(offset + 8), Reference(readInt(payload, offset + 9), readInt(payload, offset + 13)))
+      println("BlockInst: "+blockInst)
+      val propField: Byte =payload(offset+8);println("PropField:"+propField)
+      val parentType=readInt(payload, offset + 9);println("Parenttyp:"+parentType)
+      val parentInst=readInt(payload, offset + 13);println("ParentInst:"+parentInst)
+      val ownerRef = OwnerReference(propField, Reference(parentType, parentInst))
+
       val data=new Array[Byte](blockClass.blocksize)
-      payload.copyToArray(data,offset+17,blockClass.blocksize)
+      Array.copy(payload,offset+17,data,0,blockClass.blocksize)
+      //payload.copyToArray(data,offset+17,blockClass.blocksize)
+      //println("data:"+data.mkString("|"))
       if (blockInst == -1) { // new Block, create it
         createBlock(blockTyp,ownerRef,data)
       } else { // block changed
@@ -182,7 +193,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         case "DeleteInstance"=>deleteInstance(data)
         case "Root"=> sendRoot(data)
         case "SubscribeBlocks"=>subscribeBlocks(data)
-        case "DeleteBLock"=>deleteBlock(data)
+        case "DeleteBlock"=>deleteBlock(data)
         case _=>Log.e("unknown Command "+command+" data:"+data)
       }
       case Array("SendTypes")=> sendTypes()
@@ -306,8 +317,19 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
         };
     }
 
-  protected def subscribeBlocks(data:String):Unit={
-
+  protected def subscribeBlocks(data:String):Unit= data match {
+    case WebClientSocket.PrFieldPattern(StrToInt(typ), StrToInt(inst), StrToInt(pr), pdata) =>
+      val ref = Reference(typ, inst)
+      println("subscribe blocks "+ref+" "+pr)
+      if (userEntry!=null && isAllowed(ref, userEntry))
+        createBlockSubscription(ref,pr.toByte,this)
+      else {
+        userSocket.sendData(ServerCommands.acceptSubscription ) { out=>
+          out.writeInt(-1)
+          out.writeUTF("Acess to "+ref.sToString+" is not allowed for user "+userEntry)
+        }
+        Log.e("ref " + ref + " not allowed for " + userEntry)
+      };
   }
 
   protected def loadData(data:String):Unit = data.split("\\|") match {

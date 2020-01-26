@@ -6,7 +6,7 @@ package server.comm
 import java.io.{DataInputStream, DataOutput}
 
 import definition.comm.{ClientCommands, NotificationType, ServerCommands}
-import definition.data.{InstanceData, Reference}
+import definition.data.{BlockData, InstanceData, Reference}
 import server.storage.StorageManager
 import util.Log
 
@@ -34,6 +34,32 @@ trait AbstractQueryHandler{
 			data.ref.write(out)
 			data.writeWithChildInfo(out)
 		}
+
+	def notifyBlockAdded(subs:SubscriptionInfo,data:BlockData):Unit= {
+		userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
+			out.writeInt(subs.id)
+			out.writeInt(NotificationType.childAdded.id )
+			out.writeInt(data.ref.instance)
+			data.write(out)
+		}
+	}
+
+	def notifyBlockChanged(subs:SubscriptionInfo,data:BlockData):Unit= {
+		userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
+			out.writeInt(subs.id)
+			out.writeInt(NotificationType.fieldChanged.id )
+			out.writeInt(data.ref.instance)
+			data.write(out)
+		}
+	}
+
+	def notifyBlockDeleted(subs:SubscriptionInfo,inst:Int):Unit= {
+		userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
+			out.writeInt(subs.id)
+			out.writeInt(NotificationType.instanceRemoved.id )
+			out.writeInt(inst)
+		}
+	}
 
 	def notifyInstanceDeleted(subs:SubscriptionInfo,ref:Reference): Unit =
 		//System.out.println("Notify deleted "+subs+" "+ref)
@@ -64,10 +90,15 @@ trait AbstractQueryHandler{
 				out.writeInt(NotificationType.updateUndo .id)
 				writePathElements(out,subs.id,e.path)
 			}
-			case e:SingleSubscription=> userSocket.sendData(ServerCommands.sendSubscriptionNotification ) { out =>
-				out.writeInt(subs.id )
+			case s:SingleSubscription=> userSocket.sendData(ServerCommands.sendSubscriptionNotification ) { out =>
+				out.writeInt(s.id )
 				out.writeInt(NotificationType.updateUndo .id)
-				sendQueryData(out,subs.parentRef,-1)
+				sendQueryData(out,s.parentRef,-1)
+			}
+			case o:BlockSubscription=> userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out=>
+				out.writeInt(subs.id)
+				out.writeInt(NotificationType.updateUndo.id)
+				sendBlockQueryData(out,o.parentRef,o.propField)
 			}
 		}
 	} catch {
@@ -154,6 +185,31 @@ trait AbstractQueryHandler{
 		//System.out.println("push ready")
 	}
 
+	protected def sendBlockQueryData(out:DataOutput,parentRef:Reference,propertyField:Byte): Unit = try {
+		StorageManager.getInstanceProperties(parentRef) match {
+			case Some(props) =>
+				if (propertyField >= props.propertyFields.length) {
+					Log.e("Error when sending block children, Type "+parentRef+
+						" does not have property field "+propertyField+" current size: "+props.propertyFields.length)
+					out.writeInt(0)
+				}
+				else {
+					val childRefs = props.propertyFields(propertyField).propertyList
+					val blocks=childRefs.filter(StorageManager.blockExists).map(StorageManager.getBlockData)
+					out.writeInt(blocks.size)
+					for (i <- blocks) {
+						out.writeInt(i.ref.instance)
+						i.write(out)
+					}
+				}
+				case None=> out.writeInt(0)
+		}
+	} catch {
+		case NonFatal(e)=> Log.e("send Block Query "+parentRef+ " "+propertyField,e)
+	}
+
+
+
 	protected def getInstances(childRefs:IndexedSeq[Reference]):Iterable[InstanceData] =
 		if(childRefs.size>10&& !MainServerSocket.noBulkAction) {
 			var retList=new collection.mutable.ArrayBuffer[InstanceData]()
@@ -230,6 +286,18 @@ trait AbstractQueryHandler{
 			Log.e("New subscription parent does not exist:"+parentRef)
 			out.writeInt(-1)
 		}
+
+	protected def createBlockSubscription(parentRef:Reference,propertyField:Byte,conn:AbstractConnectionEntry):Unit ={
+		if(StorageManager.instanceExists(parentRef.typ,parentRef.instance)) {
+			val subsID=CommonSubscriptionHandler.addBlockSubscription(conn,parentRef,propertyField)
+			if(subsID<1) Log.e("new Subscription ID ="+subsID+" for BlockParent "+parentRef)
+			else userSocket.sendData(ServerCommands.acceptSubscription ) { out=>
+				out.writeInt(subsID)
+				sendBlockQueryData(out,parentRef,propertyField)
+				//println("Data sent for "+parentRef+" field:"+propertyField)
+			}
+		}
+	}
 
 
 	protected def createPathSubscription(path:Seq[Reference],connection:AbstractConnectionEntry): Unit = {

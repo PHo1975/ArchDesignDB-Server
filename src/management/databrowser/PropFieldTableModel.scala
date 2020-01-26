@@ -13,13 +13,13 @@ class PropFieldTableModel(val showLastLine:Boolean) extends ActivableAbstractTab
   
 	var propFieldList:Seq[PropertyFieldDefinition]=Seq.empty
 	
-	def setValues(npList:Seq[PropertyFieldDefinition])= {
+	def setValues(npList:Seq[PropertyFieldDefinition]): Unit = {
 		propFieldList=npList
 		fireTableDataChanged()
 		isDirty=false
 	}
 	
-	def updateList(newList:Seq[PropertyFieldDefinition]) = {
+	def updateList(newList:Seq[PropertyFieldDefinition]): Unit = {
 		propFieldList=newList
 		isDirty=true
 	}
@@ -28,9 +28,9 @@ class PropFieldTableModel(val showLastLine:Boolean) extends ActivableAbstractTab
   	 showLastLine  	    	
   }
 	
-  def getRowCount(): Int = { propFieldList.size+(if(showLastLine)1 else 0) }
+  def getRowCount: Int =  propFieldList.size+(if(showLastLine)1 else 0)
 
-  def getColumnCount(): Int = { 5 }
+  def getColumnCount: Int =  5
 
   def getValueAt(row: Int, col: Int): Object = {
   	if(row>=propFieldList.size) null
@@ -47,12 +47,12 @@ class PropFieldTableModel(val showLastLine:Boolean) extends ActivableAbstractTab
   }
   
   override def setValueAt(value:Object,row:Int,column:Int):Unit= { 
-  	if(row==propFieldList.size&&showLastLine) { // create
+  	if(row==propFieldList.size&&showLastLine)  // create
   		propFieldList =propFieldList:+ new PropertyFieldDefinition("")
-  	}
+
   	val ov=propFieldList(row)
   	//System.out.println("Set Value At:"+value+" row:"+row+" col:"+column)
-  	propFieldList = MainWindow.updateSeq(propFieldList,row,
+  	propFieldList = propFieldList.updated(row,
   		column match {
   			case 0 => ov.setName(value.toString)
   			case 1 => ov.setSingle(value.asInstanceOf[Boolean].booleanValue)
@@ -76,20 +76,9 @@ class PropFieldTableModel(val showLastLine:Boolean) extends ActivableAbstractTab
   	}
   }
 
-  /*override def getColumnName(col:Int)= {
-  	col match {  		
-  		case 0 => "FieldName"
-  		case 1 => "Single"
-  		case 2 => "Allowed Cl"
-  		case 3 => "Hidden"
-  		case 4 => "Volatile"
-  		case _ => "*"
-  	}
-  } */
+  def getPropField(row:Int): PropertyFieldDefinition =  propFieldList(row)
   
-  def getPropField(row:Int)=  propFieldList(row)
-  
-  def update(theClass:ServerObjectClass) = if(isDirty){  	
+  def update(theClass:ServerObjectClass): Unit = if(isDirty){
   	if(showLastLine)
   		theClass.ownPropFields=propFieldList
   }

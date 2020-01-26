@@ -11,21 +11,31 @@ trait BlockRecordListener {
 }
 
 
-object BlockIndexHandler extends InstanceHandlerStaticData {
+object BlockIndexHandlerStaticData extends InstanceHandlerStaticData {
   final val recordSize: Int = 8 + 4
   val appendBufferSize = 10
-  val appendBufferHandler=new AppendBufferHandler(recordSize,appendBufferSize)
+  val appendBufferHandler: AppendBufferHandler =new AppendBufferHandler(recordSize,appendBufferSize){
+    def readTail(): Unit = {
+      appendDataIn.readLong
+    }
+    def writeTail():Unit={
+      appendDataOut.writeInt(-1)
+      appendDataOut.writeLong(-1)
+    }
+  }
 }
 
 
 class BlockIndexHandler(val theClass: BlockClass) extends AbstractInstanceHandler {
   def fileName = new File(FSPaths.dataDir + theClass.name + ".bix")
-  def staticData: BlockIndexHandler.type =BlockIndexHandler
+  def staticData:InstanceHandlerStaticData  =BlockIndexHandlerStaticData
 
   val blockBuffer=new Array[Byte](theClass.blocksize)
 
   outStream.writeLong(0)
   outStream.writeInt(0)
+
+  println("BlockIndex firstID:"+firstID+" lastID:"+lastID+" tailSpace:"+tailSpace)
 
   def className: String =theClass.name
 
@@ -65,7 +75,7 @@ class BlockIndexHandler(val theClass: BlockClass) extends AbstractInstanceHandle
     theFile.write(writeBufferStream.buffer, 0, staticData.recordSize)
   }
 
-  def foreachInstance(func: (Reference) => Unit): Unit =
+  def foreachInstance(func: Reference => Unit): Unit =
     for (i <- 1 to lastID; if instanceExists(i))
       func(Reference(theClass.id, i))
 

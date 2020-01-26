@@ -15,7 +15,7 @@ class  FxMessageBox(buttonTexts:Seq[String]) extends Stage {
 
   val messageText=new Text
   var result:Option[String]=None
-	val buttons=buttonTexts map (text=> {
+	val buttons: Seq[Button] =buttonTexts map (text=> {
 	  val button=new Button(text)
 	  button.setOnAction(CalendarHelper.handleEvent(e=> {result=Some(text);this.close()}))
 	  button

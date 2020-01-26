@@ -132,7 +132,9 @@ object SessionManager {
         }
 
       } else  try {
-        val connector = new ServerConnector(WebServer)
+        val http_config = new HttpConfiguration()
+        http_config.setSendServerVersion(false)
+        val connector = new ServerConnector(WebServer,new HttpConnectionFactory(http_config))
         connector.setPort(FSPaths.webServerPortNoSSL)
         println("Webserver Port:"+ FSPaths.webServerPortNoSSL)
         WebServer.setConnectors(Array(connector))

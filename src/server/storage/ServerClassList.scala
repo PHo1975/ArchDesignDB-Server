@@ -14,6 +14,7 @@ class ServerClassList (node: scala.xml.Node) extends AllClasses [ServerObjectCla
 	var classList:Map[Int,ServerObjectClass]=classListfromXML(node)
 	var blockClassList:Map[Int,BlockClass]=blockClassListfromXML(node)
   def addClass(cl:ServerObjectClass): Unit = classList += (cl.id -> cl)
+	def addBlockClass(bl:BlockClass):Unit= blockClassList+=(bl.id->bl )
 	
 	def classListfromXML(node: scala.xml.Node):Map[Int,ServerObjectClass]=
   	if(node==null) Map[Int,ServerObjectClass]()

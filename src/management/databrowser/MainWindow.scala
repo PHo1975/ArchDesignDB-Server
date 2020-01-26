@@ -31,6 +31,12 @@ trait ClassListListener {
   def classListChanged(classList: Seq[(Int, String)]): Unit
 }
 
+class SimpleTable extends Table {
+  override lazy val peer: JTable = new JTable with SuperMixin
+  peer.setAutoResizeMode(Table.AutoResizeMode.LastColumn.id)
+  peer.setSelectionMode(Table.IntervalMode.Single.id)
+}
+
 object MainWindow extends SimpleSwingApplication {
   println("MainWindow start")
   var trayIcon: TrayIcon = _
@@ -39,8 +45,10 @@ object MainWindow extends SimpleSwingApplication {
   var theModel: DefaultTableModel = _
   var dataList: Array[Array[java.lang.Object]] = Array()
   var shortClassList: Seq[(Int, String)] = Seq.empty
+  var shortBlockClassList: Seq[(Int, String)] = Seq.empty
   val usedIDs: mutable.HashSet[Int] = collection.mutable.HashSet[Int]()
-  val classListListener: mutable.HashSet[ClassListListener] = collection.mutable.HashSet[ClassListListener]()
+  val classListListeners: mutable.HashSet[ClassListListener] = collection.mutable.HashSet[ClassListListener]()
+  val blockClassListListeners: mutable.HashSet[ClassListListener] = collection.mutable.HashSet[ClassListListener]()
   var newClass: ServerObjectClass = _
   var showWindowMinimized=false
   var webSocketSSL = false
@@ -54,6 +62,7 @@ object MainWindow extends SimpleSwingApplication {
   lazy val consolePanel = new ConsolePanel(debug)
   lazy val borderPanel = new BorderPanel
   lazy val certPanel = new CertPanel
+  lazy val blockPanel= new BlockClassPanel
 
   val accordion=new AccordionComponent
   val statPanel=new StatPanel
@@ -68,11 +77,8 @@ object MainWindow extends SimpleSwingApplication {
     } else Log.w("Windows version " + versID)
   }
 
-  val classTable = new Table {
-    override lazy val peer: JTable = new JTable with SuperMixin
-    peer.setAutoResizeMode(Table.AutoResizeMode.LastColumn.id)
-    peer.setSelectionMode(Table.IntervalMode.Single.id)
-  }
+
+  val classTable: SimpleTable = new SimpleTable
 
 
   def dataInit(): Unit = {
@@ -95,6 +101,7 @@ object MainWindow extends SimpleSwingApplication {
     col.setResizable(false)
     usedIDs.clear
     usedIDs ++= dataList.map(_(0).asInstanceOf[java.lang.Integer].intValue)
+    blockPanel.dataInit()
     //println("Datainit done ")
 
   }
@@ -105,7 +112,12 @@ object MainWindow extends SimpleSwingApplication {
       x => Array[Object](Integer.valueOf(x.id), x.name, x.description)).toSeq.
       sortWith(_(0).asInstanceOf[java.lang.Integer].intValue < _(0).asInstanceOf[java.lang.Integer].intValue).toArray
     shortClassList = classListIterator.map(x => (x.id, x.name)).toSeq.sortWith(_._2 < _._2)
-    classListListener.foreach(_.classListChanged(shortClassList))
+    classListListeners.foreach(_.classListChanged(shortClassList))
+  }
+
+  def updateBlockClassListeners(newList:Seq[(Int,String)]):Unit={
+    shortBlockClassList=newList
+    for (li<-blockClassListListeners) li.classListChanged(shortBlockClassList)
   }
 
 
@@ -142,7 +154,7 @@ object MainWindow extends SimpleSwingApplication {
   }
 
   val managementPanel:BoxPanel = new BoxPanel(Orientation.Vertical) {
-    val manButPanel=new BoxPanel(Orientation.Vertical) {
+    val manButPanel: BoxPanel =new BoxPanel(Orientation.Vertical) {
       this.xLayoutAlignment=0.5f
       val backupBut: Button = createBut("Backup")
       val shutDownBut: Button = createBut("ShutDown")
@@ -201,6 +213,7 @@ object MainWindow extends SimpleSwingApplication {
     accordion.addPanel("DB Management",managementPanel)
     accordion.addPanel("User Management", userPanel)
     accordion.addPanel("Class Management",classPanel)
+    accordion.addPanel("Block Class Management",blockPanel)
     accordion.addPanel("Setup", basicSettingsPanel)
     accordion.addPanel("Statistics",statPanel)
     accordion.activatePanel(0)
@@ -222,10 +235,7 @@ object MainWindow extends SimpleSwingApplication {
 
       peer.addWindowListener(new WindowAdapter() {
         override def windowClosing(e: java.awt.event.WindowEvent): Unit = if (hidden) removeTray()
-
         override def windowIconified(e: java.awt.event.WindowEvent): Unit =            hideFenster()
-
-
         override def windowOpened(e: java.awt.event.WindowEvent): Unit =
           if (firstopen) {
             firstopen = false
@@ -244,7 +254,7 @@ object MainWindow extends SimpleSwingApplication {
     dataList(ix)(0).asInstanceOf[java.lang.Integer].intValue
   }
 
-  def showData(): Unit =   {
+  def showData(): Unit =
     //System.out.println("showData" +classTable.selection.rows +" "+classTable.selection.rows.empty)
     if (classTable.selection.rows.nonEmpty) {
       val typ = getSelectedType
@@ -255,7 +265,7 @@ object MainWindow extends SimpleSwingApplication {
       rightPanel.peer.revalidate()
       rightPanel.repaint
     }
-  }
+
 
   def editClassDef(): Unit = {
     if (classTable.selection.rows.nonEmpty) {
@@ -302,28 +312,28 @@ object MainWindow extends SimpleSwingApplication {
 
 
   def registerClassListListener(li: ClassListListener): Unit = {
-    classListListener += li
+    classListListeners += li
     if (shortClassList.nonEmpty) li.classListChanged(shortClassList)
   }
 
-  def updateSeq[T](seq: Seq[T], index: Int, newValue: T): Seq[T] =
+  def registerBlockClassListListener(li: ClassListListener): Unit = {
+    blockClassListListeners += li
+    if (shortBlockClassList.nonEmpty) li.classListChanged(shortBlockClassList)
+  }
+
+  /*def updateSeq[T](seq: Seq[T], index: Int, newValue: T): Seq[T] =
     if (index >= seq.size) seq
-    else seq.indices.map(i => if (i == index) newValue else seq(i))
+    else seq.indices.map(i => if (i == index) newValue else seq(i))*/
 
 
   def initTray(): Unit = {
     //println("init tray")
     if (SystemTray.isSupported) {
-      // load an image
-
       trayIcon = new TrayIcon(theIconImage, "Neue DB")
       trayIcon.setImageAutoSize(true)
       //System.out.println("tray "+trayIcon)
       trayIcon.addMouseListener(new MouseAdapter() {
-        override def mouseClicked(e1: java.awt.event.MouseEvent): Unit = {
-          //System.out.println("tray click")					
-          if (hidden) showFenster()
-        }
+        override def mouseClicked(e1: java.awt.event.MouseEvent): Unit =  if (hidden) showFenster()
       })
       // add the tray image                  
     }

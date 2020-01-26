@@ -417,7 +417,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else 1,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else ViewConstants.selectBorderWidth,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.trim.length>0) {
@@ -461,7 +461,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else 1,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else ViewConstants.selectBorderWidth,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.length>0) {	    

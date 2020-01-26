@@ -778,6 +778,7 @@ object ViewConstants {
 	var antialias=1
 	var stopFX=0
 	var imagePath=""
+	var selectBorderWidth=1
 
 	def label(text: String = ""): Label = {
 		val res = new Label(text)

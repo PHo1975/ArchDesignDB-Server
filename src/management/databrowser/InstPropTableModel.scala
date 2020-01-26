@@ -11,61 +11,41 @@ import javax.swing.table.AbstractTableModel
  * 
  */
 object InstPropTableModel extends AbstractTableModel {
-	
-	var theClass:AbstractObjectClass=null	
+
+	var theClass:AbstractObjectClass=_
 	private var propData:Option[InstanceProperties]=None
-	
-	
-	def setClass(newClass:AbstractObjectClass) =	{
+
+	def setClass(newClass:AbstractObjectClass): Unit =	{
 		theClass=newClass
 		fireTableStructureChanged()
 	}
-	
-	
+
 	def setPropData(nprop:Option[InstanceProperties]): Unit = {
 		propData=nprop
-		//System.out.println(" set propData "+propData)
-		
-  	//System.out.println("Set inst "+theVersion)
-  	fireTableStructureChanged()
+		fireTableStructureChanged()
 	}
-	
-	
-	def getRowCount():Int =  {
-     if(theClass==null) 0
-     else theClass.propFields.size
-  }
-	
-	
-	def getColumnCount():Int = 2
-	
-	
-	def getValueAt(row:Int,column:Int):java.lang.Object =  {
-  	if(theClass==null) " "
-  	else 
-    if(column==0)
-    {  	
-    	  theClass.propFields(row).name      	
-    }
-    else
-    {	    	
-    	 propData match{
-    		 case Some(a) =>
-					 if(row<a.propertyFields.length)
-           a.propertyFields(row)
-           else "Psize:"+a.propertyFields.length
-				 case _ => " "
-    	 }
-    }
-  }
-	
-	override def getColumnName(column:Int) =  {
-  	column match {
-  		case 0 => "PropertyField"
-  		case 1 => "Owned Instances"  		
-  		case _ => "***"
-  	}
-  }
-	
 
+	def getRowCount:Int = if(theClass==null) 0
+	else theClass.propFields.size+theClass.blockPropFields.size
+
+	def getColumnCount:Int = 2
+
+	def getValueAt(row:Int,column:Int):java.lang.Object = 	if(theClass==null) " "
+	else if(column==0) {
+		if(row<theClass.propFields.size) theClass.propFields(row).name
+		else "B "+theClass.blockPropFields(row-theClass.propFields.size).name
+	}
+	else propData match{
+		case Some(a) =>
+			if(row<a.propertyFields.length)
+				a.propertyFields(row)
+			else "Psize:"+a.propertyFields.length
+		case _ => " "
+	}
+
+	override def getColumnName(column:Int): String = column match {
+		case 0 => "PropertyField"
+		case 1 => "owned Instances"
+		case _ => "***"
+	}
 }

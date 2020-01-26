@@ -98,7 +98,7 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
 			if (column < 4) {
 				val field = fieldDefList(row)
 				//println("Mod set value:"+value+" col:"+column)
-				fieldDefList = MainWindow.updateSeq(fieldDefList, row,
+				fieldDefList = fieldDefList.updated( row,
 					column match {
 						case 1 => field.setName(value.toString)
 						case 2 => field.setType(value.asInstanceOf[DTWrap].typ)
@@ -111,7 +111,7 @@ class FieldDefTableModel(ownfieldTable:Boolean) extends ActivableAbstractTableMo
 					val w = fieldSettingList(row)
 					if (w.fieldNr == -1) { // empty setting
 						val n = new FieldSetting(row + offset)
-						fieldSettingList = MainWindow.updateSeq(fieldSettingList, row, n)
+						fieldSettingList = fieldSettingList.updated( row, n)
 						n
 					}
 					else w

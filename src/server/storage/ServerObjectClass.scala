@@ -135,9 +135,10 @@ class ServerObjectClass (var name:String,var id:Int,var description:String="",va
   
   def getNumOwnFields: Int =ownFields.size
 
-	def getNumBlockPropFields:Int = ownBlockPropFields.size
+	def getNumOwnBlockPropFields:Int = ownBlockPropFields.size
   
   def getNumOwnPropFields: Int =ownPropFields.size
+
 
 }
 

@@ -36,7 +36,8 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 
 	var propFieldComboEditor:ComboBoxEditor=_
 	var fieldComboEditor:ComboBoxEditor=_
-	var childTypeComboEditor=new ClassNameEditor(new JComboBox)	
+	var childTypeComboEditor=new ClassNameEditor(new JComboBox,"Any")
+	MainWindow.registerClassListListener(childTypeComboEditor)
 
 	val ccColMod=new FieldColumnModel{
 		createColumn(0,"nr",20)

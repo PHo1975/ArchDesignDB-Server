@@ -16,19 +16,32 @@ trait RecordListener {
 }
 
 
-object ClassIndexHandler extends InstanceHandlerStaticData {
+object ClassIndexHandlerStaticData extends InstanceHandlerStaticData {
 	final val recordSize: Int = 8 * 4 + 4 * 5
 	final val appendBufferSize = 10
-	val appendBufferHandler=new AppendBufferHandler(recordSize,appendBufferSize)
+	val appendBufferHandler: AppendBufferHandler =new AppendBufferHandler(recordSize,appendBufferSize){
+		def readTail(): Unit = {
+			appendDataIn.readLong; appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt
+			appendDataIn.readLong; appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt
+		}
+		def writeTail():Unit={
+			appendDataOut.writeInt(-1)
+			appendDataOut.writeLong(-1); appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
+			appendDataOut.writeLong(0); appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
+		}
+	}
 }
 
 
-class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
+abstract class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
 	val appendInBuffer: Array[Byte] = Array.fill[Byte](nrecordSize * nappendBufferSize)(0.toByte)
 	val appendInStream = new UnsyncBAInputStream(appendInBuffer)
 	val appendDataIn = new DataInputStream(appendInStream)
 	val appendOutStream = new MyByteStream(nrecordSize * nappendBufferSize)
 	val appendDataOut = new DataOutputStream(appendOutStream)
+
+	def readTail():Unit
+	def writeTail():Unit
 
 	/**  writes one record and adds appendBufferSize number of records at the end of the file so the file is only increased 1 in appendBufferSize times.
 	* @param b record data
@@ -38,10 +51,8 @@ class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
 		theFile.seek(theFile.length)
 		appendOutStream.reset()
 		appendOutStream.write(b, 0, nrecordSize)
-		for (i <- 0 until nappendBufferSize - 1) {
-			appendDataOut.writeInt(-1)
-			appendDataOut.writeLong(-1); appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
-			appendDataOut.writeLong(0); appendDataOut.writeInt(0); appendDataOut.writeLong(0); appendDataOut.writeInt(0)
+		for (_ <- 0 until nappendBufferSize - 1) {
+			writeTail()
 		}
 		theFile.write(appendOutStream.buffer, 0, appendOutStream.buffer.length)
 	}
@@ -59,8 +70,7 @@ class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
 			for (i <- 0 until nappendBufferSize; if line == -1) {
 				val inst = appendDataIn.readInt
 				if (inst == -1 || inst == 0) line = i
-				appendDataIn.readLong; appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt
-				appendDataIn.readLong; appendDataIn.readInt; appendDataIn.readLong; appendDataIn.readInt
+				readTail()
 			}
 			if (line == -1) 0
 			else if (line < nappendBufferSize) {
@@ -79,14 +89,14 @@ class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
 class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String = ".idx") extends AbstractInstanceHandler {
 
 	def fileName = new File(FSPaths.dataDir + theClass.name + extension)
-	def staticData=ClassIndexHandler
+	def staticData:InstanceHandlerStaticData=ClassIndexHandlerStaticData
 
 	def className: String =theClass.name
 
 	val benchmarkBuffer: Array[Int] = Array.fill(50)(0)
 	protected var currentBenchPos = 0
 
-	for (i <- 0 until 6) outStream.writeLong(0)
+	for (_ <- 0 until 6) outStream.writeLong(0)
 	outStream.writeInt(0)
 
 	protected def writeBench(value: Int): Unit = {
@@ -177,14 +187,14 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 		if (withLog) TransLogHandler.dataChanged(TransType.collFuncChanged, theClass.id, inst, dataPos, dataLength)
 	}
 
-	def foreachInstance(func: (Reference) => Unit): Unit =
+	def foreachInstance(func: Reference => Unit): Unit =
 		for (i <- 1 to lastID; if instanceExists(i))
 			func(Reference(theClass.id, i))
 
 
 	def foreachInstance(listener: RecordListener): Unit = {
 		theFile.seek(0)
-		for (i <- 0 until numRecords - tailSpace) {
+		for (_ <- 0 until numRecords - tailSpace) {
 			theFile.read(readBuffer, 0, staticData.recordSize)
 			inBufferStream.reset()
 			val inst = dataInStream.readInt

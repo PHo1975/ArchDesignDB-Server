@@ -220,7 +220,8 @@ object ClientApp extends App {
     UserSettings.setIntProperty("Draw", "antialias",ViewConstants.antialias)
     UserSettings.setIntProperty("Draw", "showToast",ViewConstants.showToast)
     UserSettings.setIntProperty("Draw", "showHitPoints",ViewConstants.showToast)
-    UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
+    UserSettings.setIntProperty("Draw","selectBorderWidth",ViewConstants.selectBorderWidth)
+      UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
     //UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
 
     UserSettings.setListProperty[PropertyGroup]("WindowSettings", "Boxes", storeList)
@@ -293,6 +294,7 @@ object ClientApp extends App {
       ViewConstants.showToast= UserSettings.getIntProperty("Draw", "showToast", 1)
       ViewConstants.showHitPoints= UserSettings.getIntProperty("Draw", "showHitPoints", 1)
       ViewConstants.imagePath= UserSettings.getStringProperty("WindowSettings", "imagePath", "")
+      ViewConstants.selectBorderWidth=UserSettings.getIntProperty("Draw", "selectBorderWidth", 1)
       import javax.swing.{UIDefaults, UIManager}
       UIManager.setLookAndFeel(new javax.swing.plaf.nimbus.NimbusLookAndFeel() {
         override def getDefaults: UIDefaults = {

@@ -115,8 +115,8 @@ object StorageManager {
 	def instanceExists(typ: Int, inst: Int): Boolean = fileLock.synchronized {
 		if (serverClassList.contains(typ)) ixHandler(typ).instanceExists(inst) else false}
 
-	def blockExists(typ:Int,inst:Int):Boolean= fileLock.synchronized{
-		if(blockClassList.contains(typ)) blockHandler(typ).instanceExists(inst) else false
+	def blockExists(ref:Reference):Boolean= fileLock.synchronized{
+		if(blockClassList.contains(ref.typ)) blockHandler(ref.typ).instanceExists(ref.instance) else false
 	}
 
 	/** loads an instance from the data file

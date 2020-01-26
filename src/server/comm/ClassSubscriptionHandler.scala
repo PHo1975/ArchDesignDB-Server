@@ -3,7 +3,7 @@
  */
 package server.comm
 
-import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.data.{BlockData, InstanceData, OwnerReference, Reference}
 import util.Log
 
 import scala.collection.mutable
@@ -13,14 +13,17 @@ import scala.collection.mutable
  */
 class ClassSubscriptionHandler(typID:Int) {
 	// subscriptions to single objects
-	protected var singleSubsMap: mutable.Map[Reference, List[SingleSubscription]] =mutable.Map[Reference,List[SingleSubscription]]()
+	protected val singleSubsMap: mutable.Map[Reference, List[SingleSubscription]] =mutable.Map[Reference,List[SingleSubscription]]()
 	// subscriptions to parents
-	protected var propSubsMap: mutable.Map[Reference, List[PropSubscription]] =mutable.Map[Reference,List[PropSubscription]]()
+	protected val propSubsMap: mutable.Map[Reference, List[PropSubscription]] =mutable.Map[Reference,List[PropSubscription]]()
+
+	protected val blockSubsMap: mutable.Map[Reference,List[BlockSubscription]]= mutable.Map[Reference,List[BlockSubscription]]()
 	
 	def addSubscription(s:SubscriptionInfo): Unit =
 		s match {
 			case a:SingleSubscription => addSingleS(a,a.parentRef)
 			case b:PropSubscription => addPropS(b)
+				case o=> Log.e("Wrong Subs-Type "+o)
 		}				
 
 	
@@ -34,6 +37,7 @@ class ClassSubscriptionHandler(typID:Int) {
 			case c:PathSubscription => removePathS(c)
 			case a:SingleSubscription => removeSingleS(a)
 			case b:PropSubscription => removePropS(b)
+			case o:BlockSubscription=> removeBlockSubscription(o)
 		}
 	
 	def removeSinglePathSubs(s:PathSubscription,forElem:Reference):Unit=
@@ -66,16 +70,7 @@ class ClassSubscriptionHandler(typID:Int) {
 					subs.connectionEntry.queryHandler.notifyInstanceChanged(subs,childInst)
 		}
 
-	
-	/*def burstNotifyChanges(ownerRef:Reference ,propField:Byte) = {
-		if(propSubsMap.contains(ownerRef)) {
-			val list=propSubsMap(ownerRef)
-			for(subs <-list)
-				if(subs.propertyField ==propField)
-					subs.user.queryHandler.burstNotifyChanges(subs,ownerRef,propField)
-		}
-	}*/
-	
+
 	def instanceCreated(owner:OwnerReference,newInstance:InstanceData): Unit =
 		if(propSubsMap.contains(owner.ownerRef)) {
 			val list=propSubsMap(owner.ownerRef)
@@ -105,7 +100,48 @@ class ClassSubscriptionHandler(typID:Int) {
 				if(subs.propertyField ==owner.ownerField )
 					subs.connectionEntry.queryHandler.notifyInstanceDeleted(subs,ref)
 		}
-	
+
+
+	def addBlockSubscription(bs:BlockSubscription): Unit ={
+		blockSubsMap.put(bs.parentRef,if(blockSubsMap.contains(bs.parentRef)) bs:: blockSubsMap(bs.parentRef) else List(bs))
+	}
+
+	def removeBlockSubscription(bs:BlockSubscription):Unit = {
+		if(blockSubsMap.contains(bs.parentRef)) {
+			val list=blockSubsMap(bs.parentRef)
+			if(list.contains(bs))
+				blockSubsMap.put(bs.parentRef,list.filterNot(_ == bs))
+		} else Log.e("Remove Block Subs, Entry not found "+bs.parentRef)
+	}
+
+	def blockCreated(owner:OwnerReference,newBlock:BlockData):Unit={
+		if(blockSubsMap.contains(owner.ownerRef)){
+			val list=blockSubsMap(owner.ownerRef)
+			for(subs<-list)
+				if(subs.propField==owner.ownerField)
+					subs.connectionEntry.queryHandler.notifyBlockAdded(subs,newBlock)
+		}
+	}
+
+	def blockChanged(owner:OwnerReference,newBlock:BlockData):Unit={
+		if(blockSubsMap.contains(owner.ownerRef)){
+			val list=blockSubsMap(owner.ownerRef)
+			for(subs<-list)
+				if(subs.propField==owner.ownerField)
+					subs.connectionEntry.queryHandler.notifyBlockChanged(subs,newBlock)
+		}
+	}
+
+	def blockDeleted(owner:OwnerReference,id:Int):Unit = {
+		if(blockSubsMap.contains(owner.ownerRef)) { // a parent ref of a subscription is deleted
+			val list=blockSubsMap(owner.ownerRef)
+			for(subs <-list)
+				if(subs.propField==owner.ownerField)
+				  subs.connectionEntry.queryHandler.notifyBlockDeleted(subs,id)
+		}
+	}
+
+
 	// ********************** Internal routines ***********************
 	
 	private def addSingleS(s:SingleSubscription,ref:Reference) =
@@ -113,12 +149,12 @@ class ClassSubscriptionHandler(typID:Int) {
 														else List(s))
 
 	
-	private def addPropS(s:PropSubscription) =
+	private def addPropS(s:PropSubscription):Unit =
 		propSubsMap.put(s.parentRef,if(propSubsMap.contains(s.parentRef)) s :: propSubsMap(s.parentRef)
 																else List(s))
 
 
-	private def removeSingleS(s:SingleSubscription) =
+	private def removeSingleS(s:SingleSubscription):Unit =
 		//System.out.println("csm remove singleSubs:"+s)
 		if(singleSubsMap.contains(s.parentRef)) {
 			val list=singleSubsMap(s.parentRef)
@@ -127,7 +163,7 @@ class ClassSubscriptionHandler(typID:Int) {
 		}
 		else Log.e("Remove SingleSubscription, Entry for "+s.parentRef+" not found")
 	
-	private def removePropS(s:PropSubscription) =
+	private def removePropS(s:PropSubscription):Unit =
 		//System.out.println("csm remove propSubs:"+s)
 		if(propSubsMap.contains(s.parentRef)) {
 		val list=propSubsMap(s.parentRef)

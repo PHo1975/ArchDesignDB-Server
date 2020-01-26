@@ -3,7 +3,7 @@
  */
 package server.comm
 
-import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.data.{BlockData, InstanceData, OwnerReference, Reference}
 import util.Log
 
 import scala.collection.mutable
@@ -35,6 +35,16 @@ object CommonSubscriptionHandler {
 			classHandlerMap(parentRef.typ ).addSubscription(newS)		
 			maxID
 		}
+
+
+	def addBlockSubscription(user:AbstractConnectionEntry,parentRef:Reference,propertyField:Byte):Int=
+	listLock.synchronized{
+		maxID+=1
+		val bs=BlockSubscription(user,maxID,parentRef,propertyField)
+		subscriptionList(maxID)=bs
+		classHandlerMap(parentRef.typ).addBlockSubscription(bs)
+		maxID
+	}
 	
 	/** changes the target of a subscription
 	 * 
@@ -156,16 +166,14 @@ object CommonSubscriptionHandler {
 			classHandlerMap(owner.ownerRef.typ).childInstanceChanged(owner.ownerRef,owner.ownerField,newState)	
 	}
 	
-	def refreshSubscriptionsFor(parentRef:Reference): Unit = {
+	def refreshSubscriptionsFor(parentRef:Reference): Unit =
 		classHandlerMap(parentRef.typ ).refreshSubscriptionsFor(parentRef)
-	}
+
 	
-	
-	def instanceCreated(owner:OwnerReference,newInstance:InstanceData): Unit = {
-		//System.out.println("subsMan inst created "+ newInstance.ref)
+	def instanceCreated(owner:OwnerReference,newInstance:InstanceData): Unit =
 		if(_classHandlerMap.contains(owner.ownerRef.typ))
-		classHandlerMap(owner.ownerRef.typ).instanceCreated(owner,newInstance)		
-	}
+		  classHandlerMap(owner.ownerRef.typ).instanceCreated(owner,newInstance)
+
 	
 	
 	def instanceDeleted(owner:OwnerReference,ref:Reference): Unit = {
@@ -176,7 +184,23 @@ object CommonSubscriptionHandler {
 	
 	def instanceDeletedViaUndo(ref:Reference): Unit =
 	  classHandlerMap(ref.typ).instanceDeleted(null,ref)
-	
+
+
+	def blockCreated(owner:OwnerReference,newBlock:BlockData): Unit ={
+		if(_classHandlerMap.contains(owner.ownerRef.typ))
+			classHandlerMap(owner.ownerRef.typ).blockCreated(owner,newBlock)
+	}
+
+	def blockChanged(owner:OwnerReference,newBlock:BlockData): Unit ={
+		if(_classHandlerMap.contains(owner.ownerRef.typ))
+		  classHandlerMap(newBlock.ref.typ).blockChanged(owner,newBlock)
+	}
+
+	def blockDeleted(owner:OwnerReference,id:Int): Unit = {
+		if(_classHandlerMap.contains(owner.ownerRef.typ))
+			classHandlerMap(owner.ownerRef.typ).blockDeleted(owner,id)
+	}
+
 	
 	def userLogsOff(userID:AbstractConnectionEntry): Unit = listLock.synchronized {
 		//System.out.println("subsMan user log off "+userID)
