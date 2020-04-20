@@ -4,9 +4,8 @@ import java.awt.Dimension
 
 import client.calender.{AdTreeNode, Address, Folder}
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
 import client.dialog.form.FormButtonListener
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.StringConstant
 import definition.typ.SystemSettings

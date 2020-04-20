@@ -6,7 +6,7 @@ import java.io.File
 import java.net.{URL, URLDecoder}
 import java.util.jar.JarFile
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import javax.swing.ImageIcon
 
 import scala.jdk.CollectionConverters._

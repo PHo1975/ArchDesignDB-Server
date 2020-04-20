@@ -6,8 +6,8 @@ package client.dialog
 import java.awt.Dimension
 
 import client.comm.{ClientQueryManager, KeyStrokeManager}
-import client.dataviewer.ViewConstants
 import client.graphicsView.{ArcElement, GraphElemConst, LineElement, ViewportState}
+import client.ui.ViewConstants
 import definition.expression.{ObjectReference, VectorConstant}
 import definition.typ.AnswerDefinition
 import util.{Log, SemicolonSplit, StrToDouble}
@@ -57,10 +57,10 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
   forcePrecBut.selected = true
   //var preventCancelOnReset=false
   
-  var internPointClickListener:Option[(VectorConstant)=>Unit]=None
-  var externPointClickListener:Option[(VectorConstant)=>Unit]=None
+  var internPointClickListener:Option[VectorConstant =>Unit]=None
+  var externPointClickListener:Option[VectorConstant =>Unit]=None
 
-  var internEditListener:Option[(String)=>Unit]=None
+  var internEditListener:Option[String =>Unit]=None
   val buttons: Seq[AbstractPanelButton] = Seq(globalBut, dxBut, dyBut, dzBut, midBut, divBut, interBut, bracketBut, forcePrecBut)
   
   textEdit.maximumSize=new Dimension(Short.MaxValue,30)
@@ -118,15 +118,15 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
           bracketBut.tooltip="Summenfunktion einschalten"
         AnswerPanelsData.currentViewController.stopBracketMode()
       }
-		case ButtonClicked(`dxBut`)=> textDialog("dx-Wert:",text=> {
+		case ButtonClicked(`dxBut`)=> textDialog("dx-Wert:",_ => {
   		  AnswerPanelsData.currentViewController.addDelta(getTextEditDouble,0,0)
   		})  		
   	
-  	case ButtonClicked(`dyBut`)=> textDialog("dy-Wert:",text=> {
+  	case ButtonClicked(`dyBut`)=> textDialog("dy-Wert:",_ => {
   		  AnswerPanelsData.currentViewController.addDelta(0,getTextEditDouble,0)
   		})
   	
-  	case ButtonClicked(`dzBut`)=>	textDialog("dz-Wert:",text=> {
+  	case ButtonClicked(`dzBut`)=>	textDialog("dz-Wert:",_ => {
   		  AnswerPanelsData.currentViewController.addDelta(0,0,getTextEditDouble)
   		})
   	
@@ -235,7 +235,7 @@ class PointAnswerPanel extends AnswerPanel with PointClickListener {
     answerDesc.constraint match {
       case AnswerPanelsData.STRICT_HIT => forcePrecision = true
       case AnswerPanelsData.NOSTRICT_HIT => forcePrecision = false
-      case _ =>
+      case _ => forcePrecision= defaultPrecision
     }
     forcePrecBut.selected = forcePrecision
   	if(AnswerPanelsData.currentViewController!=null) {

@@ -5,7 +5,7 @@ package client.graphicsView
 import java.awt._
 import java.awt.event.{ComponentAdapter, MouseWheelEvent}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.expression.VectorConstant
 import javax.swing.{SwingUtilities, TransferHandler}
 
@@ -283,8 +283,13 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     }
     g.drawString(st.toString + (if (controller.bracketMode) " (S)" else ""), 30, 30)
     // draw all elements
+    var oldComposite: Composite= null
     for (lay <- controller.layerModel.layerList) {
       val lColor = if (lay.edible) null else ColorMap.lockedColor
+      if (!lay.edible) {
+        oldComposite =g.getComposite
+        g.setComposite(ViewConstants.layerComposite)
+      }
       controller.inplaceTextElement match {
         case Some(ite) =>
           for (elem <- lay.elemList)
@@ -330,6 +335,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
               case _ =>
             }
       }
+      if(!lay.edible) g.setComposite(oldComposite)
     }
     //print(" elems done ")
     // draw selected elements

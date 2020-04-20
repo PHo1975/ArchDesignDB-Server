@@ -11,7 +11,8 @@ class NewElemLayer(ncontroller: GraphViewController) extends Layer(ncontroller, 
 
   def addTempElement(elem: GraphElem): Unit = {
   	_elemList += elem
-  	controller.graphElemAdded(this,elem)  	
+    controller.refreshCanvas()
+  	//controller.graphElemAdded(this,elem)
   }
 
   def clear():Unit={

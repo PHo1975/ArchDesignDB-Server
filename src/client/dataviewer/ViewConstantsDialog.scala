@@ -4,6 +4,7 @@ import java.awt.{Dimension, Font}
 import java.lang.reflect.Field
 
 import client.dialog.ActiveTextField
+import client.ui.ViewConstants
 import util.{Log, StrToInt}
 
 import scala.swing.{Dialog, GridPanel, Label, Window}

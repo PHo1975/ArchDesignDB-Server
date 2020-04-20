@@ -192,13 +192,14 @@ object CommonSubscriptionHandler {
 	}
 
 	def blockChanged(owner:OwnerReference,newBlock:BlockData): Unit ={
+		println("CS Block changed owner:"+owner+" block:"+newBlock)
 		if(_classHandlerMap.contains(owner.ownerRef.typ))
-		  classHandlerMap(newBlock.ref.typ).blockChanged(owner,newBlock)
+		  classHandlerMap(owner.ownerRef.typ).blockChanged(owner,newBlock)
 	}
 
-	def blockDeleted(owner:OwnerReference,id:Int): Unit = {
+	def blockDeleted(owner:OwnerReference,blockRef:Reference): Unit = {
 		if(_classHandlerMap.contains(owner.ownerRef.typ))
-			classHandlerMap(owner.ownerRef.typ).blockDeleted(owner,id)
+			classHandlerMap(owner.ownerRef.typ).blockDeleted(owner,blockRef)
 	}
 
 	

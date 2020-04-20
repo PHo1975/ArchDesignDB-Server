@@ -1,6 +1,7 @@
 package management.databrowser
 
-import client.dataviewer.{FieldColumnModel, ViewConstants}
+import client.dataviewer.FieldColumnModel
+import client.ui.ViewConstants
 import definition.typ.AllClasses
 import javax.swing.table.AbstractTableModel
 import server.comm._
@@ -26,7 +27,9 @@ class SubscriptionTableModel extends AbstractTableModel {
         case p:PropSubscription=>
           "PropField:"+p.propertyField+" "+AllClasses.get.getClassByID(subs.parentRef.typ).propFields(p.propertyField).name
         case o:BlockSubscription=>
-          "Block"+o.propField+" "+AllClasses.get.getClassByID(subs.parentRef.typ).propFields(o.propField).name
+          val theClass=AllClasses.get.getClassByID(subs.parentRef.typ)
+
+          "Block propfield:"+o.propField+" "+theClass.blockPropFields(o.propField-theClass.propFields.length).name
       }
       case _=> null
     }

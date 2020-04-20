@@ -6,15 +6,14 @@ package client.print
 import java.awt.Toolkit
 import java.awt.event.{ActionEvent, KeyEvent, MouseAdapter, MouseWheelEvent}
 
-import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import definition.data.{FontStyleList, Reference, RenderContext}
 import javax.print.attribute.standard.PageRanges
 import javax.swing.{AbstractAction, BorderFactory, JComponent, KeyStroke}
 
-import scala.swing.{ListView, _}
 import scala.swing.event._
+import scala.swing.{ListView, _}
 import scala.util.control.NonFatal
 
 trait PrintReceiver {

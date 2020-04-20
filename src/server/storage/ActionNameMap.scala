@@ -8,25 +8,27 @@ import java.io._
 import definition.comm.ClientCommands
 import server.config.FSPaths
 
+import scala.collection.mutable
+
 /** stores the names of Actions
  * the ids for the build-in Actions were taken from the ClientCommands enum
  * all custom actions start by id 100
  */
 object ActionNameMap {
-  val theMap=collection.mutable.HashMap[String,Short ]()
+  val theMap: mutable.Map[String, Short] =collection.mutable.HashMap[String,Short ]()
   var maxID:Short=100
   val fileName=new File(FSPaths.dataDir+"actionMap.dat")
   
-  def getActionID(name:String) = 
+  def getActionID(name:String): Short = 
   	if(theMap contains name ) theMap (name)
   	else {  		 
   		maxID =  (maxID+1).toShort
   		theMap(name)=maxID
-  		write
+  		write()
   		maxID
   	}
   
-  def getActionName(id:Short) = theMap find(_._2 ==id) match {
+  def getActionName(id:Short): String = theMap find(_._2 ==id) match {
   	case Some(a) => a._1
   	case None => ClientCommands(id) match {
   		case ClientCommands.createInstance => "Neu erstellt"
@@ -40,11 +42,15 @@ object ActionNameMap {
   		case ClientCommands.secondUseInstances=> "Objekt verknüft"
   		case ClientCommands.executeAction=>"Action ausgeführt"
   	  case ClientCommands.executeCreateAction => "Objekt erzeugt"  
+			case ClientCommands.createBlock=> "Block erstellt"
+			case ClientCommands.changeBlock=> "Block geändert"
+			case ClientCommands.deleteBlock=> "Block gelöscht"
+			case ClientCommands.convertInstances=> "Instanzen konvertiert"	
   		case _ =>"Unbekannt "+id
   	}
   }
   
-  def read() = if (fileName.exists) {
+  def read(): Unit = if (fileName.exists) {
   	maxID=100
   	theMap.clear  	
   	val is=new DataInputStream(new BufferedInputStream(new FileInputStream(fileName)))
@@ -57,7 +63,7 @@ object ActionNameMap {
   	is.close()
   }
   
-  def write() = {
+  def write(): Unit = {
   	val os=new DataOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)))  	
   	os writeInt theMap.size
   	for(el <-theMap ) {
@@ -67,5 +73,5 @@ object ActionNameMap {
   	os.close()
   }
   
-  override def toString = "ActionNameMap "+theMap.size+"\n"+ theMap.mkString("\n")
+  override def toString: String = "ActionNameMap "+theMap.size+"\n"+ theMap.mkString("\n")
 }

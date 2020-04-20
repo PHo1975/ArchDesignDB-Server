@@ -10,9 +10,9 @@ import java.awt.{Color, Font, Graphics2D, GraphicsEnvironment}
 import java.io.DataInput
 
 import client.comm.SubscriptionFactory
-import client.dataviewer.ViewConstants
 import client.graphicsView.symbol.{SymbolElem, SymbolFiller}
 import client.print.APrintScaler
+import client.ui.ViewConstants._
 import definition.data._
 import definition.expression._
 import definition.typ.AllClasses
@@ -83,7 +83,7 @@ class RefPointDummy(ix:Int,pos:VectorConstant) extends GraphElem(new Reference(0
 
   def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
     g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-    g.setStroke(sm.getStroke(1f * ViewConstants.fontScale / 100f, 0))
+    g.setStroke(sm.getStroke(1f * fontScale / 100f, 0))
 		val sx=sm.xToScreen(pos.x)
 		val sy=sm.yToScreen(pos.y)
 		GraphElemConst.drawLineFloat(g,sx-GraphElemConst.refPointSize,sy-GraphElemConst.refPointSize ,
@@ -286,7 +286,7 @@ abstract class LinearElement(nref:Reference,ncolor:Int,val lineWidth:Int,val lin
 
   protected def prepareStroke(g: Graphics2D, sm: Scaler, selectColor: Color): Unit = {
     g.setPaint(getDrawColor(sm,lineWidth,selectColor))
-    g.setStroke(if (selectColor == ViewConstants.hoverColor) LineStyleHandler.hoverStroke else sm.getStroke(if (lineWidth > 0) lineWidth else 1, lineStyle))
+    g.setStroke(if (selectColor == hoverColor) LineStyleHandler.hoverStroke else sm.getStroke(if (lineWidth > 0) lineWidth else 1, lineStyle))
   }
   override def getFormatFieldValue(fieldNr:Int):Constant= {
 	  fieldNr match {
@@ -417,7 +417,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else ViewConstants.selectBorderWidth,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else selectBorderWidth,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.trim.length>0) {
@@ -425,7 +425,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 	    val mostWideString=strings.maxBy(_.length)
 	    val midPoint=trans(Polygon.midOfPointList(poly.pathList))
       g.setColor(Color.black)
-	    g.setFont(ViewConstants.tinyFont)	
+	    g.setFont(tinyFont)
 	    val metrics=g.getFontMetrics.getStringBounds(mostWideString,g)
 	    val w=metrics.getWidth
 	    val h=metrics.getHeight+1
@@ -461,13 +461,13 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else ViewConstants.selectBorderWidth,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else selectBorderWidth,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.length>0) {	    
 	    val midPoint=trans(Polygon.midOfPointList(poly.pathList))+offSet	  
 	    g.setColor(Color.GRAY)
-	    g.setFont(ViewConstants.smallFont)	
+	    g.setFont(smallFont)
 	    val w=g.getFontMetrics.getStringBounds(name, g).getWidth
 	    g.drawString(name, midPoint.x.toFloat-w.toFloat/2f, midPoint.y.toFloat)      
 	  }
@@ -525,7 +525,7 @@ class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nf
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
 	  super.draw(g,sm,selectColor)
 	  val smTransform=GraphElemConst.transform(sm)_
-    g.setFont(ViewConstants.smallFont)
+    g.setFont(smallFont)
 	  //g.drawString(name, midPoint.x.toFloat, midPoint.y.toFloat)
 	  for(area<-areaList) {
       g.setColor(Color.gray)
@@ -819,7 +819,7 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     val ansatz=Expression.read(in)
     val factor=Expression.read(in)
 
-    val owners = InstanceData.readOwners(in)
+    val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new AreaPolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)), hatch < 0, points, startPoint, angle,name)
@@ -842,7 +842,7 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     val factor=Expression.read(in)
     val nr=Expression.read(in).getValue.toDouble
 
-    val owners = InstanceData.readOwners(in)
+    val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new AreaPolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)), hatch < 0, points, startPoint, angle,
@@ -866,7 +866,7 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     val ansatz=Expression.read(in)
     val factor=Expression.read(in)
 
-    val owners = InstanceData.readOwners(in)
+    val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new MeasureLineElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, points, width, align, opaquity, HatchHandler.getHatch(math.abs(hatch)), angle,
@@ -909,7 +909,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val tangle=Expression.read(in).getValue.toDouble
 		val obAngle=Expression.read(in).getValue.toDouble
 		val lineSpace=Expression.read(in).getValue.toDouble
-		InstanceData.readOwners(in)
+		InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)
 		in.readBoolean		
 		new TextElement(ref,color,text,pos,font,height,widthr,align,tangle,obAngle,lineSpace)
@@ -924,7 +924,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val lineStyle=Expression.read(in).getValue
 		val startPoint=Expression.read(in).getValue.toVector
 		val endPoint=Expression.read(in).getValue.toVector
-		val owners=InstanceData.readOwners(in)
+		val owners=InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)		
 		in.readBoolean
     LineElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, startPoint, endPoint)
@@ -942,7 +942,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
     val startPoint = Expression.read(in).getValue.toVector
     val angle = Expression.read(in).getValue.toDouble
 
-    val owners = InstanceData.readOwners(in)
+    val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new PolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)), hatch < 0, points, startPoint, angle)
@@ -961,7 +961,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
     val hatch = Expression.read(in).getValue.toInt // positive value: world scale, negative value: paperScale
     val angle = Expression.read(in).getValue.toDouble
 
-    val owners = InstanceData.readOwners(in)
+    val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new PolyLineElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, points, width, align, opaquity, HatchHandler.getHatch(math.abs(hatch)), angle, hatch < 0)
@@ -978,7 +978,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val diameter=Expression.read(in).getValue.toDouble
 		val startA=Expression.read(in).getValue.toDouble
 		val endA=Expression.read(in).getValue.toDouble
-		val owners=InstanceData.readOwners(in)
+		val owners=InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)		
 		in.readBoolean
     ArcElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, centerPoint, diameter, startA, endA)
@@ -996,7 +996,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val mainAngle=Expression.read(in).getValue.toDouble
 		val startA=Expression.read(in).getValue.toDouble
 		val endA=Expression.read(in).getValue.toDouble
-		val owners=InstanceData.readOwners(in)
+		val owners=InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)		
 		in.readBoolean
     EllipseElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, centerPoint, r1, r2, mainAngle, startA, endA)
@@ -1013,7 +1013,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 	  val refPoint=Expression.read(in).getValue.toVector
 	  val refDist=Expression.read(in).getValue.toDouble
 	  val precision=Expression.read(in).getValue.toDouble
-	  InstanceData.readOwners(in)
+	  InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
 	  new DimLineElement(ref,color,position,style,angle,refPoint,refDist,precision,points)
@@ -1028,7 +1028,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
     val scale=Expression.read(in).getValue.toDouble
     val paramString=Expression.read(in).getValue.toString
     val pos=Expression.read(in).getValue.toVector
-    InstanceData.readOwners(in)
+    InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean    
     new SymbolElem(ref,color,stampRef,angle,scale,pos,paramString)
@@ -1047,7 +1047,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
     val code=Expression.read(in).getValue.toInt
     val num1=Expression.read(in).getValue.toDouble
     val num2=Expression.read(in).getValue.toDouble
-    InstanceData.readOwners(in)
+    InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     SymbolFiller(ref, color, stampRef, angle, scale, paramString, start, end, code, num1, num2)
@@ -1063,7 +1063,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val angle=Expression.read(in).getValue.toDouble
 		val cscale=Expression.read(in).getValue.toDouble
 		val pos=Expression.read(in).getValue.toVector
-		InstanceData.readOwners(in)
+		InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
     BitmapElem(ref, color, fileName, dpi, scale, angle, cscale, pos)
@@ -1083,7 +1083,7 @@ object GraphElemConst {
   val HITY: Byte = 2
   val HITBOTH: Byte = 3
 
-  def refPointSize: Float = 10f * ViewConstants.fontScale / 100f
+  def refPointSize: Float = 10f * fontScale / 100f
 
   val PIHalf: Double = Math.PI / 2d
 	val ignoreEllipseAngleTreshold=0.0001d

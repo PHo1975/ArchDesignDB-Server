@@ -6,9 +6,10 @@ package client.graphicsView
 import java.awt.Color
 import java.awt.datatransfer.Transferable
 
-import client.dataviewer.{InstanceSelection, OnMoveHandler, ViewConstants}
+import client.dataviewer.{InstanceSelection, OnMoveHandler}
 import client.dialog._
 import client.icons.IconManager
+import client.ui.ViewConstants
 import javax.swing.table.TableColumnModel
 import javax.swing.{ImageIcon, JTable, TransferHandler}
 

@@ -5,8 +5,9 @@ import java.awt.font.FontRenderContext
 import java.awt.{Color, Dimension, Font, Point, Toolkit}
 
 import client.comm.{ClientQueryManager, SingleObjectDataModel, SubscriptionFactory}
-import client.dataviewer.{DataViewController, LabelRenderer, MultilineEditor, ViewConstants}
+import client.dataviewer.{DataViewController, LabelRenderer, MultilineEditor}
 import client.dialog._
+import client.ui.ViewConstants
 import definition.data._
 import definition.expression._
 import definition.typ.{CustomInstanceEditor, DataType, SelectGroup, SystemSettings}

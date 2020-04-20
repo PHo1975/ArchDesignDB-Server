@@ -8,6 +8,7 @@ import java.awt.event.InputEvent
 
 import client.comm._
 import client.dialog.{CreateActionList, CreateActionMenuButton, CreateMenuButton, DialogManager}
+import client.ui.ViewConstants
 import definition.comm._
 import definition.data._
 import definition.typ._

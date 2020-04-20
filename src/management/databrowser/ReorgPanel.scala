@@ -1,6 +1,7 @@
 package management.databrowser
 
-import client.dataviewer.ViewConstants
+
+import client.ui.ViewConstants
 import definition.data.{OwnerReference, Reference}
 import javax.swing.SwingWorker
 import server.storage.StorageManager
@@ -58,9 +59,9 @@ class ReorgPanel extends BoxPanel(Orientation.Vertical){
     fileProgressBar.min=1
     fileProgressBar.value=1
     
-    buttonPanel.contents.foreach(_.enabled=false)
+    //buttonPanel.contents.foreach(_.enabled=false)
     textField.text=" - processing - "
-    MainWindow.accordion.visible=false
+    //MainWindow.accordion.visible=false
     val worker=new SwingWorker[Boolean,(Int,String)]{        
         override def doInBackground():Boolean = {
         	loopFunc((a,b)=>{   publish((a,b)) 	}) match {
@@ -77,9 +78,9 @@ class ReorgPanel extends BoxPanel(Orientation.Vertical){
         } 
         override def done(): Unit = {
           fileTextField.text="- Done -"
-          buttonPanel.contents.foreach(_.enabled=true)
+          //buttonPanel.contents.foreach(_.enabled=true)
           textField.text=""    
-          MainWindow.accordion.visible=true  
+          //MainWindow.accordion.visible=true
         }
     }
     worker.execute()  

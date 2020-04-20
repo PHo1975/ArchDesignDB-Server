@@ -5,11 +5,12 @@ package client.model
 
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.{DataViewController, ViewConstants}
+import client.dataviewer.DataViewController
+import client.ui.ViewConstants
 import definition.data._
 
-import scala.swing.{ListView, _}
 import scala.swing.event._
+import scala.swing.{ListView, _}
 
 
 

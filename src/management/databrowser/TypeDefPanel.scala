@@ -6,8 +6,9 @@ package management.databrowser
 import java.awt.event.MouseWheelListener
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
+import client.dataviewer.{FieldColumnModel, MultilineEditor}
 import client.dialog.{ComboBoxEditor, ReactiveTextField}
+import client.ui.ViewConstants
 import definition.typ._
 import javax.swing._
 import javax.swing.border._

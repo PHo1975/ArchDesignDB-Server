@@ -89,9 +89,9 @@ object GraphElemModule{
   val wrongExtendTreshold=10000d
   val nearNullTreshold=0.00001d
 
-  def singlePointQuestion(qname: String, pname: String) = Some(DialogQuestion(qname, Seq(new AnswerDefinition(pname, DataType.VectorTyp, None))))
+  def singlePointQuestion(qname: String, pname: String): Option[DialogQuestion] = Some(DialogQuestion(qname, Seq(new AnswerDefinition(pname, DataType.VectorTyp, None))))
 
-  def mvQuestion(aName: String,strict:Boolean=true) = Some(DialogQuestion(aName + "<br>Distanz angeben",
+  def mvQuestion(aName: String,strict:Boolean=true): Option[DialogQuestion] = Some(DialogQuestion(aName + "<br>Distanz angeben",
     Seq(new AnswerDefinition("'von Punkt' angeben", DataType.VectorTyp,
       Some(DialogQuestion(aName + "<br>Distanz",
         Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None,if (strict) "" else AnswerPanelsData.NOSTRICT_HIT)))),
@@ -100,7 +100,7 @@ object GraphElemModule{
     )))
 
 
-  lazy val dyQuestion = Some(DialogQuestion("Eingabe Distanzwert",
+  lazy val dyQuestion: Option[DialogQuestion] = Some(DialogQuestion("Eingabe Distanzwert",
     Seq(new AnswerDefinition("delta Y eingeben:", DataType.DoubleTyp, None))))
 
   def checkAngle(angle: Double): Double = if (angle == 360) 360d else angle % 360d
@@ -119,7 +119,7 @@ object GraphElemModule{
 	    if(v<0) v+360d else v
 	  }
 
-  def cutPointQuestion = Some(DialogQuestion("Point1", Seq(new AnswerDefinition("hitpoint1", DataType.VectorTyp,
+  def cutPointQuestion: Option[DialogQuestion] = Some(DialogQuestion("Point1", Seq(new AnswerDefinition("hitpoint1", DataType.VectorTyp,
     Some(DialogQuestion("Point2", Seq(new AnswerDefinition("hitpoint2", DataType.VectorTyp, None)), repeat = false)))), repeat = false))
 
   private def createPointList(params: Seq[(String, Constant)]): Seq[VectorConstant] = {
@@ -737,7 +737,7 @@ class LineModule extends ActionModule with GraphActionModule {
               lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
           }
 
-	      case o => throw new IllegalArgumentException("Wrong parameter "+o+" "+o.getClass.getName)
+	      case o => throw new IllegalArgumentException("Wrong parameter "+o+" "+o._2.getClass.getName)
 	    }
 	    makeLine(parents,lastPoint,nextPoint,formFields)
 	    lastPoint=nextPoint
@@ -1407,15 +1407,18 @@ class PolygonModule extends ActionModule with GraphActionModule {
   def addQuestion(): DialogQuestion = DialogQuestion("Polygonfläche hinzufügen", Seq(new AnswerDefinition("anderes Polygon wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.polyElemType.toString)))
 
-  def addAction(): ActionIterator = new ActionIterator("Hinzufügen", Some(addQuestion()), doTrans(_.add(_)))
+  def addAction(): ActionIterator = new ActionIterator("Hinzufügen", Some(addQuestion()), doTrans(_.add(_),deleteOther = true))
 
-  def doTrans(func: (Polygon, Polygon) => Polygon)(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
-    val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
+  def doTrans(func: (Polygon, Polygon) => Polygon,deleteOther:Boolean=false)(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
+    val otherReference = param.head._2.toObjectReference
+    val otherPoly=StorageManager.getInstanceData(otherReference).fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(3).toPolygon.createCopy().asInstanceOf[Polygon]
       val newPoly = func(oldPoly, otherPoly)
       TransactionManager.tryWriteInstanceField(inst.ref, 3, newPoly)
     }
+    if(deleteOther)
+      TransactionManager.tryDeleteInstance(otherReference,None,None)
     true
   }
 
@@ -1617,7 +1620,7 @@ class AreaPolygonModule extends PolygonModule {
   override def addQuestion(): DialogQuestion = DialogQuestion("Fläche hinzufügen", Seq(new AnswerDefinition("andere Fläche wählen", DataType.ObjectRefTyp,
     None, "F" + TypeInfos.areaPolyElemType.toString + "," + TypeInfos.wohnflaechenElementType.toString)))
   
-  override def doTrans(func:(Polygon,Polygon)=>Polygon)(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean= {
+  override def doTrans(func:(Polygon,Polygon)=>Polygon,deleteOther:Boolean=false)(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean= {
     val otherPoly=StorageManager.getInstanceData(param.head._2.toObjectReference).fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]
     for(inst <-data) {
       val oldPoly=inst.fieldValue(4).toPolygon.createCopy().asInstanceOf[Polygon]

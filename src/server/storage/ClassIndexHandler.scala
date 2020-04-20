@@ -7,7 +7,6 @@ import java.io._
 
 import definition.data.{InstanceData, Reference, TransType}
 import server.config.FSPaths
-import util.UnsyncBAInputStream
 
 import scala.collection.immutable
 
@@ -32,55 +31,6 @@ object ClassIndexHandlerStaticData extends InstanceHandlerStaticData {
 	}
 }
 
-
-abstract class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
-	val appendInBuffer: Array[Byte] = Array.fill[Byte](nrecordSize * nappendBufferSize)(0.toByte)
-	val appendInStream = new UnsyncBAInputStream(appendInBuffer)
-	val appendDataIn = new DataInputStream(appendInStream)
-	val appendOutStream = new MyByteStream(nrecordSize * nappendBufferSize)
-	val appendDataOut = new DataOutputStream(appendOutStream)
-
-	def readTail():Unit
-	def writeTail():Unit
-
-	/**  writes one record and adds appendBufferSize number of records at the end of the file so the file is only increased 1 in appendBufferSize times.
-	* @param b record data
-*/
-	def addTail(theFile: RandomAccessFile, b: Array[Byte]): Unit = {
-		//println("add Tail ")
-		theFile.seek(theFile.length)
-		appendOutStream.reset()
-		appendOutStream.write(b, 0, nrecordSize)
-		for (_ <- 0 until nappendBufferSize - 1) {
-			writeTail()
-		}
-		theFile.write(appendOutStream.buffer, 0, appendOutStream.buffer.length)
-	}
-
-	/** Reads the end of an indexFile and tries to find out how many free record lines are left in the end.
-	* @param theFile indexFile
-  *
-	*/
-	def readTailSpace(theFile: RandomAccessFile): Int = {
-		if (theFile.length() >= nrecordSize * nappendBufferSize) {
-			theFile.seek(theFile.length() - nrecordSize * nappendBufferSize)
-			theFile.read(appendInBuffer)
-			appendInStream.reset()
-			var line = -1
-			for (i <- 0 until nappendBufferSize; if line == -1) {
-				val inst = appendDataIn.readInt
-				if (inst == -1 || inst == 0) line = i
-				readTail()
-			}
-			if (line == -1) 0
-			else if (line < nappendBufferSize) {
-				//println("TailSpace line:"+line)
-				nappendBufferSize - line
-			}
-			else throw new IllegalArgumentException("Wrong tail number " + line)
-		} else 0
-	}
-}
 
 /** Manages the index file for a certain class
  * 
@@ -163,12 +113,11 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 														ixOffset: Int): Unit = { // Offset position in the index record
 		if (inst > lastID) // create new Instance
 			throw new IllegalArgumentException("Storing wrong instance" + inst + " in class " + theClass.name)
-
-		theFile.seek(findIxRecord(inst) * staticData.recordSize + 4 + ixOffset)
-		resetLastReadID()
 		miniwriteBufferStream.reset()
 		miniOutStream.writeLong(dataPos)
 		miniOutStream.writeInt(dataLength)
+		theFile.seek(findIxRecord(inst) * staticData.recordSize + 4 + ixOffset)
+		resetLastReadID()
 		theFile.write(miniwriteBufferStream.buffer, 0, 12)
 	}
 
@@ -194,6 +143,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 
 	def foreachInstance(listener: RecordListener): Unit = {
 		theFile.seek(0)
+		println(" num:"+numRecords)
 		for (_ <- 0 until numRecords - tailSpace) {
 			theFile.read(readBuffer, 0, staticData.recordSize)
 			inBufferStream.reset()

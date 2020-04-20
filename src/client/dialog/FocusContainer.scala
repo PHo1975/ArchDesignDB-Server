@@ -50,7 +50,8 @@ trait FocusContainer {
   def onCreatedDataReceived(func: () => Unit): Unit = onCreatedDataReceived = Some(func)
 
   protected def createdDataReceived(): Unit = {
-    for (listener<-onCreatedDataReceived) listener()
+    for (listener<-onCreatedDataReceived)
+      listener()
     resetCreateAction()
     }
 

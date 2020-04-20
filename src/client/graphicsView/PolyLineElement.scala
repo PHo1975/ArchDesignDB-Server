@@ -79,10 +79,8 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
   }
 
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
-    val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm) _
-    //println("draw path "+createPoints(trans).mkString(" "))
+    val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm)
     val path = createPath(createPoints(trans))
-    //println("draw path :"+path.getBounds)
     val theArea = new Area(path)
     g.setPaint(StyleService.getAlphaColor(if (selectColor != null) selectColor.getRGB else color))
     g.fill(theArea)

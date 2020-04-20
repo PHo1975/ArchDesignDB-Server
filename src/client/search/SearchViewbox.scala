@@ -3,10 +3,11 @@ package client.search
 import java.awt.Dimension
 
 import client.comm.ClientQueryManager
-import client.dataviewer.{DataViewController, ViewConstants}
+import client.dataviewer.DataViewController
 import client.dialog._
 import client.layout.Viewbox
 import client.model.{AbstractTableViewbox, AdaptedScroller, PathController, PathModel}
+import client.ui.ViewConstants
 import definition.comm.{PropertyGroup, StringValue}
 import definition.data.{EMPTY_REFERENCE, InstanceData, Referencable, Reference}
 import definition.typ.SelectGroup

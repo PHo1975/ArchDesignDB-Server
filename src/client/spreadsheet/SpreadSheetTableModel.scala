@@ -1,9 +1,8 @@
 package client.spreadsheet
 
 import client.comm._
-import client.dataviewer.ViewConstants
 import client.dialog.Toast
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import definition.comm.NotificationType
 import definition.data.{EMPTY_OWNERREF, InstanceData, Reference, ResultElement}
 import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}

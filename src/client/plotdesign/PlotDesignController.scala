@@ -48,6 +48,8 @@ class PlotDesignController(editor:PlotDesignEditor) extends AbstractViewControll
   var dropLayers:Seq[DropInfo]=Nil // dropped Layers
   var dropRefs:Seq[Reference]=Nil
   var dropMousePos:Option[Point]=None
+
+	override def allowForcePrecision: Boolean = false
   
   canvas.peer.setTransferHandler(canvasTransferHandler)
   canvas.peer.addComponentListener(new ComponentAdapter(){

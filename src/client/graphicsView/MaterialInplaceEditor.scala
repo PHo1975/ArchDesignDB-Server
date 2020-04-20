@@ -3,8 +3,9 @@ package client.graphicsView
 
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.{InstanceRenderer, ViewConstants}
+import client.dataviewer.InstanceRenderer
 import client.dialog.InplaceFieldEditor
+import client.ui.ViewConstants
 import definition.expression.{Constant, Expression}
 import javax.swing.{DefaultCellEditor, JComboBox, JTable}
 import util.MyComboBox

@@ -7,8 +7,9 @@ import java.awt.Color
 import java.awt.geom.{Area, Rectangle2D}
 
 import client.comm.KeyStrokeManager
-import client.dataviewer.{TitlePopupMenu, ViewConstants}
+import client.dataviewer.TitlePopupMenu
 import client.dialog.{AbstractPanelButton, DialogManager}
+import client.ui.ViewConstants
 import definition.data.{ResultElement, StyleService}
 import definition.expression.{PointList, Polygon, VectorConstant}
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}

@@ -2,7 +2,7 @@ package management.databrowser.stat
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import management.databrowser.MainWindow
 
 import scala.swing.event.ButtonClicked

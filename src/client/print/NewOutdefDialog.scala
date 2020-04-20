@@ -8,8 +8,9 @@ import java.awt.event.{WindowAdapter, WindowEvent}
 import java.awt.{Color, Dimension}
 
 import client.comm.ClientQueryManager
-import client.dataviewer.{FieldColumnModel, MultilineEditor, ViewConstants}
+import client.dataviewer.{FieldColumnModel, MultilineEditor}
 import client.dialog.DialogManager
+import client.ui.ViewConstants
 import definition.data.{FormDescription, OutputDefinition, ResultElement}
 import definition.expression._
 import javax.print.attribute.standard.{Media, MediaSizeName, MediaTray, OrientationRequested}

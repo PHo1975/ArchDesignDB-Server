@@ -9,7 +9,7 @@ import client.comm.ClientQueryManager
 import client.dataviewer._
 import client.graphicsView.AbstractSelectModel
 import client.print.PrintQuestionHandler
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import definition.data._
 import definition.expression.Constant
 import definition.typ._

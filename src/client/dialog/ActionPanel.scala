@@ -4,10 +4,11 @@
 package client.dialog
 
 import client.comm.{ClientObjectClass, KeyStrokeManager}
-import client.dataviewer.{TitlePopupMenu, ViewConstants}
+import client.dataviewer.TitlePopupMenu
+import client.ui.ViewConstants
 import definition.data.Referencable
 import definition.typ.{ActionDescription, AllClasses, SelectGroup}
-import javax.swing.BorderFactory
+import javax.swing.{BorderFactory, JOptionPane}
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{AbstractButton, BoxPanel, Component, Insets, MenuItem, Point, Swing}
@@ -116,9 +117,27 @@ object ActionPanel extends BoxPanel(scala.swing.Orientation.Vertical) with Selec
   def restoreButtonBindings():Unit= for(b<-buttons) KeyStrokeManager.registerReceiver(b)
 
   reactions += {
-    case ButtonClicked(but:ActionStrokeButton) => if(groupList!=null)
-      DialogManager.startActionDialog(but.theAction, groupList)
+    case ButtonClicked(but:ActionStrokeButton) => if(groupList!=null) {
+      //println("Button clicked " + but.theAction.buttonID + " " + but.theAction.name)
+      checkAndExecute(but)
+      //DialogManager.startActionDialog(but.theAction, groupList)
+    }
     case ButtonClicked(but: CustomStrokeButton) => but.callBack()
+  }
+
+  protected def checkAndExecute(asb:ActionStrokeButton): Unit = if(groupList!=null){
+    if(asb.theAction.buttonID==1000&&asb.theAction.name=="Objekt Löschen"){
+      if(groupList.exists(gr=> gr.children.exists(ch=> ch.ref.typ match {
+        case 39=>true
+        case 110 => true
+        case 202 => true
+        case _=> false
+      }))) {
+        if (JOptionPane.showConfirmDialog(this.peer,"Wollen Sie das Objekt wirklich löschen?","Objekt Löschen",JOptionPane.OK_CANCEL_OPTION)== JOptionPane.OK_OPTION)
+          DialogManager.startActionDialog(asb.theAction, groupList)
+      } else DialogManager.startActionDialog(asb.theAction, groupList)
+    }
+    else DialogManager.startActionDialog(asb.theAction, groupList)
   }
 
   // ******* Support for right click menu
@@ -140,8 +159,7 @@ object ActionPanel extends BoxPanel(scala.swing.Orientation.Vertical) with Selec
     popup.show(component.peer, point.x, point.y)
     popup.listenTo(menuItems: _*)
     popup.reactions += {
-      case ButtonClicked(but: ActionMenuItem) => if (groupList != null)
-        DialogManager.startActionDialog(but.ob.theAction, groupList)
+      case ButtonClicked(but: ActionMenuItem) => checkAndExecute(but.ob)
       case ButtonClicked(but: CustomMenuItem) => but.ob.callBack()
     }
   }

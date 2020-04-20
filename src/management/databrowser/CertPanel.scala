@@ -6,7 +6,7 @@ import java.net.URL
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import java.security.{KeyPair, KeyStore}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import javax.swing.JOptionPane
 import org.shredzone.acme4j
 import org.shredzone.acme4j.challenge.{Challenge, Http01Challenge}

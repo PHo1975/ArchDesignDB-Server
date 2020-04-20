@@ -7,7 +7,7 @@ import java.awt.Color
 import java.awt.print.{PageFormat, Paper}
 import java.io.{ByteArrayInputStream, DataInputStream}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.data.{FontStyleList, InstanceData, PageData, RenderContext}
 import definition.expression.{BlobConstant, DateConstant}
 import javax.swing.BorderFactory

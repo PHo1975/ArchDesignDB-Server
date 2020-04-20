@@ -5,7 +5,7 @@ package management.databrowser
 import java.awt.event.{MouseAdapter, WindowAdapter}
 import java.awt.{Image, SystemTray, Toolkit, TrayIcon}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import com.sun.jna.{Native, NativeLong, WString}
 import definition.typ.AllClasses
 import javax.swing.table.{DefaultTableModel, TableRowSorter}
@@ -55,7 +55,7 @@ object MainWindow extends SimpleSwingApplication {
   var testWS= false
 
   lazy val reorgPanel = new ReorgPanel
-  val manButSize=new Dimension(160,35)
+  val manButSize=new Dimension(240,35)
   val buttonSize=new Dimension(Short.MaxValue,30)
   lazy val backupDialog=new BackupDialog(top)
   var debug=false
@@ -156,6 +156,7 @@ object MainWindow extends SimpleSwingApplication {
   val managementPanel:BoxPanel = new BoxPanel(Orientation.Vertical) {
     val manButPanel: BoxPanel =new BoxPanel(Orientation.Vertical) {
       this.xLayoutAlignment=0.5f
+
       val backupBut: Button = createBut("Backup")
       val shutDownBut: Button = createBut("ShutDown")
       val showTransBut: Button = createBut("TransLog")

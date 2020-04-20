@@ -55,7 +55,7 @@ object ActionList extends DataRetriever {
 
 
   def commitAllData(): Unit = {
-    //System.out.println("commit:"+theList.mkString("|"))
+    System.out.println("commit: "+theList.mkString("\n  "))
     var hasMoveOrCopy:Boolean=false
     _bufferUpdates=true
     try {
@@ -125,12 +125,15 @@ object ActionList extends DataRetriever {
               CommonSubscriptionHandler.instanceDeleted(owner,inst.ref)
             for(owner <-inst.secondUseOwners)
               CommonSubscriptionHandler.instanceDeleted(owner,inst.ref)
-          case CreateBlock(ref, data) =>
-          StorageManager.writeBlock(new BlockData(ref,data),created = true)
-          case ChangeBlock(ref, data)=>
-          StorageManager.writeBlock(new BlockData(ref,data),created = false)
-          case DeleteBlock(ref)=>
-          StorageManager.deleteBlockInstance(ref.typ,ref.instance)
+          case CreateBlock(owner,ref, data) =>
+            StorageManager.writeBlock(new BlockData(ref,data),created = true)
+            CommonSubscriptionHandler.blockCreated(owner,new BlockData(ref,data))
+          case ChangeBlock(owner,ref, data)=>
+            StorageManager.writeBlock(new BlockData(ref,data),created = false)
+            CommonSubscriptionHandler.blockChanged(owner,new BlockData(ref,data))
+          case DeleteBlock(owner,ref)=>
+            StorageManager.deleteBlockInstance(ref.typ,ref.instance)
+            CommonSubscriptionHandler.blockDeleted(owner,ref)
       }
       // notify property changes for move and copy
       if(hasMoveOrCopy ) {
@@ -185,7 +188,7 @@ object ActionList extends DataRetriever {
         case a:DeleteAction => // drop the new action when the instance should already be deleted
 
         case _:CreateBlock=> newRec match {
-          case x:ChangeBlock=> theList+= (ref -> CreateBlock(x.ref,x.data))
+          case x:ChangeBlock=> theList+= (ref -> CreateBlock(x.owner,x.ref,x.data))
           case w=> throw new IllegalArgumentException("wrong Action type: "+w)
         }
         case _:ChangeBlock=> newRec match {

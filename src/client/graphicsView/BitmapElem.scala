@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 import java.awt.{AlphaComposite, Color, Graphics2D}
 import java.io.File
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.data.Reference
 import definition.expression._
 import javax.imageio.ImageIO

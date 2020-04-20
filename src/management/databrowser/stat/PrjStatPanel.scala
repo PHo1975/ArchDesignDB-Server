@@ -2,7 +2,8 @@ package management.databrowser.stat
 
 import java.awt.Color
 
-import client.dataviewer.{FieldColumnModel, ViewConstants}
+import client.dataviewer.FieldColumnModel
+import client.ui.ViewConstants
 import javax.swing.JTable
 
 import scala.swing.{BorderPanel, BoxPanel, Label, Orientation, ScrollPane, Table}
@@ -16,7 +17,7 @@ class PrjStatPanel extends BorderPanel {
       createColumn(3,"Aktivität",700)
   }
   val stModel=new ProjectDataTableModel
-  val renderer=new StatRenderer
+  val renderer=new StatisticsRenderer
   
   val statTable: Table =new Table{
      selection.intervalMode=Table.IntervalMode.Single

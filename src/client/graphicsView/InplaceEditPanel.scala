@@ -2,8 +2,8 @@ package client.graphicsView
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
 import client.dialog.AbstractViewController
+import client.ui.ViewConstants
 import javafx.application.Platform
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.embed.swing.JFXPanel

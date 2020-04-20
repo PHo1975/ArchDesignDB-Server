@@ -7,7 +7,7 @@ package client.layout
 import java.awt.Color
 import java.awt.event.InputEvent
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.comm.PropertyGroup
 
 import scala.swing._

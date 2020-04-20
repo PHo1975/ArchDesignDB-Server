@@ -2,9 +2,9 @@ package client.dialog.symbolbrowser
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
 import client.dialog._
 import client.graphicsView.symbol.{SymbolElem, SymbolFiller, SymbolOrient}
+import client.ui.ViewConstants
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, ButtonGroup, CheckBox, Label, Orientation, RadioButton, Swing}

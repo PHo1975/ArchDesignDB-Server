@@ -3,7 +3,7 @@
  */
 package client.dataviewer.sidePanel
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.{Expression, ParserError, StringConstant, StringParser}

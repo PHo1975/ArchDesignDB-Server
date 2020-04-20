@@ -6,9 +6,10 @@ package client.dataviewer.sidePanel
 import java.awt.event.{MouseAdapter, MouseEvent}
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.{MultilineEditor, TypeTableModel, ViewConstants}
+import client.dataviewer.{MultilineEditor, TypeTableModel}
 import client.dialog.{FocusContainer, SelectEventDispatcher, SelectSender}
 import client.icons.IconManager
+import client.ui.ViewConstants
 import definition.data.{EMPTY_OWNERREF, OwnerReference, Reference}
 import definition.expression.Expression
 import definition.typ._

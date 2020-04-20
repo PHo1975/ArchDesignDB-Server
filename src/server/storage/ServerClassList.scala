@@ -13,8 +13,8 @@ import scala.xml.{Elem, Node}
 class ServerClassList (node: scala.xml.Node) extends AllClasses [ServerObjectClass] {
 	var classList:Map[Int,ServerObjectClass]=classListfromXML(node)
 	var blockClassList:Map[Int,BlockClass]=blockClassListfromXML(node)
-  def addClass(cl:ServerObjectClass): Unit = classList += (cl.id -> cl)
-	def addBlockClass(bl:BlockClass):Unit= blockClassList+=(bl.id->bl )
+  def addClass(cl:ServerObjectClass): Unit = classList =classList+ (cl.id -> cl)
+	def addBlockClass(bl:BlockClass):Unit= blockClassList= blockClassList+(bl.id->bl )
 	
 	def classListfromXML(node: scala.xml.Node):Map[Int,ServerObjectClass]=
   	if(node==null) Map[Int,ServerObjectClass]()
@@ -39,7 +39,7 @@ class ServerClassList (node: scala.xml.Node) extends AllClasses [ServerObjectCla
 	def saveToXML(): Node =  {
 		scala.xml.Utility.trim(
 			<all>
-				<ClassList> {for (c<-classList.valuesIterator) yield c.toXML  }  </ClassList>
+				<ClassList> {for (c<-classList.valuesIterator) yield c.saveToXML()  }  </ClassList>
 				<BlockClassList>{for(b<-blockClassList.valuesIterator) yield b.toXML} </BlockClassList>
 			</all>
 		)

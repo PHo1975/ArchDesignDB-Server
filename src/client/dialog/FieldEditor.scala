@@ -6,8 +6,7 @@ package client.dialog
 import java.awt.Dimension
 
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import definition.data._
 import definition.expression._
 import definition.typ.{AllClasses, DataType, SelectGroup}

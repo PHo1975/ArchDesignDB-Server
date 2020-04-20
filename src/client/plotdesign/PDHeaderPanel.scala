@@ -2,10 +2,9 @@ package client.plotdesign
 
 import java.awt.{Color, Insets}
 
-import client.dataviewer.ViewConstants
 import client.graphicsView.ScalePanel
 import client.print.{MediaSizeWrapper, MediaTrayWrapper, PrintOutDialog}
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import javax.print.attribute.standard.{MediaSizeName, MediaTray}
 import javax.swing.BorderFactory
 import util.MyComboBox

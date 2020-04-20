@@ -41,7 +41,7 @@ object CreateActionList extends Reactor  {
   }
 
   def containerFocused(container:FocusContainer, propField:Int):Unit = {
-    //println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.containerRef+" propfield:"+propField)
+    println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.ownerRef+" propfield:"+propField)
     val cont=Some(container)
     val newContRef=container.ownerRef.map(_.ref)
   	if(!(cont==lastContainer&&newContRef==lastOwnerRef&&propField==lastPropField)) {
@@ -53,9 +53,12 @@ object CreateActionList extends Reactor  {
         case Some(contRef) =>
           val theClass = AllClasses.get.getClassByID(contRef.ref.typ).asInstanceOf[ClientObjectClass]
           if (theClass.propFields.size > propField) {
+
             //buttonList=theClass.createMenuItems(propField).filter(_.ccd.editorName==container.containerName)
             //listenTo(buttonList:_*)
+            //println("Container "+container.containerName+ " pr:"+propField)
             actionButtons = theClass.actionCreateMenuItems(propField).filter(_.ccd.editorName == container.containerName)
+            //println("Buttons "+theClass.name+" "+theClass.actionCreateMenuItems(propField).size+" : "+actionButtons.mkString(","))
             listenTo(actionButtons: _*)
             registerActionButtons()
           } else util.Log.e("wrong propField " + propField + " for class " + theClass)

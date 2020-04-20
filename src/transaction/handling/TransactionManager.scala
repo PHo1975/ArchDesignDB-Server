@@ -187,15 +187,15 @@ object TransactionManager {
 		else {
 			val inst = StorageManager.createBlockInstance(typ)
 			val ref = new Reference(typ, inst)
-			ActionList.addTransactionData(ref, CreateBlock(ref, data))
+			ActionList.addTransactionData(ref, CreateBlock(owner,ref, data))
 			internAddPropertyToOwner(ref, owner, -1)
 			inst
 		}
 	}
 
 
-	def tryWriteBlock(ref:Reference,data:Array[Byte]): Unit ={
-		ActionList.addTransactionData(ref,ChangeBlock(ref,data))
+	def tryWriteBlock(owner:OwnerReference,ref:Reference,data:Array[Byte]): Unit ={
+		ActionList.addTransactionData(ref,ChangeBlock(owner,ref,data))
 	}
 
 
@@ -888,7 +888,7 @@ object TransactionManager {
 	}
 
 	def tryDeleteBlock(ref:Reference,owner:OwnerReference):Unit= {
-    ActionList.addTransactionData(ref,DeleteBlock(ref))
+    ActionList.addTransactionData(ref,DeleteBlock(owner,ref))
 		internRemovePropertyFromOwner(ref,owner)
 	}
 	
@@ -1152,7 +1152,7 @@ object TransactionManager {
 						val bd=StorageManager.getBlockData(childRef)
 						val inst = StorageManager.createBlockInstance(childRef.typ)
 						val ref = new Reference(childRef.typ, inst)
-						ActionList.addTransactionData(ref, CreateBlock(ref, bd.data))
+						ActionList.addTransactionData(ref, CreateBlock(newOwnerRef,ref, bd.data))
 						internAddPropertyToOwner(ref, newOwnerRef, -1)
 					}
 				}

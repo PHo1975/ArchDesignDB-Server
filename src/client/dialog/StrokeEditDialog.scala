@@ -3,7 +3,7 @@ package client.dialog
 import java.awt.Dimension
 
 import client.comm.{ClientQueryManager, KeyStrokeManager}
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import javax.swing.KeyStroke
 import javax.swing.table.AbstractTableModel
 
@@ -60,13 +60,13 @@ class StrokeEditDialog (w:Window) extends Dialog(w) {
   val groupListView=new ListView[String]()  
   val comModel=new CommandModel
   var keyListenReady=false
-  val commandTable=new Table {
+  val commandTable: Table =new Table {
     model=comModel  
     autoResizeMode=Table.AutoResizeMode.LastColumn		
 		selection.elementMode=Table.ElementMode.None
   }
   
-  val mainPanel=new BorderPanel {
+  val mainPanel: BorderPanel =new BorderPanel {
     add(new BoxPanel(Orientation.Horizontal){
       contents+=new BorderPanel{
         add(new ScrollPane(groupListView),BorderPanel.Position.Center)

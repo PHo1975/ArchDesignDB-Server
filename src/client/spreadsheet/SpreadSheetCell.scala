@@ -48,7 +48,7 @@ object SpreadSheetCell {
        val col = Expression.read(in).getValue.toInt
        val row = Expression.read(in).getValue.toInt
        val exp = Expression.read(in)
-       InstanceData.readOwners(in)
+       InstanceData.readOwners(in,ref)
        InstanceData.readSecondUseOwners(in)
        in.readBoolean
        new SpreadSheetCell(row, col, ref, exp, ref.typ match {

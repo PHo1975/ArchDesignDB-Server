@@ -132,12 +132,12 @@ class ClassSubscriptionHandler(typID:Int) {
 		}
 	}
 
-	def blockDeleted(owner:OwnerReference,id:Int):Unit = {
+	def blockDeleted(owner:OwnerReference, blockRef:Reference):Unit = {
 		if(blockSubsMap.contains(owner.ownerRef)) { // a parent ref of a subscription is deleted
 			val list=blockSubsMap(owner.ownerRef)
 			for(subs <-list)
 				if(subs.propField==owner.ownerField)
-				  subs.connectionEntry.queryHandler.notifyBlockDeleted(subs,id)
+				  subs.connectionEntry.queryHandler.notifyBlockDeleted(subs,blockRef)
 		}
 	}
 

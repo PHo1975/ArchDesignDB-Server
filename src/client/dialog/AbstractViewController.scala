@@ -6,8 +6,8 @@ package client.dialog
 import java.awt.geom.Rectangle2D
 import java.awt.{Graphics2D, Point}
 
-import client.dataviewer.ViewConstants
 import client.graphicsView.{ObjectSelectMode, ViewportState, _}
+import client.ui.ViewConstants
 import definition.expression.{Constant, VectorConstant}
 import definition.typ.AllClasses
 import util.Log
@@ -50,6 +50,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   var lastHittedElementNr:Int= -1
   protected var tempObjectsToChoose:Seq[GraphElem]=Nil
   protected var _viewportState: ViewportState.Value =ViewportState.SelectState
+  def allowForcePrecision:Boolean=true
 
   def viewportState: ViewportState.Value = _viewportState
   var isZoomingIn=false
@@ -570,10 +571,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
         }
         case ViewportState.AskPoint =>
           lastHittedElements = Nil
-          if (pointListener != null && pointListener.forcePrecision) findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {
+          if (pointListener != null && pointListener.forcePrecision&& allowForcePrecision) findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {
             case Some(mPoint) => internSetPoint(mPoint)
             case None =>
-          } else internSetPoint(findMatchingPoint(clickPosX, clickPosY, middleButton))
+          }
+          else internSetPoint(findMatchingPoint(clickPosX, clickPosY, middleButton))
         case ViewportState.AskPointOrObject =>
           lastHittedElements = Nil
           findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {

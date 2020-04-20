@@ -2,11 +2,11 @@ package management.databrowser.stat
 
 import java.awt.{Color, Font, Graphics, Graphics2D}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import javax.swing.table.TableCellRenderer
 import javax.swing.{JComponent, JTable}
 
-class StatRenderer extends JComponent with TableCellRenderer {
+class StatisticsRenderer extends JComponent with TableCellRenderer {
   override def invalidate(): Unit = {}
 
   override def revalidate(): Unit = {}

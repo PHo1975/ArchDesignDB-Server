@@ -4,8 +4,7 @@ import java.awt.event.{MouseAdapter, MouseEvent}
 import java.awt.{Color, Point}
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
-import client.dataviewer.ViewConstants
-import client.ui.ClientApp
+import client.ui.{ClientApp, ViewConstants}
 import javax.swing.{BorderFactory, JComponent, SwingUtilities}
 
 import scala.swing.{BorderPanel, Component, Dialog, Label, Swing, Window}

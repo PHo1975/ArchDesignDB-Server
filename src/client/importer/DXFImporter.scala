@@ -128,7 +128,7 @@ class DXFImporter extends FileImportDescriptor {
 				createMissingLineStyles(set)
 				createMissingHatches(set)
 				ClientQueryManager.writeInstanceField(baseObject, 2.toByte, IntConstant(set.drawingScaleID))
-				//println("Import File:"+file)
+				println("Import File:"+file)
 				//val startTime=System.currentTimeMillis()
 				val reader = new BufferedReader(new FileReader(file))
 				val owner = Array(new OwnerReference(0, baseObject))
@@ -145,7 +145,7 @@ class DXFImporter extends FileImportDescriptor {
 				val SpecialMatch = "%%(\\d+)".r
 
 				val allowedLayers = {
-					val res = set.selectedLayers map (set.layers(_))
+					val res: Seq[String] = set.selectedLayers map (set.layers(_))
 					if (res.isEmpty) Seq("0") else res
 				}
 				System.out.println("AllowedLayers:" + allowedLayers.mkString(", "))
@@ -169,7 +169,7 @@ class DXFImporter extends FileImportDescriptor {
 				}
 
 				def getBuffer(layerName: String): CreateInstancesBuffer = bufferMap.getOrElseUpdate(layerName, {
-					//println("create buffer"+layerName)
+					println("create buffer"+layerName)
 					val newLayer = ClientQueryManager.createInstance(baseObject.typ, ownerOwner)
 					val newLayerRef = new Reference(baseObject.typ, newLayer)
 					ClientQueryManager.writeInstanceField(newLayerRef, 1, StringConstant(layerName.replace('_', ' ')))
@@ -177,9 +177,11 @@ class DXFImporter extends FileImportDescriptor {
 					new CreateInstancesBuffer(Array(new OwnerReference(0, newLayerRef)), 20)
 				})
 
-				def addElem(layerName: String, typ: Int, fields: Array[Expression]): Unit =
+				def addElem(layerName: String, typ: Int, fields: Array[Expression]): Unit = {
+					println("add "+layerName+" "+typ+" "+fields.mkString(","))
 					if (allowedLayers.contains(layerName))
 						getBuffer(layerName).addInstance(typ, fields)
+				}
 
 				try {
 					while (section != "ENTITIES") {

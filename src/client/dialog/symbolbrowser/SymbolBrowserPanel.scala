@@ -3,10 +3,10 @@ package client.dialog.symbolbrowser
 import java.awt.Dimension
 
 import client.comm.{ClientQueryManager, InstanceDataListModel, ListDataModel}
-import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
 import client.graphicsView.symbol.SymbolStamp
 import client.model._
+import client.ui.ViewConstants
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.{ObjectReference, StringConstant}
 import definition.typ.CustomPanel

@@ -3,7 +3,8 @@
  */
 package client.dialog
 
-import client.dataviewer.ViewConstants
+
+import client.ui.ViewConstants
 import definition.typ._
 
 import scala.collection.mutable.ArrayBuffer

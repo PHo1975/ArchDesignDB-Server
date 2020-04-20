@@ -4,12 +4,13 @@
 package client.dataviewer
 
 import java.awt.event.{InputEvent, KeyEvent}
-import java.awt.{Color, Dimension, Font, Insets}
+import java.awt.{Color, Dimension}
 
 import client.comm._
 import client.dataviewer.sidePanel.{ControllerContainer, SPControllerList, SidePanelController}
 import client.dialog.{ActionPanel, EditorFactory, Toast}
 import client.ui.ClientApp
+import client.ui.ViewConstants._
 import definition.data.{InstanceData, Reference}
 import definition.expression._
 import definition.typ.{AllClasses, DataType, EnumData}
@@ -38,7 +39,7 @@ class MySelectionModel extends javax.swing.DefaultListSelectionModel {
  * 
  */
 class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singleField:Boolean,showClassLabel:Boolean) extends AbstractTableModel with ControllerContainer {
-  import client.dataviewer.ViewConstants._
+
 
 	val objClass: ClientObjectClass = AllClasses.get.getClassByID(typ).asInstanceOf[ClientObjectClass]
 	var dataList:Seq[InstanceData]= Seq.empty	
@@ -77,7 +78,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				rowHeight=defaultRowHeight
 				font=tableFont
 				xLayoutAlignment=0d
-				this.peer.getTableHeader().setFont(ViewConstants.smallFont)
+				this.peer.getTableHeader().setFont(smallFont)
 				
 				reactions += {
 					case TableRowsSelected(tble,range,live) =>
@@ -413,7 +414,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 			//println("cl:"+classLabel.preferredSize.height+" th:"+table.peer.getTableHeader.size.height)
 			header.preferredSize=new Dimension(1,classLabel.preferredSize.height+table.peer.getTableHeader.getSize().height)
 			header.maximumSize=new Dimension(Short.MaxValue,classLabel.preferredSize.height+table.peer.getTableHeader.getSize().height)	
-			header.font=ViewConstants.smallFont
+			header.font=smallFont
 			contr.openPanel(propMod.mainController.ref, objClass,this)
 			propMod.mainController .activeSidePanelController =Some(contr)
 			//propMod.mainController .currentSidePanelControllerWasUsed =true
@@ -721,7 +722,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 
     override def config( isSelected: Boolean, focused: Boolean, a: String, row: Int): Unit = {
 			if(a==null) text="" else text=a
-			super.background = if (a == null) ViewConstants.leftPanelColor else if (clickedCol == 0 && clickedRow == row) Color.lightGray else buttonBackgroundColor
+			super.background = if (a == null) leftPanelColor else if (clickedCol == 0 && clickedRow == row) Color.lightGray else buttonBackgroundColor
   	  border=if(clickedCol==0&&clickedRow==row)loweredBorder else raisedBorder
 		}
 	}
@@ -739,13 +740,13 @@ class EnumRenderer extends Label {
   		else*/ Color.white
   	}
 
-	font = ViewConstants.tableFont
+	font = tableFont
   }
 
 
 class LabelRenderer extends Label {
 	override def revalidate(): Unit = {}
-  	super.background=ViewConstants.buttonBackgroundColor
+  	super.background=buttonBackgroundColor
   	super.foreground=Color.black
 
 	override def background_=(c: Color): Unit = {}
@@ -756,53 +757,3 @@ class LabelRenderer extends Label {
 	}
 
 
-object ViewConstants {
-	var defFont = new Font("Arial", 0, 16)
-  val nearWhite=new Color(254,254,254)
-	var defaultRowHeight: Int = 25
-	var tableFont = new Font("Arial", 0, 14)
-	var smallFont = new Font("Arial", 0, 12)
-	var tinyFont = new Font("Arial", 0, 10)
-	var tableTypeFont = new Font("Arial", Font.ITALIC, 11)
-	var labelFont = new Font("Arial", 0, 14)
-	var questionFont = new Font("Arial", 0, 15)
-	var errorFont = new Font("Arial", 1, 14)
-	val buttonBackgroundColor = new Color(214, 217, 223)
-	var lineCatchDistance = 6
-	var pointCatchDistance = 8
-	var dragTreshold = 8
-	var fontScale = 100
-	var polyLineTo= 1
-	var showToast=1
-	var showHitPoints=1
-	var antialias=1
-	var stopFX=0
-	var imagePath=""
-	var selectBorderWidth=1
-
-	def label(text: String = ""): Label = {
-		val res = new Label(text)
-		res.font = labelFont
-		res
-	}
-
-	val hoverColor: Color = Color.cyan.darker
-
-	val leftPanelColor = new Color(247, 247, 252)
-	val eitherColor = new Color(225, 225, 225)
-	lazy val sidePanelWidth: Int = 195 * ViewConstants.fontScale / 100
-
-	lazy val buttonDefaults: UIDefaults = {
-		val res = new UIDefaults()
-		res.put("Button.contentMargins", new Insets(6, 6, 6, 6))
-		res
-	}
-
-	lazy val toggleButtonDefaults: UIDefaults = {
-		val res = new UIDefaults()
-		res.put("ToggleButton.contentMargins", new Insets(7, 7, 7, 7))
-		res
-	}
-	lazy val buttonSize = new Dimension(sidePanelWidth - 10, 30)
-	lazy val minButtonSize = new Dimension(sidePanelWidth - 10 * ViewConstants.fontScale / 100, 40)
-}

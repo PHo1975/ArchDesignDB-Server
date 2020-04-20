@@ -3,7 +3,8 @@
  */
 package management.databrowser
 
-import client.dataviewer.ViewConstants
+
+import client.ui.ViewConstants
 import javax.swing.SwingWorker
 import server.storage.{TransDetailLogHandler, TransLogHandler}
 

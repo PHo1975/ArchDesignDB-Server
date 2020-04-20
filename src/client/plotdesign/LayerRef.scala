@@ -233,8 +233,9 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
     g.drawString(if(layerName==null) "Noname" else layerName,controller.scaleModel.xToScreen(p1.x+offset.x),controller.scaleModel.yToScreen(p1.y+offset.y))
     g.setTransform(oldTrans)
   }
+
   
-  def draw(g:Graphics2D):Unit = {
+  def draw(g:Graphics2D,selectColor:Color):Unit = {
     val oldClip=g.getClip
     drawFrame(g,NULLVECTOR)
 
@@ -247,9 +248,9 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
     val crossY=controller.scaleModel.yToScreen(yPos).toInt
     g.drawLine(crossX-20,crossY,crossX+20,crossY)
     g.drawLine(crossX,crossY-20,crossX,crossY+20)
-    g.setColor(Color.black)
-    
+
     if(bw>0d){
+      g.setColor(selectColor)
       val ps1x=controller.scaleModel.xToScreen(xToPaper(bx))
       val ps1y=controller.scaleModel.yToScreen(yToPaper(by))
       val ps2x=controller.scaleModel.xToScreen(xToPaper(bx)+(bw*scaleFactor).toFloat)
@@ -258,6 +259,8 @@ class LayerRef (val ref:Reference,val controller:PlotDesignController,var myData
     	g.draw(rect)
     	g.clip(rect)
     }
+
+    g.setColor(Color.black)
 
     for (el <-graphElemList) el match {
       case pel:PolyElement =>el.draw(g,RefScaler,null)

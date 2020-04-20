@@ -1,16 +1,16 @@
 package client.model.ava
 
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
 import client.dialog.{DialogManager, PanelPart}
+import client.ui.ViewConstants
 import definition.data.{InstanceData, Referencable, Reference}
 import definition.expression.{DoubleConstant, ObjectReference, StringConstant}
 import definition.typ.{AnswerDefinition, CustomPanel, DataType, SelectGroup}
 import util.StrToDouble
 
 import scala.swing.ListView.IntervalMode
-import scala.swing.{ListView, _}
 import scala.swing.event.ButtonClicked
+import scala.swing.{ListView, _}
 
 
 class BieterData (val psColData:InstanceData){

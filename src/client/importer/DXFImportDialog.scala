@@ -3,8 +3,8 @@ package client.importer
 import java.awt.{Dimension, Point, Rectangle}
 import java.io.File
 
-import client.dataviewer.ViewConstants
 import client.graphicsView._
+import client.ui.ViewConstants
 import definition.typ.SystemSettings
 import util.StrToDouble
 
@@ -59,7 +59,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   
   
   
-  val headerPanel=new BoxPanel(Orientation.Horizontal) {
+  val headerPanel: BoxPanel =new BoxPanel(Orientation.Horizontal) {
     contents+=new BorderPanel(){
       add(filesLab,BorderPanel.Position.North)
       add(new ScrollPane {
@@ -89,18 +89,18 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   val layerView= new ListView(settings.layers)
   layerView.selection.intervalMode=ListView.IntervalMode.MultiInterval
   
-  val layerPane=new BoxPanel(Orientation.Vertical){
+  val layerPane: BoxPanel =new BoxPanel(Orientation.Vertical){
     contents+=new ScrollPane{
       viewportView=layerView
     }
   }
   
-  val elementsPane=new BoxPanel(Orientation.Vertical){
+  val elementsPane: BoxPanel =new BoxPanel(Orientation.Vertical){
     contents += ViewConstants.label("Elemente")
     contents+=colorPenCouplingBox+=lineCheckBox+=arcCheckBox+=ellCheckBox+=textCheckBox
   }
   
-  val contentsPane=new BoxPanel(Orientation.Horizontal){
+  val contentsPane: BoxPanel =new BoxPanel(Orientation.Horizontal){
     contents+=layerPane+=Swing.HStrut(20)+=elementsPane+=Swing.HStrut(20)
   }
   
@@ -112,7 +112,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   //val lineInfoLab=ViewConstants.label("")
   
   
-  val lineStylePane=new BoxPanel(Orientation.Horizontal) {
+  val lineStylePane: BoxPanel =new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
       add(ViewConstants.label("Unbekannte Linienstile in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
@@ -145,7 +145,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   //val infoLab=ViewConstants.label("")
   
   
-  val hatchStylePane=new BoxPanel(Orientation.Horizontal) {
+  val hatchStylePane: BoxPanel =new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
       add(ViewConstants.label("Unbekannte Schraffuren in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
@@ -162,7 +162,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
     }
   } 
   
-  val fontStylePane=new BoxPanel(Orientation.Horizontal) {
+  val fontStylePane: BoxPanel =new BoxPanel(Orientation.Horizontal) {
     contents+= new BorderPanel() {
       add(ViewConstants.label("Unbekannte Schriften in Datei"), BorderPanel.Position.North)
       add(new ScrollPane{
@@ -192,14 +192,14 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
     
   }
   
-  val centerPanel=new TabbedPane{
+  val centerPanel: TabbedPane =new TabbedPane{
     pages+=new TabbedPane.Page("Elemente",contentsPane)
     pages+=new TabbedPane.Page("LinienStil",lineStylePane)
     pages+=new TabbedPane.Page("Schraffuren",hatchStylePane)
     pages+=new TabbedPane.Page("Schriften",fontStylePane)
   }
   
-  val mainPanel=new BorderPanel {
+  val mainPanel: BorderPanel =new BorderPanel {
       add(buttonPanel,BorderPanel.Position.South)
       add(headerPanel,BorderPanel.Position.North)
       add(centerPanel,BorderPanel.Position.Center)

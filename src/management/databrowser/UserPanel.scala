@@ -123,7 +123,7 @@ class UserPanel extends BoxPanel(Orientation.Vertical) {
     }
     case ButtonClicked(`showSubsBut`)=> table.selection.rows.headOption match {
       case Some(ix)=>UserList.findConnection(ix) match {
-        case (_,null)=>
+        case (a,null)=>"Null connection found: "+a
         case (user,connection)=>
           MainWindow.addRightPanelComponent(subsPanel)
           subsPanel.updateForUser(connection)

@@ -4,8 +4,8 @@ import java.awt._
 import java.awt.event.MouseWheelEvent
 import java.awt.geom.Rectangle2D
 
-import client.dataviewer.ViewConstants
 import client.graphicsView.{GraphElemConst, MatchingScreenPoints, ViewportState}
+import client.ui.ViewConstants
 import definition.expression.VectorConstant
 
 import scala.swing.Component
@@ -146,17 +146,7 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 		g.drawLine(1,currentMousePos.y,currBounds.width,currentMousePos.y)
 		controller.viewportState match {
 			case ViewportState.AskPoint|ViewportState.AskPointOrObject => drawHitPoints(g)
-			/*case ViewportState.LineTo => {
-				drawHitPoints(g)				
-				//if(!controller.lineToPointBuffer .isEmpty) {
-				if(controller.rubberStartPoint!=null)
-				{
-					val lp=controller.rubberStartPoint
-					g.setPaint(selectColor)
-					g.drawLine(currentMousePos.x,currentMousePos.y,controller.scaleModel.xToScreen(lp.x),
-						controller.scaleModel.yToScreen(lp.y))
-				}
-			}*/
+
 			case _ =>
 		}
 		try{
@@ -199,12 +189,12 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 		for (lay <- controller.layerRefList.list; if !controller.selectModel.selGroup.children.exists(_ == lay)) {
   	  g.setColor(Color.black)
   	  g.setStroke(defaultStroke)
-  	  lay.draw(g)
+  	  lay.draw(g,Color.black)
   	}
   	for(lay<-controller.selectModel.selGroup.children) {
   	  g.setColor(Color.red)
   	  g.setStroke(defaultStroke)
-  	  lay.draw(g)
+  	  lay.draw(g,Color.red)
   	}
   	
   	if(controller.bracketMode) {

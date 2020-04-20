@@ -12,12 +12,65 @@ trait InstanceHandlerStaticData{
   val appendBufferHandler:AppendBufferHandler
 }
 
+
+abstract class AppendBufferHandler(nrecordSize:Int,nappendBufferSize:Int){
+  val appendInBuffer: Array[Byte] = Array.fill[Byte](nrecordSize * nappendBufferSize)(0.toByte)
+  val appendInStream = new UnsyncBAInputStream(appendInBuffer)
+  val appendDataIn = new DataInputStream(appendInStream)
+  val appendOutStream = new MyByteStream(nrecordSize * nappendBufferSize)
+  val appendDataOut = new DataOutputStream(appendOutStream)
+  def readTail():Unit
+  def writeTail():Unit
+
+  /**  writes one record and adds appendBufferSize number of records at the end of the file so the file is only increased 1 in appendBufferSize times.
+  * @param b record data
+*/
+  def addTail(theFile: RandomAccessFile, b: Array[Byte]): Unit = {
+    //println("add Tail ")
+    theFile.seek(theFile.length)
+    appendOutStream.reset()
+    appendOutStream.write(b, 0, nrecordSize)
+    for (_ <- 0 until nappendBufferSize - 1)
+      writeTail()
+    theFile.write(appendOutStream.buffer, 0, appendOutStream.buffer.length)
+  }
+
+  /** Reads the end of an indexFile and tries to find out how many free record lines are left in the end.
+  * @param theFile indexFile
+  *
+  */
+  def readTailSpace(className:String,theFile: RandomAccessFile): Int = {
+    if (theFile.length() >= nrecordSize * nappendBufferSize) {
+      theFile.seek(theFile.length() - nrecordSize * nappendBufferSize)
+      theFile.read(appendInBuffer)
+      appendInStream.reset()
+      var line = -1
+      for (i <- 0 until nappendBufferSize; if line == -1) {
+        val inst = appendDataIn.readInt
+        if (inst == -1 || inst == 0) line = i
+        readTail()
+      }
+      if (line == -1) 0
+      else if (line < nappendBufferSize) {
+        //println("TailSpace line:"+line)
+        nappendBufferSize - line
+      }
+      else throw new IllegalArgumentException("Wrong tail number " + line)
+    } else {
+      println("File "+className+" too small "+theFile.length+" should be at least "+nrecordSize+" x "+nappendBufferSize)
+      0
+    }
+  }
+}
+
+
+
 trait AbstractInstanceHandler {
   protected def fileName:File
   protected def className:String
   protected def staticData:InstanceHandlerStaticData
   protected var theFile:RandomAccessFile=new RandomAccessFile(fileName, "rw")
-  protected var tailSpace: Int = staticData.appendBufferHandler.readTailSpace(theFile)
+  protected var tailSpace: Int = staticData.appendBufferHandler.readTailSpace(className,theFile)
   protected var numRecords: Int = (theFile.length / staticData.recordSize).toInt
   protected var firstID: Int = if (numRecords > 0) readIxInst(0) else 0
   protected var lastID: Int = if (numRecords > 0) readIxInst(numRecords - 1 - tailSpace) else 0
@@ -68,7 +121,7 @@ trait AbstractInstanceHandler {
     else {
       resetLastReadID()
       internFindIxRecord(inst) match {
-        case sp@Some(pos) =>
+        case sp@Some(_) =>
           getDataPos(inst, sp)  > -1
         case None => false
       }
@@ -138,9 +191,10 @@ trait AbstractInstanceHandler {
     fileName.renameTo(backupFile)
     reorgFile.renameTo(fileName)
     theFile= new RandomAccessFile(fileName, "rwd")
+    tailSpace = 0
     numRecords = (theFile.length / staticData.recordSize).toInt
     firstID = if (numRecords > 0) readIxInst(0) else 0
-    lastID = if (numRecords > 0) readIxInst(numRecords - 1) else 0
+    lastID = if (numRecords > 0) readIxInst(numRecords - 1 - tailSpace) else 0
     lastReadID = -2
     lastSeekID = -2
     lastSeekPos = None

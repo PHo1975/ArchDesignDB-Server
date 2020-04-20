@@ -5,7 +5,7 @@ package client.dialog
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
 import javax.swing.BorderFactory

@@ -2,9 +2,9 @@ package client.dialog.symbolbrowser
 
 import java.awt.{BasicStroke, Dimension}
 
-import client.dataviewer.ViewConstants
 import client.dialog.{AnswerPanelsData, CustomPanelQuestion, DialogManager}
 import client.graphicsView.{ColorMap, GraphCustomQuestionHandler, GraphSettingsHandler, GraphViewController}
+import client.ui.ViewConstants
 import definition.data.InstanceData
 import definition.expression.VectorConstant
 import definition.typ.{AnswerDefinition, DataType}

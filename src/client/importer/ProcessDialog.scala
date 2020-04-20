@@ -2,7 +2,7 @@ package client.importer
 
 import java.awt.{Point, Rectangle}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{BorderPanel, BoxPanel, Button, Dialog, Label, ProgressBar, Swing, Window}

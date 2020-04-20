@@ -1,7 +1,7 @@
 package client.graphicsView
 
-import java.awt.{BasicStroke, Color, Graphics2D}
 import java.awt.geom.Line2D
+import java.awt.{BasicStroke, Color, Graphics2D}
 import java.text.DecimalFormat
 
 import client.comm.ClientQueryManager
@@ -113,7 +113,8 @@ object HatchHandler extends AbstractSettingHandler {
   def loadSettings(ref:Reference): Unit =this.synchronized{
     var i:Int= -1
     folderRef=Some(ref)
-    hatchList=ClientQueryManager.queryInstance(ref,1).map(hs=>{i+=1;new HatchStyle(i,hs)})    
+    hatchList=ClientQueryManager.queryInstance(ref,1).map(hs=>{i+=1;new HatchStyle(i,hs)})
+    //println("Load Settings hatchlist:\n"+hatchList.map(_.toExpression.mkString("|")).mkString("\n"))
   }
   
   def getHatch(ix:Int):Option[HatchStyle]=if(ix<0||ix>=hatchList.size) None
@@ -133,11 +134,12 @@ object HatchHandler extends AbstractSettingHandler {
   
   def drawHatch(poly:Polygon,hs:HatchStyle,sm:Scaler,paperScale:Boolean,g:Graphics2D,c:Color=Color.black,startPoint:VectorConstant,hatchAngle:Double,aOffset:VectorConstant): Unit = {
   		g.setColor(c)		  
-  		drawHatches(hs.angle1+hatchAngle,hs.distance1,hs.lineStyle1,hs.thickness,false)
+  		drawHatches(hs.angle1+hatchAngle,hs.distance1,hs.lineStyle1,hs.thickness,offset = false)
   		if(hs.lineStyle2> -1) 
   			drawHatches(hs.angle2+hatchAngle,hs.distance2,hs.lineStyle2,hs.thickness,hs.angle2==hs.angle1)
 
   			def drawHatches(angle:Double,distance:Double,style:Int,thickness:Int,offset:Boolean): Unit = if(distance>0){
+         // if (thickness >0) println("Draw Hatch thickness:"+thickness) else println("DrawHatch 0")
   				val line=new Line2D.Double
   				g.setStroke(sm.getStroke(if(thickness>0)thickness else 1,style))
   				val a1=angle*math.Pi/180d

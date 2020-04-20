@@ -221,6 +221,8 @@ object ClientApp extends App {
     UserSettings.setIntProperty("Draw", "showToast",ViewConstants.showToast)
     UserSettings.setIntProperty("Draw", "showHitPoints",ViewConstants.showToast)
     UserSettings.setIntProperty("Draw","selectBorderWidth",ViewConstants.selectBorderWidth)
+    UserSettings.setIntProperty("Draw","backgroundLayerTrans",ViewConstants.backgroundLayerTrans)
+    //UserSettings.setIntProperty("Draw","hatchLineWidth",ViewConstants.hatchLineWidth)
       UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
     //UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
 
@@ -295,6 +297,8 @@ object ClientApp extends App {
       ViewConstants.showHitPoints= UserSettings.getIntProperty("Draw", "showHitPoints", 1)
       ViewConstants.imagePath= UserSettings.getStringProperty("WindowSettings", "imagePath", "")
       ViewConstants.selectBorderWidth=UserSettings.getIntProperty("Draw", "selectBorderWidth", 1)
+      ViewConstants.backgroundLayerTrans=UserSettings.getIntProperty("Draw","backgroundLayerTrans",40)
+//      ViewConstants.hatchLineWidth=UserSettings.getIntProperty("Draw", "hatchLineWidth", 3)
       import javax.swing.{UIDefaults, UIManager}
       UIManager.setLookAndFeel(new javax.swing.plaf.nimbus.NimbusLookAndFeel() {
         override def getDefaults: UIDefaults = {

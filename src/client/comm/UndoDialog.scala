@@ -5,7 +5,7 @@ package client.comm
 
 import java.awt.event.{WindowAdapter, WindowEvent}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.data.TransStepData
 import javax.swing.table.TableColumnModel
 

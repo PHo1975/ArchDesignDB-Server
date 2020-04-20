@@ -6,7 +6,7 @@ package client.graphicsView
 import java.awt.geom._
 import java.awt.{BasicStroke, Color, Dimension, Graphics2D, RenderingHints}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 
 import scala.swing._
 import scala.swing.event._
@@ -22,7 +22,7 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 	val xResLabel: Label = ViewConstants.label()
 	val yResLabel: Label = ViewConstants.label()
 	
-	val editPanel= new GridPanel(6,2) {		
+	val editPanel: GridPanel = new GridPanel(6,2) {
 		preferredSize=new Dimension(400,200)
 		contents += ViewConstants.label("box Width x (pix):") += widthEdit +=
 			ViewConstants.label("box Height y(pix):") += heightEdit +=
@@ -32,7 +32,7 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 			ViewConstants.label("y-resolution(pix/mm):") += yResLabel
 	}
 	
-	val showBox= new BorderPanel {
+	val showBox: BorderPanel = new BorderPanel {
 		  background=Color.white
 		  opaque=true
 		  preferredSize=new Dimension(1200,800)
@@ -51,7 +51,7 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 		  }
 	}
 	
-	val mainPanel = new BorderPanel() {	
+	val mainPanel: BorderPanel = new BorderPanel() {
 		//contents :+ (editPanel ->BorderPanel.Position.North)
 		add(editPanel,BorderPanel.Position.North)
 		add(new BoxPanel (Orientation.Vertical )  {
@@ -101,7 +101,7 @@ object ResolutionMeasureApp extends SimpleSwingApplication  {
 	
 	
 	
-	val top = new MainFrame ()
+	val top: MainFrame = new MainFrame ()
 	{		
 		title="Resolution-Test"
 		contents = mainPanel

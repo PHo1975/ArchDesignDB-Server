@@ -5,7 +5,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.data.Reference
 import javax.swing.JFileChooser
 import server.config.FSPaths

@@ -4,9 +4,9 @@ import java.awt.geom.{AffineTransform, Arc2D, Area}
 import java.awt.{BasicStroke, Graphics2D}
 
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
 import client.dialog._
 import client.dialog.symbolbrowser.SymbolBrowserController
+import client.ui.ViewConstants
 import definition.data.{EMPTY_REFERENCE, Reference, ResultElement, StyleService}
 import definition.expression._
 import definition.typ._

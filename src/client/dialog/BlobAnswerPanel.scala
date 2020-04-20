@@ -1,5 +1,7 @@
 package client.dialog
 
+
+import client.ui.ViewConstants
 import definition.expression.{BlobConstant, VectorConstant}
 import definition.typ.AnswerDefinition
 
@@ -42,7 +44,7 @@ class BlobAnswerPanel extends AnswerPanel with SelectPointsListener  {
   	active=true
     if (answerDesc.constraint == "SelectPoints" && AnswerPanelsData.currentViewController != null) {
       AnswerPanelsData.currentViewController.askForPointSelection(this)
-      FollowMouseToast.showToast("Punkte auswählen",AnswerPanelsData.currentViewController.canvas.peer)
+      if(ViewConstants.showToast==1)FollowMouseToast.showToast("Punkte auswählen",AnswerPanelsData.currentViewController.canvas.peer)
     }
   }
 

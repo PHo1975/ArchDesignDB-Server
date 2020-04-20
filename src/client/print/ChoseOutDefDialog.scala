@@ -6,8 +6,8 @@ package client.print
 import java.awt.Color
 import java.awt.event.{WindowAdapter, WindowEvent}
 
-import client.dataviewer.ViewConstants
 import client.dialog.DialogManager
+import client.ui.ViewConstants
 import definition.data.{OutputDefinition, Reference, ResultElement}
 import definition.expression.{BoolConstant, IntConstant, StringConstant}
 import javax.swing.BorderFactory

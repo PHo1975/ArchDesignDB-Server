@@ -2,7 +2,9 @@
  * Author: Peter Started:28.05.2011
  */
 package client.dialog
+
 import client.graphicsView.GraphElem
+import client.ui.ViewConstants
 import definition.expression.{BoolConstant, IntConstant, ObjectReference, VectorConstant}
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
 
@@ -56,13 +58,13 @@ class ReferenceAnswerPanel extends AnswerPanel with ObjectSelectListener {
   	if(AnswerPanelsData.currentViewController!=null) {
   	  answerDesc match {
   	    case tm:TempChooseAnswerDef =>
-          FollowMouseToast.showToast(DialogManager.questionField.puretext+" : "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
+          if(ViewConstants.showToast==1)FollowMouseToast.showToast(DialogManager.questionField.puretext+" : "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
   	      AnswerPanelsData.currentViewController.chooseTempObject(this,tm.elements)
   	    case _ =>
           //System.out.println("AnswerPanel constraint:"+answerDesc.constraint)
           if (AnswerPanelsData.currentViewController.askForObjectSelection(this,answerDesc.constraint))
             FollowMouseToast.appendToastText("oder "+answerDesc.name)
-          else FollowMouseToast.showToast(DialogManager.questionField.puretext+" : "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
+          else if(ViewConstants.showToast==1) FollowMouseToast.showToast(DialogManager.questionField.puretext+" : "+answerDesc.name,AnswerPanelsData.currentViewController.canvas.peer)
       }
   	}  		
   }

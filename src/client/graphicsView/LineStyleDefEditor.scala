@@ -3,7 +3,7 @@ package client.graphicsView
 import java.awt.{BasicStroke, Dimension, Graphics2D}
 
 import client.comm.ClientQueryManager
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, Reference}
 import definition.expression.StringConstant

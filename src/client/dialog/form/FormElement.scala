@@ -2,7 +2,7 @@ package client.dialog.form
 
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.expression.{Expression, StringConstant}
 import definition.typ.HorAlign
 import definition.typ.form.{AbstractFormElement, DataChangeListener}

@@ -7,7 +7,7 @@ import java.io.{OutputStream, PrintStream}
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import javax.swing.text.Document
 
 import scala.swing._

@@ -3,13 +3,14 @@
  */
 package server.storage
 
-import java.io.{DataOutput, EOFException}
+import java.io._
 
 import definition.data._
 import definition.expression.{CommonFuncMan, FunctionManager}
 import definition.typ.{AllClasses, BlockClass, SystemSettings}
 import server.comm.CommonSubscriptionHandler
 import server.config.FSPaths
+import server.storage.TransLogHandler.recordSize
 import transaction.handling.{ActionList, TransactionManager}
 import util.Log
 
@@ -17,7 +18,21 @@ import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
+class CopyFileHandler(fileName:String){
+	val file=new File(FSPaths.dataDir+fileName)
+	val stream=new BufferedOutputStream(new FileOutputStream(file),32768)
+	var pos:Long=0L
 
+	def writeBuffer(buffer:Array[Byte], size:Int):Long = {
+		val oldPos=pos
+		stream.write(buffer,0,size)
+		pos+=size
+		oldPos
+	}
+
+	def shutDown(): Unit =stream.flush()
+
+}
 
 /** manages all file io operations
  * 
@@ -33,7 +48,7 @@ object StorageManager {
   protected val propFileHandler=new ContainerFileHandler("PropData.dat",InstanceProperties.read)
   protected val linkFileHandler=new ContainerFileHandler("ExternLinks.dat",ReferencingLinks.read)
   protected val collFuncFileHandler=new ContainerFileHandler("collFuncs.dat",CollFuncResultSet.read)
-	protected val blockFileHandler=new ContainerFileHandler[BlockData]("Block.dat",null)
+	val blockFileHandler=new ContainerFileHandler[BlockData]("Block.dat",null)
   private val fileLock = new Object()
   var shuttedDown=false
   var inited=false
@@ -429,7 +444,6 @@ object StorageManager {
 		for(b<-_blockIxHandlerList.valuesIterator) b.flush()
 		TransLogHandler.flush()
 		TransDetailLogHandler.flush()
-
 	}
 
   /** reorganizeds the database so that deleted and old entries are removed
@@ -441,33 +455,80 @@ object StorageManager {
     util.Log.w("Reorg translog insertPos:"+TransLogHandler.getInsertPos+" detail:"+TransDetailLogHandler.getInsertPos)
 	  TransDetailLogHandler.deleteLogFile()
   	TransLogHandler.deleteLogFile()
-  	val copyDataFileHandler=new BoolContFileHandler[InstanceData]("InstData.dat.cpy",InstanceData.read)
-  	val copyPropFileHandler=new ContainerFileHandler("PropData.dat.cpy",InstanceProperties.read)
-  	val copyLinkFileHandler=new ContainerFileHandler("ExternLinks.dat.cpy",ReferencingLinks.read)
-  	val copyCollFuncFileHandler=new ContainerFileHandler("collFuncs.dat.cpy",CollFuncResultSet.read)
+  	val copyDataFileHandler=new CopyFileHandler("InstData.dat.cpy")
+  	val copyPropFileHandler=new CopyFileHandler("PropData.dat.cpy")
+  	val copyLinkFileHandler=new CopyFileHandler("ExternLinks.dat.cpy")
+  	val copyCollFuncFileHandler=new CopyFileHandler("collFuncs.dat.cpy")
+
+		var transLogFile=new BufferedOutputStream(new FileOutputStream(TransLogHandler.fileName),32768)
+		transLogFile.write(new Array[Byte](4))
+		val transLogBufferStream= new MyByteStream(recordSize*4)
+		val transLogOutStream=new DataOutputStream(transLogBufferStream)
+		var numCombi=0
+
+		var timeReadIX:Long=0
+		var timeWriteIX:Long=0
+		var timeWriteData:Long=0
+		var timeWriteProp:Long=0
+		var timeWriteLog:Long=0
+
+		var oldTime=System.currentTimeMillis()
+
+		def measure():Long= {
+			val now=System.currentTimeMillis()
+			val delta=now-oldTime
+			oldTime=now
+			delta
+		}
+
+		def writeTransLog(transTyp: TransType.Value,typ:Int,inst:Int,dataPos:Long,dataLength:Int):Unit =	{
+			transLogOutStream.writeByte(transTyp.id)
+			transLogOutStream.writeInt(0)
+			transLogOutStream.writeInt(typ)
+			transLogOutStream.writeInt(inst )
+			transLogOutStream.writeLong(dataPos)
+			transLogOutStream.writeInt(dataLength)
+			numCombi+=1
+		}
 
   	class MyListener extends RecordListener{
   	    var replaceHandler: ClassIndexHandler = _
 
 			def nextRecord(inst: Int, dataPos: Long, dataLen: Int, propPos: Long, propLen: Int, linkPos: Long, linkLen: Int, collPos: Long, collLen: Int): Unit = {
+				timeReadIX+=measure()
 				val ndataPos = copyDataFileHandler.writeBuffer(dataFileHandler.readInBuffer(dataPos, dataLen), dataLen)
-				val npropPos = if (propPos < 1 && propLen < 1) 0 else copyPropFileHandler.writeBuffer(propFileHandler.readInBuffer(propPos, propLen), propLen)
-				val nlinkPos = if (linkPos < 1 && linkLen < 1) 0 else copyLinkFileHandler.writeBuffer(linkFileHandler.readInBuffer(linkPos, linkLen), linkLen)
-				val ncollPos = if (collPos < 1 && collLen < 1) 0 else copyCollFuncFileHandler.writeBuffer(collFuncFileHandler.readInBuffer(collPos, collLen), collLen)
+				timeWriteData+=measure()
+				val npropPos = if (propLen < 1) 0 else copyPropFileHandler.writeBuffer(propFileHandler.readInBuffer(propPos, propLen), propLen)
+				val nlinkPos = if (linkLen < 1) 0 else copyLinkFileHandler.writeBuffer(linkFileHandler.readInBuffer(linkPos, linkLen), linkLen)
+				val ncollPos = if (collLen < 1) 0 else copyCollFuncFileHandler.writeBuffer(collFuncFileHandler.readInBuffer(collPos, collLen), collLen)
+				timeWriteProp+=measure()
 				replaceHandler.reorgWriteRecord(inst, ndataPos, dataLen, npropPos, Math.max(0, propLen), nlinkPos, Math.max(0, linkLen), ncollPos, Math.max(0, collLen))
-				TransLogHandler.dataChanged(TransType.created, replaceHandler.theClass.id, inst, ndataPos, dataLen)
-				if (propLen > 0) TransLogHandler.dataChanged(TransType.propertyChanged, replaceHandler.theClass.id, inst, npropPos, propLen)
-				if (linkLen > 0) TransLogHandler.dataChanged(TransType.linksChanged, replaceHandler.theClass.id, inst, nlinkPos, linkLen)
-				if (collLen > 0) TransLogHandler.dataChanged(TransType.collFuncChanged, replaceHandler.theClass.id, inst, ncollPos, collLen)
+				timeWriteIX+=measure()
+				transLogBufferStream.reset()
+				numCombi=0
+				writeTransLog(TransType.created, replaceHandler.theClass.id, inst, ndataPos, dataLen)
+				if (propLen > 0) writeTransLog(TransType.propertyChanged, replaceHandler.theClass.id, inst, npropPos, propLen)
+				if (linkLen > 0) writeTransLog(TransType.linksChanged, replaceHandler.theClass.id, inst, nlinkPos, linkLen)
+				if (collLen > 0) writeTransLog(TransType.collFuncChanged, replaceHandler.theClass.id, inst, ncollPos, collLen)
+				transLogFile.write(transLogBufferStream.buffer,0,recordSize*numCombi)
+				timeWriteLog+=measure()
 			}
 		}
+
   	val recListener=new MyListener
 	  var lix=1
 		try {
 			for (typ <- serverClassList.keysIterator; handler = ixHandler(typ)) {
+				print(" "+handler.theClass.name)
 				listener(lix, handler.theClass.name)
+				timeReadIX=0
+				timeWriteIX=0
+				timeWriteData=0
+				timeWriteProp=0
+				timeWriteLog=0
 				recListener.replaceHandler = new ClassIndexHandler(handler.theClass, ".reo")
 				handler.foreachInstance(recListener)
+				println("Loop done readIX:"+timeReadIX+" writeIX:"+timeWriteIX+" writeData:"+timeWriteData+" writeProp:"+timeWriteProp+" writeLog:"+timeWriteLog)
 				recListener.replaceHandler.shutDown()
 				handler.takeOverFromReorgFile(recListener.replaceHandler.fileName)
 				//System.out.print(handler.fileName+" ")
@@ -478,13 +539,13 @@ object StorageManager {
   	copyPropFileHandler.shutDown()
   	copyLinkFileHandler.shutDown()
   	copyCollFuncFileHandler.shutDown()
-  	dataFileHandler.takeOverReorgFile(copyDataFileHandler.compFileName)
-  	propFileHandler.takeOverReorgFile(copyPropFileHandler.compFileName)
-  	linkFileHandler.takeOverReorgFile(copyLinkFileHandler.compFileName)
-  	collFuncFileHandler.takeOverReorgFile(copyCollFuncFileHandler.compFileName)
+  	dataFileHandler.takeOverReorgFile(copyDataFileHandler.file)
+  	propFileHandler.takeOverReorgFile(copyPropFileHandler.file)
+  	linkFileHandler.takeOverReorgFile(copyLinkFileHandler.file)
+  	collFuncFileHandler.takeOverReorgFile(copyCollFuncFileHandler.file)
 		FSPaths.setLastStatTransID(1)
     util.Log.w("\nReorg complete translog:"+TransLogHandler.getInsertPos+" detail:"+TransDetailLogHandler.getInsertPos)
-		TransLogHandler.flush()
+		TransLogHandler.restoreLogFile()
 		TransDetailLogHandler.flush()
 	}
 
@@ -623,7 +684,7 @@ object StorageManager {
 	  	    instObj.owners.foreach(aOwner=> {
 	  	      if(!instanceExists(aOwner.ownerRef.typ,aOwner.ownerRef.instance)) {util.Log.e("owner "+aOwner+" of "+ref+" does not exist");false}
 	  	      else{
-		  	      val isIn= getInstanceProperties(aOwner.ownerRef ) match {
+		  	      val isIn: Boolean = getInstanceProperties(aOwner.ownerRef ) match {
 		  	        case Some(props)=>props.propertyFields(aOwner.ownerField ).propertyList.contains(ref)
 		  	        case None =>false
 		  	      }
@@ -634,7 +695,7 @@ object StorageManager {
 	  	    instObj.secondUseOwners.foreach(aOwner=> {
 	  	      if(!instanceExists(aOwner.ownerRef.typ,aOwner.ownerRef.instance)) {util.Log.e("SU owner "+aOwner+" of "+ref+" does not exist");false}
 	  	      else{
-		  	      val isIn=getInstanceProperties(aOwner.ownerRef ) match {
+		  	      val isIn: Boolean =getInstanceProperties(aOwner.ownerRef ) match {
 		  	        case Some(props)=>props.propertyFields(aOwner.ownerField ).propertyList.contains(ref)
 		  	        case None => false
 		  	      }

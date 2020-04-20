@@ -120,21 +120,29 @@ object TransLogHandler {
 	def deleteLogFile():Unit= {
 	  theFile.close()
 	  new File(fileName).delete()
-	  theFile=new RandomAccessFile(fileName,"rwd")
-	  theFile.seek(0)
-	  theFile.writeInt(1)
-	  transID=1
-	  insertPos=0
+	}
+
+
+	def restoreLogFile():Unit= {
+		theFile=new RandomAccessFile(fileName,"rwd")
+		theFile.seek(0)
+		theFile.writeInt(1)
+		transID=1
+		insertPos=0
 	}
 	
 	def readFullIndex():ArrayBuffer[LogIndexSet] = {
 		theFile.seek(4)
     val retList= ArrayBuffer[LogIndexSet]()		
 		val endPos=getSeekPos(insertPos)
+		println("Read index endPos:"+endPos)
 		while(theFile.getFilePointer < theFile.length) {
 			theFile.read(readBuffer,0,recordSize)
 			inBufferStream.reset()
-			retList+= LogIndexSet(TransType(dataInStream.readByte),dataInStream.readInt,
+			val transTypeValue=dataInStream.readByte
+			val tt:TransType.Value=if(transTypeValue<0|| transTypeValue>6) {Log.e("Wrong Trans type "+transTypeValue+" numRecord:"+retList.size);TransType.undefined}
+				else TransType(transTypeValue)
+			retList+= LogIndexSet(tt,dataInStream.readInt,
 				dataInStream.readInt,dataInStream.readInt,dataInStream.readLong,dataInStream.readInt)
 		}
 		//readFinished()	

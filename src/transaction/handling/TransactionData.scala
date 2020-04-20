@@ -30,9 +30,9 @@ case class DataChangeAction(var newInstData:Option[InstanceData],
 
 case class DeleteAction(inst:InstanceData) extends TransactionData
 
-case class CreateBlock(ref:Reference,data:Array[Byte]) extends TransactionData
-case class ChangeBlock(ref:Reference,data:Array[Byte]) extends TransactionData
-case class DeleteBlock(ref:Reference) extends TransactionData
+case class CreateBlock(owner:OwnerReference,ref:Reference,data:Array[Byte]) extends TransactionData
+case class ChangeBlock(owner:OwnerReference,ref:Reference,data:Array[Byte]) extends TransactionData
+case class DeleteBlock(owner:OwnerReference,ref:Reference) extends TransactionData
 
 // special transaction information for copy and move transactions
 trait CopyMoveInfo {

@@ -5,6 +5,7 @@ package client.dataviewer
 
 import java.awt.Color
 
+import client.ui.ViewConstants
 import definition.expression._
 import definition.typ._
 import javax.swing.border.Border

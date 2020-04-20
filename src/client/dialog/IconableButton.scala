@@ -4,8 +4,8 @@ import java.awt.Color
 import java.awt.event.HierarchyEvent
 
 import client.comm.{KeyStrokeManager, KeyStrokeReceiver}
-import client.dataviewer.ViewConstants
 import client.icons.IconManager
+import client.ui.ViewConstants
 import definition.typ.{ActionTrait, _}
 import javax.swing.{BorderFactory, KeyStroke}
 

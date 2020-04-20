@@ -4,7 +4,7 @@
 package client.dialog
 
 import client.comm.{ClientQueryManager, KeyStrokeManager}
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.expression._
 import definition.typ._
 import javax.swing.BorderFactory

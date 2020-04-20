@@ -8,9 +8,9 @@ import java.awt.font.TextLayout
 import java.awt.geom.{AffineTransform, Line2D, Rectangle2D}
 import java.awt.print.{PageFormat, Pageable, Printable}
 
-import client.dataviewer.ViewConstants
 import client.graphicsView._
 import client.graphicsView.symbol.{StampPool, SymbolOrient}
+import client.ui.ViewConstants
 import definition.data._
 import definition.expression.{Polygon, VectorConstant}
 import util.{Log, StringUtils}
@@ -32,7 +32,8 @@ class APrintScaler(ctx:RenderContext) extends ScaleModel {
 	def xToPaper(x: Double): Float = ctx.toUnit(x * myScale + xoff)
 
 	def yToPaper(y: Double): Float = ctx.toUnit(-y * myScale + yoff)
-    val myStroke=new BasicStroke(0.3f)
+
+	val myStroke=new BasicStroke(0.3f)
 
 	override def getStroke(thick: Float, style: Int): BasicStroke = ctx.getStroke(ctx.toUnit(thick / 100f), style)
 
@@ -70,7 +71,7 @@ trait AbstractContext extends RenderContext {
 
       def drawHatches(angle: Double, distance: Double, style: Int, thickness: Int, offset: Boolean): Unit = if (distance > 0) {
         //val line=new Line2D.Double
-        g.setStroke(getStroke(toUnit(if (thickness > 0) thickness / 100 else 1 / 10), style))
+        g.setStroke(getStroke(toUnit(if (thickness > 0) thickness.toFloat / 100f else 1f / 10f), style))
         val a1 = angle * math.Pi / 180d
         val dir1 = new VectorConstant(scala.math.cos(a1), -scala.math.sin(a1), 0)
         val dist = if (paperScale) distance else distance * layerScale

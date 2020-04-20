@@ -279,6 +279,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	}
 	
 	def addTempElem( newElem:GraphElem):Unit = {
+		if (hasCreateActionStarted) Log.e("Add Temp but CAS still active")
 	  showTempElements=true
 	  layerModel.newElemLayer.addTempElement(newElem)
 	}
@@ -305,7 +306,7 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 				case Key.Escape => DialogManager.reset() //DialogManager.reset()
 				case _ => //System.out.println(e)
 			}
-			case o =>  e.key match {
+			case _ =>  e.key match {
 			  case Key.Escape => DialogManager.reset()
 			  case Key.Left => scaleModel.moveLeft()
 					case Key.Right => scaleModel.moveRight()
@@ -320,11 +321,11 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
     val mousePos = MouseInfo.getPointerInfo.getLocation
     val canvasPos = theCanvas.getLocationOnScreen
 		requestFocus()
-    //println("Show Create "+NewButtonsList.actionButtons.map(_.commandName).mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     val buttons = layerModel.getActiveLayer match {
       case Some(_: MeasureLayer) => CreateActionList.actionButtons.takeRight(3)
       case _ => CreateActionList.actionButtons.dropRight(3)
     }
+		//println("Show Create "+buttons.mkString(", ")+" mousePos:"+mousePos+" canvasPos:"+canvasPos)
     if (buttons.size == 1) {
       buttons.head.strokeHit()
     } else {

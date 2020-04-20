@@ -43,10 +43,12 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
 
   lazy val simpleCreateMenuItems: Map[Int, Seq[CreateMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
     val buttons = pf.createChildDefs.filter(_.action.isEmpty).map(new CreateMenuButton(description, i.toByte, _))
+		//println("simpleCreateMenus "+name+" "+buttons.mkString(","))
      i -> buttons
    }).toMap
   lazy val actionCreateMenuItems: Map[Int, Seq[CreateActionMenuButton]] = (for (i <- propFields.indices; pf = propFields(i)) yield {
      val buttons=pf.createChildDefs .filter(_.action.isDefined).map(new CreateActionMenuButton(description,i.toByte,_))
+		  //println("ActionCreateMenus "+name+" "+buttons.mkString(","))
      i -> buttons
    }).toMap
 
@@ -60,6 +62,7 @@ class ClientObjectClass (val name:String,val id:Int,val description:String,val c
   		 actionButtons =(for(sc<-superClasses; superClass= AllClasses.get.getClassByID(sc).asInstanceOf[ClientObjectClass])
   		   yield superClass.actionButtons.filterNot(sca=> theActions.exists(_.name==sca.commandName))).flatten ++
   		     theActions.map(new ActionStrokeButton(description,_))
+			 //if(actionButtons.nonEmpty)println("class "+name+" buttons:"+actionButtons.mkString)
   	 } catch {
 			 case NonFatal(e) => util.Log.e("resolveSuperFields",e)
        case other: Throwable => util.Log.e("resolveSuperFields", other)

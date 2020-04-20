@@ -2,9 +2,9 @@ package client.spreadsheet
 
 import java.awt.{Color, Dimension}
 
-import client.dataviewer.ViewConstants
 import client.dialog.{ActionPanel, CustomStrokeButton, _}
 import client.graphicsView._
+import client.ui.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
 

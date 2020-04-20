@@ -3,11 +3,15 @@
  */
 package management.databrowser
 
-import client.dataviewer.ViewConstants
+
+import java.awt
+
+import client.ui.ViewConstants
 import definition.comm._
 import definition.data._
 import definition.typ.AllClasses
-import javax.swing.JOptionPane
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.{JLabel, JOptionPane, JTable}
 import server.storage._
 import transaction.handling._
 import util.{Log, StrToInt}
@@ -32,6 +36,13 @@ object DataViewPanel extends BorderPanel
 	
 	val propTable: Table =new Table()	{
 		model=InstPropTableModel
+		this.peer.setDefaultRenderer(classOf[String],new DefaultTableCellRenderer{
+			override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): awt.Component = {
+				val comp=super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column).asInstanceOf[JLabel]
+				comp.setToolTipText(value.toString)
+				comp
+			}
+		})
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 
@@ -47,29 +58,31 @@ object DataViewPanel extends BorderPanel
 
 
   add(new BorderPanel() { // left rail
-		preferredSize=new Dimension(430,200)
+		preferredSize=new Dimension(470,200)
     add(ViewConstants.label("Index-Table"), BorderPanel.Position.North)
 		add (new ScrollPane()	{
 			viewportView=ixTable 
 		},BorderPanel.Position.Center)
 
-		add (new GridPanel(6,1)		{
+		add (new GridPanel(7,1)		{
 			val openBut=new Button("Open Instance")
 			val createBut=new Button("Create Instance")
 			val deleteBut=new Button("Delete Instance")
 			val checkCollBut=new Button("check CollData")
 			val restoreChildrenBut=new Button("restore Children")
 			val seekStatisticsBut=new Button("Seek Statistics")
+			val removeChildBut=new Button("Remove Child from Property")
 			
-			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut+=seekStatisticsBut
-			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut,seekStatisticsBut)
+			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut+=seekStatisticsBut+=removeChildBut
+			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut,seekStatisticsBut,removeChildBut)
 			reactions += 	{
 				case ButtonClicked(`openBut`) => openInstance()
 				case ButtonClicked(`createBut`) => createInstance()
 				case ButtonClicked(`deleteBut`) => deleteInstance()
 				case ButtonClicked(`checkCollBut`) => checkCollData()
 				case ButtonClicked(`restoreChildrenBut`) => restoreChildren()
-					case ButtonClicked(`seekStatisticsBut`) => seekStatistics()
+				case ButtonClicked(`seekStatisticsBut`) => seekStatistics()
+				case ButtonClicked(`removeChildBut` )=> removeChild()
 			}
 		},BorderPanel.Position.South)
 
@@ -182,7 +195,7 @@ object DataViewPanel extends BorderPanel
 		}
 	}
 
-  def restoreChildren(): Unit = {
+  def restoreChildren(): Unit =
 	  if(ixTable.selection.rows.nonEmpty)		{
 			val ix:Int= ixTable.selection.rows.head
 			val inst:Int=IndexTableModel.ixList(ix).inst		  	
@@ -194,16 +207,45 @@ object DataViewPanel extends BorderPanel
             case Dialog.Result.Ok=> true
             case _=> false
           }
+
 					StorageManager.restoreDeletedChildren(ref, st,rollBack)
 				case _ =>
 		  }
 		}
-	}
+
+
+	def removeChild(): Unit =
+		if(ixTable.selection.rows.nonEmpty) {
+			val ix: Int = ixTable.selection.rows.head
+			val inst: Int = IndexTableModel.ixList(ix).inst
+			val ref = new Reference(InstFieldTableModel.theClass.id, inst)
+			StorageManager.getInstanceProperties(ref) match {
+				case Some(prop)=>
+					val propStrings: Seq[String] =prop.propertyFields.indices.map(_.toString)
+					Dialog.showInput(this,"delete child from property field nr:", "Delete child", Dialog.Message.Question,null,propStrings,"0") match {
+						case Some(StrToInt(st)) =>
+							val propList: Seq[Reference] =prop.propertyFields(st).propertyList
+							if(propList.nonEmpty) {
+								Dialog.showInput[Reference](this, "delete child entry", "delete child", Dialog.Message.Question, null, propList, propList.head) match{
+									case Some(value)  =>
+										TransactionManager.doTransaction(0,ClientCommands.deleteInstance.id.toShort,value,false,0, {
+											StorageManager.writeInstanceProperties(prop.removeChildInstance(st.toByte, value))
+										})
+									case _=>
+								}
+							}
+						case _ =>
+					}
+				case _ =>
+			}
+		}
+
+
+
 	def seekStatistics():Unit = {
-
-
-			val handler=StorageManager.ixHandler(MainWindow.getSelectedType)
-			Log.w("Seek Statistics for " +handler.fileName+": "+ handler.benchmarkBuffer.mkString(" "))
-
+		val handler=StorageManager.ixHandler(MainWindow.getSelectedType)
+		Log.w("Seek Statistics for " +handler.fileName+": "+ handler.benchmarkBuffer.mkString(" "))
 	}
+
+
 }

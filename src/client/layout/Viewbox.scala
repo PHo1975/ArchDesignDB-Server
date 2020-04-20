@@ -5,8 +5,8 @@ package client.layout
 
 import java.awt.Color
 
-import client.dataviewer.ViewConstants
 import client.model.TableViewbox
+import client.ui.ViewConstants
 import definition.comm.{IntValue, PropertyGroup, StringValue}
 import javax.swing.BorderFactory
 

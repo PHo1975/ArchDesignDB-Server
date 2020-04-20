@@ -2,7 +2,7 @@ package management.databrowser
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
+import client.ui.ViewConstants
 import definition.typ.{DTWrap, DataType}
 import server.storage.ServerObjectClass
 

@@ -1,13 +1,13 @@
 package client.dialog.symbolbrowser
 
-import java.awt.{Color, RenderingHints}
 import java.awt.geom.Rectangle2D
+import java.awt.{Color, RenderingHints}
 
-import client.dataviewer.ViewConstants
 import client.dialog.RenderComponent
-import client.graphicsView.{ElemContainer, GraphElem, GraphElemConst, ScaleModel}
 import client.graphicsView.symbol.SymbolStamp
+import client.graphicsView.{ElemContainer, GraphElem, GraphElemConst, ScaleModel}
 import client.plotdesign.LayerRef
+import client.ui.ViewConstants
 import definition.expression.{NULLVECTOR, VectorConstant}
 import javax.swing.BorderFactory
 

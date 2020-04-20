@@ -45,6 +45,7 @@ trait AbstractQueryHandler{
 	}
 
 	def notifyBlockChanged(subs:SubscriptionInfo,data:BlockData):Unit= {
+		println("UQH Block changed subs:"+subs+" data:"+data)
 		userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
 			out.writeInt(subs.id)
 			out.writeInt(NotificationType.fieldChanged.id )
@@ -53,11 +54,11 @@ trait AbstractQueryHandler{
 		}
 	}
 
-	def notifyBlockDeleted(subs:SubscriptionInfo,inst:Int):Unit= {
+	def notifyBlockDeleted(subs:SubscriptionInfo,ref:Reference):Unit= {
 		userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
 			out.writeInt(subs.id)
 			out.writeInt(NotificationType.instanceRemoved.id )
-			out.writeInt(inst)
+			ref.write(out)
 		}
 	}
 
@@ -136,6 +137,7 @@ trait AbstractQueryHandler{
 					}
 					else {
 						val childRefs = props.propertyFields(propertyField).propertyList
+						//if( childRefs.size>0 &&childRefs.head.typ==320) Log.e("Loading 320 "+parentRef+" "+propertyField)
 						//System.out.println("send Children:"+childRefs.map(_.sToString+","))
 						// get all Data before starting to write
 						if (childRefs.size < 10 || MainServerSocket.noBulkAction) {
@@ -156,7 +158,7 @@ trait AbstractQueryHandler{
 			}
 		}
 		catch {
-			case e: Exception => Log.e("sind children parentRef:"+parentRef+" propField:"+propertyField,e); out.writeInt(0)
+			case e: Exception => Log.e("send children parentRef:"+parentRef+" propField:"+propertyField,e); out.writeInt(0)
 		}
 
 
@@ -245,7 +247,7 @@ trait AbstractQueryHandler{
 			for(cRef <- childRefs) yield StorageManager.getInstanceData(cRef)
 		} catch {
 			case NonFatal(e)=>
-				Log.e(e) // filter out nonexisting instances
+				Log.e("Error when get instances"+e+" "+childRefs.mkString(",")) // filter out nonexisting instances
 				for(cRef <- childRefs;if StorageManager.instanceExists(cRef.typ, cRef.instance))
 					yield StorageManager.getInstanceData(cRef)
       case other: Throwable => Log.e("Fatal:" + other); println(other); null
@@ -288,6 +290,7 @@ trait AbstractQueryHandler{
 		}
 
 	protected def createBlockSubscription(parentRef:Reference,propertyField:Byte,conn:AbstractConnectionEntry):Unit ={
+		println("create Block Subscription parentRef:"+parentRef+" propField:"+propertyField)
 		if(StorageManager.instanceExists(parentRef.typ,parentRef.instance)) {
 			val subsID=CommonSubscriptionHandler.addBlockSubscription(conn,parentRef,propertyField)
 			if(subsID<1) Log.e("new Subscription ID ="+subsID+" for BlockParent "+parentRef)
@@ -456,7 +459,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	
 	private def newPathSubscription(in:DataInputStream): Unit = {
 		val count=in.readInt
-		val pathList=for(i <-0 until count) yield Reference(in)
+		val pathList=for(_ <-0 until count) yield Reference(in)
 		val corrList=pathList.filter(ref=> StorageManager.instanceExists(ref.typ, ref.instance))
 		createPathSubscription(corrList,userSocket.connectionEntry)
 	}
@@ -476,7 +479,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	private def pathSubs_changePath(in:DataInputStream): Unit = {
 		val subsID=in.readInt
 		val count=in.readInt
-		val pathList=for(i <-0 until count) yield Reference(in)
+		val pathList=for(_ <-0 until count) yield Reference(in)
     val corrList = pathList.filter(ref => StorageManager.instanceExists(ref.typ, ref.instance))
     CommonSubscriptionHandler.changePath(subsID, corrList)
     userSocket.sendData(ServerCommands.sendSubscriptionNotification) { out =>
@@ -488,7 +491,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	
 	private def stopSubscription(in:DataInputStream):Unit = {
 		val subsID=in.readInt
-		//System.out.println("Stop Subscription "+subsID)
+		System.out.println("Stop Subscription "+subsID)
 		CommonSubscriptionHandler.removeSubscription(subsID)
 	}
 	

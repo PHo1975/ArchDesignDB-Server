@@ -53,28 +53,29 @@ class TransBuffers {
 
 
 
-class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with  AbstractQueryHandler with AbstractUserSocket{
-  private var _userEntry:UserInfo=_
-  var pinger:Option[Runnable]=None
-  var mySession:Option[Session]=None
+class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with  AbstractQueryHandler with AbstractUserSocket {
+  private var _userEntry: UserInfo = _
+  var pinger: Option[Runnable] = None
+  var mySession: Option[Session] = None
 
-  def userEntry: UserInfo =_userEntry
-  private val outStreamLock : AnyRef = new Object()
+  def userEntry: UserInfo = _userEntry
 
-  protected var transBuffers:Option[TransBuffers]=None
+  private val outStreamLock: AnyRef = new Object()
 
-  def userSocket: WebClientSocket =this
+  protected var transBuffers: Option[TransBuffers] = None
 
-  def isAllowed(ref:Reference,user:UserInfo): Boolean = StorageManager.isChildOf(ref,user.startRef)
+  def userSocket: WebClientSocket = this
+
+  def isAllowed(ref: Reference, user: UserInfo): Boolean = StorageManager.isChildOf(ref, user.startRef)
 
   // Interfcace WebSocketAdaber
   override def onWebSocketConnect(sess: Session): Unit = {
     super.onWebSocketConnect(sess)
 
-    Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal+" ")
-    if (sess.getUpgradeRequest.getUserPrincipal != null|| management.databrowser.MainWindow.testWS) {
+    Log.w("connect sess address:" + sess.getRemoteAddress + ", user:" + sess.getUpgradeRequest.getUserPrincipal + " ")
+    if (sess.getUpgradeRequest.getUserPrincipal != null || management.databrowser.MainWindow.testWS) {
       val userName = if (management.databrowser.MainWindow.testWS) "Peter" else sess.getUpgradeRequest.getUserPrincipal.getName
-      if(management.databrowser.MainWindow.testWS) println("Option testWS active, test user choosen")
+      if (management.databrowser.MainWindow.testWS) println("Option testWS active, test user choosen")
       UserList.getUserByName(userName) match {
         case Some(u) => _userEntry = u
         case None => Log.e("Login unknown user " + userName); _userEntry = null; return;
@@ -96,73 +97,79 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     handleCommands(message)
   }
 
-  override def onWebSocketError(cause: Throwable): Unit ={
+  override def onWebSocketError(cause: Throwable): Unit = {
     super.onWebSocketError(cause)
     Log.e(cause)
   }
 
-  private def readInt(array:Array[Byte],pos:Int):Int={
-    val ch1 = (array(pos)& 0xff)
-    val ch2 = (array(pos+1)& 0xff)
-    val ch3 = (array(pos+2)& 0xff)
-    val ch4 = (array(pos+3)& 0xff)
+  private def readInt(array: Array[Byte], pos: Int): Int = {
+    val ch1 = (array(pos) & 0xff)
+    val ch2 = (array(pos + 1) & 0xff)
+    val ch3 = (array(pos + 2) & 0xff)
+    val ch4 = (array(pos + 3) & 0xff)
     //println("readint "+ ch1+" "+ch2+" "+ch3+" "+ch4)
-    if ((ch1 | ch2 | ch3 | ch4) < 0){ println("Lowww");throw new EOFException("Wrong Values")}
-    else (ch1 << 24.toByte) + (ch2 << 16.toByte) + (ch3 << 8.toByte) + (ch4 <<0)
+    if ((ch1 | ch2 | ch3 | ch4) < 0) {
+      println("Lowww");
+      throw new EOFException("Wrong Values")
+    }
+    else (ch1 << 24.toByte) + (ch2 << 16.toByte) + (ch3 << 8.toByte) + (ch4 << 0)
   }
 
   /** is called when a Block is changed
   *
 */
-  override def onWebSocketBinary( payload:Array[Byte], offset:Int, len:Int): Unit = if(len>=17){
-    super.onWebSocketBinary(payload,offset,len)
-    println("OnWebSocketBinary p:"+payload.size+" offset:"+offset+" len:"+len)
+  override def onWebSocketBinary(payload: Array[Byte], offset: Int, len: Int): Unit = if (len >= 17) {
+    super.onWebSocketBinary(payload, offset, len)
+    println("OnWebSocketBinary p:" + payload.size + " offset:" + offset + " len:" + len)
     //println("payload:"+payload.mkString("|"))
-    val blockTyp=readInt(payload,offset)
-    println("blockTyp "+blockTyp)
-    val blockClass=AllClasses.get.blockClassList(blockTyp)
-    if(len!=blockClass.blocksize+17) Log.e("Block class "+blockClass+" wrong Size, expected:"+blockClass.blocksize+"+17, found:"+len)
+    val blockTyp = readInt(payload, offset)
+    println("blockTyp " + blockTyp)
+    val blockClass = AllClasses.get.blockClassList(blockTyp)
+    if (len != blockClass.blocksize + 17) Log.e("Block class " + blockClass + " wrong Size, expected:" + blockClass.blocksize + "+17, found:" + len)
     else {
       val blockInst = readInt(payload, offset + 4)
-      println("BlockInst: "+blockInst)
-      val propField: Byte =payload(offset+8);println("PropField:"+propField)
-      val parentType=readInt(payload, offset + 9);println("Parenttyp:"+parentType)
-      val parentInst=readInt(payload, offset + 13);println("ParentInst:"+parentInst)
+      println("BlockInst: " + blockInst)
+      val propField: Byte = payload(offset + 8);
+      println("PropField:" + propField)
+      val parentType = readInt(payload, offset + 9);
+      println("Parenttyp:" + parentType)
+      val parentInst = readInt(payload, offset + 13);
+      println("ParentInst:" + parentInst)
       val ownerRef = OwnerReference(propField, Reference(parentType, parentInst))
 
-      val data=new Array[Byte](blockClass.blocksize)
-      Array.copy(payload,offset+17,data,0,blockClass.blocksize)
+      val data = new Array[Byte](blockClass.blocksize)
+      Array.copy(payload, offset + 17, data, 0, blockClass.blocksize)
       //payload.copyToArray(data,offset+17,blockClass.blocksize)
       //println("data:"+data.mkString("|"))
       if (blockInst == -1) { // new Block, create it
-        createBlock(blockTyp,ownerRef,data)
+        createBlock(blockTyp, ownerRef, data)
       } else { // block changed
-        writeBlock(Reference(blockTyp,blockInst),data)
+        writeBlock(ownerRef, Reference(blockTyp, blockInst), data)
       }
     }
-  } else Log.e("OnWebSocket length too short "+len)
+  } else Log.e("OnWebSocket length too short " + len)
 
-  override def hashCode: Int = userEntry.hashCode()+mySession.hashCode()
+  override def hashCode: Int = userEntry.hashCode() + mySession.hashCode()
 
   override def equals(other: Any): Boolean = other match {
-    case that: WebClientSocket=> this.userEntry == that.userEntry && this.mySession==that.mySession
+    case that: WebClientSocket => this.userEntry == that.userEntry && this.mySession == that.mySession
     case _ => false
   }
 
 
-  private def removePinger(): Unit = for(p<-pinger){
+  private def removePinger(): Unit = for (p <- pinger) {
     //println("removing old pinger")
     WebClientSocket.executor.remove(p)
   }
 
   private def cleanup(): Unit =
-    if(userEntry!=null){
+    if (userEntry != null) {
       removePinger()
-      mySession=None
-      pinger=None
-      val uid=userEntry.id
-      _userEntry=null
-      UserList.removeConnection(uid,this)
+      mySession = None
+      pinger = None
+      val uid = userEntry.id
+      _userEntry = null
+      UserList.removeConnection(uid, this)
     }
 
 
@@ -174,34 +181,33 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
 
   protected def handleCommands(message: String): Unit =
-    message.split("\\|",2) match {
-      case Array(command,data)=> command match {
-        case "CreateSubscription"=> initSubscription(data)
-        case "RemoveSubscription"=> removeSubscription(data)
-        case "LoadData"=>loadData(data)
-        case "ChangeRef"=>
-        case "SubscribePath"=>subscribePath(data)
+    message.split("\\|", 2) match {
+      case Array(command, data) => command match {
+        case "CreateSubscription" => initSubscription(data)
+        case "RemoveSubscription" => removeSubscription(data)
+        case "LoadData" => loadData(data)
+        case "ChangeRef" =>
+        case "SubscribePath" => subscribePath(data)
         //case "Query"=> queryInstances(data)
-        case "OpenChild"=> openChild(data)
-        case "JumpUp"=>jumpUp(data)
-        case "ChangeTableSetup"=>changeTableSetup(data)
-        case "WriteField"=> writeField(data)
-        case "WriteInstancesField"=>writeInstancesField(data)
-        case "Execute"=> executeAction(data)
-        case "ExecuteCreate"=>executeAction(data)
-        case "CreateInstance"=>createInstance(data)
-        case "DeleteInstance"=>deleteInstance(data)
-        case "Root"=> sendRoot(data)
-        case "SubscribeBlocks"=>subscribeBlocks(data)
-        case "DeleteBlock"=>deleteBlock(data)
-        case _=>Log.e("unknown Command "+command+" data:"+data)
+        case "OpenChild" => openChild(data)
+        case "JumpUp" => jumpUp(data)
+        case "ChangeTableSetup" => changeTableSetup(data)
+        case "WriteField" => writeField(data)
+        case "WriteInstancesField" => writeInstancesField(data)
+        case "Execute" => executeAction(data)
+        case "ExecuteCreate" => executeAction(data)
+        case "CreateInstance" => createInstance(data)
+        case "DeleteInstance" => deleteInstance(data)
+        case "Root" => sendRoot(data)
+        case "SubscribeBlocks" => subscribeBlocks(data)
+        case "DeleteBlock" => deleteBlock(data)
+        case _ => Log.e("unknown Command " + command + " data:" + data)
       }
-      case Array("SendTypes")=> sendTypes()
-      case Array("SendSystemSettings")=> sendSystemSettings()
-      case Array("CalendarRoots")=>sendCalendarRoots()
-      case _=> Log.e("Wrong message Data:"+message)
+      case Array("SendTypes") => sendTypes()
+      case Array("SendSystemSettings") => sendSystemSettings()
+      case Array("CalendarRoots") => sendCalendarRoots()
+      case _ => Log.e("Wrong message Data:" + message)
     }
-
 
 
   // Interface ConnectionEntry
@@ -210,11 +216,11 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   override def releaseUndoLock(): Unit = {}
 
   override def shutDown(): Unit =
-    if(userEntry!=null) {
-      Log.w("shut down name:" + userEntry + (if(mySession.isDefined) " adress:" + mySession.get.getRemoteAddress else ""))
+    if (userEntry != null) {
+      Log.w("shut down name:" + userEntry + (if (mySession.isDefined) " adress:" + mySession.get.getRemoteAddress else ""))
       cleanup()
-      val session=this.getSession
-      if(session!=null) session.close()
+      val session = this.getSession
+      if (session != null) session.close()
     }
 
 
@@ -222,7 +228,10 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
   override def tellToQuit(): Unit = shutDown()
 
-  override def getRemoteAddress: String = mySession match {case Some(s) => s.getRemoteAddress.toString; case _ => ""}
+  override def getRemoteAddress: String = mySession match {
+    case Some(s) => s.getRemoteAddress.toString;
+    case _ => ""
+  }
 
   override def sendUndoLockInfo(undoName: String): Unit = {}
 
@@ -235,126 +244,126 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   // Interface QueryHandler
 
 
-  def sendData(command:ServerCommands.Value)(func:DataOutput=>Unit): Unit = try {
+  def sendData(command: ServerCommands.Value)(func: DataOutput => Unit): Unit = try {
     //println("send data "+command)
     outStreamLock.synchronized {
-      val buffer=if(ActionList.isBufferingUpdates) getTransBuffers else new TransBuffers()
+      val buffer = if (ActionList.isBufferingUpdates) getTransBuffers else new TransBuffers()
       buffer.output.writeInt(command.id)
       func(buffer.output)
       //output.flush()
       //println("send command " + command + " " + buffer.byteStream.size() + " bytes buffering:"+ActionList.isBufferingUpdates)
-      if(!ActionList.isBufferingUpdates) {
+      if (!ActionList.isBufferingUpdates) {
         val remote = getRemote
         if (remote != null) remote.sendBytesByFuture(java.nio.ByteBuffer.wrap(buffer.byteStream.toByteArray))
         else {
-          util.Log.e("senddata "+command+" datasize:"+buffer.byteStream.size()+" getRemote == null")
+          util.Log.e("senddata " + command + " datasize:" + buffer.byteStream.size() + " getRemote == null")
           shutDown()
         }
       }
     }
-    } catch {
-        case NonFatal(e) => util.Log.e(e)
-    }
-
+  } catch {
+    case NonFatal(e) => util.Log.e(e)
+  }
 
 
   // Client requests
 
-  protected def sendRoot(nappName:String): Unit =  if(userEntry!=null){
-    appName=nappName
+  protected def sendRoot(nappName: String): Unit = if (userEntry != null) {
+    appName = nappName
     sendUserSettings(null)
   }
 
-  def sendCalendarRoots(): Unit = if(userEntry!=null){
+  def sendCalendarRoots(): Unit = if (userEntry != null) {
     SystemSettings() match {
       case ses: ServerSystemSettings =>
         val rootRef = ses.getUserRoot(userEntry.name)
-        val projects=StorageManager.loadChildren(rootRef,202,0)
-        sendData(ServerCommands.sendCalendarData){out=>{
+        val projects = StorageManager.loadChildren(rootRef, 202, 0)
+        sendData(ServerCommands.sendCalendarData) { out => {
           out.writeInt(projects.size)
-          for(p<-projects) StorageManager.getInstanceProperties(p.ref) match {
-            case Some(props)=>
+          for (p <- projects) StorageManager.getInstanceProperties(p.ref) match {
+            case Some(props) =>
               p.ref.write(out)
               p.writeWithChildInfo(out)
               props.propertyFields(0).propertyList.head.write(out)
               props.propertyFields(1).propertyList.head.write(out)
             case None => throw new IllegalArgumentException("No Project-Props found " + p.ref + " " + p.fieldValue.head.toString)
           }
-        }}
+        }
+        }
       case _ => Log.e("no Systemsettings found")
     }
   }
 
   protected def sendTypes(): Unit = {
-    val ac=AllClasses.get
-    val classList=ac.classList
-    val blockClassList=ac.blockClassList
-    sendData(ServerCommands.sendTypes){out=>{
+    val ac = AllClasses.get
+    val classList = ac.classList
+    val blockClassList = ac.blockClassList
+    sendData(ServerCommands.sendTypes) { out => {
       out.writeInt(classList.size)
-      for(o<-classList.valuesIterator)
+      for (o <- classList.valuesIterator)
         o.writeToStream(out)
       out.writeInt(blockClassList.size)
-      for(b<-blockClassList.valuesIterator)
-        CollUtils.writeToStream(out,b)
+      for (b <- blockClassList.valuesIterator)
+        CollUtils.writeToStream(out, b)
       out.writeUTF(WebUserSetting.getTableSettingString(userEntry))
     }
     }
     //println("types send")
   }
 
-  protected def initSubscription(data:String):Unit=
+  protected def initSubscription(data: String): Unit =
     data match {
       case WebClientSocket.PrFieldPattern(StrToInt(typ), StrToInt(inst), StrToInt(pr), pdata) =>
         val ref = Reference(typ, inst)
-        if (userEntry!=null && isAllowed(ref, userEntry))
-          createSubscription(ref,pr.toByte,this)
+        if (userEntry != null && isAllowed(ref, userEntry))
+          createSubscription(ref, pr.toByte, this)
         else {
-          userSocket.sendData(ServerCommands.acceptSubscription ) { out=>
+          userSocket.sendData(ServerCommands.acceptSubscription) { out =>
             out.writeInt(-1)
-            out.writeUTF("Acess to "+ref.sToString+" is not allowed for user "+userEntry)
+            out.writeUTF("Acess to " + ref.sToString + " is not allowed for user " + userEntry)
           }
           Log.e("ref " + ref + " not allowed for " + userEntry)
         };
     }
 
-  protected def subscribeBlocks(data:String):Unit= data match {
+  protected def subscribeBlocks(data: String): Unit = data match {
     case WebClientSocket.PrFieldPattern(StrToInt(typ), StrToInt(inst), StrToInt(pr), pdata) =>
       val ref = Reference(typ, inst)
-      println("subscribe blocks "+ref+" "+pr)
-      if (userEntry!=null && isAllowed(ref, userEntry))
-        createBlockSubscription(ref,pr.toByte,this)
+      println("subscribe blocks " + ref + " " + pr)
+      if (userEntry != null && isAllowed(ref, userEntry))
+        createBlockSubscription(ref, pr.toByte, this)
       else {
-        userSocket.sendData(ServerCommands.acceptSubscription ) { out=>
+        userSocket.sendData(ServerCommands.acceptSubscription) { out =>
           out.writeInt(-1)
-          out.writeUTF("Acess to "+ref.sToString+" is not allowed for user "+userEntry)
+          out.writeUTF("Acess to " + ref.sToString + " is not allowed for user " + userEntry)
         }
         Log.e("ref " + ref + " not allowed for " + userEntry)
       };
   }
 
-  protected def loadData(data:String):Unit = data.split("\\|") match {
-    case Array(Reference(parentRef),StrToInt(propertyField),StrToInt(dataTicket))=>
-      userSocket.sendData(ServerCommands.sendQueryResponse ) {out=>
+  protected def loadData(data: String): Unit = data.split("\\|") match {
+    case Array(Reference(parentRef), StrToInt(propertyField), StrToInt(dataTicket)) =>
+      userSocket.sendData(ServerCommands.sendQueryResponse) { out =>
         out.writeInt(dataTicket)
-        sendQueryData(out,parentRef,propertyField.toByte)
+        sendQueryData(out, parentRef, propertyField.toByte)
       }
-    case o=> Log.e("Wrong format load data "+o)
+    case o => Log.e("Wrong format load data " + o)
   }
 
 
-  protected def removeSubscription(data:String): Unit =data match {
-    case StrToInt(subsID)=> CommonSubscriptionHandler.removeSubscription(subsID)
-    case a=> Log.e("wrong data:"+a)
+  protected def removeSubscription(data: String): Unit = data match {
+    case StrToInt(subsID) => CommonSubscriptionHandler.removeSubscription(subsID)
+    case a => Log.e("wrong data:" + a)
   }
 
-  protected def subscribePath(data:String): Unit ={
-    val ref= data match {
+  protected def subscribePath(data: String): Unit = {
+    val ref = data match {
       case Reference(r1) => r1
       case "root" => userEntry.startRef
-      case o => Log.e("Wrong reference format "+o);userEntry.startRef
+      case o => Log.e("Wrong reference format " + o); userEntry.startRef
     }
-    if(isAllowed(ref, userEntry))
-      createPathSubscription((ref :: StorageManager.getPathToParent(ref,userEntry.startRef)).reverse,this)
+    if (isAllowed(ref, userEntry))
+      createPathSubscription((ref :: StorageManager.getPathToParent(ref, userEntry.startRef)).reverse, this)
     else {
       userSocket.sendData(ServerCommands.acceptSubscription) { out =>
         out.writeInt(-1)
@@ -364,63 +373,87 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
     }
   }
 
-  protected def openChild(data:String):Unit=    data.split("\\|") match {
-    case Array(StrToInt(subsID),Reference(newRef))=> openChild(subsID,newRef)
-    case o => Log.e("wrong ref style "+data)
+  protected def openChild(data: String): Unit = data.split("\\|") match {
+    case Array(StrToInt(subsID), Reference(newRef)) => openChild(subsID, newRef)
+    case o => Log.e("wrong ref style " + data)
   }
 
-  protected def jumpUp(data:String): Unit = data.split("\\|") match {
-    case Array(StrToInt(subsID),StrToInt(pos))=>
-      CommonSubscriptionHandler.jumpUp(subsID,pos)
-    case o=> Log.e("Wrong style "+o)
+  protected def jumpUp(data: String): Unit = data.split("\\|") match {
+    case Array(StrToInt(subsID), StrToInt(pos)) =>
+      CommonSubscriptionHandler.jumpUp(subsID, pos)
+    case o => Log.e("Wrong style " + o)
   }
 
-  protected def changeTableSetup(data:String): Unit =data.split("§") match {
-    case Array (StrToInt(typeID),settingsString)=> WebUserSetting.writeTableSetting(userEntry,typeID,settingsString)
-    case other => Log.e("set Table Setup wrong string:"+data)
+  protected def changeTableSetup(data: String): Unit = data.split("§") match {
+    case Array(StrToInt(typeID), settingsString) => WebUserSetting.writeTableSetting(userEntry, typeID, settingsString)
+    case other => Log.e("set Table Setup wrong string:" + data)
   }
 
-
-  protected def writeField(data:String):Unit = data.split("\\|") match {
-    case Array(Reference(ref),StrToInt(field),Decode(expression)) => try {
-      TransactionManager.doTransaction(userEntry.id,ClientCommands.writeField.id.toShort,
-      ref,false,0,{
-        if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression))
-          Log.e("cant write field "+field+" in ref:"+ref+" ex:"+expression)
-      })
+  protected def sendError(error:CommandError): Unit =
+    sendData(ServerCommands.sendCommandResponse ) {out =>
+      out.writeBoolean(true)
+      error.write(out)
     }
-    catch {
-      case NonFatal(e) => Log.e("write Field "+field+" wrong String: " + data+" in ref:"+ref,e)
+
+  protected def writeField(data: String): Unit = {
+    var error:CommandError=null
+    data.split("\\|") match {
+      case Array(Reference(ref), StrToInt(field), Decode(expression)) => try {
+        for(ret<-TransactionManager.doTransaction(userEntry.id, ClientCommands.writeField.id.toShort,
+          ref, false, 0, {
+            if (!TransactionManager.tryWriteInstanceField(ref, field.toByte, expression))
+              error=new CommandError("cant write field " + field + " in ref:" + ref + " ex:" + expression,ClientCommands.writeField.id,0)
+          }))
+          error=new CommandError(ret.getMessage,ClientCommands.writeField.id,0)
+      }
+      catch {
+        case NonFatal(e) =>
+          error=new CommandError("write Field " + field + " wrong String: " + data + " in ref:" + ref+" :"+ e,ClientCommands.writeField.id,0);
+          Log.e(e)
+      }
+      case o: Array[String] => error=new CommandError("writeField wrong data " + o.mkString(" | "),ClientCommands.writeField.id,0)
     }
-    case o:Array[String]=> Log.e("writeField wrong data "+o.mkString(" | "))
+    if(error!=null) sendError(error)
   }
 
 
-  protected def writeInstancesField(data:String):Unit = data.split("\\|") match {
-    case Array(listString,StrToInt(field),Decode(expression)) => try {
-      val refList: Array[Reference] =listString.split("#").flatMap { case Reference(ref) => Some(ref); case _ => None }
-      if(refList.nonEmpty)
-      TransactionManager.doTransaction(userEntry.id,ClientCommands.writeField.id.toShort,
-        refList.head,false,0,{
-          for(ref<-refList)
-          if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression))
-            Log.e("cant write field "+field+" in ref:"+ref+" ex:"+expression)
-        })
 
+  protected def writeInstancesField(data:String):Unit ={
+    var error:CommandError=null
+    data.split("\\|") match {
+      case Array(listString,StrToInt(field),Decode(expression)) => try {
+        val refList: Array[Reference] =listString.split("#").flatMap { case Reference(ref) => Some(ref); case _ => None }
+        if(refList.nonEmpty)
+          for(ret<-TransactionManager.doTransaction(userEntry.id,ClientCommands.writeInstance.id.toShort,
+            refList.head,false,0,{
+              for(ref<-refList)
+                if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression))
+                  error=new CommandError("cant write field "+field+" in ref:"+ref+" ex:"+expression,ClientCommands.writeInstance.id,0);Log.e(error.getMessage)
+            }))
+            error=new CommandError(ret.getMessage,ClientCommands.writeInstance.id,0)
+
+      }
+      catch {
+        case NonFatal(e) => Log.e("write Fields "+field+" wrong String: " + data,e);error=new CommandError("write Fields "+field+" wrong String: " + data+" :"+e,ClientCommands.writeInstance.id,0)
+      }
+      case o:Array[String]=> Log.e("writeField wrong data "+o.mkString(" | "));error=new CommandError("writeField wrong data "+o.mkString(" | "),ClientCommands.writeInstance.id,0)
     }
-    catch {
-      case NonFatal(e) => Log.e("write Fields "+field+" wrong String: " + data,e)
-    }
-    case o:Array[String]=> Log.e("writeField wrong data "+o.mkString(" | "))
+    if(error!=null) sendError(error)
   }
 
 
-  protected def writeBlock(ref:Reference,data:Array[Byte]): Unit=try {
-    TransactionManager.doTransaction(userEntry.id,ClientCommands.changeBlock.id.toShort,ref,false,-1,{
-       TransactionManager.tryWriteBlock(ref,data)
-    })
-  }catch {
-    case NonFatal(e)=> Log.e("write Block "+ref,e)
+  protected def writeBlock(owner:OwnerReference,ref:Reference,data:Array[Byte]): Unit={
+    var error:CommandError=null
+    try {
+
+      for(ret<-TransactionManager.doTransaction(userEntry.id,ClientCommands.changeBlock.id.toShort,ref,false,-1,{
+        TransactionManager.tryWriteBlock(owner,ref,data)
+      }))
+        error=new CommandError(ret.getMessage,ClientCommands.changeBlock.id,0)
+    }catch {
+      case NonFatal(e)=> Log.e("write Block "+ref,e);error=new CommandError(e.getMessage,ClientCommands.changeBlock.id,0)
+    }
+    if(error!=null) sendError(error)
   }
 
 
@@ -438,12 +471,13 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
   protected def executeAction(data:String):Unit= data.split("\\|") match {
     case Array(Reference(owner),StrToInt(propField),StrToInt(createType),actionName,paramText,formatText) =>
       val formatList:Array[(Int,Constant)]   = if(formatText.trim.length<2)Array.empty else formatText.split ('\u01c1').map (strToFormatValues)
-      intExecute(Array(owner),actionName,paramText,createType,propField.toByte,formatList,createAction = true)
-    case Array(RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Array.empty, createAction = false)
+      intExecute(Array(owner),actionName,paramText,createType,propField.toByte,formatList,createAction = true,EMPTY_OWNERREF)
+    case Array(OwnerReference(owner),RefList(rList), actionName, paramText) => intExecute(rList, actionName, paramText,0,0,Array.empty, createAction = false,owner)
     case _=> Log.e("Execute action wrong syntax:"+data+"\n size:"+data.split("\\|").length)
   }
 
-  def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Array[(Int,Constant)], createAction: Boolean): Unit = {
+  def intExecute (rList: Array[Reference], actionName: String, paramText: String,newType:Int,propField:Byte,formList:Array[(Int,Constant)], createAction: Boolean,owner:OwnerReference): Unit = {
+    //println("intExecute rlist:"+rList.mkString("|")+" create:"+createAction+" owner:"+owner)
     val paramList:Array[(String,Constant)] =if(paramText.trim.length==0)Array.empty else paramText.split ('\u01c1').map (strToParam)
     var error: CommandError = null
     val instList: Array[InstanceData] = for (r <- rList
@@ -468,7 +502,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
                 }
 
               case b: ActionIterator => // Iterator, runs through all instances in given order
-                b.func (this, EMPTY_OWNERREF, instList, paramList)
+                b.func (this, owner, instList, paramList)
 
               case c: CreateActionImpl if createAction => c.func (this, instList, paramList.toSeq, newType, formList.toSeq)
               case e => Log.e ("unknown type " + e + " " + createAction)
@@ -538,7 +572,7 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
           }
         }
 
-      case _=> Log.e("create wrong syntax:"+data)
+      case _=> Log.e("create wrong syntax:"+data);sendError(new CommandError("create wrong syntax:"+data,ClientCommands.createInstance.id,0))
     }
 
 

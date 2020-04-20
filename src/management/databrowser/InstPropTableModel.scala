@@ -36,9 +36,9 @@ object InstPropTableModel extends AbstractTableModel {
 		else "B "+theClass.blockPropFields(row-theClass.propFields.size).name
 	}
 	else propData match{
-		case Some(a) =>
+		case Some(a: InstanceProperties) =>
 			if(row<a.propertyFields.length)
-				a.propertyFields(row)
+				a.propertyFields(row).toString
 			else "Psize:"+a.propertyFields.length
 		case _ => " "
 	}
@@ -48,4 +48,6 @@ object InstPropTableModel extends AbstractTableModel {
 		case 1 => "owned Instances"
 		case _ => "***"
 	}
+
+	override def getColumnClass(columnIndex: Int): Class[_] = classOf[String]
 }

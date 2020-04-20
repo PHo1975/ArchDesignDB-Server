@@ -2,8 +2,8 @@ package client.graphicsView
 
 import java.awt.Dimension
 
-import client.dataviewer.ViewConstants
 import client.dialog._
+import client.ui.ViewConstants
 import definition.expression.{Constant, IntConstant}
 
 import scala.swing.event.{ButtonClicked, SelectionChanged}

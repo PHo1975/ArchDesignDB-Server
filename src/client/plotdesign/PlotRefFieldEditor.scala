@@ -3,9 +3,9 @@ package client.plotdesign
 
 import java.awt.Color
 
-import client.dataviewer.ViewConstants
 import client.dialog._
 import client.graphicsView.ScaleModel
+import client.ui.ViewConstants
 import definition.data.PlotFilter
 import definition.expression.{Constant, IntConstant}
 import javax.swing.BorderFactory
@@ -25,12 +25,12 @@ class PlotRefFieldEditor extends FieldEditor {
   textScaleEditor.addSearchLookup({case t:LayerRef=> t._textScale})
  
   
-  val layerNameLabel=new SidePanelLabel(Map((className,0)),this){
+  val layerNameLabel: SidePanelLabel =new SidePanelLabel(Map((className,0)),this){
      addSearchLookup({case l:LayerRef=>l.layerName})
      border=BorderFactory.createLineBorder(Color.gray)
    }
   
-  val scaleRenderer= new Label with RenderComponent[Int] {
+  val scaleRenderer: Label with RenderComponent[Int] = new Label with RenderComponent[Int] {
     font = ViewConstants.labelFont
 
     def setStyle(scale: Int): Unit = text = "1:" + s"${math.round(1d / ScaleModel.scales(scale)).toInt}"
@@ -40,7 +40,7 @@ class PlotRefFieldEditor extends FieldEditor {
 
   lazy val scaleList: Seq[Int] = ScaleModel.scales.keys.toSeq
    
-  lazy val scaleCombo=new SidePanelComboBox(scaleList,scaleRenderer,this,Map(className -> 1)){
+  lazy val scaleCombo: SidePanelComboBox[Int, Label with RenderComponent[Int]] =new SidePanelComboBox(scaleList,scaleRenderer,this,Map(className -> 1)){
     val defaultValue=7
 
     def getConstant(value: Int): Constant = IntConstant(value)
@@ -62,8 +62,8 @@ class PlotRefFieldEditor extends FieldEditor {
 
 
   class FilterEditor extends BoxPanel(Orientation.Vertical) with SidePanelComponent[PlotFilter]{
-    val checkboxNames=Array("Linien","Kreise","Elipsen","Füllflächen","PolygonLinien","Bitmaps","Texte","Maßlinien","Symbole","Symbolfüller","Messfläche","Wohnfläche","MessPolyLinie")
-    val checkboxValues=Array(1,2,4,8,16,32,64,128,256,512,1024,2048,4096)
+    val checkboxNames: Array[String] =Array("Linien","Kreise","Elipsen","Füllflächen","PolygonLinien","Bitmaps","Texte","Maßlinien","Symbole","Symbolfüller","Messfläche","Wohnfläche","MessPolyLinie")
+    val checkboxValues: Array[Int] =Array(1,2,4,8,16,32,64,128,256,512,1024,2048,4096)
     val sum: Int =1+2+4+8+16+32+64+128+256+512+1024+2048+4096
 
     class FilterCheckBox(name:String,id:Int) extends CheckBox(name){
@@ -94,7 +94,7 @@ class PlotRefFieldEditor extends FieldEditor {
 
     override def defaultValue: PlotFilter = PlotFilter.emptyFilter
 
-    override def getConstant(value: PlotFilter)= IntConstant(value.filter)
+    override def getConstant(value: PlotFilter): Constant = IntConstant(value.filter)
 
     override def valueFromConstant(c: Constant): PlotFilter = new PlotFilter(c.toInt)
 
