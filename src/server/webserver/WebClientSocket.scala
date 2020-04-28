@@ -420,15 +420,21 @@ class WebClientSocket extends WebSocketAdapter with AbstractConnectionEntry with
 
   protected def writeInstancesField(data:String):Unit ={
     var error:CommandError=null
+   // println("writeInstancesField:"+data)
     data.split("\\|") match {
       case Array(listString,StrToInt(field),Decode(expression)) => try {
         val refList: Array[Reference] =listString.split("#").flatMap { case Reference(ref) => Some(ref); case _ => None }
-        if(refList.nonEmpty)
+       if(refList.nonEmpty)
           for(ret<-TransactionManager.doTransaction(userEntry.id,ClientCommands.writeInstance.id.toShort,
             refList.head,false,0,{
-              for(ref<-refList)
-                if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression))
-                  error=new CommandError("cant write field "+field+" in ref:"+ref+" ex:"+expression,ClientCommands.writeInstance.id,0);Log.e(error.getMessage)
+              for(ref<-refList) {
+                println("for "+ref)
+                if (!TransactionManager.tryWriteInstanceField(ref,field.toByte,expression)) {
+                  error=new CommandError("cant write field "+field+" in ref:"+ref+" ex:"+expression,
+                    ClientCommands.writeInstance.id,0)
+                  if(error!=null) Log.e(error.getMessage)
+                }
+              }
             }))
             error=new CommandError(ret.getMessage,ClientCommands.writeInstance.id,0)
 

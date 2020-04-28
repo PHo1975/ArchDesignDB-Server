@@ -26,11 +26,10 @@ class ColorFieldEditor extends FieldEditor {
 		focusable=false
 		addSearchLookup({
 		  case c:GraphElem => new Color(c.color)
-    	/*case a:AxisShape =>  a.color
-    	case v:VolumeShape =>	 v.prism.color*/
 		})
 
     override def setValue(newColor: Option[Color]): Unit = {
+			println("setValue "+newColor)
 		  visible= ColorFieldEditor.showEditor
 		  super.setValue(newColor)
 			newColor match {

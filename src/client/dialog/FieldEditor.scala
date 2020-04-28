@@ -25,7 +25,7 @@ trait AbstractFieldEditor
 trait FieldEditor extends AbstractFieldEditor {  
   var dataList:Iterable[SelectGroup[_ <:Referencable]]=Seq.empty
   var inited=false
-  var allowedClassIds:Map[String,Int]=Map.empty
+  var allowedClassIds:Map[String, Int]=Map.empty
 
   def fieldComponents: Seq[SidePanelComponent[_]]
   
@@ -46,11 +46,11 @@ trait FieldEditor extends AbstractFieldEditor {
 
   def init(): Unit = if (!inited) {
     inited=true
-    ClientQueryManager.registerSetupListener(()=>{    
-	  allowedClassIds=allowedClassNames.map(a => a -> AllClasses.get.getClassIDByName(a) ).toMap
+    ClientQueryManager.registerSetupListener(()=>{
+    val ac=AllClasses.get
+	  allowedClassIds=allowedClassNames.iterator.filter(ac.exists).map(a=> a->ac.getClassIDByName(a) ).toMap
 	  for(f<-fieldComponents)
 	    f.createFieldMap(allowedClassIds)
-      println("Fieldeditor settings done")
   })
   }
 
@@ -71,6 +71,7 @@ trait FieldEditor extends AbstractFieldEditor {
   }
 
   def storeValueMapped[A](component: SidePanelComponent[A], func: (A) => A): Unit = {
+    //println("Store Value mapped "+component.getClass)
     val instList=dataList.flatMap(_.children.filter(inst=>component.fieldMap.contains(inst.ref.typ )))
 	  if(instList.nonEmpty)
 	    for(elem<-instList){	
@@ -142,7 +143,8 @@ trait SidePanelComponent[A] {
 
   protected var searchValue: Option[A] = _
 
-  def createFieldMap(nameMap: Map[String, Int]): Unit = fieldMap = allowedFields map (elem => nameMap(elem._1) -> elem._2.toByte)
+  def createFieldMap(nameMap: Map[String, Int]): Unit = fieldMap = allowedFields.keysIterator.filter(AllClasses.get.exists).
+  map(elem => nameMap(elem) -> allowedFields.apply(elem).toByte).toMap
   
   def defaultValue:A
   

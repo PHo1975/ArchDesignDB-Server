@@ -5,7 +5,7 @@ import definition.data.{EMPTY_REFERENCE, InstanceData, OwnerReference, Reference
 import definition.expression.{PartArea => _, _}
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
 import server.comm.AbstractUserSocket
-import server.storage.{ActionIterator, ActionModule}
+import server.storage.{ActionIterator, ActionModule, StorageManager}
 import transaction.handling.{ActionList, TransactionManager}
 
 class RaumZellenModule extends ActionModule with AbstractBuildingModel {
@@ -16,6 +16,8 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
 
   val deleteAction=new ActionIterator("Zelle löschen",None,doDelete,false,1000)
   val actions = List(splitAction,deleteAction)
+
+  val unknownCell=new Cell(this,EMPTY_REFERENCE,0,0,Array.empty,None)
 
 
   override def getPlane(planeID:Int)= {
@@ -28,10 +30,11 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
 
   override def getCell(id: Int)= {
     val cellRef=Reference(303,id)
-    val cellInst=ActionList.getInstanceData(cellRef)
-    new Cell(this,cellRef,cellInst.fieldValue)
+    if( StorageManager.instanceExists(303,id)) {
+      val cellInst = ActionList.getInstanceData(cellRef)
+      new Cell(this, cellRef, cellInst.fieldValue)
+    } else unknownCell
   }
-
 
 
   def doSplit(u:AbstractUserSocket, parent:OwnerReference, data:Iterable[InstanceData], param:Iterable[(String,Constant)]):Boolean = {
@@ -59,21 +62,28 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
         (ar.firstCell.ref.instance==cell||(ar.secondCell.isDefined&&ar.secondCell.get.ref.instance==cell)))
 
     def copyPartArea(planeID:Int,oldCellID:Int,newCellID:Int): Unit ={
+      println("copy PartAreas plane:"+planeID+" oldCell:"+oldCellID+" newCell: "+newCellID)
       for(pa<-findPartAreas(planeID,oldCellID)) {
+        println("PA:"+pa+" "+pa.createCornerPoints.mkString("|"))
         if(pa.secondCell.isEmpty|| {
-          val testPA=new PartArea(this,EMPTY_REFERENCE,planeID,if (pa.firstCell.ref.instance == oldCellID) getCell(newCellID) else pa.firstCell,
+          val testPA=new PartArea(this,EMPTY_REFERENCE,planeID,if (pa.firstCell.ref.instance == oldCellID)
+            getCell(newCellID) else pa.firstCell,
           if(pa.secondCell.get.ref.instance==oldCellID) Some(getCell(newCellID)) else pa.secondCell,0,0d  )
           val points=testPA.createCornerPoints.toSeq
-          println("copy Area "+planeID+" oldcell:"+oldCellID+" newCellID "+newCellID+" intersectionpoints:"+points.mkString("|"))
-          points.size>3
+          println(" intersectionpoints:"+points.mkString("|")+" removed:"+PointList(points).removeDoublePoints())
+          PointList(points).removeDoublePoints().points.size>3
         } )
         createPartArea(planeID, if (pa.firstCell.ref.instance == oldCellID) newCellID else pa.firstCell.ref.instance,
           pa.secondCell match { case Some(sc) => if (sc.ref.instance == oldCellID) newCellID else sc.ref.instance; case None => 0 },
           pa.aufbau, pa.align)
         if(pa.createCornerPoints.nonEmpty) {
-          val oldPA=new PartArea(this,EMPTY_REFERENCE,planeID,getCell(pa.firstCell.ref.instance),pa.secondCell.map(el=>getCell(el.ref.instance)),0,0d)
-          if(oldPA.createCornerPoints.isEmpty){
-            println("pa:"+pa+" now has empty intersection, delete")
+          val oldPA=new PartArea(this,EMPTY_REFERENCE,planeID,getCell(pa.firstCell.ref.instance),
+            pa.secondCell.map(el=>getCell(el.ref.instance)),0,0d)
+          val points=PointList(oldPA.createCornerPoints.toSeq)
+          println("oldpa:"+oldPA+" points:"+points.points.mkString("|"))
+          if(points.removeDoublePoints().points.size<4){
+            println("pa:"+pa+" now has empty intersection"+points.points.mkString("|")+"\n-> delete "+
+              points.removeDoublePoints().points.mkString("|"))
             TransactionManager.tryDeleteInstance(pa.ref,None,None)
           }
         }
@@ -116,7 +126,7 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
           !splitPlane.plane.isLinearyDependentFrom(edge) &&
             splitPlane.plane.intersectionWith(edge).isInSegment(pointPairs(ix)(0),pointPairs(ix)(1))
         })
-        println("HittenEdges"+hittenEdges.mkString(","))
+        println("HittenEdges "+hittenEdges.mkString(","))
         if(hittenEdges.size==2&& hittenEdges(1)-2==hittenEdges(0)) { //only (0,2) and (1,3)
           val newCellInst=TransactionManager.tryCreateInstance(303,Array(cellOwnerRef),true)
           TransactionManager.tryWriteInstanceField(newCellInst.ref,0,IntConstant(cell.topPlaneID))
