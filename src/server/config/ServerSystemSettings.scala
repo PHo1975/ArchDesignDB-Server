@@ -63,7 +63,7 @@ class ServerSystemSettings(settingsRef:Reference)extends SystemSettings  {
 	 })
 	
 	def getCustomSettings(folderName:String):IndexedSeq[InstanceData]= {
-		println("getCustomSettings:"+folderName+" ");
+		//println("getCustomSettings:"+folderName+" ");
 		for(folder: InstanceData <-customFolderList; if folder.fieldValue.head.toString.equalsIgnoreCase(folderName))
 			StorageManager.getInstanceProperties(folder.ref) match {
 			case Some(data) => return data.propertyFields(1).propertyList.map{StorageManager.getInstanceData}

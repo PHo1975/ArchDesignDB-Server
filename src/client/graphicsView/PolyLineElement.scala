@@ -19,71 +19,38 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
 
   override def toString: String = "PolyLine " + nref.sToString + " ( Col:" + color + ", HStyle:" + hatchStyle + ")"
 
-  def normVector(p1: VectorConstant, p2: VectorConstant): VectorConstant = (p2 - p1).unit.transposeXY
 
-  lazy val area = new Area(createPath(createPoints(GraphElemConst.identityTransform)))
+
+  lazy val area = poly.pathList.headOption match{
+    case Some(pl) if pl.points.size >1 => new Area(PolyLineElement.createPath(PolyLineElement.createPoints(pl.points,GraphElemConst.identityTransform,width,align)))
+    case _ => new Area()
+  }
 
   println("poly "+nref+" "+poly.pathList.size)
 
-  def loopPoints(trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
+  /*def loopPoints(trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
     poly.pathList.headOption match {
-      case Some(pl) if pl.points.size > 1 =>
-        //println("points:"+pl.points.mkString(" | "))
-        new Iterator[VectorConstant] {
-          var st: Int = -1
-
-          def hasNext: Boolean = st < pl.points.size - 1
-
-          def next(): VectorConstant = {
-            //println("next "+st)
-            st += 1
-            if (st == 0) trans(pl.points.head + normVector(pl.points.head, pl.points(1)) * delta)
-            else if (st == pl.points.size - 1) {
-              val last = pl.points.last
-              trans(last + normVector(pl.points(pl.points.size - 2), last) * delta)
-            }
-            else {
-              val p1 = pl.points(st - 1)
-              val p2 = pl.points(st)
-              val p3 = pl.points(st + 1)
-              val n1 = normVector(p1, p2)
-              val l1 = Line3D(p1 + n1 * delta, p2 - p1)
-              val n2 = normVector(p2, p3)
-              val l2 = Line3D(p2 + n2 * delta, p3 - p2)
-              if (l1.isLinearDependent(l2)) trans(l2.pos)
-              else trans(l1.intersectionWith(l2))
-            }
-          }
-        }
+      case Some(pl) if pl.points.size > 1 => PolyLineElement.loopPoints(pl.points,trans,delta)
       case _ => GraphElemConst.emptyVectorIterator
     }
 
-  def createPath(it: Iterator[VectorConstant]): Path2dDouble = {
-    val path = new Path2dDouble
-    if (it.hasNext) {
-      val first = it.next()
-      path.moveTo(first.x, first.y)
-      while (it.hasNext) {
-        val p = it.next()
-        path.lineTo(p.x, p.y)
-      }
-      path.lineTo(first.x, first.y)
-    }
-    path
-  }
+
 
   def createPoints(trans: VectorConstant => VectorConstant): Iterator[VectorConstant] = {
     //println("createPoints "+poly.pathList.mkString)
     val w = if (width == 0) 0.05d else width
     loopPoints(trans, w * (-0.5d + align)) ++ loopPoints(trans, w * (0.5d + align)).toSeq.reverseIterator
-  }
+  }*/
 
-  override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
-    val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm)
-    val path = createPath(createPoints(trans))
-    val theArea = new Area(path)
-    g.setPaint(StyleService.getAlphaColor(if (selectColor != null) selectColor.getRGB else color))
-    g.fill(theArea)
+  override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit =
+    poly.pathList.headOption match {
+    case Some(pl) if pl.points.size > 1 =>
+      val trans: (VectorConstant) => VectorConstant = GraphElemConst.transform(sm)
+      val path = PolyLineElement.createPath(PolyLineElement.createPoints(pl.points,trans,width,align))
+      val theArea = new Area(path)
+      g.setPaint(StyleService.getAlphaColor(if (selectColor != null) selectColor.getRGB else color))
+      g.fill(theArea)
+    case _ =>
   }
 
   override def drawWithOffset(g: Graphics2D, sm: Scaler, selectColor: Color, offSet: VectorConstant): Unit = {
@@ -150,6 +117,59 @@ class MeasureLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineSty
       case x if x < 10 && x > 0 => super.getFormatFieldValue(fieldNr - 1)
       case _ => null
     }
+  }
+
+}
+
+object PolyLineElement{
+
+  def normVector(p1: VectorConstant, p2: VectorConstant): VectorConstant = (p2 - p1).unit.transposeXY
+
+  def loopPoints(points:Seq[VectorConstant],trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
+    new Iterator[VectorConstant] {
+      var st: Int = -1
+      def hasNext: Boolean = st < points.size - 1
+
+      def next(): VectorConstant = {
+        //println("next "+st)
+        st += 1
+        if (st == 0) trans(points.head + normVector(points.head, points(1)) * delta)
+        else if (st == points.size - 1) {
+          val last = points.last
+          trans(last + normVector(points(points.size - 2), last) * delta)
+        }
+        else {
+          val p1 = points(st - 1)
+          val p2 = points(st)
+          val p3 = points(st + 1)
+          val n1 = normVector(p1, p2)
+          val l1 = Line3D(p1 + n1 * delta, p2 - p1)
+          val n2 = normVector(p2, p3)
+          val l2 = Line3D(p2 + n2 * delta, p3 - p2)
+          if (l1.isLinearDependent(l2)) trans(l2.pos)
+          else trans(l1.intersectionWith(l2))
+        }
+      }
+    }
+
+  def createPoints(points:Seq[VectorConstant],trans: VectorConstant => VectorConstant,width:Double,align:Double): Iterator[VectorConstant] = {
+    //println("createPoints "+poly.pathList.mkString)
+    val w = if (width == 0) 0.05d else width
+    loopPoints(points,trans, w * (-0.5d + align)) ++ loopPoints(points,trans, w * (0.5d + align)).toSeq.reverseIterator
+  }
+
+  def createPath(it: Iterator[VectorConstant]): Path2dDouble = {
+    val path = new Path2dDouble
+    if (it.hasNext) {
+      val first = it.next()
+      path.moveTo(first.x, first.y)
+      while (it.hasNext) {
+        val p = it.next()
+        path.lineTo(p.x, p.y)
+      }
+      path.lineTo(first.x, first.y)
+    }
+    path
   }
 
 }

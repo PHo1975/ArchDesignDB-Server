@@ -2,7 +2,7 @@ package client.graphicsView
 
 import client.comm.ClientQueryManager
 import client.dialog.FieldEditor
-import definition.data.Referencable
+import definition.data.{Composition, Referencable, ShellLayer}
 import definition.expression.IntConstant
 import definition.typ.SelectGroup
 import javax.swing.AbstractListModel
@@ -130,24 +130,24 @@ class CompositionEditor extends FieldEditor {
    }*/
    
    
-   class CompListModel extends AbstractListModel[Option[TierDef]] {
+   class CompListModel extends AbstractListModel[Option[ShellLayer]] {
      var comp:Option[Composition]=None
      var offset:Double =0d
      var lastData:Seq[SelectGroup[_<:Referencable]]=Seq.empty
      
-     def 	getElementAt(index:Int):Option[TierDef]= {
-       comp.map(_.tiers(index))       
+     def 	getElementAt(index:Int):Option[ShellLayer]= {
+       comp.map(_.shellLayers(index))
      }
 
      def getSize(): Int = comp match {
-       case Some(c)=> c.tiers.size 
+       case Some(c)=> c.shellLayers.size
        case None => 0
      }
 
 
      def setComp(nc: Option[Composition], selfSet: Boolean): Unit = {
        comp=nc
-       fireContentsChanged(this,0,nc match {case Some(c)=> c.tiers.size-1;case _=>0})
+       fireContentsChanged(this,0,nc match {case Some(c)=> c.shellLayers.size-1;case _=>0})
        if(!selfSet) for(c<-comp) {
          //println("Store settings:"+comp)
          foreachSectionLine {

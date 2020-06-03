@@ -41,7 +41,7 @@ object CreateActionList extends Reactor  {
   }
 
   def containerFocused(container:FocusContainer, propField:Int):Unit = {
-    println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.ownerRef+" propfield:"+propField)
+    //println("Dispatcher Container Focused :"+container.getClass().toString+" ref:"+container.ownerRef+" propfield:"+propField)
     val cont=Some(container)
     val newContRef=container.ownerRef.map(_.ref)
   	if(!(cont==lastContainer&&newContRef==lastOwnerRef&&propField==lastPropField)) {

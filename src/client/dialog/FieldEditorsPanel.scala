@@ -9,10 +9,12 @@ import client.ui.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
 import javax.swing.BorderFactory
+import util.Log
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.swing.BoxPanel
+import scala.util.control.NonFatal
 
 
 /** panel that manages Field Editors for selected Instances
@@ -100,7 +102,8 @@ object EditorFactory {
 	
 	def getInplaceEditor(name:String):Option[InplaceFieldEditor] = {	  
 	  if(editorCache.contains(name)) None		
-		else {		  
+		else {
+			try
 			Class.forName(name).getConstructor().newInstance().asInstanceOf[AbstractFieldEditor] match {
 			  case newEditor:FieldEditor =>
 					updateFieldEditor(name,newEditor)
@@ -108,8 +111,11 @@ object EditorFactory {
 				case inplace:InplaceFieldEditor =>
 					inplaceEditorCache.getOrElseUpdate(name, inplace)
 					Some(inplace)
-				case o=> throw new IllegalArgumentException("Wrong editor Type "+ o)
-			}			
+				case o=> Log.e("Wrong editor Type "+ o);None
+			}
+			catch {
+				case NonFatal(e)=> Log.e("start FieldEditor",e);None
+			}
 		}
 	}
 }

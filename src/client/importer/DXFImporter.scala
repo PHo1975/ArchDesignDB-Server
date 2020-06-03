@@ -3,7 +3,8 @@ import java.awt.Point
 import java.io.{BufferedReader, File, FileReader}
 
 import client.comm.{ClientQueryManager, CreateInstancesBuffer}
-import client.graphicsView.{AcadColor, FontHandler, HatchHandler, LineStyleHandler}
+import client.graphicsView.Handlers._
+import client.graphicsView.{AcadColor, FontHandler, HatchHandler}
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression._
 import definition.typ.AllClasses

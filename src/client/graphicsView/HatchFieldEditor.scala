@@ -3,7 +3,9 @@ package client.graphicsView
 import java.awt.Dimension
 
 import client.dialog._
+import client.graphicsView.Handlers._
 import client.ui.ViewConstants
+import definition.data.Material
 import definition.expression.{Constant, IntConstant}
 
 import scala.swing.event.{ButtonClicked, SelectionChanged}
@@ -104,7 +106,7 @@ class HatchFieldPreview (getPaperScaleCallBack: ()=> Boolean) extends BorderPane
   val label: Label = ViewConstants.label()
    label.horizontalAlignment=Alignment.Left 
    label.horizontalTextPosition=Alignment.Left
-   var currentMaterial:MaterialDef=MaterialHandler.undefinedMaterial
+   var currentMaterial:Material=MaterialHandler.undefinedMaterial
 
   preferredSize = new Dimension(100 * ViewConstants.fontScale / 100, 50 * ViewConstants.fontScale / 100)
    add(hatchPreview,BorderPanel.Position.Center)

@@ -224,7 +224,7 @@ object ClientApp extends App {
     UserSettings.setIntProperty("Draw","backgroundLayerTrans",ViewConstants.backgroundLayerTrans)
     //UserSettings.setIntProperty("Draw","hatchLineWidth",ViewConstants.hatchLineWidth)
       UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
-    //UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
+    UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
 
     UserSettings.setListProperty[PropertyGroup]("WindowSettings", "Boxes", storeList)
     UserSettings.setIntProperty("WindowSettings", "Width", bounds.width)
@@ -314,7 +314,7 @@ object ClientApp extends App {
       //val defaults = UIManager.getLookAndFeelDefaults()
 
       ViewConstants.fontScale = UserSettings.getIntProperty("Fonts", "FontScale", 100)
-      //ViewConstants.stopFX=UserSettings.getIntProperty("Draw", "stopFX",1)
+      ViewConstants.stopFX=UserSettings.getIntProperty("Draw", "stopFX",1)
       top.title = "Datenbank [" + args(2) + "]"
       import javax.swing.SwingUtilities
       SwingUtilities.updateComponentTreeUI(top.peer)

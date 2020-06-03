@@ -77,6 +77,7 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
 
     def fontStyleList: FontStyleList = changedFontStyleList
     override def toUnit(mm:Double):Float=(mm*scale/dotPitch).toFloat
+    override def toUnitDouble(mm:Double):Double=mm*scale.toDouble/dotPitch
   }
 
 

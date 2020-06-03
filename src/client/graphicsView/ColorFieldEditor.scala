@@ -19,7 +19,8 @@ class ColorFieldEditor extends FieldEditor {
 
 	val colorBut=new Button with SidePanelComponent[Color] {
 		val allowedFields:Map[String,Byte]=Map(("Plane",3),("RoomGroup",2),("Room",2),("PolyElem",0),("LineElem",0),("ArcElem",0),
-      ("EllipseElem", 0), ("TextElem", 0), ("DimLineElem", 0), ("AreaPolygon", 1), ("BitmapElem", 0), ("PolyLineElem", 0), ("MeasurePolyLine", 1), ("Wohnfläche", 1))
+      ("EllipseElem", 0), ("TextElem", 0), ("DimLineElem", 0), ("AreaPolygon", 1), ("BitmapElem", 0), ("PolyLineElem", 0),
+			("MeasurePolyLine", 1), ("Wohnfläche", 1),("Bauteilschicht",8))
     val backColor: Color = background
     val defaultValue: Color = Color.black
 

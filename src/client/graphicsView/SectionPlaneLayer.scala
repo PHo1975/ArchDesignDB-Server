@@ -2,7 +2,7 @@ package client.graphicsView
 
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
-import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.data.{Composition, InstanceData, OwnerReference, Reference}
 import definition.expression.VectorConstant
 
 import scala.collection.mutable

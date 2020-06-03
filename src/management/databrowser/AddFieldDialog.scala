@@ -48,9 +48,10 @@ class AddFieldDialog (w:Window) extends Dialog(w) {
   def showDialog(aClass: ServerObjectClass, types: Iterable[DTWrap]): Unit = {
 		currentClass match {
 		  case Some(_)=>
-		  case None => //typCombo.peer.setModel(ComboBox.newConstantModel(types))		       
+		  case None => typCombo.peer.setModel(ComboBox.newConstantModel(types.toSeq))
 		}		
 		currentClass=Some(aClass)
+    //typCombo.peer.setModel(ComboBox.newConstantModel(types.toSeq))
 		visible=true	
  }
 }

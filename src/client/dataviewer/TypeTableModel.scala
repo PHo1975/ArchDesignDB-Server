@@ -78,7 +78,7 @@ class TypeTableModel(val tableIx:Int,val typ:Int,val propMod:PropertyModel,singl
 				rowHeight=defaultRowHeight
 				font=tableFont
 				xLayoutAlignment=0d
-				this.peer.getTableHeader().setFont(smallFont)
+				this.peer.getTableHeader.setFont(smallFont)
 				
 				reactions += {
 					case TableRowsSelected(tble,range,live) =>

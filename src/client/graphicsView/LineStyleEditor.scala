@@ -7,6 +7,7 @@ import java.awt.{BasicStroke, Color}
 
 import client.dataviewer.InstanceRenderer
 import client.dialog.{FieldEditor, InplaceFieldEditor, RenderComponent, SidePanelComboBox}
+import client.graphicsView.Handlers._
 import definition.data.LineStyle
 import definition.expression.{Constant, Expression, IntConstant}
 import javax.swing.table.TableCellEditor
@@ -14,7 +15,6 @@ import javax.swing.{DefaultCellEditor, JCheckBox, JComboBox, JTable}
 import util.MyComboBox
 
 import scala.swing.{Button, CheckBox, Color, Component, Dimension, Graphics2D, GridPanel, Label, ListView, Panel, Table}
-
 
 class BoolEditor extends InplaceFieldEditor {
   val myCheck=new CheckBox
@@ -177,9 +177,12 @@ class StylePreviewPan extends Component with RenderComponent[Int] {
 
 	def setStyle(a: LineStyle, ix: Int): Unit = {
     stroke=if(ix== -1){
-     if(a==null)null else strokes(a.ix)     
+     if(a==null) null else {
+			 peer.setToolTipText(a.name)
+			 strokes(a.ix)
+		 }
     } else strokes(ix)
-    peer.setToolTipText(a.name)
+
     theIndex=ix
   }
 

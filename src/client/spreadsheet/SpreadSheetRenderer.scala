@@ -3,7 +3,7 @@ package client.spreadsheet
 import java.awt.font.{LineMetrics, TextAttribute, TextLayout}
 import java.awt.{Color, Dimension, Font, Graphics, Graphics2D}
 
-import client.graphicsView.LineStyleHandler
+import client.graphicsView.Handlers._
 import client.ui.ViewConstants
 import definition.expression.{CurrencyConstant, Expression}
 import javax.swing.border.{Border, MatteBorder}

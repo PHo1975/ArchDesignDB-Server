@@ -4,8 +4,9 @@ import java.awt.Color
 import java.awt.geom.{Point2D, Rectangle2D}
 import java.io.File
 
+import client.graphicsView.PolyLineElement
 import definition.data._
-import definition.expression.{BlobConstant, VectorConstant}
+import definition.expression.{BlobConstant, PointList, Polygon, VectorConstant}
 import definition.typ.{AllClasses, EnumFieldDefinition, SystemSettings}
 import javax.imageio.{ImageIO, ImageReader}
 import server.config.FSPaths
@@ -17,7 +18,7 @@ import scala.util.control.NonFatal
 
 class PlotGenerator extends CustomGenerator {
 	//val context=new PrintContext
-
+  val pointNull=new Point2D.Float()
 	val layerType: Int =SystemSettings().systemTypes("Layer")
 	val measureLayerType: Int =SystemSettings().systemTypes("MeasureLayer")
 	val layerRefType: Int =SystemSettings().systemTypes("LayerPlotRef")
@@ -143,6 +144,21 @@ class PlotGenerator extends CustomGenerator {
                "\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")
            }
 
+           def createPolyLine(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int): PolyPrintElement ={
+             val points=data.fieldValue(3).toPolygon
+             val width=data.fieldValue(4).toDouble
+             val align=data.fieldValue(5).toDouble
+             val opaquity=data.fieldValue(6).toDouble
+             val hatch=data.fieldValue(7).toInt
+             val hatchAngle=data.fieldValue(8).toDouble
+             val polyPoints=new Polygon(Seq.empty,points.pathList.headOption match {
+               case Some(pl)=>Seq(new PointList(PolyLineElement.createPoints(pl.points,vectorToVector,width,align).toSeq))
+               case _ => Seq.empty
+             })
+             PolyPrintElement(textScale.toFloat, lineStyle.toByte, color, color, polyPoints,
+               if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, pointNull, hatchAngle)
+           }
+
            def createText(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
              val text = data.fieldValue(1).toString
              val pos = vectorToPoint(data.fieldValue(2).toVector)
@@ -236,7 +252,7 @@ class PlotGenerator extends CustomGenerator {
 
            val elemFactory = collection.immutable.Map[Int, (InstanceData, Color, Float, Int) => PrintElement](lineType -> createLine, arcType -> createArc,
              ellType -> createEll, polyType -> createPoly, textType -> createText, dimLineTyp -> createDimLine, areaPolyTyp -> createAreaPoly, wohnFLTyp->createWohnflaeche,
-             symbolType -> createSymbol, symbolFillerType ->createSymbolFiller,bitmapType -> createBitmap)
+             symbolType -> createSymbol, symbolFillerType ->createSymbolFiller,bitmapType -> createBitmap,polyLineType->createPolyLine)
 
            def shouldPrint(typ:Int):Boolean=(filterMap(typ) & filter.filter)==0
 

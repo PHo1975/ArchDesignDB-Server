@@ -328,10 +328,10 @@ class GraphElemModule extends ActionModule {
 
 
   def doRotate(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
-	  //println("Rotate params:\n"+param.mkString(" | " ))
     val param=para.toSeq
+    //println("Rotate params:\n"+param.mkString(" | " ))
 	  val center=param.head._2.toVector
-	  val angle=param.last._2 match {
+	  val angle=param(1)._2 match {
 	    case d:DoubleConstant =>d.n*math.Pi/180d
 	    case p1:VectorConstant =>
 				val p2=param(2)._2.toVector
@@ -342,9 +342,7 @@ class GraphElemModule extends ActionModule {
 				val angle=getLineAngle(param(2)._2.toObjectReference) - getLineAngle(r1.toObjectReference)
 				if(angle>math.Pi) angle-math.Pi else if(angle<math.Pi) angle+math.Pi else angle
 		}
-    // val cosa=math.cos(angle)
-    //val sina=math.sin(angle)
-	  val rotator=GraphUtils.createRotator(center,angle)
+    val rotator=GraphUtils.createRotator(center,angle)
     for (d <- data)
 	    TypeInfos.moduleMap(d.ref.typ).rotateElement(d,angle,rotator)
 	  true

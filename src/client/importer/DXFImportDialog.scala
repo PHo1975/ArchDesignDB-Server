@@ -3,6 +3,7 @@ package client.importer
 import java.awt.{Dimension, Point, Rectangle}
 import java.io.File
 
+import client.graphicsView.Handlers._
 import client.graphicsView._
 import client.ui.ViewConstants
 import definition.typ.SystemSettings

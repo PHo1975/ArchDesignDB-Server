@@ -7,13 +7,13 @@ import java.awt.geom._
 import java.awt.{BasicStroke, _}
 
 import client.comm.{ClientObjectClass, ClientQueryManager}
+import client.graphicsView.Handlers._
 import definition.expression.VectorConstant
 import definition.typ.{AllClasses, SystemSettings}
 import util.{ColonSplit, StrToDouble}
 
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable
-
 /** Manages the scale of a graphics view
  * 
  */

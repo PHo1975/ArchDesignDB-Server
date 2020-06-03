@@ -589,9 +589,10 @@ class JavaClientSocket(val socket: Socket) extends Thread with AbstractUserSocke
           else {
             val theAction= if(createAction)	AllClasses.get.getClassByID(newType).asInstanceOf[ServerObjectClass].getCreateAction(actionName )
             else  {
-              val theClass=AllClasses.get.getClassByID(instList.head.ref.typ)
+              val theClass=AllClasses.get.getClassByID(instList.head.ref.typ).asInstanceOf[ServerObjectClass]
               if(theClass.actions.contains(actionName )) theClass.actions(actionName)
-              else throw new IllegalArgumentException("Unknown Action '"+actionName+"' in class "+theClass.name)
+              else throw new IllegalArgumentException("Unknown Action '"+actionName+"' in class "+theClass.name+
+                "\n module:"+theClass.actionModule+" name:"+theClass.moduleName)
             }
             theAction match {
               case a:ActionImpl => // simple action, order of execution is not important

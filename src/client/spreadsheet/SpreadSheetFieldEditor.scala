@@ -3,6 +3,7 @@ package client.spreadsheet
 import java.awt.{Color, Dimension}
 
 import client.dialog.{ActionPanel, CustomStrokeButton, _}
+import client.graphicsView.Handlers._
 import client.graphicsView._
 import client.ui.ViewConstants
 import definition.data.Referencable
@@ -11,7 +12,6 @@ import definition.typ.{AllClasses, SelectGroup}
 import scala.collection.Iterable
 import scala.swing.event.ButtonClicked
 import scala.swing.{AbstractButton, Alignment, BorderPanel, BoxPanel, ButtonGroup, CheckBox, GridPanel, Label, Orientation, Panel, RadioButton, Swing, ToggleButton}
-
 class SpreadSheetFieldEditor extends FieldEditor {
   
   var spreadSheetSG:Option[SpreadSheetSelectGroup]=None  

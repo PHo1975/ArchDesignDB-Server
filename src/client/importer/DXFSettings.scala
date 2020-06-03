@@ -2,7 +2,8 @@ package client.importer
 
 import java.io.{BufferedReader, File, FileReader}
 
-import client.graphicsView.{FontHandler, HatchHandler, HatchStyle, LineStyleHandler}
+import client.graphicsView.Handlers._
+import client.graphicsView.{FontHandler, HatchHandler, HatchStyle}
 import definition.data.LineStyle
 
 import scala.collection.mutable

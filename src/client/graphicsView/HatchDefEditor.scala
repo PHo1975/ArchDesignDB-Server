@@ -4,6 +4,7 @@ package client.graphicsView
 import java.awt.{Polygon => _, _}
 
 import client.comm.ClientQueryManager
+import client.graphicsView.Handlers._
 import client.ui.ViewConstants
 import definition.comm.NotificationType
 import definition.data.{InstanceData, LineStyle, Reference}

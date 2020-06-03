@@ -2,6 +2,7 @@ package client.graphicsView
 
 import java.awt.Color
 
+import client.graphicsView.Handlers._
 import definition.data.LineStyle
 import javax.swing.BorderFactory
 import util.StrToInt

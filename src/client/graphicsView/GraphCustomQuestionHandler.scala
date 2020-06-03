@@ -925,10 +925,13 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   	//println("CustomQuestion Start IPE")
   	gc.startIPEMode(textEl,Some( text=>{
   		if(text.length>0) {
-  			//println("CustomQuestion text:"+text)
+  			println("CustomQuestion text:"+text)
         DialogManager.addAnswer(new AnswerDefinition("Text", DataType.StringTyp, None), StringConstant(text))
   			gc.clearNewElements()
+        println("Text process Results")
   			DialogManager.processResults()
+        println("Done")
+
   		} else Log.e("Text length == 0")
   	}))
   })

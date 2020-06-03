@@ -499,6 +499,7 @@ object ClientQueryManager {
 	
 	private def handleSubsNotifications(in:DataInputStream ) = {
 		val substID=in.readInt
+		println("subs notification "+substID)
 		if(!subscriptionMap.containsKey(substID)) {
 			Log.e("Handle Subs Notification subsID "+substID+" not found")
 			NotificationType(in.readInt) match {
@@ -560,13 +561,16 @@ object ClientQueryManager {
 	private def handleCommandResponse(in:DataInputStream ): Unit = {
 		val hasError=in.readBoolean
 		if(hasError) {
+			println("Has Error")
 			val error=CommandError.read(in)
 			commandResultQueue.put(HasError(error))
 			printErrorMessage("Command Response")
 			printErrorMessage( error.getMessage)
 		}
 		else {
-			val result= if(in.readBoolean) HasResult(Expression.readConstant(in))
+			val result= if(in.readBoolean){
+			  println("has result")
+				HasResult(Expression.readConstant(in))}
 																 else NoResult     
 		  commandResultQueue.put(result)
 		}

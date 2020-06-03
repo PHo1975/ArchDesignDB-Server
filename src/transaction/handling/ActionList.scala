@@ -55,7 +55,7 @@ object ActionList extends DataRetriever {
 
 
   def commitAllData(): Unit = {
-    System.out.println("commit: "+theList.mkString("\n  "))
+    //System.out.println("commit: "+theList.mkString("\n  "))
     var hasMoveOrCopy:Boolean=false
     _bufferUpdates=true
     try {

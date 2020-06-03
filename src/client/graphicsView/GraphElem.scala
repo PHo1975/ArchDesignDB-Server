@@ -10,6 +10,7 @@ import java.awt.{Color, Font, Graphics2D, GraphicsEnvironment}
 import java.io.DataInput
 
 import client.comm.SubscriptionFactory
+import client.graphicsView.Handlers._
 import client.graphicsView.symbol.{SymbolElem, SymbolFiller}
 import client.print.APrintScaler
 import client.ui.ViewConstants._
@@ -19,8 +20,6 @@ import definition.typ.AllClasses
 import util.{Log, StringUtils}
 
 import scala.collection.mutable
-
-
 
 
 

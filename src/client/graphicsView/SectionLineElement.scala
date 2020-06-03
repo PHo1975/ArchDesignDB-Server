@@ -1,14 +1,13 @@
 package client.graphicsView
 import java.awt.{Color, Graphics2D}
 
-import definition.data.Reference
+import definition.data.{Composition, Reference, ShellLayer}
 import definition.expression.{NULLVECTOR, PointList, Polygon, VectorConstant}
 
 import scala.collection.immutable
 
 
-
-class TierLine(val p1:VectorConstant,val p2:VectorConstant,val tierDef:TierDef){
+class TierLine(val p1:VectorConstant,val p2:VectorConstant,val tierDef:ShellLayer){
   var e1: VectorConstant =p1 // endpoints
   var e2: VectorConstant =p2
   lazy val dist: VectorConstant =e2-e1
@@ -49,8 +48,8 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
    val compos: Composition =CompositionHandler.quickGetComposition(material)
    
    val dist1: VectorConstant =dir*offset
-   val startLine: TierLine =new TierLine(nstartPoint+dist1,endPoint+dist1,if(compos.tiers.isEmpty)CompositionHandler.undefinedTier else compos.tiers.head)
-   val tierLines: List[TierLine] = compos.tiers.foldLeft((offset, List(startLine)))(createTierLine)._2
+   val startLine: TierLine =new TierLine(nstartPoint+dist1,endPoint+dist1,if(compos.shellLayers.isEmpty)CompositionHandler.undefinedShellLayer else compos.shellLayers.head)
+   val tierLines: List[TierLine] = compos.shellLayers.foldLeft((offset, List(startLine)))(createTierLine)._2
    //println("SL "+nref+" comp:"+compos+" Lines:"+tierLines.mkString(";"))
    
    val numTierLines: Int =tierLines.size-1
@@ -132,7 +131,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
    
   
    
-  def createTierLine(curr:(Double,List[TierLine]),tierDef:TierDef):(Double,List[TierLine])= {    
+  def createTierLine(curr:(Double,List[TierLine]),tierDef:ShellLayer):(Double,List[TierLine])= {
     val distVect=dir*(curr._1+tierDef.thickness)
     val p1=startPoint+distVect
     val p2=endPoint+distVect

@@ -8,22 +8,24 @@ import java.awt.font.TextLayout
 import java.awt.geom.{AffineTransform, Line2D, Rectangle2D}
 import java.awt.print.{PageFormat, Pageable, Printable}
 
+import client.graphicsView.Handlers._
 import client.graphicsView._
 import client.graphicsView.symbol.{StampPool, SymbolOrient}
 import client.ui.ViewConstants
 import definition.data._
 import definition.expression.{Polygon, VectorConstant}
 import util.{Log, StringUtils}
-
 /**
  * 
  */
 
 
 class APrintScaler(ctx:RenderContext) extends ScaleModel {   
-    var myScale:Double=1d
-    var xoff:Double=0d
-    var yoff:Double=0d
+  var myScale:Double=1d
+  var xoff:Double=0d
+  var yoff:Double=0d
+	val intLine=new Line2D.Double
+	val myStroke=new BasicStroke(0.3f)
 
 	override def xToScreen(x: Double): Float = ctx.toUnit(x * myScale + xoff)
 
@@ -33,15 +35,13 @@ class APrintScaler(ctx:RenderContext) extends ScaleModel {
 
 	def yToPaper(y: Double): Float = ctx.toUnit(-y * myScale + yoff)
 
-	val myStroke=new BasicStroke(0.3f)
-
 	override def getStroke(thick: Float, style: Int): BasicStroke = ctx.getStroke(ctx.toUnit(thick / 100f), style)
 
 	override def thicknessScale: Double = 1f / 10f
 
 	override val scale: Double = ctx.toUnit(10000).toDouble / 1000d
-    override def isPrintScaler=true
-    val intLine=new Line2D.Float
+  override def isPrintScaler=true
+
  }
 
 
@@ -52,7 +52,7 @@ trait AbstractContext extends RenderContext {
   private object PrintScaler extends APrintScaler(this) 
   
 	val emptyRect=new Rectangle2D.Float(0,0,0,0)
-	def lineStyleHandler: LineStyleHandler.type =client.graphicsView.LineStyleHandler
+	def lineStyleHandler: LineStyleHandler.type =LineStyleHandler
 
 	def pageFormatChanged(): Unit = {
 		strokeMap.clear() // clear old strokes for new print resolution
@@ -71,7 +71,8 @@ trait AbstractContext extends RenderContext {
 
       def drawHatches(angle: Double, distance: Double, style: Int, thickness: Int, offset: Boolean): Unit = if (distance > 0) {
         //val line=new Line2D.Double
-        g.setStroke(getStroke(toUnit(if (thickness > 0) thickness.toFloat / 100f else 1f / 10f), style))
+				val stroke=getStroke(toUnit(if (thickness > 0) thickness.toFloat / 100f else 1f / 9f), style)
+				g.setStroke(stroke)
         val a1 = angle * math.Pi / 180d
         val dir1 = new VectorConstant(scala.math.cos(a1), -scala.math.sin(a1), 0)
         val dist = if (paperScale) distance else distance * layerScale
@@ -81,10 +82,10 @@ trait AbstractContext extends RenderContext {
         val endIx = math.floor(maxh).toInt
 
         def drawLine(p1: VectorConstant, p2: VectorConstant): Unit = {
-          PrintScaler.intLine.x1 = toUnit(p1.x);
-          PrintScaler.intLine.y1 = toUnit(p1.y)
-          PrintScaler.intLine.x2 = toUnit(p2.x);
-          PrintScaler.intLine.y2 = toUnit(p2.y)
+          PrintScaler.intLine.x1 = toUnitDouble(p1.x)
+          PrintScaler.intLine.y1 = toUnitDouble(p1.y)
+          PrintScaler.intLine.x2 = toUnitDouble(p2.x)
+          PrintScaler.intLine.y2 = toUnitDouble(p2.y)
           g.draw(PrintScaler.intLine)
         }
 
@@ -283,9 +284,10 @@ abstract class APageable extends Pageable with Printable {
 	def print(g: Graphics, pf: PageFormat, pageIndex: Int): Int = {
     if(pageIndex<pagesList.size) {
       val g2=g.asInstanceOf[Graphics2D]
-      //g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON ))
-      g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY ))
-      //g2.setRenderingHints(new RenderingHints(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_NORMALIZE ))
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_OFF )
+			g2.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY )
+			g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,RenderingHints.VALUE_STROKE_PURE )
+			g2.setRenderingHint(RenderingHints.KEY_RESOLUTION_VARIANT,RenderingHints.VALUE_RESOLUTION_VARIANT_SIZE_FIT )
       val cl=clipRect()
 			val oldClip=g.getClip
       g.clipRect(cl.x.toInt+1,cl.y.toInt+1,cl.width.toInt-1,cl.height.toInt-1)

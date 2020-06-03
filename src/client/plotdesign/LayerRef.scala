@@ -5,6 +5,7 @@ import java.awt.{BasicStroke, Color, Graphics2D}
 
 import client.comm.ClientQueryManager
 import client.graphicsView
+import client.graphicsView.Handlers._
 import client.graphicsView._
 import definition.comm.NotificationType
 import definition.data._
@@ -13,7 +14,6 @@ import util.Log
 
 import scala.collection.{immutable, mutable}
 import scala.swing.Swing
-
 
 class DropInfo(data:InstanceData,controller:PlotDesignController) extends ElemContainer{
   val measureLayerFieldOffset: Int =if(data.ref.typ==controller.layerTypes(1))1 else 0
