@@ -150,9 +150,9 @@ trait SidePanelComponent[A] {
   
   def setValue(newValue:Option[A]):Unit= currentValue=newValue    
    
-  def getConstant(value:A):Constant
+  def getConstant(value:A):Expression
   
-  def valueFromConstant(c:Constant):A
+  def valueFromConstant(c:Expression):A
   
   def resetSearchValue():Unit= searchValue=null
 
@@ -178,8 +178,8 @@ trait SidePanelComponent[A] {
 trait IntSidePanelComponent extends SidePanelComponent[Int] {
    def defaultValue=0
 
-  def getConstant(value: Int): Constant = IntConstant(value)
-   def valueFromConstant(c:Constant):Int=c.toInt
+  def getConstant(value: Int): Expression = IntConstant(value)
+   def valueFromConstant(c:Expression):Int=c.getValue.toInt
 }
 
 
@@ -294,9 +294,12 @@ trait SidePanelTextComponent extends  ActiveTextComponent with SidePanelComponen
   val defaultValue=""
   def editor:FieldEditor
 
-  def getConstant(value: String): Constant = StringConstant(value)
+  def getConstant(value: String): Expression = StringParser.parse(value,DataType.StringTyp) match {
+    case e:Expression=>e
+    case _=>StringConstant(value)
+  }
 
-  def valueFromConstant(c: Constant): String = c.toString
+  def valueFromConstant(c: Expression): String = c.getValue.toString
   def filter(text:String)=true
 
   override def setValue(newValue: Option[String]): Unit = {
@@ -350,9 +353,9 @@ class SidePanelTextArea(val allowedFields:Map[String,Byte],val editor:FieldEdito
 trait SidePanelDoubleComponent extends  ActiveTextComponent with SidePanelComponent[Double] {
   val defaultValue=0d
   def editor:FieldEditor
-  def getConstant(value:Double):Constant=new DoubleConstant(value)
+  def getConstant(value:Double):Expression=new DoubleConstant(value)
 
-  def valueFromConstant(c: Constant): Double = c.toDouble
+  def valueFromConstant(c: Expression): Double = c.getValue.toDouble
   def filter(value:Double)=true
   def precision:Int
 
@@ -380,6 +383,37 @@ trait SidePanelDoubleComponent extends  ActiveTextComponent with SidePanelCompon
   }   
 }
 
+trait SidePanelExpressionComponent extends ActiveTextComponent with SidePanelComponent[Expression] {
+  val defaultValue=EMPTY_EX
+  val editor:FieldEditor
+  def getConstant(value:Expression)=value
+  def valueFromConstant(c:Expression)=c
+
+  override def setValue(newValue: Option[Expression]): Unit = {
+    super.setValue(newValue)
+    newValue match {
+      case Some(dVal)=> text=dVal.getTerm
+      case _ => text=""
+    }
+  }
+
+  def fieldChanged(newVal: String): Unit =
+    StringParser.parse(text) match {
+      case ParserError(message, pos) =>
+        caret.position = pos
+        new Toast(message, this.peer, ClientApp.top).visible = true
+      case exp: Expression =>
+        editor.storeValue(exp, this)
+        CreateActionList.focusLastContainer()
+    }
+}
+
+class SidePanelExpressionTextField(val allowedFields:Map[String,Byte],val editor:FieldEditor,val precision:Int=1) extends
+  TextField with SidePanelExpressionComponent
+
+
+
+
 class SidePanelDoubleTextField(val allowedFields:Map[String,Byte],val editor:FieldEditor,val precision:Int=1) extends 
   TextField with SidePanelDoubleComponent
 
@@ -403,14 +437,14 @@ class MultiLineLabel extends Label() {
 class SidePanelLabel(val allowedFields:Map[String,Byte],val editor:FieldEditor) extends MultiLineLabel with SidePanelComponent[String] {
   val defaultValue=""
 
-  def getConstant(value: String): Constant = StringConstant(value)
+  def getConstant(value: String): Expression = StringConstant(value)
 
-  def valueFromConstant(c: Constant): String = c.toString
+  def valueFromConstant(c: Expression): String = c.getValue.toString
 
   override def setValue(newValue: Option[String]): Unit = {
   	super.setValue(newValue)
   	newValue match {
-  		case Some(sVal)=> text=sVal
+  		case Some(sVal: String)=> text=sVal
   		case _ => text=defaultValue
   	}
   }   

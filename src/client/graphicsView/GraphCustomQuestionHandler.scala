@@ -387,7 +387,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   lazy val rectHeightQuestion: DialogQuestion = DialogQuestion("Rechteck", Seq(new AnswerDefinition("Höhe:", DataType.DoubleTyp, None),
     new AnswerDefinition("Höhe bis Punkt:", DataType.VectorTyp, None)))
   lazy val rectAxisWidthQuestion: DialogQuestion = DialogQuestion("Rechteck", Seq(new AnswerDefinition("Randpunkt", DataType.VectorTyp, None),
-    new AnswerDefinition("Breite:", DataType.DoubleTyp, None)))
+    new AnswerDefinition("Gesamtbreite:", DataType.DoubleTyp, None)))
 
 
   def rectangle(gc:GraphViewController):Unit={

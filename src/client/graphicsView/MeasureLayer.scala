@@ -26,13 +26,14 @@ class MeasureLayer(ncontroller: GraphViewController, nref: Reference, npath: Arr
       val hatch=inst.fieldValue(6).toInt
     Some(new AreaPolyElement(inst.ref,inst.fieldValue(1).toInt,inst.fieldValue(2).toInt,inst.fieldValue(3).toInt,
         inst.fieldValue(5).toInt,HatchHandler.getHatch(math.abs(hatch)),hatch<0,inst.fieldValue(4).toPolygon,
-        inst.fieldValue(7).toVector,inst.fieldValue(8).toDouble,inst.fieldValue(9).toString))
+        inst.fieldValue(7).toVector,inst.fieldValue(8).toDouble,inst.fieldValue(9).toString,inst.fieldValue(11),inst.fieldValue(0).toUnitNumber))
     }
     else if (inst.ref.typ == MeasureElemFactory.measureLineClassID) {
       val hatch = inst.fieldValue(8).toInt
       Some(new MeasureLineElement(inst.ref, inst.fieldValue(1).toInt, inst.fieldValue(2).toInt, inst.fieldValue(3).toInt,
         inst.fieldValue(4).toPolygon, inst.fieldValue(5).toDouble, inst.fieldValue(6).toDouble, inst.fieldValue(7).toDouble,
-        HatchHandler.getHatch(math.abs(hatch)), inst.fieldValue(9).toDouble, hatch < 0, inst.fieldValue(10).toString))
+        HatchHandler.getHatch(math.abs(hatch)), inst.fieldValue(9).toDouble, hatch < 0, inst.fieldValue(10).toString,inst.fieldValue(12),
+        inst.fieldValue(0).toUnitNumber))
     }
     else None
   }

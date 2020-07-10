@@ -105,7 +105,8 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
 
 
 class MeasureLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle: Int, npoly: Polygon, nwidth: Double, nalign: Double,
-                         nopaquity: Double, nhatchStyle: Option[HatchStyle], nhatchAngle: Double, npaperScale: Boolean, val name: String) extends
+                         nopaquity: Double, nhatchStyle: Option[HatchStyle], nhatchAngle: Double, npaperScale: Boolean,
+                         val name: String,val factor:Expression,val result:UnitNumber) extends
   PolyLineElement(nref, ncolor, nlineWidth, nlineStyle, npoly, nwidth, nalign, nopaquity, nhatchStyle, nhatchAngle, npaperScale) with Named {
 
   //println("created mline "+nref+" "+bounds)
@@ -115,6 +116,7 @@ class MeasureLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineSty
     fieldNr match {
       case 10 => StringConstant(name)
       case x if x < 10 && x > 0 => super.getFormatFieldValue(fieldNr - 1)
+      case 12 => factor.getValue
       case _ => null
     }
   }

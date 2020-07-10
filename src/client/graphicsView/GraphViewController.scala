@@ -545,4 +545,13 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 				 })
 		 }
 	}
+
+	def findText(text:String): Unit ={
+		selectModel.filter {
+			case t: TextElement => t.text == text
+			case o => false
+		}
+		canvas.repaint()
+		scalePanel.filterBut.selected=false
+	}
 }

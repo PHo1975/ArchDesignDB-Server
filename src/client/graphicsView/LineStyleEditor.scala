@@ -80,7 +80,7 @@ class LineStyleEditor extends FieldEditor {
     maximumRowCount=20
 		def getConstant(value: Int): Constant = IntConstant(value)
 
-		def valueFromConstant(c: Constant): Int = c.toInt
+		def valueFromConstant(c: Expression): Int = c.getValue.toInt
     override def setValue(newWidth:Option[Int]):Unit= {	    
 	    super.setValue(newWidth)
 	    selfSelected=true
@@ -101,7 +101,7 @@ class LineStyleEditor extends FieldEditor {
 
 		def getConstant(value: Int) = IntConstant(value)
 
-		def valueFromConstant(c: Constant): Int = c.toInt
+		def valueFromConstant(c: Expression): Int = c.getValue.toInt
 	  override def setValue(newStyle:Option[Int]):Unit= {	
 	    //println("set Value "+newStyle+" "+LineStyleHandler.styles.mkString(","))
 	    super.setValue(newStyle)

@@ -123,7 +123,10 @@ class ChoseOutDefDialog(w:Window) extends Dialog(w) {
 	def getIx: Int = if (outdefListView.selection.indices.isEmpty) -1 else outdefListView.selection.indices.head
 
 	def changeOutdef(): Unit = /*if(!outdefListView.selection.items.isEmpty)*/ {
-		val selOD=if(outdefListView.selection.items.isEmpty) PrintModel.outDefs.head else outdefListView.selection.items.head
+		val selOD=if(outdefListView.selection.items.isEmpty) {
+			if(PrintModel.outDefs.nonEmpty)	PrintModel.outDefs.head
+			else throw new IllegalArgumentException("No Outdef Set")
+		} else outdefListView.selection.items.head
 		changedODInst=selOD.odInst
 		PrintQuestionHandler.newDialog.setLocationRelativeTo(createBut )
 		PrintQuestionHandler.newDialog.showEditDialog(whenOutputDefChanged,selOD)

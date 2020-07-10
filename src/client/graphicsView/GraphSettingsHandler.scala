@@ -196,8 +196,9 @@ import client.graphicsView.Handlers._
 
 object CompositionHandler extends AbstractSettingHandler {
    val matFormat=new DecimalFormat("00.0")
-   val undefinedComposition: Composition =Composition(0, " - ", 0, Seq(ShellLayer(MaterialHandler.undefinedMaterial, 0, 0, 0, 10, LineStyleHandler.undefinedStyle, 0)))
-   val undefinedShellLayer: ShellLayer =ShellLayer(MaterialHandler.undefinedMaterial, 0, 0, 0, 0, LineStyleHandler.undefinedStyle, 0)
+  val undefinedShellLayer: ShellLayer =ShellLayer(MaterialHandler.undefinedMaterial, 0, 0, 0, 0, LineStyleHandler.undefinedStyle, 0,0,0)
+   val undefinedComposition: Composition =Composition(0, " - ", 0, Seq(undefinedShellLayer))
+
    val name="Composition"
    var compMap:Map[Int,Composition]=Map.empty
    var subsID:Int = -1
@@ -377,7 +378,7 @@ object DimLineStyleHandler extends AbstractSettingHandler {
      val d= new DimLineStyle(e)
      (d.id,d)
      }).toMap 
-   defaultStyle=styleMap(1)
+   defaultStyle=styleMap.values.head
    //println("load dim styles "+ styleMap.mkString(" | "))
   }
   

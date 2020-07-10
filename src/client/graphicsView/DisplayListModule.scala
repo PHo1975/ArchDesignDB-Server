@@ -48,7 +48,9 @@ class DisplayListModule extends ActionModule {
 	  val vertVect=new VectorConstant(0,1,0)
 	  val horVect=new VectorConstant(1,0,0)
 	  val linesMap=collection.mutable.HashMap[VectorConstant,ArrayBuffer[LineElement]]()	 // groups of parallel lines   
-	    
+	  val textMap=collection.mutable.HashMap[VectorConstant,ArrayBuffer[String]]()
+		val polygonList=ArrayBuffer[Polygon]()
+
 		for (props<-StorageManager.getInstanceProperties(data.ref);elRef<-props.propertyFields.head.propertyList ){
 		  val elData=try {StorageManager.getInstanceData(elRef)} catch {case NonFatal(e)=>util.Log.e("cleanup",e); null
 			case other:Throwable =>println(other);System.exit(0);null}
@@ -70,10 +72,13 @@ class DisplayListModule extends ActionModule {
               case Some(newValue)=>;TransactionManager.tryWriteInstanceField(elRef, 4, newValue);newValue
               case _=> p2
             }
-            val line=new LineElement(elRef,elData.fieldValue.head.toInt,elData.fieldValue(1).toInt,
-                elData.fieldValue(2).toInt,p1,p2)
-            val keyVect=if(p1.x==p2.x) vertVect else if(p1.y==p2.y) horVect else if(p1.x<p2.x) (p2-p1).unit else (p1-p2).unit
-            linesMap.getOrElseUpdate(keyVect,new ArrayBuffer[LineElement])+=line
+						if(p1==p2) TransactionManager.tryDeleteInstance(elRef,owner,None)
+						else {
+							val line = new LineElement(elRef, elData.fieldValue.head.toInt, elData.fieldValue(1).toInt,
+								elData.fieldValue(2).toInt, p1, p2)
+							val keyVect = if (p1.x == p2.x) vertVect else if (p1.y == p2.y) horVect else if (p1.x < p2.x) (p2 - p1).unit else (p1 - p2).unit
+							linesMap.getOrElseUpdate(keyVect, new ArrayBuffer[LineElement]) += line
+						}
           }
 				case TypeInfos.arcElemType =>
 					if(Math.abs(elData.fieldValue(4).toDouble)<GraphElemModule.nearNullTreshold){
@@ -93,17 +98,26 @@ class DisplayListModule extends ActionModule {
           }
           }
 				case TypeInfos.polyElemType =>
-					val poly=elData.fieldValue(3).toPolygon
-					if(Math.abs(poly.getAreaValue)<GraphElemModule.nearNullTreshold){
-            //println("delete Poly:"+elRef)
+					val poly: Polygon =elData.fieldValue(3).toPolygon
+					if(Math.abs(poly.getAreaValue)<GraphElemModule.nearNullTreshold)
             TransactionManager.tryDeleteInstance(elRef,owner,None)
-          }
+					else {
+						if(polygonList.exists(_.sameGeometry(poly))) TransactionManager.tryDeleteInstance(elRef,owner,None)
+						else polygonList+=poly
+					}
 				case TypeInfos.textElemType=>
 					val tx=elData.fieldValue(1).toString
-					if(tx.trim.isEmpty) {
-            //println("deleteText:"+elRef)
+					if(tx.trim.isEmpty)
             TransactionManager.tryDeleteInstance(elRef,owner,None)
-          }
+          else {
+						val pos=elData.fieldValue(2).toVector
+						if(textMap.contains(pos)){
+							val txList=textMap(pos)
+							println("Text '"+tx+"' same Pos "+txList.mkString(","))
+							if(txList.contains(tx)) TransactionManager.tryDeleteInstance(elRef,owner,None)
+							else txList +=tx
+						} else textMap(pos)= ArrayBuffer(tx)
+					}
 				case _=>
 		  }
 		} 

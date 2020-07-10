@@ -16,8 +16,8 @@ import scala.util.control.NonFatal
 /**
  * Created by Kathi on 23.06.2015.
  */
-case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale:Double,angle:Double,
-                         cscale:Double,pos:VectorConstant) extends GraphElem(nref,ncolor) {
+case class BitmapElem(nref:Reference, ncolor:Int, fileName:String, dpi:Double, aspectY:Double, angle:Double,
+                      scale:Double, pos:VectorConstant) extends GraphElem(nref,ncolor) {
 
   val file=new File(JavaUtils.restoreDelimiters(JavaUtils.resolveImagePath(ViewConstants.imagePath,fileName)))
   //Log.e("load bitmap "+file.toString)
@@ -43,10 +43,10 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     val radAngle=angle*Math.PI/180d
     val si=Math.sin(radAngle)
     val co=Math.cos(radAngle)
-    val d1=pixelsToM(w)
+    val d1=pixelsToMX(w)
     val delta1=new VectorConstant(d1*co,d1*si,0)
     points(1)=pos+delta1
-    val d2=pixelsToM(h)
+    val d2=pixelsToMY(h)
     val delta2=new VectorConstant(-d2*si,d2*co,0)
     points(2)=pos+delta2
     points(3)=pos+delta1+delta2
@@ -63,7 +63,9 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     bounds
   }
 
-  def pixelsToM(pixels:Double): Double =pixels/dpi*25.4d/1000d*cscale*scale
+  protected def pixelsToMX(pixels:Double): Double =pixels/dpi*25.4d/1000d*scale
+  protected def pixelsToMY(pixels:Double): Double =pixels/dpi*25.4d/1000d*scale*aspectY
+
 
   override def drawWithOffset(g:Graphics2D,sm:Scaler,selectColor:Color,offSet:VectorConstant): Unit =
     internDraw(g,sm,selectColor,0d,pos+offSet,offSet==NULLVECTOR)
@@ -75,10 +77,10 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     g.setPaint(if (selectColor == null) ColorMap.getColor(color) else selectColor)
     g.setStroke(sm.getStroke(5, 0))
     val x = sm.xToScreen(npos.x).toInt
-    val y = sm.yToScreen(npos.y+pixelsToM(im.getHeight)).toInt
-    val w=sm.xToScreen(npos.x+pixelsToM(im.getWidth)).toInt - x
+    val y = sm.yToScreen(npos.y+pixelsToMY(im.getHeight)).toInt
+    val w=sm.xToScreen(npos.x+pixelsToMX(im.getWidth)).toInt - x
     val h=sm.yToScreen(npos.y).toInt - y
-    val oldTrans=g.getTransform()
+    val oldTrans=g.getTransform
     val outAngle=(rangle+angle)*Math.PI/180d
     if(outAngle!=0d) g.rotate(-outAngle,x,sm.yToScreen(npos.y).toInt)
     val oldComposite=g.getComposite
@@ -109,9 +111,9 @@ case class BitmapElem(nref:Reference,ncolor:Int,fileName:String,dpi:Double,scale
     case 0=> IntConstant(color)
     case 1=> StringConstant(fileName)
     case 2=> new DoubleConstant(dpi)
-    case 3=> new DoubleConstant(scale)
+    case 3=> new DoubleConstant(aspectY)
     case 4=> new DoubleConstant(angle)
-    case 5=> new DoubleConstant(cscale)
+    case 5=> new DoubleConstant(scale)
     case _ =>EMPTY_EX
   }
 }

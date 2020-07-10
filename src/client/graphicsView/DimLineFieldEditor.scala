@@ -1,6 +1,6 @@
 package client.graphicsView
 import client.dialog.{FieldEditor, RenderComponent, SidePanelComboBox, SidePanelDoubleTextField}
-import definition.expression.{Constant, IntConstant}
+import definition.expression.{Constant, Expression, IntConstant}
 
 import scala.swing.{BoxPanel, Label, Orientation}
 
@@ -19,7 +19,7 @@ class DimLineFieldEditor extends FieldEditor {
   lazy val styleCombo=new SidePanelComboBox(styleList,styleRenderer,this,Map(className -> 2)){
     val defaultValue: DimLineStyle =DimLineStyleHandler.defaultStyle
     def getConstant(value:DimLineStyle):Constant=IntConstant(value.id)
-    def valueFromConstant(c:Constant): DimLineStyle =DimLineStyleHandler.getStyle(c.toInt)
+    def valueFromConstant(c:Expression): DimLineStyle =DimLineStyleHandler.getStyle(c.getValue.toInt)
     override def setValue(newWidth:Option[DimLineStyle]):Unit= {	    
 	    super.setValue(newWidth)
 	    selfSelected=true

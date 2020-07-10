@@ -6,7 +6,7 @@ import client.dialog._
 import client.graphicsView.Handlers._
 import client.ui.ViewConstants
 import definition.data.Material
-import definition.expression.{Constant, IntConstant}
+import definition.expression.{Expression, IntConstant}
 
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
@@ -61,7 +61,7 @@ class HatchFieldEditor extends FieldEditor {
 
     def getConstant(value: Int) = IntConstant(value)
 
-    def valueFromConstant(c: Constant): Int = c.toInt
+    def valueFromConstant(c: Expression): Int = c.getValue.toInt
 
     override def setValue(newHatch: Option[Int]): Unit = {
 		  super.setValue(newHatch)

@@ -506,16 +506,20 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 }
 
 
-class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nfillColor:Int,nhatchStyle:Option[HatchStyle],npaperScale:Boolean,
-    npoly:Polygon,nstartPoint:VectorConstant,nhatchAngle:Double,nname:String) extends PolyElement(nref,ncolor,nlineWidth,nlineStyle,nfillColor,
+class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nfillColor:Int,nhatchStyle:Option[HatchStyle],
+                      npaperScale:Boolean,npoly:Polygon,nstartPoint:VectorConstant,nhatchAngle:Double,nname:String,val factor:Expression,
+                      val result:UnitNumber)
+  extends PolyElement(nref,ncolor,nlineWidth,nlineStyle,nfillColor,
   nhatchStyle, npaperScale, npoly, nstartPoint, nhatchAngle, nname) {
 
   lazy val areaList: Seq[PartArea] = poly.pathList.flatMap(PolygonDivider.divideArea)
 	
 	override def getFormatFieldValue(fieldNr:Int):Constant= {
 	  fieldNr match {
+      case 0 => result
       case 6 => IntConstant(hatchStyle match { case Some(hatch) => hatch.ix; case None => -1 })
-	    case 8=> new DoubleConstant(hatchAngle)
+	    case 8 => new DoubleConstant(hatchAngle)
+      case 11=> factor.getValue
 	    case x if x < 4 && x > 0 => super.getFormatFieldValue(fieldNr-1)
 	    case _ =>null
 	  }
@@ -799,13 +803,13 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
   //println("MeasureFactory "+this.typeMap.mkString(" | "))
 
   def emptyFunc(ref: Reference) = new AreaPolyElement(EMPTY_REFERENCE,0,0,0,0,None,false,
-    NULLPOLYGON,NULLVECTOR,0d,"")
+    NULLPOLYGON,NULLVECTOR,0d,"",EMPTY_EX,UnitNumber.emptyUnitNumber)
 
 
   def createAreaPoly(ref: Reference, in: DataInput): AreaPolyElement = {
     val nfields = in.readByte
     if (nfields != 12) util.Log.e("Poly wrong number of fields " + nfields + " " + ref)
-    val result=Expression.read(in).getValue.toDouble
+    val result=Expression.read(in).getValue.toUnitNumber
     val color = Expression.read(in).getValue
     val lineWidth = Expression.read(in).getValue
     val lineStyle = Expression.read(in).getValue
@@ -821,13 +825,14 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     val owners = InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
-    new AreaPolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)), hatch < 0, points, startPoint, angle,name)
+    new AreaPolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)),
+      hatch < 0, points, startPoint, angle,name,factor,result)
   }
 
   def createWohnflaeche(ref: Reference, in: DataInput): AreaPolyElement = {
     val nfields = in.readByte
     if (nfields != 14) util.Log.e("Poly wrong number of fields " + nfields + " " + ref)
-    val result=Expression.read(in).getValue.toDouble
+    val result=Expression.read(in).getValue.toUnitNumber
     val color = Expression.read(in).getValue
     val lineWidth = Expression.read(in).getValue
     val lineStyle = Expression.read(in).getValue
@@ -845,13 +850,13 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new AreaPolyElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, fill, HatchHandler.getHatch(math.abs(hatch)), hatch < 0, points, startPoint, angle,
-      if (nr == 0) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr.toString) + ". " + name)
+      if (nr == 0) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr.toString) + ". " + name,factor,result)
   }
 
   def createMeasureLine(ref: Reference, in: DataInput): PolyLineElement = {
     val nfields = in.readByte
     if (nfields != 13) util.Log.e("PolyLine wrong number of fields " + nfields + " " + ref)
-    val result=Expression.read(in).getValue.toDouble
+    val result=Expression.read(in).getValue.toUnitNumber
     val color = Expression.read(in).getValue
     val lineWidth = Expression.read(in).getValue
     val lineStyle = Expression.read(in).getValue
@@ -869,7 +874,7 @@ object MeasureElemFactory extends SubscriptionFactory[GraphElem] {
     InstanceData.readSecondUseOwners(in)
     in.readBoolean
     new MeasureLineElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, points, width, align, opaquity, HatchHandler.getHatch(math.abs(hatch)), angle,
-      hatch < 0,name)
+      hatch < 0,name,factor,result)
   }
 
 
@@ -1058,14 +1063,14 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val color=Expression.read(in).getValue.toInt
 		val fileName=Expression.read(in).getValue.toString
 		val dpi=Expression.read(in).getValue.toDouble
-		val scale=Expression.read(in).getValue.toDouble
+		val scaleY=Expression.read(in).getValue.toDouble
 		val angle=Expression.read(in).getValue.toDouble
 		val cscale=Expression.read(in).getValue.toDouble
 		val pos=Expression.read(in).getValue.toVector
 		InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
-    BitmapElem(ref, color, fileName, dpi, scale, angle, cscale, pos)
+    BitmapElem(ref, color, fileName, dpi, scaleY, angle, cscale, pos)
 	}
   
   

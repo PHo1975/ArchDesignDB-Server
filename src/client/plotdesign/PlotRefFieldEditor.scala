@@ -7,7 +7,7 @@ import client.dialog._
 import client.graphicsView.ScaleModel
 import client.ui.ViewConstants
 import definition.data.PlotFilter
-import definition.expression.{Constant, IntConstant}
+import definition.expression.{Constant, Expression, IntConstant}
 import javax.swing.BorderFactory
 
 import scala.collection.immutable
@@ -45,7 +45,7 @@ class PlotRefFieldEditor extends FieldEditor {
 
     def getConstant(value: Int): Constant = IntConstant(value)
 
-    def valueFromConstant(c: Constant): Int = c.toInt
+    def valueFromConstant(c: Expression): Int = c.getValue.toInt
     
     override def setValue(newScale:Option[Int]):Unit= {	    
 	    super.setValue(newScale)
@@ -96,7 +96,7 @@ class PlotRefFieldEditor extends FieldEditor {
 
     override def getConstant(value: PlotFilter): Constant = IntConstant(value.filter)
 
-    override def valueFromConstant(c: Constant): PlotFilter = new PlotFilter(c.toInt)
+    override def valueFromConstant(c: Expression): PlotFilter = new PlotFilter(c.getValue.toInt)
 
     override def setValue(newValue: Option[PlotFilter]): Unit = {
       super.setValue(newValue)

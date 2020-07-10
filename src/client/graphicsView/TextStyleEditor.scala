@@ -4,7 +4,7 @@ import java.awt.{Color, Dimension, Font, Graphics2D}
 
 import client.dialog._
 import client.ui.ViewConstants
-import definition.expression.{Constant, IntConstant, StringConstant}
+import definition.expression.{Constant, Expression, IntConstant, StringConstant}
 
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, ButtonGroup, GridPanel, Orientation, RadioButton, ToggleButton}
@@ -92,7 +92,7 @@ class TextStyleEditor extends FieldEditor {
 
     def getConstant(value: Int): Constant = IntConstant(value)
 
-    def valueFromConstant(c: Constant): Int = c.toInt
+    def valueFromConstant(c: Expression): Int = c.getValue.toInt
 
     def writeStyle(func: (Int) => Int): Unit = storeValueMapped(this, func)
 
@@ -218,7 +218,7 @@ class SidePanelFontBox(neditor:FieldEditor,val nallowedFields:Map[String,Byte])
 
   def getConstant(value: FontInfo): Constant = StringConstant(value.name)
 
-  def valueFromConstant(c: Constant): FontInfo = FontHandler.getFontInfo(c.toString)
+  def valueFromConstant(c: Expression): FontInfo = FontHandler.getFontInfo(c.getValue.toString)
     override def setValue(newFont:Option[FontInfo]):Unit= {
       super.setValue(newFont)
       if (newFont.isEmpty || newFont == null) selection.index = -1

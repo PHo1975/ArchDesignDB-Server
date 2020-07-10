@@ -59,4 +59,7 @@ object ViewConstants {
   }
   lazy val buttonSize = new Dimension(sidePanelWidth - 10, 30)
   lazy val minButtonSize = new Dimension(sidePanelWidth - 10 * ViewConstants.fontScale / 100, 40)
+
+  lazy val labelSize=new Dimension(ViewConstants.sidePanelWidth - 30, (new Label).preferredSize.height)
+
 }

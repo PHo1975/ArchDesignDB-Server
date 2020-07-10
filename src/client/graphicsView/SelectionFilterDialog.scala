@@ -4,7 +4,7 @@ import java.awt.Color
 
 import client.graphicsView.Handlers._
 import definition.data.LineStyle
-import javax.swing.BorderFactory
+import javax.swing.{BorderFactory, JOptionPane}
 import util.StrToInt
 
 import scala.swing._
@@ -40,6 +40,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   val okBut=new Button("Filtern")
   val cancelBut=new Button("Abbruch")
   val colorEdit=new TextField("")
+  val findTextBut=new Button("Text finden ...")
   val elementPanel=new ListPanel("Zeichen-Elemente",SelectionFilterInfo.elemFilters,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(mapElemTypes(Seq(ix)),Seq.empty,Seq.empty,Seq.empty,None))
    visible=false
@@ -65,7 +66,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
 	  add(new BorderPanel(){
 	    add(Swing.VStrut(15),BorderPanel.Position.North)
 		  add(new BoxPanel(Orientation.Horizontal){
-		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorEdit+=Swing.HGlue+=cancelBut
+		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorEdit+=findTextBut+=Swing.HGlue+=cancelBut
 		  },BorderPanel.Position.Center)	    
 	  },BorderPanel.Position.South)
 	  
@@ -74,7 +75,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   modal=true
   title="Elemente filtern"  
 	contents=mainPanel
-	listenTo(okBut,cancelBut,colorEdit)
+	listenTo(okBut,cancelBut,colorEdit,findTextBut)
 	stylePanel.listView.renderer=new ListView.AbstractRenderer[LineStyle,StylePreviewPan](new StylePreviewPan){
   	  def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: LineStyle, index: Int): Unit = {
   		  if(a!=null) {component.setStyle(a.ix);component.peer.setToolTipText(a.name)} else component.setEmpty()  	}
@@ -101,6 +102,12 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
     case EditDone(`colorEdit`)=>
       visible=false
       controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq.empty,Seq.empty,getColor))
+    case ButtonClicked(`findTextBut`)=> JOptionPane.showInputDialog(this.peer,"Suchtext eingeben:") match {
+      case null =>
+      case text=>
+        visible=false
+        controller.findText(text)
+    }
   }
 	
 	def mapElemTypes(ixList:Seq[Int]): Seq[Int] =

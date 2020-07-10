@@ -152,11 +152,10 @@ object GraphElemModule{
     new Polygon(Seq(inst), Seq(PointList(plist).clockWise))
   }
 
-  def groupByOrdered[A, K](t: Iterable[A], f: A => K): mutable.Map[K, List[A]] = {
-    val map = mutable.LinkedHashMap[K, List[A]]().withDefault(_ => List[A]())
+  def countOrdered[A](t: Iterable[A]): mutable.Map[A, Int] = {
+    val map = mutable.LinkedHashMap[A, Int]().withDefault(_ => 0)
     for (i <- t) {
-      val key = f(i)
-      map(key) = i :: map(key)
+      map(i) =  map(i)+1
     }
     map
   }
@@ -176,14 +175,17 @@ object GraphElemModule{
       case _ => Iterator.empty
     }).toSeq
 
-    val r: Iterable[Expression] = if (lengths.size == 1) Seq(UnitNumber(lengths.head, PolygonDivider.meterFraction)) else
-      groupByOrdered[Double, Double](lengths, identity).map((k) => {
+    val r: Seq[Expression] = if (lengths.size == 1) Seq(UnitNumber(lengths.head, PolygonDivider.meterFraction)) else
+      countOrdered(lengths).map(k => {
         //println("f len key:"+k._1+" list:"+k._2.mkString)
-        val num = k._2.size
-        val theLength = k._1
+        val num: Int = k._2
+        val theLength: Double = k._1
         if (num == 1) new UnitNumber(theLength, PolygonDivider.meterFraction)
         else BinaryOperation(UnitNumber(theLength, PolygonDivider.meterFraction), BinOperator.getOp('*'), DoubleConstant(num))
-      })
+      }).toSeq.sortBy {
+        case u: UnitNumber => 1
+        case BinaryOperation( _, _,number: DoubleConstant) => number.toInt
+      }.reverse
     //println("r:"+r.mkString(" | "))
     if (r.nonEmpty) r.reduceLeft((a, b) => {
       def combine = BinaryOperation(a, BinOperator.getOp('+'), b)
@@ -970,7 +972,7 @@ class LineModule extends ActionModule with GraphActionModule {
 					val endPoint=param(2)._2.toVector
 					val deltaV= param(3)._2 match {
             case defPoint: VectorConstant => defPoint - Line3D(startPoint, endPoint - startPoint).orthProjection(defPoint)
-            case DoubleConstant(width)=> (endPoint-startPoint).unit.transposeXY * width
+            case DoubleConstant(width)=> (endPoint-startPoint).unit.transposeXY * (width/2d)
           }
 					makeRectangle(oparents,Seq(startPoint+deltaV,endPoint+deltaV,endPoint-deltaV,startPoint-deltaV),formFields)
 				case StringConstant("über Randkante")=>

@@ -6,7 +6,7 @@ package client.graphicsView
 import java.awt.Color
 
 import client.dialog.{FieldEditor, PanelPart, SidePanelComponent}
-import definition.expression.{Constant, IntConstant}
+import definition.expression.{Constant, Expression, IntConstant}
 import javax.swing.JColorChooser
 
 import scala.swing.event.ButtonClicked
@@ -40,7 +40,7 @@ class ColorFieldEditor extends FieldEditor {
 		}
 
     def getConstant(value: Color): Constant = IntConstant(value.getRGB)
-		def valueFromConstant(c:Constant)=new Color(c.toInt)
+		def valueFromConstant(c:Expression)=new Color(c.getValue.toInt)
 	}
 
   val allowedClassNames: Iterable[String] = colorBut.allowedFields.keys
