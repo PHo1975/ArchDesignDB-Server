@@ -1,7 +1,7 @@
 package client.graphicsView
 
+import java.awt.Graphics2D
 import java.awt.geom.{AffineTransform, Arc2D, Area}
-import java.awt.{BasicStroke, Graphics2D}
 
 import client.comm.ClientQueryManager
 import client.dialog._
@@ -22,7 +22,6 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   val polyToText="Polygon zeichnen"
   val dimHelpLineToText="Hilfslinien bis"
   val lineDistance = 1.3d
-  lazy val polyStroke =new BasicStroke(1f * ViewConstants.polyLineTo.toFloat)
   val funcMap: collection.immutable.HashMap[String, GraphViewController => Unit] = collection.immutable.HashMap[String, GraphViewController => Unit](
     "LineTo" -> lineTo(lineToText, create = true, separateElements = true), "PolyTo" -> polyTo, "ArcCenter" -> arcCenter, "ArcGeneral" -> arcGeneral,
       "Rotate"->rotate,"RotateMulti"->rotateMulti,"Tangent"->tangent,"EllipseCenter"->ellipseCenter,"CreateText"->createText,"CreateDimLine"->createDimLine,
@@ -70,8 +69,8 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
               val sm=gc.scaleModel
               val mx=sm.xToScreen(center.x)
               val my=sm.yToScreen(center.y)
-              GraphElemConst.drawLineFloat(g,mx,my,sm.xToScreen(p.x),sm.yToScreen(p.y))
-              GraphElemConst.drawLineFloat(g,mx,my,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+              GraphElemConst.drawLineFloatStandardStroke(g,mx,my,sm.xToScreen(p.x),sm.yToScreen(p.y))
+              GraphElemConst.drawLineFloatStandardStroke(g,mx,my,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
               val currAngle=math.atan2(pos.y-center.y,pos.x-center.x)
               val rotAngle= currAngle - startAngle
               val rotator=GraphUtils.createRotator(center,rotAngle)
@@ -105,8 +104,8 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
                 val sm=gc.scaleModel
                 val mx=sm.xToScreen(center.x)
                 val my=sm.yToScreen(center.y)
-                GraphElemConst.drawLineFloat(g,mx,my,sm.xToScreen(p.x),sm.yToScreen(p.y))
-                GraphElemConst.drawLineFloat(g,mx,my,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+                GraphElemConst.drawLineFloatStandardStroke(g,mx,my,sm.xToScreen(p.x),sm.yToScreen(p.y))
+                GraphElemConst.drawLineFloatStandardStroke(g,mx,my,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
                 val currAngle=math.atan2(pos.y-center.y,pos.x-center.x)
                 val rotAngle= currAngle - startAngle
                 val rotator=GraphUtils.createRotator(center,rotAngle)
@@ -232,7 +231,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           gc.setCustomDragger((pos, g) => {
             val sm = gc.scaleModel
             val dist = line.orthogonalThrough(pos)
-            GraphElemConst.drawLineFloat(g, sm.xToScreen(lineEl.startPoint.x + dist.x), sm.yToScreen(lineEl.startPoint.y + dist.y),
+            GraphElemConst.drawLineFloatStandardStroke(g, sm.xToScreen(lineEl.startPoint.x + dist.x), sm.yToScreen(lineEl.startPoint.y + dist.y),
               sm.xToScreen(lineEl.endPoint.x + dist.x), sm.yToScreen(lineEl.endPoint.y + dist.y))
           })
           DialogManager.startIntermediateQuestion(DialogQuestion("Parallele Linie",
@@ -267,7 +266,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
              val sm=gc.scaleModel
              val p1x=sm.xToScreen(p1.x)
              val p1y=sm.yToScreen(p1.y)
-             GraphElemConst.drawLineFloat(g,p1x,p1y,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+             GraphElemConst.drawLineFloatStandardStroke(g,p1x,p1y,sm.xToScreen(pos.x),sm.yToScreen(pos.y))
            })
            DialogManager.startIntermediateQuestion(singlePointQuestion("Spiegeln", "Endpunkt Spiegelachse", Some(true)),
              _ =>{
@@ -297,7 +296,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
     def lineDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
-      GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
+      GraphElemConst.drawLineFloatStandardStroke(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
     }
 
     DialogManager.startIntermediateQuestion(lineQuestion(lineText, create, strict), answerList => {
@@ -324,7 +323,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                   val sm = gc.scaleModel
                   val delta = pos - lastPoint
                   val orth = lastPoint + delta.orthoProjection(VectorConstant.fromAngle2D(d.toDouble * Math.PI / 180d))
-                  GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(orth.x), sm.yToScreen(orth.y))
+                  GraphElemConst.drawLineFloatStandardStroke(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(orth.x), sm.yToScreen(orth.y))
                 }
 
                 gc.setCustomDragger(angleDragger)
@@ -368,7 +367,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
             val sm=gc.scaleModel
             val crossP=l3d.orthProjection(pos)
             val angle=((pos-crossP).XYAngle*180d/Math.PI).toFloat
-            GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(crossP.x),sm.yToScreen(crossP.y))
+            GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(crossP.x),sm.yToScreen(crossP.y))
             GraphElemConst.drawArcFloat(g,sm.xToScreen(crossP.x)-10f,sm.yToScreen(crossP.y)-10f,21f,20f,angle,90f)
           }
           gc.setCustomDragger(lineDragger)
@@ -403,7 +402,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   			}
       def lineDragger(pos:VectorConstant,g:Graphics2D): Unit = {
   				val sm=gc.scaleModel
-  				GraphElemConst.drawLineFloat(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+  				GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
   			}
 
       gc.setCustomDragger(diagRectDragger)
@@ -437,15 +436,15 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                 val endPoint=answerList2.last.result.toVector
                 def axisDragger(pos:VectorConstant,g:Graphics2D): Unit = {
             	    val sm=gc.scaleModel
-            	    GraphElemConst.drawLineFloat(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(endPoint.x),sm.yToScreen(endPoint.y))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(startPoint.x),sm.yToScreen(startPoint.y),sm.xToScreen(endPoint.x),sm.yToScreen(endPoint.y))
                   val deltaV = pos - Line3D(startPoint, endPoint - startPoint).orthProjection(pos)
             	    val points=Seq(startPoint-deltaV,startPoint+deltaV,endPoint+deltaV,endPoint-deltaV)
             	    val pxs=points.map(a=>sm.xToScreen(a.x))
             	    val pys=points.map(a=>sm.yToScreen(a.y))
-            	    GraphElemConst.drawLineFloat(g,pxs.head,pys.head,pxs(1),pys(1))
-            	    GraphElemConst.drawLineFloat(g,pxs(1),pys(1),pxs(2),pys(2))
-            	    GraphElemConst.drawLineFloat(g,pxs(2),pys(2),pxs(3),pys(3))
-            	    GraphElemConst.drawLineFloat(g,pxs(3),pys(3),pxs.head,pys.head)
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs.head,pys.head,pxs(1),pys(1))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(1),pys(1),pxs(2),pys(2))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(2),pys(2),pxs(3),pys(3))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(3),pys(3),pxs.head,pys.head)
                 }
                 gc.setCustomDragger(axisDragger)
                 DialogManager.startIntermediateQuestion(rectAxisWidthQuestion, _ => {
@@ -463,10 +462,10 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                   val points=Seq(startPoint,endPoint,endPoint+deltaV,startPoint+deltaV)
                   val pxs=points.map(a=>sm.xToScreen(a.x))
             	    val pys=points.map(a=>sm.yToScreen(a.y))
-            	    GraphElemConst.drawLineFloat(g,pxs.head,pys.head,pxs(1),pys(1))
-            	    GraphElemConst.drawLineFloat(g,pxs(1),pys(1),pxs(2),pys(2))
-            	    GraphElemConst.drawLineFloat(g,pxs(2),pys(2),pxs(3),pys(3))
-            	    GraphElemConst.drawLineFloat(g,pxs(3),pys(3),pxs.head,pys.head)
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs.head,pys.head,pxs(1),pys(1))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(1),pys(1),pxs(2),pys(2))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(2),pys(2),pxs(3),pys(3))
+            	    GraphElemConst.drawLineFloatStandardStroke(g,pxs(3),pys(3),pxs.head,pys.head)
                 }
                 gc.setCustomDragger(edgeDragger)
                 DialogManager.startIntermediateQuestion(rectAxisWidthQuestion, _ => {
@@ -492,9 +491,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           if(dist!=0&& arcElem.diameter!=0){
             val hyp=math.sqrt(dist*dist-arcElem.diameter*arcElem.diameter)
             for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,dir = true))
-              GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
+              GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
             for (tp<-VectorConstant.triangulationPoint2D(pos,arcElem.centerPoint,hyp,arcElem.diameter,dir = false))
-              GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
+              GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(tp.x),sm.yToScreen(tp.y))
           }
         })
         DialogManager.startIntermediateQuestion(singlePointQuestion("Tangente zeichnen", "Tangente durch Punkt", None), answerList => {
@@ -528,7 +527,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     def lineDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
       sm.getStroke(1f * ViewConstants.fontScale / 100f, 0)
-      GraphElemConst.drawLineFloat(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
+      GraphElemConst.drawLineFloatStandardStroke(g, sm.xToScreen(lastPoint.x), sm.yToScreen(lastPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
     }
 
     def polyDragger(pos: VectorConstant, g: Graphics2D): Unit = {
@@ -570,7 +569,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       val newPoly = new Polygon(Nil, List(PointList(lastPoints :+ pos))).
         toLinePathTransformed(v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
       g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB))
-      g.setStroke(polyStroke)
+      g.setStroke(ViewConstants.polyStroke)
       g.draw(newPoly)
     }
 
@@ -645,7 +644,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
                     lastHelpLinePoint = Some(newPoint)
                     gc.setCustomDragger((pos, g) => {
                       val sm = gc.scaleModel
-                      GraphElemConst.drawLineFloat(g, sm.xToScreen(newPoint.x), sm.yToScreen(newPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
+                      GraphElemConst.drawLineFloatStandardStroke(g, sm.xToScreen(newPoint.x), sm.yToScreen(newPoint.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
                     })
                   }  else {
                     //gc.clearNewElements()
@@ -745,7 +744,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
       gc.addTempElem(ArcElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, center, radius, 0, 360))
 			gc.setCustomDragger((pos,g)=>{
 				val sm=gc.scaleModel
-				GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+				GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			})
 			//println("Radius:"+radius)
 			DialogManager.startIntermediateQuestion(startAngleQuestion, answerList=> {
@@ -763,7 +762,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			  	val tx=sm.xToScreen(center.x-radius)
 			  	val ty=sm.yToScreen(center.y+radius)
 			  	val endAngle=math.atan2(pos.y-center.y,pos.x-center.x)*180d/math.Pi
-			  	GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+			  	GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			  	GraphElemConst.drawArcFloat(g,tx,ty,sm.xToScreen(center.x+radius)-tx,sm.yToScreen(center.y-radius)-ty,startAngle.toInt,((if(endAngle<startAngle)360 else 0)+endAngle-startAngle).toInt)
 			  })
 			  DialogManager.startIntermediateQuestion(endAngleQuestion, _=> {
@@ -791,7 +790,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 	  val center=answerList.head.result.toVector
 	  gc.setCustomDragger((pos,g)=>{
 	  	val sm=gc.scaleModel
-	  	GraphElemConst.drawLineFloat(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(center.x),sm.yToScreen(center.y))
+	  	GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pos.x),sm.yToScreen(pos.y),sm.xToScreen(center.x),sm.yToScreen(center.y))
 	  })
 
 		DialogManager.startIntermediateQuestion(axis1Question, answerList=> {
@@ -807,7 +806,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
           gc.setCustomDragger((pos,g)=>{
             val sm=gc.scaleModel
             val an=math.atan2(pos.y-center.y,pos.x-center.x)
-            GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(center.x+axis1Len*math.cos(an)),sm.yToScreen(center.y+axis1Len*math.sin(an)))
+            GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(center.x+axis1Len*math.cos(an)),sm.yToScreen(center.y+axis1Len*math.sin(an)))
           })
           DialogManager.startIntermediateQuestion(axis1AngleQuestion, answerList=> {
             mainAngle= answerList.last.result match{
@@ -860,7 +859,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			    gc.addTempElem(tempEllipse)
 			    gc.setCustomDragger((pos,g)=>{
 			    	val sm=gc.scaleModel
-			    	GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+			    	GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			    })
 			    DialogManager.startIntermediateQuestion(startAngleQuestion, answerList=> {
 			    	val startAngle=answerList.last.result match {
@@ -877,7 +876,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			    		val tx=sm.xToScreen(center.x-axis1Len)
 			    		val ty=sm.yToScreen(center.y+axis2Len)
 			    		val endAngle=math.atan2(pos.y-center.y,pos.x-center.x)*180d/math.Pi-mainAngle
-			    		GraphElemConst.drawLineFloat(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
+			    		GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
 			    		val ea=tempEllipse.getInnerAngle(endAngle*math.Pi/180d)*180d/math.Pi
 			    		theArc.setArc(tx.toDouble,ty.toDouble,sm.xToScreen(center.x+axis1Len)-tx,sm.yToScreen(center.y-axis2Len)-ty,sa,
 			    				(if(ea<sa) 360 else 0)+ea-sa,Arc2D.OPEN)
@@ -967,7 +966,7 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         for(norm<-normVectors) {
           val p1=startPoint+norm
           val p2=pos+norm
-          GraphElemConst.drawLineFloat(g,sm.xToScreen(p1.x),sm.yToScreen(p1.y),sm.xToScreen(p2.x),sm.yToScreen(p2.y))
+          GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(p1.x),sm.yToScreen(p1.y),sm.xToScreen(p2.x),sm.yToScreen(p2.y))
         }
       })
 
@@ -1010,8 +1009,8 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
         			//val ipl=intersectionPoints.last
         			val newPoints=nnv map(_ + pos)
         		for(i<-ninterPoints.indices;pa=lastIntersectionPoints(i);pb=ninterPoints(i);pc=newPoints(i)){
-        			GraphElemConst.drawLineFloat(g,sm.xToScreen(pa.x),sm.yToScreen(pa.y),sm.xToScreen(pb.x),sm.yToScreen(pb.y))
-        			GraphElemConst.drawLineFloat(g,sm.xToScreen(pb.x),sm.yToScreen(pb.y),sm.xToScreen(pc.x),sm.yToScreen(pc.y))
+        			GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pa.x),sm.yToScreen(pa.y),sm.xToScreen(pb.x),sm.yToScreen(pb.y))
+        			GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(pb.x),sm.yToScreen(pb.y),sm.xToScreen(pc.x),sm.yToScreen(pc.y))
         		}
         	})
         }

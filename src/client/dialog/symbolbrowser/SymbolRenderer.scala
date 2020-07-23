@@ -87,8 +87,8 @@ class SymbolPreview extends Component with ElemContainer {
     g.setStroke(SymbolBrowserController.refCrossStroke)
     val crossX=scaleModel.xToScreen(0)
     val crossY=scaleModel.yToScreen(0)
-    GraphElemConst.drawLineFloat(g,crossX-refCrossSize, crossY,crossX+refCrossSize, crossY)
-    GraphElemConst.drawLineFloat(g,crossX,crossY-refCrossSize,crossX,crossY+refCrossSize)
+    GraphElemConst.drawLineFloatStandardStroke(g,crossX-refCrossSize, crossY,crossX+refCrossSize, crossY)
+    GraphElemConst.drawLineFloatStandardStroke(g,crossX,crossY-refCrossSize,crossX,crossY+refCrossSize)
     //g.drawString(f"x:${elBounds.x}%2.2f y:${elBounds.y}%2.2f",0,20)
     //g.drawString(f"w:${elBounds.width}%2.2f h: ${elBounds.height}%2.2f",0,40)
   }

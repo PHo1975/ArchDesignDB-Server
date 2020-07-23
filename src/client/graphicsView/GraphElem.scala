@@ -13,6 +13,7 @@ import client.comm.SubscriptionFactory
 import client.graphicsView.Handlers._
 import client.graphicsView.symbol.{SymbolElem, SymbolFiller}
 import client.print.APrintScaler
+import client.ui.ViewConstants
 import client.ui.ViewConstants._
 import definition.data._
 import definition.expression._
@@ -85,16 +86,16 @@ class RefPointDummy(ix:Int,pos:VectorConstant) extends GraphElem(new Reference(0
     g.setStroke(sm.getStroke(1f * fontScale / 100f, 0))
 		val sx=sm.xToScreen(pos.x)
 		val sy=sm.yToScreen(pos.y)
-		GraphElemConst.drawLineFloat(g,sx-GraphElemConst.refPointSize,sy-GraphElemConst.refPointSize ,
+		GraphElemConst.drawLineFloatStandardStroke(g,sx-GraphElemConst.refPointSize,sy-GraphElemConst.refPointSize ,
         sx+GraphElemConst.refPointSize,sy+GraphElemConst.refPointSize	)
-		GraphElemConst.drawLineFloat(g,sx+GraphElemConst.refPointSize,sy-GraphElemConst.refPointSize ,
+		GraphElemConst.drawLineFloatStandardStroke(g,sx+GraphElemConst.refPointSize,sy-GraphElemConst.refPointSize ,
         sx-GraphElemConst.refPointSize,sy+GraphElemConst.refPointSize	)
   }
   def hits(cont:ElemContainer,px:Double,py:Double,dist:Double):Boolean= {
-    GraphElemConst.checkHit(px,py,dist,pos) exists(_._1==GraphElemConst.HITBOTH)    
+    GraphElemConst.checkHit(px,py,dist,pos) exists(_._1==GraphElemConst.HITBOTH)
   }
-    
-    
+
+
   def getFormatFieldValue(fieldNr:Int): Constant = EMPTY_EX
 
   def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[Nothing] = Seq.empty
@@ -132,7 +133,7 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
   def alignYDelta: Float = if (isStyle(GraphElemConst.vCenterStyle)) -textHeight / 2 else if (isStyle(GraphElemConst.bottomStyle)) -textHeight else 0f
 
   protected val geometryCache: mutable.HashMap[(Double, Double), Geometry] = collection.mutable.HashMap[(Double, Double), Geometry]()
-  
+
   def getInplaceBounds(scaleRatio:Double,newText:String):Rectangle2D.Float= {
     val newLayout=new TextLayout(newText,font,GraphElemConst.fontRenderCtx)
     val newBounds=newLayout.getBounds.asInstanceOf[Rectangle2D.Float]
@@ -144,7 +145,7 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
     val tvy=new VectorConstant(ty*math.sin(radAngle),-ty*math.cos(radAngle),0)
     new Rectangle2D.Float((position.x+tvx.x+tvy.x).toFloat,(position.y+tvx.y+tvy.y).toFloat,newWidth+newBounds.x/10f,textHeight)
   }
-  
+
   class Geometry(scaleRatio:Double,outAngle:Double){
     val lx1: Double = GraphElemConst.toMM(alignXDelta) * scaleRatio / 1000d
     val vx1=new VectorConstant(lx1*math.cos(outAngle),lx1*math.sin(outAngle),0)
@@ -153,7 +154,7 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
 
     val tx: Double = lx1 + GraphElemConst.toMM(textBounds.x / 10f) * scaleRatio / 1000d
     val ty: Double = GraphElemConst.toMM(-math.abs(testLayout.getDescent / 10) /*-layout.getDescent*/ - alignYDelta) * scaleRatio / 1000d //-GraphElemConst.toMM(layout.getDescent)*scaleRatio/1000d
-  	
+
   	val tvx=new VectorConstant(tx*math.cos(outAngle),tx*math.sin(outAngle),0)
     val tvy=new VectorConstant(ty*math.sin(outAngle),-ty*math.cos(outAngle),0)
 
@@ -162,7 +163,7 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
   			val vx2=new VectorConstant(lx2*math.cos(radAngle),lx2*math.sin(radAngle),0)
   			val ly1=GraphElemConst.toMM(-alignYDelta)*scaleRatio/1000d
   			val vy1=new VectorConstant(ly1*math.sin(radAngle),-ly1*math.cos(radAngle),0)
-  			
+
   			IndexedSeq(new VectorConstant(position.x+vx1.x+vy1.x,position.y+vx1.y+vy1.y,0),
   					new VectorConstant(position.x+vx2.x+vy1.x,position.y+vx2.y+vy1.y,0),
   					new VectorConstant(position.x+vx2.x+vy2.x,position.y+vx2.y+vy2.y,0),
@@ -186,16 +187,16 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
     val allPoints: IndexedSeq[VectorConstant] = cornerPoints :+ VectorConstant.midPoint(cornerPoints.head, cornerPoints(1)) :+ VectorConstant.midPoint(cornerPoints(1), cornerPoints(2)) :+
   	   VectorConstant.midPoint(cornerPoints(2),cornerPoints(3)) :+VectorConstant.midPoint(cornerPoints(3),cornerPoints.head):+VectorConstant.midPoint(cornerPoints.head,cornerPoints(2))
   }
-  
+
   def getGeometry(scale:Double,angle:Double):Geometry= geometryCache.getOrElseUpdate((scale,angle),new Geometry(scale,angle))
   def getGeometry(controller:ElemContainer):Geometry= getGeometry(controller.scaleRatio,radAngle)
 
   def getBounds(controller: ElemContainer): Rect2dDouble = getGeometry(controller).bounds
-  
+
   override def getEdiblePoints: Iterator[VectorConstant] =List(position).iterator
 
   val th: TextHitInfo = layout.hitTestChar(0f, 0f)
-  
+
   override def getFormatFieldValue(fieldNr:Int):Constant= {
   		fieldNr match {
         case 0 => IntConstant(color)
@@ -216,10 +217,10 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
     VectorConstant.pointLocation2D(cps(2),cps(3),p)>=0 &&
     VectorConstant.pointLocation2D(cps(3),cps.head,p)>=0
   }
-  
+
   def hitPoint(cont:ElemContainer,px:Double,py:Double,dist:Double):Seq[(Byte,VectorConstant)]= {
     //println("hit points:"+getGeometry(cont).allPoints.mkString("|"))
-    getGeometry(cont).allPoints.flatMap(GraphElemConst.checkHit(px,py,dist,_))        
+    getGeometry(cont).allPoints.flatMap(GraphElemConst.checkHit(px,py,dist,_))
   }
 
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = intDraw(g, sm, selectColor, position, 0)
@@ -235,12 +236,12 @@ class TextElement(nref:Reference,ncolor:Int,val text:String,val position:VectorC
 		g.setStroke(sm.getStroke(5,0))
 		val rscale=sm.relScaleFactor
     val outAngle=radAngle+deltaAngle*Math.PI/180d
-		val geom=getGeometry(rscale,outAngle)	
+		val geom=getGeometry(rscale,outAngle)
 		val xpos=sm.xToScreen(pos.x+geom.tvx.x+geom.tvy.x)
 		val ypos=sm.yToScreen(pos.y+geom.tvx.y+geom.tvy.y)
-		
+
 		val oldTrans=g.getTransform
-		if(outAngle!=0d) g.rotate(-outAngle,xpos,ypos)		
+		if(outAngle!=0d) g.rotate(-outAngle,xpos,ypos)
 		val fontHeight=((GraphElemConst.toMM(font.getSize2D)*sm.scale*rscale*sm.textScale)/10000d-1d).toFloat
     val tl = new TextLayout(rtext, font.deriveFont(fontHeight), g.getFontRenderContext)
     StringUtils.fillTextLayout(g, tl, xpos, ypos, wide = true)
@@ -306,7 +307,7 @@ abstract class LinearElement(nref:Reference,ncolor:Int,val lineWidth:Int,val lin
    else throw new IllegalArgumentException("Iterator has finished")
  }
 
-abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val startPoint:VectorConstant,val endPoint:VectorConstant) extends 
+abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val startPoint:VectorConstant,val endPoint:VectorConstant) extends
 		LinearElement(nref,ncolor,nlineWidth,nlineStyle) {
   lazy val bounds = new Rect2dDouble(scala.math.min(startPoint.x, endPoint.x), scala.math.min(startPoint.y, endPoint.y),
 		scala.math.max(startPoint.x,endPoint.x),scala.math.max(startPoint.y,endPoint.y))
@@ -314,7 +315,7 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
   override def getBounds(container: ElemContainer): Rect2dDouble = bounds
 
   override def toString: String = "Line " + (if (nref == null) "" else nref.sToString()) + " (" + startPoint.shortToString + "," + endPoint.shortToString + ", Col:" + color + ", Style:" + lineStyle + " width:" + lineWidth + ")"
-	
+
 	override def getEdiblePoints: Iterator[VectorConstant] =new TwoStepIterator(startPoint,endPoint)
 
   override def hits(cont: ElemContainer, px: Double, py: Double, dist: Double): Boolean = {
@@ -335,7 +336,7 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
 		} else {
 			if(ret2.isEmpty) ret1
 			else List(ret1.head,ret2.head)
-		}		
+		}
 	}
 
   def toLine3D: Line3D = Line3D(startPoint, endPoint - startPoint)
@@ -343,7 +344,7 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
   override def intersectsRect(cont: ElemContainer, rect: Rect2dDouble): Boolean = {
 	  rect.intersectsLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y)
 	}
-	
+
 	def onSameRayWith(otherLine:LineElement):Boolean=  GraphElemConst.getLineDistance(startPoint.x,startPoint.y,endPoint.x,endPoint.y,
 	    otherLine.startPoint.x,otherLine.startPoint.y) < 0.00001d
 
@@ -357,9 +358,9 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
 }
 
 
-case class LineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nstartPoint:VectorConstant,nendPoint:VectorConstant) extends 
+case class LineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nstartPoint:VectorConstant,nendPoint:VectorConstant) extends
   AbstractLineElement(nref,ncolor,nlineWidth,nlineStyle,nstartPoint,nendPoint) {
-  
+
   def intDraw(g:Graphics2D,sm:Scaler,selectColor:Color,p1:VectorConstant,p2:VectorConstant):Unit={
     prepareStroke(g,sm,selectColor)
     sm match {
@@ -383,7 +384,7 @@ case class LineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,n
    "\r\n 62\r\n"+AcadColor.toAcad(ncolor) +"\r\n100\r\nAcDbLine\r\n 10\r\n"+
    formatDXF(startPoint.x+offset.x)+"\r\n 20\r\n"+formatDXF(startPoint.y+offset.y)+"\r\n 30\r\n"+formatDXF(startPoint.z+offset.z)+
    "\r\n 11\r\n"+formatDXF(endPoint.x+offset.x)+"\r\n 21\r\n"+formatDXF(endPoint.y+offset.y)+"\r\n 31\r\n"+formatDXF(endPoint.z+offset.z)
-  }  
+  }
 }
 
 
@@ -407,12 +408,12 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 	  val trans=GraphElemConst.transform(sm)_
 	  val newPoly=poly.toPathTransformed(trans)
 	  val theArea=new Area(newPoly)
-		g.setPaint( StyleService.getAlphaColor(color))		
+		g.setPaint( StyleService.getAlphaColor(color))
 		g.fill(theArea)
-		
-		for(hs<-hatchStyle) {		  
+
+		for(hs<-hatchStyle) {
 		  g.setPaint(new Color(color))
-		  HatchHandler.drawHatch(poly,hs,sm,paperScale,g,fillC,startPoint,hatchAngle,NULLVECTOR)		  
+		  HatchHandler.drawHatch(poly,hs,sm,paperScale,g,fillC,startPoint,hatchAngle,NULLVECTOR)
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
@@ -429,16 +430,16 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 	    val w=metrics.getWidth
 	    val h=metrics.getHeight+1
 	    val ty=midPoint.y.toFloat
-	    
+
 	    if(hatchAngle!=0d){
 	      val oldTrans=g.getTransform
 	      g.rotate(-hatchAngle/180d*Math.PI,midPoint.x.toFloat,ty)
 	      for(i<-strings.indices;st=strings(i))
 	      g.drawString(st, midPoint.x.toFloat-w.toFloat/2f, ty+(h*i).toFloat)
 	      g.setTransform(oldTrans)
-	    } else for(i<-strings.indices;st=strings(i)) 
-	        g.drawString(st, midPoint.x.toFloat-w.toFloat/2f, ty+(h*i).toFloat) 
-	    
+	    } else for(i<-strings.indices;st=strings(i))
+	        g.drawString(st, midPoint.x.toFloat-w.toFloat/2f, ty+(h*i).toFloat)
+
 	  }
 	}
 
@@ -448,37 +449,37 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 
   override def drawRotated(g: Graphics2D, sm: Scaler, selectColor: Color, angle: Double, rotator: VectorConstant => VectorConstant): Unit =
     internDraw(g,sm,selectColor,rotator,NULLVECTOR)
-  
+
   private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,trans:VectorConstant=>VectorConstant,offSet:VectorConstant): Unit ={
 	  //val trans=transformWithOffset(sm,offSet)_
 	  val newPoly=poly.toPathTransformed(trans)
-	  val theArea=new Area(newPoly)		
-		
-		for(hs<-hatchStyle) {		  
+	  val theArea=new Area(newPoly)
+
+		for(hs<-hatchStyle) {
 		  g.setPaint(new Color(color))
-		  HatchHandler.drawHatch(poly,hs,sm,paperScale,g,fillC,startPoint,hatchAngle,offSet)		  
+		  HatchHandler.drawHatch(poly,hs,sm,paperScale,g,fillC,startPoint,hatchAngle,offSet)
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
 	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else selectBorderWidth,lineStyle))
 	  	g.draw(theArea)
 	  }
-	  if(name.length>0) {	    
-	    val midPoint=trans(Polygon.midOfPointList(poly.pathList))+offSet	  
+	  if(name.length>0) {
+	    val midPoint=trans(Polygon.midOfPointList(poly.pathList))+offSet
 	    g.setColor(Color.GRAY)
 	    g.setFont(smallFont)
 	    val w=g.getFontMetrics.getStringBounds(name, g).getWidth
-	    g.drawString(name, midPoint.x.toFloat-w.toFloat/2f, midPoint.y.toFloat)      
+	    g.drawString(name, midPoint.x.toFloat-w.toFloat/2f, midPoint.y.toFloat)
 	  }
 	}
-  
-  
-	
+
+
+
 	override def getFormatFieldValue(fieldNr:Int):Constant= {
 	  fieldNr match {
       case 5 => IntConstant(hatchStyle match { case Some(hatch) => hatch.ix * (if (paperScale) -1 else 1); case None => -1 })
 	    case 7=> new DoubleConstant(hatchAngle)
-	    case x if x < 3=> super.getFormatFieldValue(fieldNr)	    	    
+	    case x if x < 3=> super.getFormatFieldValue(fieldNr)
 	    case _ =>null
 	  }
 	}
@@ -487,7 +488,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
   def maxX: Double = poly.maxX
   def minY: Double = poly.minY
   def maxY: Double = poly.maxY
-	
+
 	private def hitEdge(e:Edge,px:Double,py:Double,dist:Double)=
 	  GraphElemConst.getLineDistance(e.p1.x,e.p1.y,e.p2.x,e.p2.y,px,py)<dist && px>=(e.minX - dist) && (px<= e.maxX +dist) &&
 		  py>=(e.minY-dist) && (py<= e.maxY +dist)
@@ -513,7 +514,7 @@ class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nf
   nhatchStyle, npaperScale, npoly, nstartPoint, nhatchAngle, nname) {
 
   lazy val areaList: Seq[PartArea] = poly.pathList.flatMap(PolygonDivider.divideArea)
-	
+
 	override def getFormatFieldValue(fieldNr:Int):Constant= {
 	  fieldNr match {
       case 0 => result
@@ -540,7 +541,7 @@ class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nf
       }
       g.setColor(Color.black)
       for ((position, theAngle, text) <- area.texts) {
-	      val angle=if(theAngle< -GraphElemConst.PIHalf) theAngle+Math.PI 
+	      val angle=if(theAngle< -GraphElemConst.PIHalf) theAngle+Math.PI
 	      		else if(theAngle>GraphElemConst.PIHalf) theAngle-Math.PI
 	      		else theAngle
 	      val oldTrans=g.getTransform
@@ -558,7 +559,7 @@ class AreaPolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,nf
 
 
 case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,centerPoint:VectorConstant,
-	diameter:Double,startAngle:Double,endAngle:Double) extends 
+	diameter:Double,startAngle:Double,endAngle:Double) extends
 		LinearElement(nref,ncolor,nlineWidth,nlineStyle) {
   lazy val bounds: Rect2dDouble = calcArcBounds
 	lazy val points:Seq[VectorConstant]=List(pointFromAngle(startAngle),pointFromAngle(endAngle),centerPoint)
@@ -574,7 +575,7 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 
   override def drawRotated(g: Graphics2D, sm: Scaler, selectColor: Color, dangle: Double, rotator: VectorConstant => VectorConstant): Unit =
     internDraw(g,sm,selectColor,rotator(centerPoint),dangle)
-  
+
   private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,cPoint:VectorConstant,angle:Double): Unit ={
 		prepareStroke(g,sm,selectColor)
 		val sAngle=startAngle+angle
@@ -587,7 +588,7 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 		g.draw(GraphElemConst.theArc)
 		val mx=sm.xToScreen(cPoint.x)
 		val my=sm.yToScreen(cPoint.y)
-		GraphElemConst.drawLineFloat(g,mx,my,mx,my)		
+		GraphElemConst.drawLineFloatStandardStroke(g,mx,my,mx,my)
 	}
 
   def angleFromPoint(p: VectorConstant): Double = {
@@ -610,7 +611,7 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 	}
 
   override def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[(Byte, VectorConstant)] = {
-		points.flatMap(GraphElemConst.checkHit(px,py,dist,_))		
+		points.flatMap(GraphElemConst.checkHit(px,py,dist,_))
 	}
 
   def calcArcBounds: Rect2dDouble = {
@@ -629,8 +630,8 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 		//println(f"calc bounds $diameter%2.2f "+pointBuffer.mkString("|"))
 		GraphElemConst.getPointsBounds(pointBuffer.toSeq)
 	}
-	
-	def pointFromAngle(angle:Double) = 
+
+	def pointFromAngle(angle:Double) =
 		new VectorConstant(centerPoint.x+scala.math.cos(angle*scala.math.Pi/180d)*diameter,
 			centerPoint.y+scala.math.sin(angle*scala.math.Pi/180d)*diameter,0)
 
@@ -650,7 +651,7 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 
 
 case class EllipseElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,centerPoint:VectorConstant,
-	r1:Double,r2:Double,mainAngle:Double,startAngle:Double,endAngle:Double) extends 
+	r1:Double,r2:Double,mainAngle:Double,startAngle:Double,endAngle:Double) extends
 		LinearElement(nref,ncolor,nlineWidth,nlineStyle) {
   lazy val points:Seq[VectorConstant]=List(pointFromAngle(startAngle*math.Pi/180d),pointFromAngle(endAngle*math.Pi/180d),centerPoint)
   lazy val bounds: Rect2dDouble = calcBounds
@@ -658,37 +659,37 @@ case class EllipseElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:In
   def getBounds(container: ElemContainer): Rect2dDouble = bounds
 
   override def toString: String = "Ellipse (" + centerPoint.shortToString + ") r1=" + r1 + "r2=" + r2 + " ma=" + mainAngle + ", sa:" + startAngle + ", eA:" + endAngle + ")"
-  
-  private def getInnerAngleFirstQuadrant(outerAngle:Double)= math.atan(math.tan(outerAngle)*r1/r2)  
+
+  private def getInnerAngleFirstQuadrant(outerAngle:Double)= math.atan(math.tan(outerAngle)*r1/r2)
   private def getOuterAngleFirstQuadrant(innerAngle:Double)= math.atan(math.tan(innerAngle)*r2/r1)
 
   override def getEdiblePoints: Iterator[VectorConstant] = points.iterator
-  
+
   /** gets the angle of the point in the inner cicle that is projected to the eclipse
    * @param outerAngle angle in Radiants
-   * 
+   *
    */
   def getInnerAngle(outerAngle: Double): Double =
     if(outerAngle>math.Pi/2 ) {
-      if(outerAngle>GraphElemConst.PI_32) getInnerAngleFirstQuadrant(outerAngle-math.Pi*2)+math.Pi*2 else getInnerAngleFirstQuadrant(outerAngle-math.Pi)+math.Pi 
+      if(outerAngle>GraphElemConst.PI_32) getInnerAngleFirstQuadrant(outerAngle-math.Pi*2)+math.Pi*2 else getInnerAngleFirstQuadrant(outerAngle-math.Pi)+math.Pi
       }
-    else if(outerAngle< -math.Pi/2) { 
-      if(outerAngle< -GraphElemConst.PI_32) getInnerAngleFirstQuadrant(outerAngle+math.Pi*2)-math.Pi*2  else  getInnerAngleFirstQuadrant(outerAngle+math.Pi)-math.Pi 
+    else if(outerAngle< -math.Pi/2) {
+      if(outerAngle< -GraphElemConst.PI_32) getInnerAngleFirstQuadrant(outerAngle+math.Pi*2)-math.Pi*2  else  getInnerAngleFirstQuadrant(outerAngle+math.Pi)-math.Pi
       }
     else getInnerAngleFirstQuadrant(outerAngle)
 
   def getOuterAngle(innerAngle: Double): Double =
      if(innerAngle>math.Pi/2 ) {
-      if(innerAngle>GraphElemConst.PI_32) getOuterAngleFirstQuadrant(innerAngle-math.Pi*2)+math.Pi*2 else getOuterAngleFirstQuadrant(innerAngle-math.Pi)+math.Pi 
+      if(innerAngle>GraphElemConst.PI_32) getOuterAngleFirstQuadrant(innerAngle-math.Pi*2)+math.Pi*2 else getOuterAngleFirstQuadrant(innerAngle-math.Pi)+math.Pi
       }
-    else if(innerAngle< -math.Pi/2) { 
-      if(innerAngle< -GraphElemConst.PI_32) getOuterAngleFirstQuadrant(innerAngle+math.Pi*2)-math.Pi*2  else  getOuterAngleFirstQuadrant(innerAngle+math.Pi)-math.Pi 
+    else if(innerAngle< -math.Pi/2) {
+      if(innerAngle< -GraphElemConst.PI_32) getOuterAngleFirstQuadrant(innerAngle+math.Pi*2)-math.Pi*2  else  getOuterAngleFirstQuadrant(innerAngle+math.Pi)-math.Pi
       }
     else getOuterAngleFirstQuadrant(innerAngle)
-    
+
   /** gets a point on the ellipse that is at a certain angle
    * @param angle angle in Radiants
-   *   
+   *
    */
   def pointFromAngle(angle: Double): VectorConstant = {
       val ia=getInnerAngle(angle)
@@ -696,26 +697,26 @@ case class EllipseElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:In
       val dy=math.sin(ia)*r2
       val ma=mainAngle*math.Pi/180d
       val cosMa=math.cos(ma)
-      val sinMa=math.sin(ma)      
+      val sinMa=math.sin(ma)
       new VectorConstant(dx*cosMa-dy*sinMa+centerPoint.x,dx*sinMa+dy*cosMa+centerPoint.y,0)
     }
 
   def calcBounds: Rect2dDouble = {
 		val pointBuffer=collection.mutable.ArrayBuffer[VectorConstant]()+=points.head+=points.tail.head
 		val ea=if(endAngle<startAngle) endAngle+360 else endAngle
-		var nextSegmentAngle=(scala.math.floor(startAngle/90)+1)*90		
+		var nextSegmentAngle=(scala.math.floor(startAngle/90)+1)*90
 		while (nextSegmentAngle<ea) {
-			val np=pointFromAngle(nextSegmentAngle*math.Pi/180d)			
+			val np=pointFromAngle(nextSegmentAngle*math.Pi/180d)
 			pointBuffer+=np
 			nextSegmentAngle+=90
-		}		
+		}
 		GraphElemConst.getPointsBounds(pointBuffer.toSeq)
 	}
 
   override def hitPoint(cont: ElemContainer, px: Double, py: Double, dist: Double): Seq[(Byte, VectorConstant)] = {
-		points.flatMap(GraphElemConst.checkHit(px,py,dist,_))		
+		points.flatMap(GraphElemConst.checkHit(px,py,dist,_))
 	}
-  
+
   override def hits(cont:ElemContainer,px:Double,py:Double,dist:Double):Boolean= {
 		val dx=px-centerPoint.x
 		val dy=py-centerPoint.y
@@ -740,9 +741,9 @@ case class EllipseElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:In
 
   override def drawRotated(g: Graphics2D, sm: Scaler, selectColor: Color, dangle: Double, rotator: VectorConstant => VectorConstant): Unit =
     internDraw(g,sm,selectColor,rotator(centerPoint),dangle)
-  
+
   private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,cPoint:VectorConstant,angle:Double): Unit ={
-		prepareStroke(g,sm,selectColor)		
+		prepareStroke(g,sm,selectColor)
 		sm match {
 		  case pm:APrintScaler =>
 				val tx=pm.xToPaper(centerPoint.x-r1)
@@ -771,9 +772,9 @@ case class EllipseElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:In
 				g.draw(newArc)
 				val mx=sm.xToScreen(cPoint.x)
 				val my=sm.yToScreen(cPoint.y)
-				GraphElemConst.drawLineFloat(g,mx,my,mx,my)
-		}				
-	}	
+				GraphElemConst.drawLineFloatStandardStroke(g,mx,my,mx,my)
+		}
+	}
   override def getDXFString(handle:HandleHolder,layerName:String,offset:VectorConstant):String={
    import client.graphicsView.GraphElemConst._
    val mAngle=mainAngle/180d*Math.PI
@@ -886,7 +887,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
   import client.graphicsView.GraphElemConst._
 
   def emptyFunc(ref: Reference): GraphElem = LineElement(ref, 0, 0, 0, null, null)
-  
+
   registerClass(lineClassID,createLine)
 	registerClass(arcClassID,createArc)
 	registerClass(polyClassID,createPoly)
@@ -901,7 +902,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
   //registerClass(measureLineClassID,createMeasureLine)
 
   def createText(ref: Reference, in: DataInput): TextElement = {
-	  val nfields=in.readByte		
+	  val nfields=in.readByte
 		if(nfields!=10) util.Log.e("Line wrong number of fields "+nfields+" "+ref)
 		val color=Expression.read(in).getValue.toInt
 		val text=Expression.read(in).getValue.toString
@@ -915,7 +916,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val lineSpace=Expression.read(in).getValue.toDouble
 		InstanceData.readOwners(in,ref)
 		InstanceData.readSecondUseOwners(in)
-		in.readBoolean		
+		in.readBoolean
 		new TextElement(ref,color,text,pos,font,height,widthr,align,tangle,obAngle,lineSpace)
 	}
 
@@ -929,7 +930,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val startPoint=Expression.read(in).getValue.toVector
 		val endPoint=Expression.read(in).getValue.toVector
 		val owners=InstanceData.readOwners(in,ref)
-		InstanceData.readSecondUseOwners(in)		
+		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
     LineElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, startPoint, endPoint)
 	}
@@ -983,7 +984,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val startA=Expression.read(in).getValue.toDouble
 		val endA=Expression.read(in).getValue.toDouble
 		val owners=InstanceData.readOwners(in,ref)
-		InstanceData.readSecondUseOwners(in)		
+		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
     ArcElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, centerPoint, diameter, startA, endA)
 	}
@@ -1001,7 +1002,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		val startA=Expression.read(in).getValue.toDouble
 		val endA=Expression.read(in).getValue.toDouble
 		val owners=InstanceData.readOwners(in,ref)
-		InstanceData.readSecondUseOwners(in)		
+		InstanceData.readSecondUseOwners(in)
 		in.readBoolean
     EllipseElement(ref, color.toInt, lineWidth.toInt, lineStyle.toInt, centerPoint, r1, r2, mainAngle, startA, endA)
 	}
@@ -1013,7 +1014,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 	  val position=Expression.read(in).getValue.toVector
 	  val style=Expression.read(in).getValue.toInt
 	  val angle=Expression.read(in).getValue.toDouble
-	  val points=DimensionPoint.createDimLineList(in)	  
+	  val points=DimensionPoint.createDimLineList(in)
 	  val refPoint=Expression.read(in).getValue.toVector
 	  val refDist=Expression.read(in).getValue.toDouble
 	  val precision=Expression.read(in).getValue.toDouble
@@ -1034,7 +1035,7 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
     val pos=Expression.read(in).getValue.toVector
     InstanceData.readOwners(in,ref)
     InstanceData.readSecondUseOwners(in)
-    in.readBoolean    
+    in.readBoolean
     new SymbolElem(ref,color,stampRef,angle,scale,pos,paramString)
   }
 
@@ -1072,11 +1073,11 @@ object GraphElemFactory extends SubscriptionFactory[GraphElem] {
 		in.readBoolean
     BitmapElem(ref, color, fileName, dpi, scaleY, angle, cscale, pos)
 	}
-  
-  
+
+
 }
 
-object GraphElemConst {  
+object GraphElemConst {
 	val theArc=new Arc2D.Double
   val theRect = new Rect2dDouble
 	val theLine=new Line2D.Double
@@ -1094,7 +1095,7 @@ object GraphElemConst {
 	val wrongExtendTreshold=50000
 
   val DELETED_LINE: LineElement = LineElement(EMPTY_REFERENCE, 0, 0, 0, NULLVECTOR, NULLVECTOR)
-	
+
 	private val fontCache=collection.mutable.HashMap[(String,Double,Int),Font]()
   val fontRenderCtx: FontRenderContext = {
 		val ge=GraphicsEnvironment.getLocalGraphicsEnvironment
@@ -1151,19 +1152,42 @@ object GraphElemConst {
   def transform(sm: Scaler)(v: VectorConstant): VectorConstant = new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0)
 
   def identityTransform(v: VectorConstant): VectorConstant = v
-  
-  def transformWithOffset(sm:Scaler,offset:VectorConstant)(v:VectorConstant):VectorConstant= 
+
+  def transformWithOffset(sm:Scaler,offset:VectorConstant)(v:VectorConstant):VectorConstant=
         new VectorConstant(sm.xToScreen(v.x+offset.x),sm.yToScreen(v.y+offset.y),0)
-	
-	def drawLine(g:Graphics2D,x1:Double,y1:Double,x2:Double,y2:Double):Unit= {
+
+	def drawLineStandardStroke(g:Graphics2D, x1:Double, y1:Double, x2:Double, y2:Double):Unit= {
+    val stroke=g.getStroke
+    g.setStroke(ViewConstants.polyStroke)
 	  theLine.x1=x1
 	  theLine.y1=y1
 	  theLine.x2=x2
 	  theLine.y2=y2
 	  g.draw(theLine)
+    g.setStroke(stroke)
 	}
-  
-  def drawLineFloat(g:Graphics2D,x1:Float,y1:Float,x2:Float,y2:Float):Unit= {
+
+  def drawLine(g:Graphics2D, x1:Double, y1:Double, x2:Double, y2:Double):Unit= {
+    theLine.x1=x1
+    theLine.y1=y1
+    theLine.x2=x2
+    theLine.y2=y2
+    g.draw(theLine)
+
+  }
+
+  def drawLineFloatStandardStroke(g:Graphics2D, x1:Float, y1:Float, x2:Float, y2:Float):Unit= {
+    val stroke=g.getStroke
+    g.setStroke(ViewConstants.polyStroke)
+    floatLine.x1=x1
+    floatLine.y1=y1
+    floatLine.x2=x2
+    floatLine.y2=y2
+    g.draw(floatLine)
+    g.setStroke(stroke)
+  }
+
+  def drawLineFloat(g:Graphics2D, x1:Float, y1:Float, x2:Float, y2:Float):Unit= {
     floatLine.x1=x1
     floatLine.y1=y1
     floatLine.x2=x2
@@ -1172,14 +1196,19 @@ object GraphElemConst {
   }
   
   def drawRectFloat(g:Graphics2D,x:Float,y:Float,width:Float,height:Float):Unit={
+    val stroke=g.getStroke
+    g.setStroke(ViewConstants.polyStroke)
     floatRect.x=x
     floatRect.y=y
     floatRect.width=width
     floatRect.height=height
     g.draw(floatRect)
+    g.setStroke(stroke)
   }
 
   def drawArcFloat(g: Graphics2D, x: Float, y: Float, width: Float, height: Float, startAngle: Float, endAngle: Float): Unit = {
+    val stroke=g.getStroke
+    g.setStroke(ViewConstants.polyStroke)
     floatArc.x=x
     floatArc.y=y
     floatArc.width=width
@@ -1187,6 +1216,7 @@ object GraphElemConst {
     floatArc.setAngleStart(startAngle)
     floatArc.setAngleExtent(endAngle)
     g.draw(floatArc)
+    g.setStroke(stroke)
   }
 
   def formatDXF(d: Double): String = f"$d%1.15f".replace(',', '.')

@@ -31,6 +31,9 @@ object ViewConstants {
   var selectBorderWidth=1
   var backgroundLayerTrans=40
 
+
+  lazy val polyStroke =new BasicStroke(1f * ViewConstants.polyLineTo.toFloat)
+
   lazy val layerComposite: AlphaComposite =AlphaComposite.getInstance(AlphaComposite.SRC_OVER,backgroundLayerTrans.toFloat/100f)
   //var hatchLineWidth=4
 

@@ -86,7 +86,7 @@ GraphElem(nref,ncolor) {
     g.setPaint(thePaint)	
 		g.setStroke(sm.getStroke(if(styleInfo.lineWidth>0)styleInfo.lineWidth.toFloat else 10f,0))
 		
-		def drawLine(a:VectorConstant,b:VectorConstant): Unit = GraphElemConst.drawLineFloat(g,sm.xToScreen(a.x) ,sm.yToScreen(a.y) ,	sm.xToScreen(b.x),sm.yToScreen(b.y))
+		def drawLine(a:VectorConstant,b:VectorConstant): Unit = GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(a.x) ,sm.yToScreen(a.y) ,	sm.xToScreen(b.x),sm.yToScreen(b.y))
 		
     val hoff=(lastInterPoint-firstInterPoint).unit*(rscale*styleInfo.helpLineOffset/1000)
 		if(!styleInfo.hideDimensionLine)drawLine(firstInterPoint-hoff,lastInterPoint+hoff)

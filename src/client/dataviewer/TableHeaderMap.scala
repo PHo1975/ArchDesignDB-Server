@@ -5,6 +5,7 @@ package client.dataviewer
 
 import client.comm.{UserSettings, _}
 import client.dialog.{ComboBoxEditor, EditorFactory}
+import client.ui.ViewConstants
 import definition.typ._
 import javax.swing.JComboBox
 import javax.swing.table._
@@ -37,8 +38,8 @@ object TableHeaderMap {
   	
   	val firstColumn=new TableColumn(0)
   	firstColumn.setHeaderValue(" ")
-  	firstColumn.setMaxWidth(25)
-		firstColumn.setPreferredWidth(25)
+  	firstColumn.setMaxWidth(25*ViewConstants.fontScale/100)
+		firstColumn.setPreferredWidth(23*ViewConstants.fontScale/100)
 		firstColumn.setResizable(false)
 		
 		newModel.addColumn(firstColumn)

@@ -95,7 +95,7 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
         //println("PA:"+pa+" "+pa.createCornerPoints(building.NoCutPlane).mkString("|"))
         if(pa.secondCellID==0|| {
           val testPA=new PartArea(this,EMPTY_REFERENCE,planeID,if (pa.firstCellID == oldCellID) newCellID else pa.firstCellID,
-          if(pa.secondCellID==oldCellID) newCellID else pa.secondCellID,0,0d  )
+          if(pa.secondCellID==oldCellID) newCellID else pa.secondCellID,0,0d,false  )
           val points=testPA.createCornerPoints(building.NoCutPlane).toSeq
           //println(" intersectionpoints:"+points.mkString("|")+" removed:"+PointList(points).removeDoublePoints())
           PointList(points).removeDoublePoints().points.size>3
@@ -104,7 +104,7 @@ class RaumZellenModule extends ActionModule with AbstractBuildingModel {
           if(pa.secondCellID==0)0 else if(pa.secondCellID==oldCellID) newCellID else pa.secondCellID,
           pa.aufbau, pa.align)
         if(pa.createCornerPoints(building.NoCutPlane).nonEmpty) {
-          val oldPA=new PartArea(this,EMPTY_REFERENCE,planeID,pa.firstCellID, pa.secondCellID,0,0d)
+          val oldPA=new PartArea(this,EMPTY_REFERENCE,planeID,pa.firstCellID, pa.secondCellID,0,0d,false)
           val points=PointList(oldPA.createCornerPoints(building.NoCutPlane).toSeq)
           //println("oldpa:"+oldPA+" points:"+points.points.mkString("|"))
           if(points.removeDoublePoints().points.size<4){

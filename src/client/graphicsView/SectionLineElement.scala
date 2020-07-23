@@ -126,7 +126,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
     
 	 
 		def intDrawLine(n1:VectorConstant,n2:VectorConstant): Unit =
-				GraphElemConst.drawLineFloat(g,sm.xToScreen(n1.x) ,sm.yToScreen(n1.y) ,sm.xToScreen(n2.x),sm.yToScreen(n2.y))
+				GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(n1.x) ,sm.yToScreen(n1.y) ,sm.xToScreen(n2.x),sm.yToScreen(n2.y))
 	}
    
   

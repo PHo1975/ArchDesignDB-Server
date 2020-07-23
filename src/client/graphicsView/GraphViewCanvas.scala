@@ -20,7 +20,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
   var dragStartPoint: Point = _
   var dragToPoint: Point = _
   var currentMousePos: Point = _
-	val crosshairStroke=new BasicStroke(1f)
+	//val crosshairStroke=new BasicStroke(1f)
 	var hasSelectionClicked:Boolean =false
   var isDragDropping: Boolean = false
   var oldSwipePoint: Point = _
@@ -191,7 +191,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       g.setRenderingHints(new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF))
       g.setXORMode(Color.white)
       g.setPaint(Color.black)
-      g.setStroke(crosshairStroke)
+      g.setStroke(ViewConstants.polyStroke)
       try {
         g.drawLine(currentMousePos.x, 1, currentMousePos.x, currBounds.height)
         g.drawLine(1, currentMousePos.y, currBounds.width, currentMousePos.y)
@@ -270,8 +270,8 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
     g.setPaint(Color.black)
     val mpx = controller.scaleModel.xToScreen(0)
     val mpy = controller.scaleModel.yToScreen(0)
-    GraphElemConst.drawLineFloat(g, mpx - 5, mpy, mpx + 5, mpy)
-    GraphElemConst.drawLineFloat(g, mpx, mpy - 5, mpx, mpy + 5)
+    GraphElemConst.drawLineFloatStandardStroke(g, mpx - 5, mpy, mpx + 5, mpy)
+    GraphElemConst.drawLineFloatStandardStroke(g, mpx, mpy - 5, mpx, mpy + 5)
     val st = controller.viewportState match {
       case ViewportState.AskPoint => "Punkt eingeben"
       case ViewportState.AskPointOrObject => "Punkt oder Objekt wählen"
@@ -361,8 +361,8 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       val brsize = 7 * ViewConstants.fontScale / 100
       val brx = controller.scaleModel.xToScreen(controller.lastSelectedPoint.x)
       val bry = controller.scaleModel.yToScreen(controller.lastSelectedPoint.y)
-      GraphElemConst.drawLineFloat(g, brx - brsize, bry, brx + brsize, bry)
-      GraphElemConst.drawLineFloat(g, brx, bry - brsize, brx, bry + brsize)
+      GraphElemConst.drawLineFloatStandardStroke(g, brx - brsize, bry, brx + brsize, bry)
+      GraphElemConst.drawLineFloatStandardStroke(g, brx, bry - brsize, brx, bry + brsize)
       g.setPaintMode()
     }
 

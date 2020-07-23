@@ -189,7 +189,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
 	  
 	  def dragger(pos:VectorConstant,g:Graphics2D): Unit = {
 	    g.setColor(Color.blue)
-	    GraphElemConst.drawLineFloat(g,sm.xToScreen(lastPos.x), sm.yToScreen(lastPos.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
+	    GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(lastPos.x), sm.yToScreen(lastPos.y), sm.xToScreen(pos.x), sm.yToScreen(pos.y))
 	  }
 	  	  
     DialogManager.startIntermediateQuestion(question, answerList=>{

@@ -203,8 +203,8 @@ class PDCanvas(val controller:PlotDesignController) extends Component {
 		  g.setXORMode(Color.yellow)
 		  val brx=controller.scaleModel.xToScreen(controller.lastSelectedPoint.x)
 		  val bry=controller.scaleModel.yToScreen(controller.lastSelectedPoint.y)
-		  GraphElemConst.drawLineFloat(g,brx-7,bry,brx+7,bry)
-		  GraphElemConst.drawLineFloat(g,brx,bry-7,brx,bry+7)
+		  GraphElemConst.drawLineFloatStandardStroke(g,brx-7,bry,brx+7,bry)
+		  GraphElemConst.drawLineFloatStandardStroke(g,brx,bry-7,brx,bry+7)
 		  g.setPaintMode()
 		}		
 		
