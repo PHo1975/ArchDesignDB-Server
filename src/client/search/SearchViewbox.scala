@@ -28,6 +28,7 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
 
   val searchBox = new TextField
   searchBox.maximumSize = new Dimension(Short.MaxValue, 30)
+  searchBox.tooltip = "Suchbegriff mit mindestens 5 Buchstaben"
 
   val list = new ListView[AbstractSearchResult]()
   val dataviewController = new DataViewController(this)
@@ -106,5 +107,6 @@ class SearchViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableVie
   override def selectionChanged[T <: Referencable](sender: SelectSender, groups: Iterable[SelectGroup[T]], alsoSelected: Iterable[T]): Unit = {
     rootRef = if (groups.isEmpty || groups.head.children.isEmpty) EMPTY_REFERENCE
     else groups.head.parent.ownerRef
+    println("Search rootRef:"+rootRef)
   }
 }

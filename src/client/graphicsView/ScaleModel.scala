@@ -38,7 +38,9 @@ object ScaleModel {
   })
 }
 
-
+/**
+* Interface class for scale calculation
+*/
 trait Scaler {
   def xToScreen(wx:Double):Float
 	def yToScreen(wy:Double):Float

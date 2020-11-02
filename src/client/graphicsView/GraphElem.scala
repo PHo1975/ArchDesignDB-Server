@@ -588,7 +588,13 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 		g.draw(GraphElemConst.theArc)
 		val mx=sm.xToScreen(cPoint.x)
 		val my=sm.yToScreen(cPoint.y)
-		GraphElemConst.drawLineFloatStandardStroke(g,mx,my,mx,my)
+    if(selectColor==null)
+		  GraphElemConst.drawLineFloatStandardStroke(g,mx,my,mx,my)
+    else {
+      val rh: Int = 10 * ViewConstants.fontScale / 100
+      GraphElemConst.drawLineFloatStandardStroke(g,mx-rh,my,mx+rh,my)
+      GraphElemConst.drawLineFloatStandardStroke(g,mx,my-rh,mx,my+rh)
+    }
 	}
 
   def angleFromPoint(p: VectorConstant): Double = {

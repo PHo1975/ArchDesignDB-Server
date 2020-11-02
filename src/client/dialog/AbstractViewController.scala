@@ -132,7 +132,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   }
 
   /**
-  *  @return true if there is also a combines pointSelection question
+  *  @return true if there is also a combined pointSelection question
 */
   def askForObjectSelection(listener:ObjectSelectListener,constraints:String):Boolean={
     var result=false

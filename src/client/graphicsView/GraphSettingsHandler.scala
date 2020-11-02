@@ -324,6 +324,8 @@ case class DimLineStyle(ref:Reference,id:Int,name:String,options:Int,textFont:St
   def hasFixedHelpLine: Boolean =(options & FixedHelpLine)>0
   def hasHighMM: Boolean =(options & HighMM)>0
   def unitStyle: Int =(options >> 5) & 7
+  def isArrow:Boolean = (options & Arrow)>0
+
   
   def roundedMeasure(measure:Double): Double =if(roundMM==0) measure else (Math.round(measure/roundMM)*roundMM).toDouble
   
@@ -363,6 +365,8 @@ object DimLineStyleHandler extends AbstractSettingHandler {
   final val UnitM=0
   final val UnitM_MM=1   
   final val DimLineHTextScale=0.75f
+  final val Arrow=256
+
   
   
   val Match1: Regex ="""(\d+[\.,]\d+)(\d)""".r

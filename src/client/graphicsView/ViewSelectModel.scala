@@ -86,11 +86,11 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 
 
   def setSelection(dataList: Iterable[(AbstractLayer, Iterable[GraphElem])]): Unit = {
-		//System.out.println("set selection "+dataList.mkString("| "))	  
+		//System.out.println("set selection "+dataList.mkString("| "))
+		elMap.clear()
 	  for((alayer,list)<-dataList){
 	    if(list.isEmpty)throw new IllegalArgumentException("Set selection empty content layer:"+alayer)
 	  	val elList=getElList(alayer)
-	  	elList.clear()
 	  	elList ++=list
       //println("LastSel:"+ lastSelection.mkString(","))
       storeSelectionList()
@@ -123,15 +123,12 @@ class ViewSelectModel(controller:GraphViewController) extends SelectSender with 
 		  val ix=elList.indexWhere(_.ref==changedEl.ref)
 		  if(ix> -1) elList(ix)=changedEl
     }
-    //println("elmap:"+ elMap.mkString(" | "))
-    //println("LastSel:"+ lastSelection.mkString(","))
     storeSelectionList()
-    //println("LastSel:"+ lastSelection.mkString(","))
 	}
 
 
   def notifyListeners(cleared: Boolean = false): Unit = {
-	  val alsoSelected=if(cleared) Nil else controller.lastHittedElements.flatMap(_._2)
+	  val alsoSelected: Iterable[GraphElem] =if(cleared) Nil else controller.lastHittedElements.flatMap(_._2)
 	  val groups: Iterable[SelectGroup[GraphElem]] =if(cleared) Nil else elMap.values.filterNot(_.children.isEmpty)
 	  selectListeners.foreach(_.selectionChanged(this,groups,alsoSelected))
 	}

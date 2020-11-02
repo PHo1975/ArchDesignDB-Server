@@ -147,7 +147,7 @@ class TextStyleEditor extends FieldEditor {
       if (isItalicSet == null || isItalicSet.isEmpty) {italicBut.selected = false; italicBut.foreground = Color.GRAY}
     		else {italicBut.foreground=Color.BLACK;italicBut.selected=isItalicSet.get   }
       if (isCapitalSet == null || isCapitalSet.isEmpty) {capitalBut.selected = false; capitalBut.foreground = Color.GRAY}
-      else {capitalBut.foreground = Color.BLACK; capitalBut.selected = isItalicSet.get}
+      else {capitalBut.foreground = Color.BLACK; capitalBut.selected = isCapitalSet.get}
     		if(horAlign<0)alHGroup.peer.clearSelection()
     		else horAlign match {
     			case 0 => alLeftBut.selected=true

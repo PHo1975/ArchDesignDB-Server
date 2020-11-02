@@ -996,13 +996,14 @@ object TransactionManager {
 		//System.out.println("intern tryp Copy Instance:"+instRef+" fromOwner:"+fromOwner+" toOwner:"+toOwner)
 		if(checkIsChildOf(toOwner.ownerRef,instRef))throw new IllegalArgumentException("Copy not possible. ToOwner "+toOwner+" is child of copying Instance "+fromOwner)		
 			
-		val instD=ActionList.getInstanceData(instRef)
+		val instD: InstanceData =ActionList.getInstanceData(instRef)
 		
-		if(!instD.owners.contains(fromOwner)) {		  
+		if(!instD.owners.contains(fromOwner)) {
+		  util.Log.e("Instance Owners "+instD.owners.mkString(("|"))+" do not containt fromOwner:"+fromOwner+" collNotifyOwners:"+collNotifyOwners)
 			if(!instD.secondUseOwners.contains(fromOwner)) throw new IllegalArgumentException("Copy: instance "+instRef+" is not owned by "+ fromOwner)
 			else if(!collNotifyOwners){
 				// is a child as second use
-				//System.out.println("copy as second use:"+instRef+" from:"+fromOwner+" to:"+toOwner)
+				util.Log.w("copy as second use:"+instRef+" from:"+fromOwner+" to:"+toOwner)
 			  if(ActionList.isInstanceCopied(instRef)){ // is the source of the second use also copied(before)
 			    val newSourceRef=ActionList.getInstanceData(ActionList.getCopyForRef(instRef))
 			    trySecondUseInstances(List(newSourceRef.ref),newSourceRef.owners.head,toOwner,-1,collNotifyOwners = false) // create second use from copy target

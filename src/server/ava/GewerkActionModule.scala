@@ -1,6 +1,6 @@
 package server.ava
 
-import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.data.{InstanceData, InstanceProperties, OwnerReference, Reference}
 import definition.expression._
 import definition.typ._
 import server.comm.AbstractUserSocket
@@ -136,7 +136,7 @@ class LVActionModule extends ActionModule {
   def setObjectType(otype:Int): Unit = { }
 
   val vergabeAction=new ActionIterator("Vergabe",Some(PanelRemoteQuestion("client.model.ava.CostTransferPanel")),doVergabe)
-  val ubertragAction=new ActionIterator("Schätzung übertr.",Some(PanelRemoteQuestion("client.model.ava.CostTransferPanel")),doUbertrag)
+  val ubertragAction=new ActionIterator("in Schätzung übertr.",Some(PanelRemoteQuestion("client.model.ava.CostTransferPanel")),doUbertrag)
   val removeMeasureAction=new ActionIterator("Massen entfernen",None,doRemoveMeasure(2))
   val removePSAction=new ActionIterator("Preise entfernen",None,doRemovePS(2))
 
@@ -232,13 +232,14 @@ class LVActionModule extends ActionModule {
   }
 
   def doUbertrag(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]): Boolean =  {
-    val bieterCol=StorageManager.getInstanceData(param.head._2.toObjectReference.ref)
+    val bieterCol: InstanceData =StorageManager.getInstanceData(param.head._2.toObjectReference.ref)
 
     def loopGewerk(colParent:Reference):Unit={
       //println("loop gewerk:"+colParent)
-      for(cpr<-StorageManager.getInstanceProperties(colParent);childRef<-cpr.propertyFields(0).propertyList;
-          psInst=StorageManager.getInstanceData(childRef);
-          lvInst=StorageManager.getInstanceData(psInst.owners(0).ownerRef)) {
+      for(cpr: InstanceProperties <-StorageManager.getInstanceProperties(colParent);
+          childRef: Reference <-cpr.propertyFields(0).propertyList;
+          psInst: InstanceData =StorageManager.getInstanceData(childRef);
+          lvInst: InstanceData =StorageManager.getInstanceData(psInst.owners(0).ownerRef)) {
         //println("child "+psInst.ref+" lv:"+lvInst.ref+" "+lvInst)
         childRef.typ match {
           case `psGewerkTyp` => loopGewerk(childRef)
