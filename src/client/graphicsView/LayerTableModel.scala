@@ -15,6 +15,7 @@ import java.lang
 import javax.swing.table._
 import scala.collection.SortedMap
 import scala.collection.mutable.ArrayBuffer
+import scala.swing.Swing
 import scala.util.control.NonFatal
 
 /**

@@ -14,9 +14,12 @@ import javax.swing.table.{AbstractTableModel, TableCellEditor}
 import javax.swing.{BorderFactory, JComboBox}
 import scala.collection.mutable.ArrayBuffer
 import scala.jdk.CollectionConverters._
+import scala.swing.Table.LabelRenderer
+import scala.swing._
+import scala.swing.event.{ButtonClicked, TableRowsSelected}
 
 
-/**
+/**   
  * 
  */
 class AutoCreateDialog(w:Window) extends Dialog(w) {

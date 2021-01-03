@@ -10,6 +10,8 @@ import server.comm.{AbstractUserSocket, JavaClientSocket}
 import server.storage.{ActionIterator, ActionModule, ActionNameMap, StorageManager}
 import transaction.handling.{ActionList, SessionManager, TransactionManager}
 
+import scala.xml.Elem
+
 /**
  * 
  */

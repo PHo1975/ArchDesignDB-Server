@@ -12,6 +12,8 @@ import java.awt.Color
 import java.awt.datatransfer.Transferable
 import javax.swing.table.TableColumnModel
 import javax.swing.{ImageIcon, JTable, TransferHandler}
+import scala.swing._
+import scala.swing.event._
 /** manages the Layer panel
  * 
  */

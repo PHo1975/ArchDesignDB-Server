@@ -10,6 +10,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import javax.swing.JFileChooser
+import scala.swing.event.{ButtonClicked, EditDone}
+import scala.swing.{BoxPanel, Button, Label, Orientation, Swing, TextField}
 
 class PathEditBox(labelText:String,getter:()=> String,setter: (String)=>Unit) extends 
 		BoxPanel(Orientation.Vertical)	{

@@ -8,6 +8,8 @@ import client.ui.ViewConstants
 import definition.data._
 
 import java.awt.{Color, Dimension}
+import scala.swing.event._
+import scala.swing.{ListView, _}
 
 
 

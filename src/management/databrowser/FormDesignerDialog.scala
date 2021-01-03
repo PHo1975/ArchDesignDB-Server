@@ -13,6 +13,8 @@ import java.awt.Color
 import javax.swing.table.TableCellEditor
 import javax.swing.{BorderFactory, JComboBox, JPopupMenu}
 import scala.jdk.CollectionConverters._
+import scala.swing._
+import scala.swing.event.{ButtonClicked, MousePressed}
 
 
 /**

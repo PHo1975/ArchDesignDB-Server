@@ -4,6 +4,8 @@ import client.ui.ViewConstants
 import management.databrowser.MainWindow
 
 import java.awt.Dimension
+import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, BoxPanel, Button, Label, ListView, Orientation, ScrollPane, Swing}
 
 class StatPanel extends BoxPanel(Orientation.Vertical) {
   val projList=new ListView[String]

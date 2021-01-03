@@ -14,6 +14,8 @@ import definition.typ.SelectGroup
 import java.awt.Color
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import javax.swing._
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Component, Container, Dimension, Insets, ListView, Orientation, Panel, SequentialContainer, Swing}
 import scala.util.control.NonFatal
 
 

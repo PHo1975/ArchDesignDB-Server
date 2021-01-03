@@ -8,6 +8,8 @@ import definition.expression.VectorConstant
 import java.awt._
 import java.awt.event.{ComponentAdapter, MouseWheelEvent}
 import javax.swing.{SwingUtilities, TransferHandler}
+import scala.swing.Component
+import scala.swing.event._
 import scala.util.control.NonFatal
 
 /**

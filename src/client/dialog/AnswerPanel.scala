@@ -10,6 +10,8 @@ import definition.typ._
 import util.Log
 
 import javax.swing.BorderFactory
+import scala.swing._
+import scala.swing.event._
 import scala.util.control.NonFatal
 
 /** abstract superclass for all answer panels

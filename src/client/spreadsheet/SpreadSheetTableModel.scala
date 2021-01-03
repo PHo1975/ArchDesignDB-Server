@@ -13,6 +13,7 @@ import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColu
 import javax.swing.{JComponent, JTextArea}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.swing.Swing
 import scala.util.control.NonFatal
 
 class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTableModel {

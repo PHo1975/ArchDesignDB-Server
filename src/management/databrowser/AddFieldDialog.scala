@@ -5,6 +5,8 @@ import definition.typ.{DTWrap, DataType}
 import server.storage.ServerObjectClass
 
 import java.awt.Dimension
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, ComboBox, Dialog, Label, Orientation, Window}
 
 class AddFieldDialog (w:Window) extends Dialog(w) {
   val fieldName= new FormatLine(100,"Field Name:",()=>"",(text)=> {})

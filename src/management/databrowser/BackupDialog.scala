@@ -7,6 +7,8 @@ import java.awt.Dimension
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.File
 import javax.swing.SwingWorker
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Dialog, Orientation, ProgressBar, Window}
 
 class BackupDialog(w:Window) extends Dialog(w){
   title="Backup"

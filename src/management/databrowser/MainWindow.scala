@@ -17,6 +17,8 @@ import javax.swing.table.{DefaultTableModel, TableRowSorter}
 import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dimension, GridPanel, MainFrame, Orientation, Rectangle, ScrollPane, SimpleSwingApplication, Swing, Table}
 import scala.util.control.NonFatal
 
 //import java.swing.JTable

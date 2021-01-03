@@ -9,6 +9,8 @@ import util.StrToInt
 
 import javax.swing.JOptionPane
 import javax.swing.table.DefaultTableModel
+import scala.swing.event.ButtonClicked
+import scala.swing.{BorderPanel, Button, Dimension, GridPanel, ScrollPane}
 
 class BlockClassPanel extends BorderPanel {
   val blockTable=new SimpleTable

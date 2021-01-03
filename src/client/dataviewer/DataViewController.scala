@@ -12,6 +12,7 @@ import definition.typ.{AbstractObjectClass, AllClasses, CustomInstanceEditor, Se
 
 import javax.swing.JPanel
 import scala.collection.mutable.ArrayBuffer
+import scala.swing._
 
 
 /** controls the DataViewer

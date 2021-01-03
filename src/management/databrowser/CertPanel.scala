@@ -19,6 +19,8 @@ import javax.swing.JOptionPane
 import scala.collection.mutable
 import scala.io.Source
 import scala.jdk.CollectionConverters._
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, TextArea}
 import scala.util.control.NonFatal
 
 

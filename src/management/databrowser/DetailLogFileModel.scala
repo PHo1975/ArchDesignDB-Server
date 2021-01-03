@@ -5,6 +5,7 @@ import server.storage.TransDetailLogHandler
 
 import java.util.Date
 import javax.swing.table.AbstractTableModel
+import scala.swing.Swing
 
 
 object DetailLogFileModel extends AbstractTableModel {

@@ -10,6 +10,8 @@ import util.{StrToInt, StringUtils}
 import javax.swing.border.TitledBorder
 import javax.swing.table.AbstractTableModel
 import javax.swing.{BorderFactory, JOptionPane}
+import scala.swing.event.ButtonClicked
+import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, Table}
 
 class UserTableModel extends AbstractTableModel {
   def getColumnCount= 8
