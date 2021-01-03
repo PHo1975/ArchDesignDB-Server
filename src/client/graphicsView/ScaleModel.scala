@@ -3,15 +3,14 @@
  */
 package client.graphicsView
 
-import java.awt.geom._
-import java.awt.{BasicStroke, _}
-
 import client.comm.{ClientObjectClass, ClientQueryManager}
 import client.graphicsView.Handlers._
 import definition.expression.VectorConstant
 import definition.typ.{AllClasses, SystemSettings}
 import util.{ColonSplit, StrToDouble}
 
+import java.awt.geom._
+import java.awt.{BasicStroke, _}
 import scala.collection.immutable.SortedMap
 import scala.collection.mutable
 /** Manages the scale of a graphics view
@@ -63,7 +62,7 @@ trait Scaler {
 
 class ScaleModel extends Scaler {
 	import client.graphicsView.ScaleModel._
-	var vpBorder=10 // border of the Canvas
+	var vpBorder=10f // border of the Canvas
 	
 	private var _viewSize:Dimension=new Dimension(1,1) // size of the ViewPort component
 	
@@ -115,7 +114,7 @@ class ScaleModel extends Scaler {
 	  } 
 		if(newValue.width-vpBorder*2!= _viewSize.width ||
 			 newValue.height-vpBorder*2!= _viewSize.height	){
-		  _viewSize=new Dimension(newValue.width-vpBorder*2,newValue.height-vpBorder*2)
+		  _viewSize=new Dimension(newValue.width-vpBorder.toInt*2,newValue.height-vpBorder.toInt*2)
 		  calcOffsets()
 		  notifyScaleChanged()		  
 		}
@@ -244,16 +243,16 @@ class ScaleModel extends Scaler {
 		//println("CalcOffsets scale:"+scale+" worldWidth:"+_world_Width+" worldHeight:"+_world_Height+" viewSize:"+_viewSize)
 		if(_heightSet){			
 			yOffset=vpBorder
-			xOffset=((_viewSize.width-_world_Width*scale)/2).toInt+vpBorder
-			val worldOffset=(viewSize.width.toDouble/scale-_world_Width)/2
+			xOffset=((_viewSize.width.toFloat-_world_Width*scale)/2f).toInt+vpBorder
+			val worldOffset=(viewSize.width.toDouble/scale-_world_Width)/2f
 			wbx1=_world_X-worldOffset
 			wby1= _world_Y	
 			wbx2=_world_X+_world_Width+worldOffset
 			wby2= _world_Y+_world_Height
 		} else {
 			xOffset=vpBorder
-			yOffset=((_viewSize.height-_world_Height*scale)/2).toInt+vpBorder
-			val worldOffset=(viewSize.height.toDouble/scale-_world_Height)/2
+			yOffset=((_viewSize.height.toFloat-_world_Height*scale)/2f).toInt+vpBorder
+			val worldOffset=(viewSize.height.toDouble/scale-_world_Height)/2f
 			wbx1=_world_X
 			wby1=_world_Y-worldOffset	
 			wbx2=_world_X+_world_Width

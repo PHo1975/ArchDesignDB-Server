@@ -3,18 +3,15 @@
  */
 package client.graphicsView
 
-import java.awt.Color
-import java.awt.datatransfer.Transferable
-
 import client.dataviewer.{InstanceSelection, OnMoveHandler}
 import client.dialog._
 import client.icons.IconManager
 import client.ui.ViewConstants
+
+import java.awt.Color
+import java.awt.datatransfer.Transferable
 import javax.swing.table.TableColumnModel
 import javax.swing.{ImageIcon, JTable, TransferHandler}
-
-import scala.swing._
-import scala.swing.event._
 /** manages the Layer panel
  * 
  */
@@ -188,8 +185,8 @@ class LayerPanelController(viewController:GraphViewController) extends DragDropL
   
   def canImport(action:Int,data:Transferable,pos:TransferHandler.DropLocation):Boolean = {
     data match {
-      case insData:InstanceSelection=> insData.selection.exists(a=>Layer.allowedDisplayListTypes.contains(a.typ)) &&
-      		!  insData.selection.exists(viewController.layerModel.containsRef)
+      case insData:InstanceSelection=> insData.selection.exists(a=>Layer.allowedDisplayListTypes.contains(a.typ)) && (!
+      		insData.selection.exists(viewController.layerModel.containsRef))
       case graphTr:GraphElemTransferable =>
 				val row=pos.asInstanceOf[JTable.DropLocation].getRow
 				if(row>=viewController.layerModel.layerList.size) false

@@ -42,8 +42,8 @@ object ActionList extends DataRetriever {
   def isBufferingUpdates: Boolean =_bufferUpdates
 
   def reset(): Unit = {
-      theList.clear
-      copiedInstances.clear
+      theList.clear()
+      copiedInstances.clear()
       _bufferUpdates=false
     }
 

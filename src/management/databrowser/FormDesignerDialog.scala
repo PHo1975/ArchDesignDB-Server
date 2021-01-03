@@ -3,19 +3,16 @@
  */
 package management.databrowser
 
-import java.awt.Color
-
 import client.dialog.ComboBoxEditor
 import client.dialog.form._
 import definition.typ.AbstractObjectClass
 import definition.typ.form.AbstractFormElement
-import javax.swing.table.TableCellEditor
-import javax.swing.{BorderFactory, JComboBox, JPopupMenu}
 import server.storage.ServerObjectClass
 
+import java.awt.Color
+import javax.swing.table.TableCellEditor
+import javax.swing.{BorderFactory, JComboBox, JPopupMenu}
 import scala.jdk.CollectionConverters._
-import scala.swing._
-import scala.swing.event.{ButtonClicked, MousePressed}
 
 
 /**
@@ -81,7 +78,7 @@ class FormDesignerDialog(w:Window) extends Dialog(w) with DesignerListener {
 		preferredSize= new Dimension(200,60)
 	}
 	
-	val mainPanel=new BorderPanel(){
+	val mainPanel: BorderPanel =new BorderPanel(){
 		add(previewPanel,BorderPanel.Position.Center )
 		add( propPanel,BorderPanel.Position.West )
 		add(new BoxPanel(Orientation.Horizontal){
@@ -95,7 +92,7 @@ class FormDesignerDialog(w:Window) extends Dialog(w) with DesignerListener {
 			case ButtonClicked(`cancelButton`)=>
 				isCanceled=true
 				unregisterComponents()
-				close
+				close()
 			case ButtonClicked(`saveButton`)=>
 				isCanceled=false
 				TypeDefPanel.theClass=TypeDefPanel.theClass.setFormBox(currentValue)
@@ -170,8 +167,8 @@ class FormDesignerDialog(w:Window) extends Dialog(w) with DesignerListener {
 		else {
 			previewPanel.addComp (emptyFormPanel,BorderPanel.Position.Center)
 		}
-		mainPanel.revalidate
-		mainPanel.repaint
+		mainPanel.revalidate()
+		mainPanel.repaint()
 	}
 	
 	def initComponent(el:AbstractFormElement): Unit = {

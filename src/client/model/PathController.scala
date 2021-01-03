@@ -3,14 +3,11 @@
  */
 package client.model
 
-import java.awt.{Color, Dimension}
-
 import client.dataviewer.DataViewController
 import client.ui.ViewConstants
 import definition.data._
 
-import scala.swing.event._
-import scala.swing.{ListView, _}
+import java.awt.{Color, Dimension}
 
 
 
@@ -27,7 +24,8 @@ class PathLineRenderer(model:Option[PathModel]=None) extends BoxPanel(Orientatio
 		resultLabel.yLayoutAlignment=0d
 		val glue: Component =Swing.Glue
 		glue.yLayoutAlignment=0d
-  maximumSize = new Dimension(Short.MaxValue, 23 * ViewConstants.fontScale / 100)
+    maximumSize = new Dimension(Short.MaxValue, 23 * ViewConstants.fontScale / 100)
+
 		contents+=firstLabel+=glue+=resultLabel		
 		yLayoutAlignment=0
 		xLayoutAlignment=0
@@ -80,11 +78,8 @@ class PathController (val model:PathModel, val view:ListView[InstanceData],val l
 	
 	view.listenTo(view.selection)
 	view.renderer=new ListView.AbstractRenderer[InstanceData,PathLineRenderer](renderPrototype){
-		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: InstanceData, index: Int): Unit = {
+		def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: InstanceData, index: Int): Unit =
 			renderPrototype.config(isSelected,focused,a,index)
-		}
-
-
 	}
 	view.reactions += {
 		case e:ListSelectionChanged[_] =>

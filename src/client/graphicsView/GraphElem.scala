@@ -3,12 +3,6 @@
  */
 package client.graphicsView
 
-import java.awt.font.{FontRenderContext, TextHitInfo, TextLayout}
-import java.awt.geom.Rectangle2D.{Double => Rect2dDouble, Float => Rect2dFloat}
-import java.awt.geom._
-import java.awt.{Color, Font, Graphics2D, GraphicsEnvironment}
-import java.io.DataInput
-
 import client.comm.SubscriptionFactory
 import client.graphicsView.Handlers._
 import client.graphicsView.symbol.{SymbolElem, SymbolFiller}
@@ -20,6 +14,11 @@ import definition.expression._
 import definition.typ.AllClasses
 import util.{Log, StringUtils}
 
+import java.awt.font.{FontRenderContext, TextHitInfo, TextLayout}
+import java.awt.geom.Rectangle2D.{Double => Rect2dDouble, Float => Rect2dFloat}
+import java.awt.geom._
+import java.awt.{Color, Font, Graphics2D, GraphicsEnvironment}
+import java.io.DataInput
 import scala.collection.mutable
 
 
@@ -286,7 +285,7 @@ abstract class LinearElement(nref:Reference,ncolor:Int,val lineWidth:Int,val lin
 
   protected def prepareStroke(g: Graphics2D, sm: Scaler, selectColor: Color): Unit = {
     g.setPaint(getDrawColor(sm,lineWidth,selectColor))
-    g.setStroke(if (selectColor == hoverColor) LineStyleHandler.hoverStroke else sm.getStroke(if (lineWidth > 0) lineWidth else 1, lineStyle))
+    g.setStroke(if (selectColor == hoverColor) LineStyleHandler.hoverStroke else sm.getStroke(if (lineWidth > 0) lineWidth.toFloat else 1F, lineStyle))
   }
   override def getFormatFieldValue(fieldNr:Int):Constant= {
 	  fieldNr match {
@@ -314,7 +313,8 @@ abstract class AbstractLineElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlin
 
   override def getBounds(container: ElemContainer): Rect2dDouble = bounds
 
-  override def toString: String = "Line " + (if (nref == null) "" else nref.sToString()) + " (" + startPoint.shortToString + "," + endPoint.shortToString + ", Col:" + color + ", Style:" + lineStyle + " width:" + lineWidth + ")"
+  override def toString: String = "Line " + (if (nref == null) "" else nref.sToString+
+    ()) + " (" + startPoint.shortToString + "," + endPoint.shortToString + ", Col:" + color + ", Style:" + lineStyle + " width:" + lineWidth + ")"
 
 	override def getEdiblePoints: Iterator[VectorConstant] =new TwoStepIterator(startPoint,endPoint)
 
@@ -417,7 +417,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else selectBorderWidth,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth.toFloat else if(selectColor==null) 1 else selectBorderWidth.toFloat,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.trim.length>0) {
@@ -461,7 +461,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 		}
 	  if(lineWidth>0|| selectColor!= null) {
 	  	g.setPaint(if(selectColor==null) ColorMap.getColor(color)else selectColor)
-	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else if(selectColor==null) 1 else selectBorderWidth,lineStyle))
+	  	g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth.toFloat else if(selectColor==null) 1f else selectBorderWidth.toFloat,lineStyle))
 	  	g.draw(theArea)
 	  }
 	  if(name.length>0) {

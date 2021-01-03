@@ -1,9 +1,9 @@
 package client.spreadsheet
-import java.io.DataOutput
-
 import definition.data.InstanceData
 import definition.expression._
 import definition.typ.DataType
+
+import java.io.DataOutput
 
 class SpreadSheetParser extends StringParser {
   
@@ -25,13 +25,14 @@ class SpreadSheetParser extends StringParser {
   def parse(text : String,expectedType:DataType.Value=DataType.undefined):Expression = {
 		if(text.length==0) Expression.generateNullConstant(expectedType)
     else {
-      val result = parseAll(comp, text)
+      val result: ParseResult[Expression] = parseAll(comp, text)
       result match {
         case Success(x, _) => x
         case NoSuccess(err, next) =>
           throw new IllegalArgumentException("Failure when parsing " +
             "(line " + next.pos.line + ", column " + next.pos.column + "):\n" +
             err + "\n" + next.pos.longString)
+        case other=> throw   new IllegalArgumentException ("Other Error when parsing:"+other)
       }
     }
 	}      

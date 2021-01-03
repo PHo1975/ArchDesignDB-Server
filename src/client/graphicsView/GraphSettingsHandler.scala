@@ -1,15 +1,14 @@
 package client.graphicsView
 
-import java.awt.geom.Line2D
-import java.awt.{BasicStroke, Color, Graphics2D}
-import java.text.DecimalFormat
-
 import client.comm.ClientQueryManager
 import definition.comm.NotificationType
 import definition.data._
 import definition.expression._
 import definition.typ.SystemSettings
 
+import java.awt.geom.Line2D
+import java.awt.{BasicStroke, Color, Graphics2D}
+import java.text.DecimalFormat
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
@@ -107,7 +106,7 @@ object HatchHandler extends AbstractSettingHandler {
   			def drawHatches(angle:Double,distance:Double,style:Int,thickness:Int,offset:Boolean): Unit = if(distance>0){
          // if (thickness >0) println("Draw Hatch thickness:"+thickness) else println("DrawHatch 0")
   				val line=hatchLine
-          val stroke=sm.getStroke(if(thickness>0)thickness else 1,style)
+          val stroke=sm.getStroke(if(thickness>0)thickness.toFloat else 1f,style)
   				g.setStroke(stroke)
   				val a1=angle*math.Pi/180d
   				val dir1=new VectorConstant(scala.math.cos(a1),scala.math.sin(a1),0)

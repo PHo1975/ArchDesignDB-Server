@@ -2,24 +2,21 @@
   */
 package management.databrowser
 
-import java.awt.event.{MouseAdapter, WindowAdapter}
-import java.awt.{Image, SystemTray, Toolkit, TrayIcon}
-
 import client.ui.ViewConstants
 import com.sun.jna.{Native, NativeLong, WString}
 import definition.typ.AllClasses
-import javax.swing.table.{DefaultTableModel, TableRowSorter}
-import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 import management.databrowser.stat.StatPanel
 import server.comm.MainServerSocket
 import server.storage.{ServerObjectClass, StorageManager, TransLogHandler}
 import transaction.handling.SessionManager
 import util.Log
 
+import java.awt.event.{MouseAdapter, WindowAdapter}
+import java.awt.{Image, SystemTray, Toolkit, TrayIcon}
+import javax.swing.table.{DefaultTableModel, TableRowSorter}
+import javax.swing.{BorderFactory, JTable, RowSorter, SortOrder}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
-import scala.swing.event.ButtonClicked
-import scala.swing.{BorderPanel, BoxPanel, Button, Component, Dimension, GridPanel, MainFrame, Orientation, Rectangle, ScrollPane, SimpleSwingApplication, Swing, Table}
 import scala.util.control.NonFatal
 
 //import java.swing.JTable
@@ -99,7 +96,7 @@ object MainWindow extends SimpleSwingApplication {
     val col = classTable.peer.getColumnModel.getColumn(0)
     col.setMaxWidth(40)
     col.setResizable(false)
-    usedIDs.clear
+    usedIDs.clear()
     usedIDs ++= dataList.map(_(0).asInstanceOf[java.lang.Integer].intValue)
     blockPanel.dataInit()
     //println("Datainit done ")
@@ -264,7 +261,7 @@ object MainWindow extends SimpleSwingApplication {
       rightPanel.addIt(DataViewPanel, BorderPanel.Position.Center)
       rightPanel.peer.invalidate()
       rightPanel.peer.revalidate()
-      rightPanel.repaint
+      rightPanel.repaint()
     }
 
 
@@ -277,7 +274,7 @@ object MainWindow extends SimpleSwingApplication {
       mainPanel.peer.invalidate()
       rightPanel.peer.invalidate()
       rightPanel.peer.revalidate()
-      rightPanel.repaint
+      rightPanel.repaint()
     }
   }
 
@@ -288,7 +285,7 @@ object MainWindow extends SimpleSwingApplication {
     mainPanel.peer.invalidate()
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
-    rightPanel.repaint
+    rightPanel.repaint()
   }
 
   def showTransData(): Unit = {
@@ -296,14 +293,14 @@ object MainWindow extends SimpleSwingApplication {
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
 
-    rightPanel.repaint
+    rightPanel.repaint()
   }
 
   def showConsole(): Unit = {
     rightPanel.addIt(consolePanel, BorderPanel.Position.Center)
     rightPanel.peer.invalidate()
     rightPanel.peer.revalidate()
-    rightPanel.repaint
+    rightPanel.repaint()
   }
 
   def showBackupDialog():Unit = {

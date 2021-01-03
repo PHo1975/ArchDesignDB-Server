@@ -10,8 +10,6 @@ import server.comm.{AbstractUserSocket, JavaClientSocket}
 import server.storage.{ActionIterator, ActionModule, ActionNameMap, StorageManager}
 import transaction.handling.{ActionList, SessionManager, TransactionManager}
 
-import scala.xml.Elem
-
 /**
  * 
  */
@@ -79,7 +77,7 @@ class PrintActionModule extends ActionModule {
 					  	TransactionManager.tryWriteInstanceData(pInst)
 					  	pInst
 					  }
-					  PrintEngine.generatePages(u,data.head,OutputDefinition(outDefInst,childList),pageWidth,pageHeight,printForm)
+					  PrintEngine.generatePages(u,data.head,OutputDefinition(outDefInst,childList),pageWidth.toFloat,pageHeight.toFloat,printForm)
 					})
 				case "DeleteOutDef" => // delete definition
 					val outDefInst=returnData.head._2.toInt
@@ -99,7 +97,7 @@ class PrintActionModule extends ActionModule {
 					  }
 					val outDef=OutputDefinition(outDefInst,paramList)
 					val printForm= PrintFormsHandler.getForm(outDef.formInst )
-					PrintEngine.generatePages(u,data.head,outDef,pageWidth,pageHeight,printForm)
+					PrintEngine.generatePages(u,data.head,outDef,pageWidth.toFloat,pageHeight.toFloat,printForm)
 
 				case "ChangeOutDef" => // new definition
 					val odInst=returnData.head._2.toInt
@@ -138,7 +136,7 @@ class PrintActionModule extends ActionModule {
 					  	TransactionManager.tryWriteInstanceData(pInst)
 					  	pInst
 					  }
-					  PrintEngine.generatePages(u,data.head,OutputDefinition(outDefInst,childList),pageWidth,pageHeight,printForm)
+					  PrintEngine.generatePages(u,data.head,OutputDefinition(outDefInst,childList),pageWidth.toFloat,pageHeight.toFloat,printForm)
 					})
 				case "StorePrintData" =>
 					val odInst=returnData.head._2.toInt
@@ -154,7 +152,7 @@ class PrintActionModule extends ActionModule {
 					val paramList=returnData.drop(7).map(retd=>ResultElement(retd._1,retd._2))
 					val outDef=new OutputDefinition(odInst,printForm.inst,printer.toString,pageSettings.toString,portrait.toBoolean,paramList)
 					//println("Store "+printForm.name)
-					PrintEngine.storePages(u,data.head,odRef,outDef,pageWidth,pageHeight,printForm)
+					PrintEngine.storePages(u,data.head,odRef,outDef,pageWidth.toFloat,pageHeight.toFloat,printForm)
 			}
 		}//selectOutputDefFunc	
 		//println("Print action done ")

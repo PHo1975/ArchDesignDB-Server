@@ -3,9 +3,6 @@
  */
 package server.print
 
-import java.io.DataOutput
-import java.util.Date
-
 import definition.comm.GeneratorType
 import definition.data._
 import definition.expression._
@@ -14,6 +11,9 @@ import server.comm.JavaClientSocket
 import server.storage.{ActionNameMap, StorageManager}
 import transaction.handling.TransactionManager
 
+import java.io.DataOutput
+import java.util.Date
+import scala.collection.mutable
 import scala.util.matching.Regex
 
 /**
@@ -35,8 +35,8 @@ object PrintEngine {
 
 		//var printableType:Int = -1
 	
-	val generatorMap=collection.mutable.Map[String,CustomGenerator]()
-	val customIteratorMap=collection.mutable.Map[String,Null]()
+	val generatorMap: mutable.Map[String, CustomGenerator] =collection.mutable.Map[String,CustomGenerator]()
+	val customIteratorMap: mutable.Map[String, Null] =collection.mutable.Map[String,Null]()
 	
 	lazy val printFormType: Int =SystemSettings().systemTypes("PrintForm")
 	lazy val archiveType: Int =SystemSettings().systemTypes("PrintArchive")
@@ -54,7 +54,7 @@ object PrintEngine {
 	
 	def getGenerator(name:String): CustomGenerator = generatorMap.getOrElseUpdate(name,Class.forName(name.trim).getConstructor().newInstance().asInstanceOf[CustomGenerator])
 
-	def generatePages(u:JavaClientSocket, dataParent:InstanceData, oDef:OutputDefinition, pageWidth:Int, pageHeight:Int, form:FormDescription): Unit =
+	def generatePages(u:JavaClientSocket, dataParent:InstanceData, oDef:OutputDefinition, pageWidth:Float, pageHeight:Float, form:FormDescription): Unit =
 		lock.synchronized {						
 			context.initPrintSession()
 			val formRef=new Reference(printFormType,oDef.formInst)			
@@ -80,14 +80,14 @@ object PrintEngine {
 			u.sendGeneratedData(write(dataParent.toString,oDef.odInst))		
 		}	
 
-	def storePages(u:JavaClientSocket, dataParent:InstanceData, oref:Reference, oDef:OutputDefinition, pageWidth:Int, pageHeight:Int, form:FormDescription): Option[Exception] =
+	def storePages(u:JavaClientSocket, dataParent:InstanceData, oref:Reference, oDef:OutputDefinition, pageWidth:Float, pageHeight:Float, form:FormDescription): Option[Exception] =
 		lock.synchronized {
 			context.initPrintSession()	
 			//if(printFormType== -1) printFormType=SystemSettings().systemTypes("PrintForm")
 			val formRef=new Reference(printFormType,oDef.formInst)
-			context.setPrintDate( new StringConstant(oDef.paramValues.find(el=>el.paramName=="Date") match {
-			  case Some(tuple)=>tuple.result.toString
-			  case None =>util.JavaUtils.shortDateFormat.format(new Date)
+			context.setPrintDate( StringConstant(oDef.paramValues.find(el => el.paramName == "Date") match {
+				case Some(tuple) => tuple.result.toString
+				case None => util.JavaUtils.shortDateFormat.format(new Date)
 			}))
 			context.updateProjectInfo(dataParent)
 			val iteratorList=StorageManager.getInstanceProperties(formRef) match {
@@ -104,12 +104,12 @@ object PrintEngine {
 			dataEater.getPagesData
 
 			TransactionManager.doTransaction(u.userID, ActionNameMap.getActionID("Ausdruck archivieren"),oref, false, archiveType,{
-				var archiveInst=TransactionManager.tryCreateInstance(archiveType, Array(new OwnerReference(1,oref)), true, -1, true, true)
+				var archiveInst=TransactionManager.tryCreateInstance(archiveType, Array(new OwnerReference(1,oref)), notifyRefandColl = true, -1)
 				archiveInst=archiveInst.setField(0,StringConstant(<fl>
 					{form.fonts.toXML}
 				</fl>.toString))
-				archiveInst=archiveInst.setField(2,IntConstant(if (oDef.portrait) pageWidth else pageHeight))
-				archiveInst=archiveInst.setField(3,IntConstant(if (oDef.portrait) pageHeight else pageWidth))
+				archiveInst=archiveInst.setField(2,IntConstant(if (oDef.portrait) pageWidth.toInt else pageHeight.toInt))
+				archiveInst=archiveInst.setField(3,IntConstant(if (oDef.portrait) pageHeight.toInt else pageWidth.toInt))
 				archiveInst=archiveInst.setField(4,BoolConstant(form.isLandscape))
 				archiveInst=archiveInst.setField(5,IntConstant(form.left))
 				archiveInst=archiveInst.setField(6,IntConstant(form.top))

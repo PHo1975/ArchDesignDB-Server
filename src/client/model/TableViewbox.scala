@@ -3,9 +3,6 @@
  */
 package client.model
 
-import java.awt.Color
-import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
-
 import client.dataviewer.DataViewController
 import client.dialog.SelectEventDispatcher
 import client.layout.{Viewbox, ViewboxContent}
@@ -13,10 +10,10 @@ import client.ui.ClientApp
 import definition.comm.{ListValue, PropertyGroup}
 import definition.data.{InstanceData, Reference}
 import definition.typ.SelectGroup
-import javax.swing._
 
-import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Button, Component, Container, Dimension, Insets, ListView, Orientation, Panel, SequentialContainer, Swing}
+import java.awt.Color
+import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
+import javax.swing._
 import scala.util.control.NonFatal
 
 
@@ -30,13 +27,15 @@ class AdaptedScroller(aView:Component) extends Component with Container {
     }    
     //yLayoutAlignment=1d     
     peer.setViewportView(aView.peer)
+	  peer.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER)
     def contents=List(aView)
     border=null
 }
 
 trait AbstractTableViewbox extends ViewboxContent {
 	def pathController: PathController
-
+	def showPathBoxGlue():Unit={}
+	def hidePathBoxGlue():Unit={}
 	def goUp(): Unit
 }
 
@@ -76,20 +75,22 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
 		case ButtonClicked(`switchPathButton`) =>
 			switchPathBox()
 	}
+
+	val pathBoxGlue=Swing.HGlue
 	
 	val scr=new AdaptedScroller(pathView)
 	
 	val pathBox=new Panel with SequentialContainer.Wrapper{
 		override lazy val peer: javax.swing.JPanel = {
 	    val p = new javax.swing.JPanel with SuperMixin {
-				override def getPreferredSize: Dimension = new Dimension(100, pathView.peer.getPreferredSize.height + 1)
+				override def getPreferredSize: Dimension = new Dimension(100, pathView.peer.getPreferredSize.height + 2)
 	    }
 	    val l = new javax.swing.BoxLayout(p, Orientation.Horizontal.id)
 	    p.setLayout(l)
 	    p
 	  }	 
 	  xLayoutAlignment=0d	  	  
-	  contents+= switchPathButton += scr				
+	  contents+= switchPathButton += scr+=pathBoxGlue
 	}
 	
   switchPathButton.margin=new Insets(0,0,0,0)
@@ -174,5 +175,8 @@ class TableViewbox extends BoxPanel(Orientation.Vertical) with AbstractTableView
   }
 
 	def selectedItems: List[SelectGroup[InstanceData]] = dataviewController.selGroupList
+
+	override def showPathBoxGlue():Unit=if (!pathBox.contents.contains(pathBoxGlue))pathBox.contents+=pathBoxGlue
+	override def hidePathBoxGlue():Unit=if(pathBox.contents.contains(pathBoxGlue))pathBox.contents-=pathBoxGlue
 }
 

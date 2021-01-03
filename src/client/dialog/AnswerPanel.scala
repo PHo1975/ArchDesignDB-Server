@@ -7,11 +7,9 @@ import client.comm.{ClientQueryManager, KeyStrokeManager}
 import client.ui.ViewConstants
 import definition.expression._
 import definition.typ._
-import javax.swing.BorderFactory
 import util.Log
 
-import scala.swing._
-import scala.swing.event._
+import javax.swing.BorderFactory
 import scala.util.control.NonFatal
 
 /** abstract superclass for all answer panels
@@ -123,7 +121,7 @@ class StringAnswerPanel extends  AnswerPanel {
 	listenTo(textField.keys)	
 	reactions+= {
 		case KeyPressed(_, Key.Enter, _, _) =>
-      if(checkNoNull && doCheckNoNull || !checkNoNull) editDone()
+      if(checkNoNull && doCheckNoNull() || !checkNoNull) editDone()
     case KeyPressed(_, Key.Escape, _, _) => DialogManager.reset()
 	}
 
@@ -144,14 +142,14 @@ class StringAnswerPanel extends  AnswerPanel {
 
 
 class IntAnswerPanel extends  StringAnswerPanel {
-  override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.IntTyp).toInt != 0)
+  override def doCheckNoNull(): Boolean = super.doCheckNoNull() && (parse(textField.text).convertTo(DataType.IntTyp).toInt != 0)
 
   override def editDone(): Unit = {DialogManager.answerGiven(ansParm, parse(textField.text).convertTo(DataType.IntTyp)); reset()}
 }
 
 
 class DoubleAnswerPanel extends  StringAnswerPanel {
-  override def doCheckNoNull(): Boolean = super.doCheckNoNull && (parse(textField.text).convertTo(DataType.DoubleTyp).toDouble != 0d)
+  override def doCheckNoNull(): Boolean = super.doCheckNoNull() && (parse(textField.text).convertTo(DataType.DoubleTyp).toDouble != 0d)
 
   override def editDone(): Unit = {
 		val const=parse(textField.text)

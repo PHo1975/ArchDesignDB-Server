@@ -1,12 +1,9 @@
 package management.databrowser.stat
 
-import java.awt.Dimension
-
 import client.ui.ViewConstants
 import management.databrowser.MainWindow
 
-import scala.swing.event.ButtonClicked
-import scala.swing.{BorderPanel, BoxPanel, Button, Label, ListView, Orientation, ScrollPane, Swing}
+import java.awt.Dimension
 
 class StatPanel extends BoxPanel(Orientation.Vertical) {
   val projList=new ListView[String]
@@ -41,10 +38,10 @@ class StatPanel extends BoxPanel(Orientation.Vertical) {
       //println("Show "+ix+" "+projMod.projectList(ix)._1)
       MainWindow.rightPanel.addIt(statPanel, BorderPanel.Position.Center)
       MainWindow.rightPanel.peer.invalidate()
-      MainWindow.rightPanel.repaint
+      MainWindow.rightPanel.repaint()
       Swing.onEDT{
         statPanel.load(projMod.projectList(ix)._1)
-        statPanel.revalidate
+        statPanel.revalidate()
       }
     } 
   }

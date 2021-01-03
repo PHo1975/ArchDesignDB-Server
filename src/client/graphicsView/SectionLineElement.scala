@@ -1,9 +1,8 @@
 package client.graphicsView
-import java.awt.{Color, Graphics2D}
-
 import definition.data.{Composition, Reference, ShellLayer}
 import definition.expression.{NULLVECTOR, PointList, Polygon, VectorConstant}
 
+import java.awt.{Color, Graphics2D}
 import scala.collection.immutable
 
 
@@ -44,7 +43,7 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
    val middle: VectorConstant =(startPoint+endPoint)*0.5
    val dirEnd: VectorConstant =middle+dir
    val dotStyle=6
-   val startWidth=30
+   val startWidth=30f
    val compos: Composition =CompositionHandler.quickGetComposition(material)
    
    val dist1: VectorConstant =dir*offset
@@ -67,14 +66,14 @@ case class SectionLineElement(nref:Reference,nstartPoint:VectorConstant,nendPoin
     //val connStr=" "+(if(p1LeftConnection.isDefined)"1L ")+(if(p1RightConnection.isDefined)"1R ")+(if(p2LeftConnection.isDefined)"2L ")+(if(p2RightConnection.isDefined)"2R ")
 		val connStr=nref.sToString+(if(dirPointsLeft)" L"else " R")+lastConstrTierIx
     g.setPaint(col)		
-		g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth else 1,dotStyle))
+		g.setStroke(sm.getStroke(if(lineWidth>0)lineWidth.toFloat else 1f,dotStyle))
 		intDrawLine(startPoint,endPoint)	
 	  intDrawLine(middle,dirEnd)
 	  g.drawString(connStr,sm.xToScreen(middle.x) ,sm.yToScreen(middle.y) )
 	  g.setStroke(sm.getStroke(startWidth,0))	
 	  
 	  for(tierLine<-tierLines) {	    
-	    g.setStroke(sm.getStroke(tierLine.tierDef.lineThick,tierLine.tierDef.lineStyle.ix))
+	    g.setStroke(sm.getStroke(tierLine.tierDef.lineThick.toFloat,tierLine.tierDef.lineStyle.ix))
 	    intDrawLine(tierLine.e1,tierLine.e2)
 	    if(tierLine.hatchPoly!=null&& tierLine.tierDef.material.hatch>0) {
 	      HatchHandler.drawHatch(tierLine.hatchPoly,HatchHandler.quickGetHatch(math.abs(tierLine.tierDef.material.hatch)),sm,

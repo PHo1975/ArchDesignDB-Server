@@ -1,12 +1,10 @@
 package management.databrowser
 
-import java.util.Date
-
 import definition.data.TransStepData
-import javax.swing.table.AbstractTableModel
 import server.storage.TransDetailLogHandler
 
-import scala.swing.Swing
+import java.util.Date
+import javax.swing.table.AbstractTableModel
 
 
 object DetailLogFileModel extends AbstractTableModel {
@@ -38,7 +36,7 @@ object DetailLogFileModel extends AbstractTableModel {
         case 1 => rec.trID.asInstanceOf[AnyRef]
         case 2 => printTime(rec.time)
         case 3 => rec.userID
-        case 4 => rec.firstInst.ref.sToString()
+        case 4 => rec.firstInst.ref.sToString
         case 5 => rec.multiInst.toString
         case 6 => rec.action
      }

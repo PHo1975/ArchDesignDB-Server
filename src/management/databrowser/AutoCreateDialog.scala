@@ -2,22 +2,18 @@
  * Author: Peter Started:14.05.2011
  */
 package management.databrowser
-import java.awt.Color
-
 import client.dataviewer.FieldColumnModel
 import client.dialog.ComboBoxEditor
 import definition.expression.{EMPTY_EX, Expression, StringParser}
 import definition.typ._
-import javax.swing.table.{AbstractTableModel, TableCellEditor}
-import javax.swing.{BorderFactory, JComboBox}
 import server.config.AutoCreateInfo
 import server.storage.ServerObjectClass
 
+import java.awt.Color
+import javax.swing.table.{AbstractTableModel, TableCellEditor}
+import javax.swing.{BorderFactory, JComboBox}
 import scala.collection.mutable.ArrayBuffer
 import scala.jdk.CollectionConverters._
-import scala.swing.Table.LabelRenderer
-import scala.swing._
-import scala.swing.event.{ButtonClicked, TableRowsSelected}
 
 
 /**
@@ -39,7 +35,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 	var childTypeComboEditor=new ClassNameEditor(new JComboBox,"Any")
 	MainWindow.registerClassListListener(childTypeComboEditor)
 
-	val ccColMod=new FieldColumnModel{
+	val ccColMod: FieldColumnModel =new FieldColumnModel{
 		createColumn(0,"nr",20)
 		createColumn(1,"PropertyField",200)
 		createColumn(2,"ChildType",200)		
@@ -75,7 +71,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 		peer.setAutoCreateColumnsFromModel(false)
 		peer.setColumnModel(ccColMod)
 
-		override def editor(row: Int, column: Int)= {
+		override def editor(row: Int, column: Int): TableCellEditor = {
 			column match {
 				case 1 => propFieldComboEditor
 				case 2 => childTypeComboEditor
@@ -144,7 +140,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 	preferredSize=new Dimension(800,800)
 
 
-	val mainPanel= new BorderPanel{
+	val mainPanel:BorderPanel= new BorderPanel{
 		add(new BoxPanel(Orientation.Vertical){	  	 
 			contents+= new BorderPanel{
 				border= BorderFactory.createTitledBorder("Auto create Child entries:")
@@ -179,7 +175,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 			listenTo(saveBut,cancelBut,deleteCCEntryBut,deleteStartValueBut)
 			reactions+= {
 				case ButtonClicked(`saveBut`)=> saveToClass()
-				case ButtonClicked(`cancelBut`)=>close
+				case ButtonClicked(`cancelBut`)=>close()
 				case ButtonClicked(`deleteCCEntryBut`)=> deleteCCEntry()
 				case ButtonClicked(`deleteStartValueBut`)=> deleteSVEntry()
 			}
@@ -216,9 +212,9 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 	}
 	
 
-	def saveToClass() = {		 
+	def saveToClass(): Unit = {
      TypeDefPanel.theClass=TypeDefPanel.theClass.setAutoCreateInfo(ccModel.currentValues.toList)     
-     close
+     close()
 	}
 
 	def deleteCCEntry(): Unit = ccTable.selection.rows.headOption match {
@@ -240,7 +236,7 @@ class AutoCreateDialog(w:Window) extends Dialog(w) {
 		var dirty=false
 
 		 def setValues(nv:Seq[A]): Unit = {
-			currentValues.clear
+			currentValues.clear()
 			currentValues ++=nv
 			this.fireTableDataChanged()
 			dirty=false

@@ -1,18 +1,15 @@
 package management.databrowser
 
+import client.ui.ViewConstants
+import definition.data.Reference
+import server.config.FSPaths
+import transaction.handling.SessionManager
+
 import java.awt.Dimension
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
-
-import client.ui.ViewConstants
-import definition.data.Reference
 import javax.swing.JFileChooser
-import server.config.FSPaths
-import transaction.handling.SessionManager
-
-import scala.swing.event.{ButtonClicked, EditDone}
-import scala.swing.{BoxPanel, Button, Label, Orientation, Swing, TextField}
 
 class PathEditBox(labelText:String,getter:()=> String,setter: (String)=>Unit) extends 
 		BoxPanel(Orientation.Vertical)	{
@@ -30,7 +27,7 @@ class PathEditBox(labelText:String,getter:()=> String,setter: (String)=>Unit) ex
 		  contents+=edit+=Swing.HStrut(10)+=but 		  
       maximumSize=new Dimension(Short.MaxValue,30)      
 		}
-    revalidate
+    revalidate()
 
   def update(): Unit = edit.text = getter()
 		

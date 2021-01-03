@@ -1,12 +1,12 @@
 package client.graphicsView
 
+import definition.data.{Named, Reference, StyleService}
+import definition.expression._
+
 import java.awt.geom.Area
 import java.awt.geom.Path2D.{Double => Path2dDouble}
 import java.awt.geom.Rectangle2D.{Double => Rect2dDouble}
 import java.awt.{Color, Graphics2D}
-
-import definition.data.{Named, Reference, StyleService}
-import definition.expression._
 
 /**
  * Created by Peter Holzer on 11.03.2017  .
@@ -67,7 +67,7 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
 
     if (lineWidth > 0 || selectColor != null) {
       g.setPaint(if (selectColor == null) ColorMap.getColor(color) else selectColor)
-      g.setStroke(sm.getStroke(if (lineWidth > 0) lineWidth else 1, lineStyle))
+      g.setStroke(sm.getStroke(if (lineWidth > 0) lineWidth.toFloat else 1f, lineStyle))
       g.draw(theArea)
     }
   }

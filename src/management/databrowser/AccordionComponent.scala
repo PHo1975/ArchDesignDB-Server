@@ -1,8 +1,6 @@
 package management.databrowser
 
 import scala.collection.mutable.ArrayBuffer
-import scala.swing.{BorderPanel, BoxPanel, Component, Orientation, Swing, ToggleButton}
-import scala.swing.event.ButtonClicked
 
 class MyButton(label:String,val index:Int,val panel:Component) extends ToggleButton(label) {
   focusable=false  
@@ -28,14 +26,14 @@ class AccordionComponent extends BorderPanel {
     listenTo(button)
     for(but<-panelList) but.selected=false
     panelList += button
-    topPanel.contents.clear
+    topPanel.contents.clear()
     topPanel.contents++=panelList
-    bottomPanel.contents.clear
+    bottomPanel.contents.clear()
     button.selected=true
     centerPanel.layout(panel)=BorderPanel.Position.Center
     //centerPanel.addCenter(panel)
-    revalidate
-    repaint
+    revalidate()
+    repaint()
   }
   
   def activatePanel(ix:Int)= activateButton(panelList(ix))
@@ -44,14 +42,14 @@ class AccordionComponent extends BorderPanel {
   def activateButton(button:MyButton)= {
     centerPanel.layout(button.panel)=BorderPanel.Position.Center
       for(but<-panelList;if but.index != button.index) but.selected=false
-      topPanel.contents.clear
+      topPanel.contents.clear()
       topPanel.contents++=panelList.take(button.index+1)
       topPanel.contents.last.asInstanceOf[MyButton].selected=true
-      bottomPanel.contents.clear
+      bottomPanel.contents.clear()
       bottomPanel.contents++=panelList.drop(button.index+1)      
-      topPanel.revalidate
-      bottomPanel.revalidate      
-      repaint
+      topPanel.revalidate()
+      bottomPanel.revalidate()
+      repaint()
   }
   
   reactions+= {

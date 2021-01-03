@@ -6,14 +6,13 @@ import client.ui.{ClientApp, ViewConstants}
 import definition.comm.NotificationType
 import definition.data.{EMPTY_OWNERREF, InstanceData, Reference, ResultElement}
 import definition.expression.{CollectingFuncCall, EMPTY_EX, Expression, IntConstant}
+import util.Log
+
 import javax.swing.event.TableModelEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 import javax.swing.{JComponent, JTextArea}
-import util.Log
-
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
-import scala.swing.Swing
 import scala.util.control.NonFatal
 
 class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTableModel {
@@ -167,7 +166,7 @@ class SpreadSheetTableModel(controller:SpreadSheetController) extends AbstractTa
     var runIt=false
     val iter=colCellList.valuesIterator
     while(iter.hasNext&& runIt){
-      val collData=iter.next
+      val collData=iter.next()
       collData.findCellByRef(cell.ref) match {
         case Some(oldCell) if oldCell.col != cell.col || oldCell.row != cell.row =>
           collData.removeCell(oldCell.row)

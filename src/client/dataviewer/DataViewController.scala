@@ -10,8 +10,8 @@ import client.model.{AbstractTableViewbox, FormPanel, PathControllable, PathCont
 import definition.data.{EMPTY_OWNERREF, InstanceData, Referencable, Reference}
 import definition.typ.{AbstractObjectClass, AllClasses, CustomInstanceEditor, SelectGroup}
 
+import javax.swing.JPanel
 import scala.collection.mutable.ArrayBuffer
-import scala.swing._
 
 
 /** controls the DataViewer
@@ -38,8 +38,8 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
   val maxDimension = new Dimension(Int.MaxValue, Int.MaxValue)
   val minDimension = new Dimension
   var lastFocusedTable: Option[Table] = None
-  val tablePanel = new BoxPanel(Orientation.Vertical) {
-    override lazy val peer = new javax.swing.JPanel with SuperMixin with javax.swing.Scrollable {
+  val tablePanel:BoxPanel = new BoxPanel(Orientation.Vertical) {
+    override lazy val peer:JPanel = new javax.swing.JPanel with SuperMixin with javax.swing.Scrollable {
       val l = new javax.swing.BoxLayout(this, Orientation.Vertical.id)
       setLayout(l)
 
@@ -59,7 +59,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
     }
   }
 
-  val tableScroller = new ScrollPane() {
+  val tableScroller:ScrollPane = new ScrollPane() {
     viewportView = tablePanel
     peer.setWheelScrollingEnabled(true)
     xLayoutAlignment = 0d
@@ -69,7 +69,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
 
   val formPanel = new FormPanel(this)
 
-  val splitBox = new BoxPanel(Orientation.Vertical) {
+  val splitBox:BoxPanel = new BoxPanel(Orientation.Vertical) {
     xLayoutAlignment = 0d
     contents += formPanel += tableScroller
     maximumSize = new Dimension(Short.MaxValue, Short.MaxValue)
@@ -159,9 +159,11 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
         if (ed.fullSize) ed.load(nparentRef, () => for (d <- doneListener) d()) else ed.load(nparentRef, formsLoaded)
         formPanel.setCustomEditor(ed)
         tableScroller.visible = !ed.fullSize
+        viewBox.showPathBoxGlue()
       case _ => // no editor, load FormBox
         val newForm = mainClass.formBox map (_.makeCopy)
         tableScroller.visible = true
+        viewBox.hidePathBoxGlue()
         newForm match {
           case Some(f: FormBox) =>
             formPanel.setForms(Some(f), indent, nparentRef)
@@ -231,7 +233,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
 
   def containerFocused(atable: Option[Table], currPropertyField: Int): Unit = {
     atable match {
-      case a@Some(table) => lastFocusedTable = a
+      case a@Some(_) => lastFocusedTable = a
       case _ =>
     }
     notifyContainerListener(currPropertyField)
@@ -254,7 +256,7 @@ class DataViewController(val viewBox: AbstractTableViewbox) extends PathControll
   // FocusContainer interface
   def containerName = ""
 
-  def ownerRef = Some(this)
+  def ownerRef:Option[DataViewController] = Some(this)
 
   def requestFocus(): Unit = {
     lastFocusedTable match {

@@ -3,8 +3,6 @@
  */
 package runtime.function
 
-import java.io.{ByteArrayInputStream, DataInputStream}
-
 import client.dialog.AnswerPanelsData
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression._
@@ -14,6 +12,7 @@ import server.storage.{ActionIterator, ActionModule, CreateActionImpl, StorageMa
 import transaction.handling.{ActionList, TransactionManager}
 import util.{GraphUtils, Log, StringUtils}
 
+import java.io.{ByteArrayInputStream, DataInputStream}
 import scala.collection.mutable
 
 /**
@@ -167,7 +166,7 @@ object GraphElemModule{
 
           def hasNext: Boolean = addStartPoint && open
 
-          def next: Double = {open = false; PolygonDivider.roundValue((pl.points.head - pl.points.last).toDouble)}
+          def next(): Double = {open = false; PolygonDivider.roundValue((pl.points.head - pl.points.last).toDouble)}
         }
         pl.points.indices.iterator.drop(1).map(i =>
           PolygonDivider.roundValue((pl.points(i) - pl.points(i - 1)).toDouble)) ++ lastPointIterator
@@ -417,7 +416,7 @@ class GraphElemModule extends ActionModule {
 				}
 				else if(param(1)._2.getType==DataType.DoubleTyp )
 					new VectorConstant (param(1)._2.toDouble,param(2)._2.toDouble,0)
-				else throw new IllegalArgumentException(" move wrong parametertype ")
+				else throw new IllegalArgumentException(" move param:"+param(1)._1+" wrong parametertype "+param(1)._2.getType)
 	  param.head._2 match {
 	    case b:BlobConstant =>
 				val inStream=new DataInputStream(new ByteArrayInputStream(b.data))

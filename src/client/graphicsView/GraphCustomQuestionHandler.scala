@@ -1,8 +1,5 @@
 package client.graphicsView
 
-import java.awt.Graphics2D
-import java.awt.geom.{AffineTransform, Arc2D, Area}
-
 import client.comm.ClientQueryManager
 import client.dialog._
 import client.dialog.symbolbrowser.SymbolBrowserController
@@ -11,6 +8,9 @@ import definition.data.{EMPTY_REFERENCE, Reference, ResultElement, StyleService}
 import definition.expression._
 import definition.typ._
 import util.{GraphUtils, Log}
+
+import java.awt.Graphics2D
+import java.awt.geom.{AffineTransform, Arc2D, Area}
 
 
 object GraphCustomQuestionHandler extends CustomQuestionHandler {
@@ -736,9 +736,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
 		DialogManager.startIntermediateQuestion(radiusQuestion, answerList=> {
 			val secAnswer=answerList(1)
-			val radius= secAnswer.paramName match {
+			val radius:Double= secAnswer.paramName match {
 				case "Randpunkt des Kreises"=> (secAnswer.result.toVector - center).toDouble
-				case "Umfang eingeben"=> secAnswer.result.toDouble/(2*math.Pi)
+				case "Umfang eingeben"=> secAnswer.result.toDouble/(2.0*math.Pi)
 				case "Radius eingeben" => secAnswer.result.toDouble
 			}
       gc.addTempElem(ArcElement(EMPTY_REFERENCE, ColorMap.tempColor.getRGB, 10, 0, center, radius, 0, 360))
@@ -761,9 +761,9 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 			  	val sm=gc.scaleModel
 			  	val tx=sm.xToScreen(center.x-radius)
 			  	val ty=sm.yToScreen(center.y+radius)
-			  	val endAngle=math.atan2(pos.y-center.y,pos.x-center.x)*180d/math.Pi
+			  	val endAngle:Double=math.atan2(pos.y-center.y,pos.x-center.x)*180d/math.Pi
 			  	GraphElemConst.drawLineFloatStandardStroke(g,sm.xToScreen(center.x),sm.yToScreen(center.y),sm.xToScreen(pos.x),sm.yToScreen(pos.y))
-			  	GraphElemConst.drawArcFloat(g,tx,ty,sm.xToScreen(center.x+radius)-tx,sm.yToScreen(center.y-radius)-ty,startAngle.toInt,((if(endAngle<startAngle)360 else 0)+endAngle-startAngle).toInt)
+			  	GraphElemConst.drawArcFloat(g,tx,ty,sm.xToScreen(center.x+radius)-tx,sm.yToScreen((center.y-radius).toFloat)-ty,startAngle.toFloat,((if(endAngle<startAngle)360F else 0F)+endAngle-startAngle).toFloat)
 			  })
 			  DialogManager.startIntermediateQuestion(endAngleQuestion, _=> {
 			  	DialogManager.processResults()

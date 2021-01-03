@@ -14,7 +14,7 @@
     <orderEntry type="library" name="javafx-base" level="project" />
     <orderEntry type="library" name="org.shredzone.acme4j:acme4j-client:2.8" level="project" />
     <orderEntry type="library" name="org.shredzone.acme4j:acme4j-utils:2.8" level="project" />
-    <orderEntry type="library" name="scala-sdk-2.13.1" level="application" />
     <orderEntry type="library" name="dbdef_sjs0.6_2.13-0.9-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="scala-sdk-2.13.4" level="application" />
   </component>
 </module>

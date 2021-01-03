@@ -1,13 +1,6 @@
 package management.databrowser
 
-import java.awt.Dimension
-import java.io._
-import java.net.URL
-import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
-import java.security.{KeyPair, KeyStore}
-
 import client.ui.ViewConstants
-import javax.swing.JOptionPane
 import org.shredzone.acme4j
 import org.shredzone.acme4j.challenge.{Challenge, Http01Challenge}
 import org.shredzone.acme4j.exception.{AcmeException, AcmeRetryAfterException}
@@ -17,11 +10,15 @@ import util.{CollUtils, Log}
 import org.shredzone.acme4j._
 import org.shredzone.acme4j.util.{CSRBuilder, KeyPairUtils}
 
+import java.awt.Dimension
+import java.io._
+import java.net.URL
+import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
+import java.security.{KeyPair, KeyStore}
+import javax.swing.JOptionPane
 import scala.collection.mutable
 import scala.io.Source
 import scala.jdk.CollectionConverters._
-import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, TextArea}
 import scala.util.control.NonFatal
 
 
@@ -32,10 +29,10 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
   //val CA_STAGING_URL = "https://acme-staging.api.letsencrypt.org/acme"
   xLayoutAlignment = 0
   //val AGREEMENT_URL = "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
-  contents += ViewConstants.label("Zertifikats-Management") += Swing.VStrut(20) += new FormatLine(220, "Domain", FSPaths.certDomain _, FSPaths.setCertDomain) +=
-    new FormatLine(220, "Root Folder for Challenge", FSPaths.certRootFolder _, FSPaths.setCertRootFolder) +=
-    new FormatLine(220, "ACME request certificate url", FSPaths.certAcmeURL _, FSPaths.setCertAcmeURL) +=
-    new FormatLine(220, "Email", FSPaths.certEmail _, FSPaths.setCertEmail)
+  contents += ViewConstants.label("Zertifikats-Management") += Swing.VStrut(20) += new FormatLine(220, "Domain",()=> FSPaths.certDomain, FSPaths.setCertDomain) +=
+    new FormatLine(220, "Root Folder for Challenge",()=> FSPaths.certRootFolder, FSPaths.setCertRootFolder) +=
+    new FormatLine(220, "ACME request certificate url", ()=>FSPaths.certAcmeURL , FSPaths.setCertAcmeURL) +=
+    new FormatLine(220, "Email", ()=>FSPaths.certEmail , FSPaths.setCertEmail)
 
 
   val sendButton = new Button("Autorisieren und Zertifikat anfordern mit Challenge")

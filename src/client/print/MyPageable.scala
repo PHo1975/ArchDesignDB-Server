@@ -3,11 +3,6 @@
  */
 package client.print
 
-import java.awt._
-import java.awt.font.TextLayout
-import java.awt.geom.{AffineTransform, Line2D, Rectangle2D}
-import java.awt.print.{PageFormat, Pageable, Printable}
-
 import client.graphicsView.Handlers._
 import client.graphicsView._
 import client.graphicsView.symbol.{StampPool, SymbolOrient}
@@ -15,6 +10,11 @@ import client.ui.ViewConstants
 import definition.data._
 import definition.expression.{Polygon, VectorConstant}
 import util.{Log, StringUtils}
+
+import java.awt._
+import java.awt.font.TextLayout
+import java.awt.geom.{AffineTransform, Line2D, Rectangle2D}
+import java.awt.print.{PageFormat, Pageable, Printable}
 /**
  * 
  */
@@ -378,10 +378,10 @@ class MyPageable extends APageable {
 	var pagesList:Seq[PageData]=Seq.empty
 	//var context:RenderContext=MyContext	
 	var form:FormDescription=_
-	def leftBorder:Float= if(form==null)0f else form.left
-	def topBorder:Float= if(form==null)0f else form.top
-	def rightBorder:Float= if(form==null)0f else form.right
-	def bottomBorder:Float= if(form==null)0f else form.bottom
+	def leftBorder:Float= if(form==null)0f else form.left.toFloat
+	def topBorder:Float= if(form==null)0f else form.top.toFloat
+	def rightBorder:Float= if(form==null)0f else form.right.toFloat
+	def bottomBorder:Float= if(form==null)0f else form.bottom.toFloat
 	def pageWidth:Float=if(form==null)0f else FormDescription.toMM(pageFormat .getWidth)
 	def pageHeight:Float=if(form==null)0f else FormDescription.toMM(pageFormat .getHeight)
 

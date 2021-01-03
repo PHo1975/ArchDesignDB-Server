@@ -2,15 +2,12 @@
  */
 package client.graphicsView
 
-import java.awt._
-import java.awt.event.{ComponentAdapter, MouseWheelEvent}
-
 import client.ui.ViewConstants
 import definition.expression.VectorConstant
-import javax.swing.{SwingUtilities, TransferHandler}
 
-import scala.swing.Component
-import scala.swing.event._
+import java.awt._
+import java.awt.event.{ComponentAdapter, MouseWheelEvent}
+import javax.swing.{SwingUtilities, TransferHandler}
 import scala.util.control.NonFatal
 
 /**
@@ -27,7 +24,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
   var swiped = false
 
   private var pointHitPos: MatchingScreenPoints = _
-	val selPD=3
+	val selPD=3f
 	
 	var inside=true
 	//var drawCrossHairInPaint=false		
@@ -358,7 +355,7 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
       g.setStroke(defaultStroke)
       g.setPaint(Color.black)
       g.setXORMode(Color.yellow)
-      val brsize = 7 * ViewConstants.fontScale / 100
+      val brsize = 7f * ViewConstants.fontScale.toFloat / 100f
       val brx = controller.scaleModel.xToScreen(controller.lastSelectedPoint.x)
       val bry = controller.scaleModel.yToScreen(controller.lastSelectedPoint.y)
       GraphElemConst.drawLineFloatStandardStroke(g, brx - brsize, bry, brx + brsize, bry)
@@ -368,11 +365,11 @@ class GraphViewCanvas(val controller:GraphViewController) extends Component  {
 
     // draw selected Points
     g.setPaint(Color.green)
-    val _selPD = selPD * ViewConstants.fontScale / 100
+    val _selPD = selPD * ViewConstants.fontScale.toFloat / 100f
     for (p <- controller.pointSelectModel.selectList) {
       val px = controller.scaleModel.xToScreen(p.x)
       val py = controller.scaleModel.yToScreen(p.y)
-      GraphElemConst.drawArcFloat(g, px - _selPD, py - _selPD, _selPD * 2, _selPD * 2, 0f, 360f)
+      GraphElemConst.drawArcFloat(g, px - _selPD, py - _selPD, _selPD * 2f, _selPD * 2f, 0f, 360f)
     }
 	  
 		if(dragStartPoint!=null) {

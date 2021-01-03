@@ -8,6 +8,7 @@ import definition.expression._
 import definition.typ.{AllClasses, DataType}
 import server.comm.{CommonSubscriptionHandler, ConnectionEntry, UserList}
 import server.storage._
+import util.Log
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
@@ -672,24 +673,26 @@ object TransactionManager {
 		  		 myClass.inheritsFrom(res.childType)) fieldMatchSet=fieldMatchSet+ res.parentField
 		}		   
 		
-		if(fieldMatchSet.nonEmpty) {  // if yes, update the changes
+		if(fieldMatchSet.nonEmpty) { // if yes, update the changes
 			//System.out.println("fieldMatchSet: "+fieldMatchSet)
-			var parentInstData=ActionList.getInstanceData(owner.ownerRef)
-			val oldParentValues:Array[Constant]= Array.ofDim[Constant](parentInstData.fieldData .size)
-				for(i <-fieldMatchSet) oldParentValues(i)= parentInstData.fieldValue(i)
-			val newCollDataList= for (res <- collData.callResultList)	yield
-			if (res.childField == childField && res.parentPropField == owner.ownerField && // if we have a matching collresult
-					myClass.inheritsFrom(res.childType)) {
-					val (newRes, value) = collData.childChanged(res, childRef, oldValue, newValue)
-					parentInstData = updateOwnerCollFunc(parentInstData, newRes, value)
-					newRes
-				}
-				else res
-		  val newResultSet=new CollFuncResultSet(owner.ownerRef,newCollDataList)
-			ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
-		  // pass on to owners
-		  for(fieldNr <-fieldMatchSet;if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
-		  	passOnChangedValue(parentInstData,fieldNr.toByte,oldParentValues(fieldNr),parentInstData.fieldData(fieldNr).getValue)
+			if (StorageManager.instanceExists(owner.ownerRef.typ, owner.ownerRef.instance)){
+				var parentInstData = ActionList.getInstanceData(owner.ownerRef)
+				val oldParentValues: Array[Constant] = Array.ofDim[Constant](parentInstData.fieldData.size)
+				for (i <- fieldMatchSet) oldParentValues(i) = parentInstData.fieldValue(i)
+				val newCollDataList = for (res <- collData.callResultList) yield
+					if (res.childField == childField && res.parentPropField == owner.ownerField && // if we have a matching collresult
+						myClass.inheritsFrom(res.childType)) {
+						val (newRes, value) = collData.childChanged(res, childRef, oldValue, newValue)
+						parentInstData = updateOwnerCollFunc(parentInstData, newRes, value)
+						newRes
+					}
+					else res
+				val newResultSet = new CollFuncResultSet(owner.ownerRef, newCollDataList)
+				ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
+				// pass on to owners
+				for (fieldNr <- fieldMatchSet; if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
+					passOnChangedValue(parentInstData, fieldNr.toByte, oldParentValues(fieldNr), parentInstData.fieldData(fieldNr).getValue)
+			} else Log.e("NotifyCollFunc_ChildChanged  owner does not exist"+owner+" childRef:"+childRef)
 		}		
 	}
 	
@@ -704,13 +707,12 @@ object TransactionManager {
 		  		 myClass.inheritsFrom(res.childType)) fieldMatchSet=fieldMatchSet+ res.parentField
 		}
 		if(fieldMatchSet.nonEmpty) {
-			//System.out.println("matches")
-			var parentInstData=ActionList.getInstanceData(owner.ownerRef)
-			if (parentInstData!=null)
-			{
-				val oldParentValues:Array[Constant]= Array.ofDim[Constant](parentInstData.fieldData .size)
-				for(i <-fieldMatchSet) oldParentValues(i)= parentInstData.fieldValue(i)
-				val newCollDataList= for (res <- collData.callResultList)
+			if (StorageManager.instanceExists(owner.ownerRef.typ, owner.ownerRef.instance)) {
+				var parentInstData = ActionList.getInstanceData(owner.ownerRef)
+				if (parentInstData != null) {
+					val oldParentValues: Array[Constant] = Array.ofDim[Constant](parentInstData.fieldData.size)
+					for (i <- fieldMatchSet) oldParentValues(i) = parentInstData.fieldValue(i)
+					val newCollDataList = for (res <- collData.callResultList)
 						yield if (res.parentPropField == owner.ownerField && // if we have a matching collresult
 							myClass.inheritsFrom(res.childType)) {
 							val (newRes, value) = collData.childDeleted(res, childInstance.ref, childInstance.fieldValue(res.childField))
@@ -719,12 +721,13 @@ object TransactionManager {
 							newRes
 						}
 						else res
-						val newResultSet=new CollFuncResultSet(owner.ownerRef,newCollDataList)
-				ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
-				// pass on to owners
-				for(fieldNr <-fieldMatchSet;if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
-					passOnChangedValue(parentInstData,fieldNr.toByte,oldParentValues(fieldNr),parentInstData.fieldData(fieldNr).getValue)
-			}
+					val newResultSet = new CollFuncResultSet(owner.ownerRef, newCollDataList)
+					ActionList.addTransactionData(owner.ownerRef, DataChangeAction(Some(parentInstData), None, None, Some(newResultSet)))
+					// pass on to owners
+					for (fieldNr <- fieldMatchSet; if parentInstData.fieldData(fieldNr).getValue != oldParentValues(fieldNr))
+						passOnChangedValue(parentInstData, fieldNr.toByte, oldParentValues(fieldNr), parentInstData.fieldData(fieldNr).getValue)
+				}
+			} else Log.e("NotifyCollFunc_ChildDeleted  owner does not exist"+owner+" childRef:"+childInstance.ref)
 		}
 	}
 	
@@ -775,16 +778,24 @@ object TransactionManager {
 					}
 					// else do the standard procedure and delete the instance fully
 				} // can not find fromOwner
-				else if (instD.secondUseOwners.nonEmpty) throw new IllegalArgumentException("cant delete " + ref + " from unknown owner " + fromOwner.get + " secondUseOwners:" + instD.secondUseOwners.mkString)
+				else if (instD.secondUseOwners.nonEmpty){
+					Log.e("Try to delete " + ref + " from unknown owner " + fromOwner.get + " secondUseOwners:" + instD.secondUseOwners.mkString)
+					if (dontNotifyOwner match {
+						case Some(dno) => fromOwner.get.ownerRef != dno;
+						case _ => true
+					})
+					internRemovePropertyFromOwner(ref, fromOwner.get)
+				}
 				else {
 					util.Log.e("cant delete " + ref + " from unknown owner " + fromOwner.get + ", no SecondUsers found, deleting clompletely")
 					if (dontNotifyOwner match {
 						case Some(dno) => fromOwner.get.ownerRef != dno;
 						case _ => true
 					})
-						internRemovePropertyFromOwner(ref, fromOwner.get)
+					internRemovePropertyFromOwner(ref, fromOwner.get)
 				}
 			} // fromowner.isdefined
+
 			// no fromOwner defined => remove from all Owners
 			for (owner <- instD.owners)
 				if (dontNotifyOwner match {
@@ -952,17 +963,23 @@ object TransactionManager {
 	 */
 	private def checkIsChildOf(toOwner:Reference,source:Reference):Boolean= {
 		//System.out.println("check Child toOwner:"+toOwner+" source:"+source)
-		if(toOwner==source)return true
-		val instData=ActionList.getInstanceData(toOwner )
-    //if(instData==null) {System.err.println("check is child Of toOwner "+toOwner+" does not exist");return false}
-		for(owner <-instData.owners)
-			if(owner.ownerRef.instance==0) {util.Log.e("wrong ownerRef "+owner.ownerRef+" in "+toOwner);return false}
-			else if(checkIsChildOf(owner.ownerRef,source)) return true	
-		for(owner <-instData.secondUseOwners)
-		  if(owner.ownerRef.instance==0) {util.Log.e("wrong secondownerRef "+owner.ownerRef+" in "+toOwner);return false}
-		  else if(checkIsChildOf(owner.ownerRef,source)) return true	
+		if(toOwner==source) true else
+		if(StorageManager.instanceExists(toOwner.typ,toOwner.instance)){
+			val instData=ActionList.getInstanceData(toOwner )
+			//if(instData==null) {System.err.println("check is child Of toOwner "+toOwner+" does not exist");return false}
+			for(owner <-instData.owners)
+				if(owner.ownerRef.instance==0) {util.Log.e("wrong ownerRef "+owner.ownerRef+" in "+toOwner);return false}
+				else if(checkIsChildOf(owner.ownerRef,source)) return true
+			for(owner <-instData.secondUseOwners)
+				if(owner.ownerRef.instance==0) {util.Log.e("wrong secondownerRef "+owner.ownerRef+" in "+toOwner);return false}
+				else if(checkIsChildOf(owner.ownerRef,source)) return true
 		false
-	}
+		}
+			else {
+			  Log.e("CheckIsChildOf for source:"+source+" toOwner "+toOwner+" does not exist")
+			  false
+			}
+		}
 
 
 	def tryCopyMultiInstances(instList: Seq[Reference], fromOwner: OwnerReference, toOwner: OwnerReference, atPos: Int): Int = {

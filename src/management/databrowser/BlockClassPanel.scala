@@ -1,16 +1,14 @@
 package management.databrowser
 
 import definition.typ.{AllClasses, BlockClass}
-import javax.swing.JOptionPane
-import javax.swing.table.DefaultTableModel
 import management.databrowser.MainWindow.rightPanel
 import server.config.FSPaths
 import server.storage.StorageManager
 import transaction.handling.SessionManager
 import util.StrToInt
 
-import scala.swing.event.ButtonClicked
-import scala.swing.{BorderPanel, Button, Dimension, GridPanel, ScrollPane}
+import javax.swing.JOptionPane
+import javax.swing.table.DefaultTableModel
 
 class BlockClassPanel extends BorderPanel {
   val blockTable=new SimpleTable
@@ -78,7 +76,7 @@ class BlockClassPanel extends BorderPanel {
       rightPanel.addIt(BlockDataViewPanel, BorderPanel.Position.Center)
       rightPanel.peer.invalidate()
       rightPanel.peer.revalidate()
-      rightPanel.repaint
+      rightPanel.repaint()
     }
   }
 

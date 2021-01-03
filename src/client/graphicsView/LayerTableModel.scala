@@ -4,19 +4,17 @@
 package client.graphicsView
 
 
-import java.awt.geom.Rectangle2D
-import java.lang
-
 import client.comm.ClientQueryManager
 import definition.comm.{IntValue, ListValue, PropertyGroup, StringValue}
 import definition.data._
 import definition.expression.{StringConstant, VectorConstant}
-import javax.swing.table._
 import util.{Log, StringUtils}
 
+import java.awt.geom.Rectangle2D
+import java.lang
+import javax.swing.table._
 import scala.collection.SortedMap
 import scala.collection.mutable.ArrayBuffer
-import scala.swing.Swing
 import scala.util.control.NonFatal
 
 /**
@@ -361,7 +359,7 @@ class LayerTableModel(controller:GraphViewController) extends AbstractTableModel
   def storeSettings(pgroup: PropertyGroup): Unit = {
     pgroup.addProperty(IntValue("NumLay", layerList.size))
   	for(layerIx <-layerList.indices;layer=layerList(layerIx)) {
-      pgroup.addProperty(StringValue("L" + layerIx.toString, layer.ref.sToString()))
+      pgroup.addProperty(StringValue("L" + layerIx.toString, layer.ref.sToString))
   	  val state=(if(layer.edible)2 else 0)+(if(layer.visible)1 else 0)
       pgroup.addProperty(IntValue("LS" + layerIx.toString, state))
       if (!layer.path.isEmpty) pgroup.addProperty(ListValue("LP" + layerIx.toString, layer.path.toIndexedSeq))

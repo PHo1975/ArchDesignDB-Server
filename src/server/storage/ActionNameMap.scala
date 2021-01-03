@@ -3,11 +3,10 @@
  */
 package server.storage
 
-import java.io._
-
 import definition.comm.ClientCommands
 import server.config.FSPaths
 
+import java.io._
 import scala.collection.mutable
 
 /** stores the names of Actions
@@ -52,7 +51,7 @@ object ActionNameMap {
   
   def read(): Unit = if (fileName.exists) {
   	maxID=100
-  	theMap.clear  	
+  	theMap.clear()
   	val is=new DataInputStream(new BufferedInputStream(new FileInputStream(fileName)))
   	val numElems=is.readInt
   	for(i <-0 until numElems) {

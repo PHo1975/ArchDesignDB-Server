@@ -1,18 +1,17 @@
 package server.print
 
-import java.awt.Color
-import java.awt.geom.{Point2D, Rectangle2D}
-import java.io.File
-
 import client.graphicsView.PolyLineElement
 import definition.data._
 import definition.expression.{BlobConstant, PointList, Polygon, VectorConstant}
 import definition.typ.{AllClasses, EnumFieldDefinition, SystemSettings}
-import javax.imageio.{ImageIO, ImageReader}
 import server.config.FSPaths
 import server.storage.{ServerObjectClass, StorageManager}
 import util.{CollUtils, Log}
 
+import java.awt.Color
+import java.awt.geom.{Point2D, Rectangle2D}
+import java.io.File
+import javax.imageio.{ImageIO, ImageReader}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -168,7 +167,7 @@ class PlotGenerator extends CustomGenerator {
              val style = data.fieldValue(6).toInt
              val textAngle = data.fieldValue(7).toDouble
              val obAngle = data.fieldValue(8).toDouble
-             val lineSpace = data.fieldValue(9).toInt
+             val lineSpace = data.fieldValue(9).toInt.toFloat
              GraphTextElement(new Rectangle2D.Float(pos.x, pos.y, 0f, height.toFloat),
                text, font, style, textAngle.toFloat, obAngle.toFloat, color, lineSpace)
            }
@@ -290,7 +289,7 @@ class PlotGenerator extends CustomGenerator {
 
        val smallFont = generator.form.fonts.getStyle("Klein")
        val standardFont = generator.form.fonts.standardStyle
-       val tableWidth=102
+       val tableWidth=102f
        val startX=dataEater.pageWidth - tableWidth-generator.form.left
        val lineHeight=smallFont.height*1.7f
        var lastY=dataEater.pageHeight-60
@@ -321,7 +320,7 @@ class PlotGenerator extends CustomGenerator {
            val columns=Array(7,17,26)
            //val firstY=lastY-(versions.size+1)*lineHeight
            if(notesString.length>0)
-             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,lastY+1,tableWidth,0),1f,0, Color.black ))
+             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,lastY+1,tableWidth,0f),1f,0, Color.black ))
            var currentY=lastY
            for(ix<-versions.indices.reverse;version=versions(ix)){
              val lines=version.fieldValue(2).toString.split("\n")
@@ -331,7 +330,7 @@ class PlotGenerator extends CustomGenerator {
                  line, smallFont.fontName, 0, 0f, 0f, Color.black, 0f))
              }
              currentY-= numLines*lineHeight
-             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,currentY+0.5f,tableWidth,0),if(ix==0)1f else 0.5f,0,if(ix==0) Color.black else Color.gray))
+             dataEater.addPrintElement(LinePrintElement(new Rectangle2D.Float(startX-1,currentY+0.5f,tableWidth,0f),if(ix==0)1f else 0.5f,0,if(ix==0) Color.black else Color.gray))
              dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX, currentY + lineHeight, 0f, smallFont.height*0.9f),
                version.fieldValue(0).toString, smallFont.fontName, if(ix==versions.size-1)FontStyle.boldStyle else 0, 0f, 0f, Color.black, 0f))
              dataEater.addPrintElement(GraphTextElement(new Rectangle2D.Float(startX+columns(0), currentY + lineHeight, 0f, smallFont.height/**0.9f*/),

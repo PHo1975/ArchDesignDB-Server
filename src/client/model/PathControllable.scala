@@ -17,6 +17,7 @@ trait PathControllable {
 	 * @param doneListener to be called when the client is done loading
 	 */
 	def openData(parentRef:Reference,selectRef:Option[Reference],indent:Int,doneListener:Option[()=>Unit],withCustomEditor:Boolean): Unit
-	
+
+
 
 }

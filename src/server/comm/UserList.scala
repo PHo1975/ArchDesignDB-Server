@@ -51,7 +51,7 @@ case class ConnectionEntry(app:String, thread:JavaClientSocket, queryHandler:Abs
 case class UserInfo(name:String,id:Short,password:String,shortName:String, roles:Array[String],startRef:Reference) {
   var connections:List[AbstractConnectionEntry]=Nil
   def toXML:scala.xml.Node = {
-    <User name={name} id={id.toString} password={password} shortName={shortName} roles={roles.mkString(",")} startRef= {startRef.bToString()}> </User>
+    <User name={name} id={id.toString} password={password} shortName={shortName} roles={roles.mkString(",")} startRef= {startRef.bToString}> </User>
   }
 
   lazy val isEditable: Boolean = !roles.contains("guest")

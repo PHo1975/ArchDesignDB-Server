@@ -3,15 +3,13 @@ package management.databrowser
 import client.dataviewer.FieldColumnModel
 import definition.data.Reference
 import definition.typ.SystemSettings
-import javax.swing.border.TitledBorder
-import javax.swing.table.AbstractTableModel
-import javax.swing.{BorderFactory, JOptionPane}
 import server.comm.{UserInfo, UserList}
 import server.config.ServerSystemSettings
 import util.{StrToInt, StringUtils}
 
-import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Button, Orientation, ScrollPane, Swing, Table}
+import javax.swing.border.TitledBorder
+import javax.swing.table.AbstractTableModel
+import javax.swing.{BorderFactory, JOptionPane}
 
 class UserTableModel extends AbstractTableModel {
   def getColumnCount= 8
@@ -26,7 +24,7 @@ class UserTableModel extends AbstractTableModel {
       case 1=> userID.name
       case 2=> userID.shortName
       case 3=> if (connectionID==null) "" else connectionID.app
-      case 6=> userID.startRef.bToString()
+      case 6=> userID.startRef.bToString
       case 7=> userID.roles.mkString(",")
       case _=> if (connectionID==null) "" else {
         if (col == 4) connectionID.getRemoteAddress

@@ -3,10 +3,9 @@
  */
 package server.print
 
-import java.io.DataOutput
-
 import definition.data._
 
+import java.io.DataOutput
 import scala.collection.mutable.ArrayBuffer
 /**
  * 
@@ -51,11 +50,11 @@ class DataEater extends YPosHolder {
   	pageWidth=pWidth
   	pageHeight=pHeight
   	paramValues=nvalues
-  	pagesList.clear
-  	elementList.clear
+  	pagesList.clear()
+  	elementList.clear()
   	form=nform
-  	currentXPos=form.left
-  	currentYPos=form.top
+  	currentXPos=form.left.toFloat
+  	currentYPos=form.top.toFloat
   	currentHeader=None
   	currentFooter=None
   	hasPrintElements=false
@@ -84,8 +83,8 @@ class DataEater extends YPosHolder {
   
   def initPage(): Unit = {
     //println("init page "+pagesList.size+" has:"+hasPrintElements)
-  	currentXPos=form.left
-  	currentYPos=form.top
+  	currentXPos=form.left.toFloat
+  	currentYPos=form.top.toFloat
   	elementList=collection.mutable.ArrayBuffer[PrintElement]()
   	currentContext.setPageNr(pagesList.size+1)
   	val tempInstance=currentContext.currentInstance

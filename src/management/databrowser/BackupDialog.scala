@@ -1,15 +1,12 @@
 package management.databrowser
 
-import java.awt.Dimension
-import java.beans.{PropertyChangeEvent, PropertyChangeListener}
-import java.io.File
-
-import javax.swing.SwingWorker
 import server.config.FSPaths
 import transaction.handling.BackupThread
 
-import scala.swing.{BoxPanel, Button, Dialog, Orientation, ProgressBar, Window}
-import scala.swing.event.ButtonClicked
+import java.awt.Dimension
+import java.beans.{PropertyChangeEvent, PropertyChangeListener}
+import java.io.File
+import javax.swing.SwingWorker
 
 class BackupDialog(w:Window) extends Dialog(w){
   title="Backup"
@@ -21,7 +18,7 @@ class BackupDialog(w:Window) extends Dialog(w){
     listenTo(cancelButton)
     reactions+= {      
       
-      case ButtonClicked(`cancelButton`)=> close
+      case ButtonClicked(`cancelButton`)=> close()
     }
   }
   

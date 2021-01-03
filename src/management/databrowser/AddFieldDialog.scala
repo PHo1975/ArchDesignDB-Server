@@ -1,13 +1,10 @@
 package management.databrowser
 
-import java.awt.Dimension
-
 import client.ui.ViewConstants
 import definition.typ.{DTWrap, DataType}
 import server.storage.ServerObjectClass
 
-import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Button, ComboBox, Dialog, Label, Orientation, Window}
+import java.awt.Dimension
 
 class AddFieldDialog (w:Window) extends Dialog(w) {
   val fieldName= new FormatLine(100,"Field Name:",()=>"",(text)=> {})
@@ -36,9 +33,9 @@ class AddFieldDialog (w:Window) extends Dialog(w) {
     reactions+= {      
       case ButtonClicked(`okButton`)=> if(fieldName.edit.text.trim.length>0){
         TypeDefPanel.addField(fieldName.edit.text.trim, typCombo.selection.item.typ)
-        close
+        close()
       } else println("fieldName not defined "+fieldName.edit.text)
-      case ButtonClicked(`cancelButton`)=> close
+      case ButtonClicked(`cancelButton`)=> close()
     }
   }
   

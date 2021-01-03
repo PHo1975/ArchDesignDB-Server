@@ -39,7 +39,7 @@ class PrintContext extends Context{
 	var formParams:Map[String,Constant]=Map.empty
 	var ignoreItersWithOption:Seq[String]=Seq.empty
 
-	def initPrintSession(): Unit = placeHolders.clear
+	def initPrintSession(): Unit = placeHolders.clear()
 
 
 	def setCurrInstance(data: InstanceData): Unit = {
