@@ -3,10 +3,10 @@ package management.databrowser
 
 import client.ui.ViewConstants
 import definition.data.{OwnerReference, Reference}
-import javax.swing.SwingWorker
 import server.storage.StorageManager
 import transaction.handling.TransactionManager
 
+import javax.swing.SwingWorker
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, Button, Dialog, Label, Orientation, ProgressBar, Swing}
 import scala.util.control.NonFatal
@@ -17,11 +17,12 @@ class ReorgPanel extends BoxPanel(Orientation.Vertical){
   val fixInhBut=new Button("Fix inheritance")
   val fixOrphBut=new Button("Fix Orphans")
   val delOrphBut=new Button("Delete Orphans")
+  val remBrokenLinksBut=new Button("Remove broken Links")
   val fileTextField: Label = ViewConstants.label()
-  listenTo(reorgBut,fixInhBut,delOrphBut,fixOrphBut)
+  listenTo(reorgBut,fixInhBut,delOrphBut,fixOrphBut,remBrokenLinksBut)
   val fileProgressBar=new ProgressBar
   val buttonPanel=new BoxPanel(Orientation.Horizontal ){
-    contents+=reorgBut+=fixInhBut+=fixOrphBut+=delOrphBut
+    contents+=reorgBut+=fixInhBut+=fixOrphBut+=delOrphBut+=remBrokenLinksBut
   }
   contents+=textField+=Swing.VStrut(40)+=fileProgressBar+=Swing.VStrut(40)+=fileTextField+=Swing.VStrut(40)+=buttonPanel
   
@@ -29,7 +30,8 @@ class ReorgPanel extends BoxPanel(Orientation.Vertical){
       case ButtonClicked(`reorgBut`) =>  	reorg()
       case ButtonClicked(`fixInhBut`) =>  fixInheritance()
       case ButtonClicked(`delOrphBut`) => deleteOrphans()
-      case ButtonClicked(`fixOrphBut`) => findOrphans()      
+      case ButtonClicked(`fixOrphBut`) => findOrphans()
+      case ButtonClicked(`remBrokenLinksBut`)=> removeBrockenLinks()
   }
   
   def reorg(): Unit =  if(TransactionManager.canReorg)  doLoop(TransactionManager.doReorgDB)
@@ -38,6 +40,11 @@ class ReorgPanel extends BoxPanel(Orientation.Vertical){
   def fixInheritance(): Unit = doLoop(TransactionManager.doFixInheritance)
   
   def deleteOrphans(): Unit = doLoop(TransactionManager.doDeleteOrphans)
+
+  def removeBrockenLinks():Unit = {
+    println("<-"+Thread.currentThread().toString)
+    doLoop(TransactionManager.removeBrokenLinks)
+  }
   
   def findOrphans(): Unit = doLoop[Map[OwnerReference,Iterable[Reference]]](TransactionManager.doFindOrphans, orphanMap => {
     Swing.onEDT{

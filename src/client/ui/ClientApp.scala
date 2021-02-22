@@ -3,9 +3,6 @@
  */
 package client.ui
 
-import java.awt.{Color, Font}
-import java.net._
-
 import client.comm._
 import client.dataviewer._
 import client.dialog.DialogManager.reset
@@ -18,8 +15,10 @@ import com.sun.jna.{Native, NativeLong, WString}
 import definition.comm.{PropertyGroup, PropertyValue}
 import definition.typ.{AllClasses, DataType}
 import javafx.application.Platform
-import javax.swing.{Scrollable, _}
 
+import java.awt.{Color, Font}
+import java.net._
+import javax.swing.{Scrollable, _}
 import scala.swing._
 import scala.swing.event._
 import scala.util.control.NonFatal
@@ -156,7 +155,7 @@ object ClientApp extends App {
     var isDecorating = false
 
     override def closeOperation(): Unit = {
-      //util.Log.e("Close " )
+      util.Log.e("Close isdecorating:"+isDecorating )
       if (!isDecorating) shutDown()
     }
 
@@ -232,6 +231,7 @@ object ClientApp extends App {
     UserSettings.setIntProperty("WindowSettings", "XPos", bounds.x)
     UserSettings.setIntProperty("WindowSettings", "YPos", bounds.y)
     UserSettings.setIntProperty("WindowSettings", "Maximized", if (top.peer.getExtendedState == java.awt.Frame.MAXIMIZED_BOTH) 1 else 0)
+    println("saveWindowPositions done")
   }
 
   @native def SetCurrentProcessExplicitAppUserModelID(appID: WString): NativeLong
@@ -277,7 +277,7 @@ object ClientApp extends App {
     })
 
     sock.classesReadListener = () => Swing.onEDT {
-      //println("Classes Read ")
+      println("Classes Read ")
       ClientQueryManager.setClientSocket(sock)
 
       ViewConstants.defaultRowHeight = UserSettings.getIntProperty("Fonts", "RowHeight", 25)
@@ -324,7 +324,7 @@ object ClientApp extends App {
       undoBut.font = ViewConstants.defFont
 
       ClientQueryManager.registerSetupListener(() => {
-        //println("clientapp setup")
+        println("clientapp setup")
         val windowWidth = UserSettings.getIntProperty("WindowSettings", "Width")
         val windowHeight = UserSettings.getIntProperty("WindowSettings", "Height")
         val windowX = UserSettings.getIntProperty("WindowSettings", "XPos")
@@ -336,7 +336,7 @@ object ClientApp extends App {
         else if (windowWidth > 0 && windowHeight > 0)
           top.bounds = new java.awt.Rectangle(windowX, windowY, windowWidth, windowHeight)
         top.visible = true
-        //println("Client app setup done")
+        println("Client app setup done")
       })
 
       SelectEventDispatcher.registerSelectListener(ActionPanel)
@@ -364,17 +364,18 @@ object ClientApp extends App {
     }
 
     sock.addStartupFinishListener(() => Swing.onEDT {
-      //println("startup finished")
+      println("startup finished")
       val storeList = UserSettings.getListProperty[PropertyGroup]("WindowSettings", "Boxes")
       //println("storeList loaded "+ storeList.size)
       storeList.find(_.name == "Default") match {
         case Some(group) => mainBox.restoreSettings(Some(group), loadDone _)
         case None => mainBox.restoreSettings(None, loadDone _)
       }
-      //println("restore done")
+      println("restore done")
     })
+    println("starting Sock")
     sock.start()
-    //println("Sock gestartet")
+    println("Sock gestartet")
   } catch {
     case NonFatal(e) => println("Fataler Fehler "+e)
   }
@@ -385,7 +386,7 @@ object ClientApp extends App {
   }
 
   def shutDown(): Unit = {
-    //util.Log.e("shutdown")
+    println("shutdown")
     top.visible = false
 
     if(sock!=null) {

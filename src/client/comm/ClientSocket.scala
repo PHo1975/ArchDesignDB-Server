@@ -3,15 +3,14 @@
  */
 package client.comm
 
-import java.io._
-import java.net._
-
 import client.print.PrintQuestionHandler
 import definition.comm._
 import definition.data.{InstanceData, Reference}
 import definition.typ.{AllClasses, ClientSystemSettings, SystemSettings}
 import util.Log
 
+import java.io._
+import java.net._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
@@ -58,7 +57,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
        else {
          util.Log.w("Logged in to " + serverAddress)
          sendData(ClientCommands.getSystemSettings) { _ =>}
-         //Thread.`yield`()
+         Thread.`yield`()
          handleCommands(in)
        }
 		 }
@@ -108,6 +107,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
   }
 	
 	private def readSystemSettings(in:DataInputStream):Unit= {
+		println("read system settings")
 	  SystemSettings.settings=new ClientSystemSettings(in) {
 
 			override def loadChildren(ref: Reference): IndexedSeq[InstanceData] =
@@ -119,6 +119,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	}
 		
 	private def readInTypes(in: DataInputStream):Unit = 	{
+		println("read types")
     //val start=System.currentTimeMillis()
 	  val uncompressedSize=in.readInt
 		val numBytes:Int=in.readInt
@@ -136,6 +137,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 	}
 	
 	private def readUserSettings(in:DataInputStream): Unit = {
+		println("read user settings")
 		val editable=in.readBoolean()
 		val userID=in.readInt()
 		val startRef=Reference(in)
@@ -171,7 +173,7 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		// save changes in user settings
 		ClientQueryManager.notifyStoreSettingsListeners()		
 		// store user settings
-		//System.out.println("writing settings")
+		System.out.println("writing settings")
 		sendData(ClientCommands.writeUserSettings ) {out =>
 			val buffer =UserSettings.writeProperties.getBytes("UTF-8")
 			out.writeInt(buffer.length)

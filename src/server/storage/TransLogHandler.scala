@@ -3,12 +3,11 @@
  */
 package server.storage
 
-import java.io._
-
 import definition.data.{LogIndexSet, Reference, TransType}
 import server.config.FSPaths
 import util.Log
 
+import java.io._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
@@ -36,6 +35,7 @@ object TransLogHandler {
 	private var transID:Int = {
 		val fileSize=theFile.length()
 		if (fileSize == 0) {
+			println("Translog FileSize==0")
 			theFile.writeInt(1); 1
 		}
 		else {
@@ -60,7 +60,7 @@ object TransLogHandler {
 					println("TransLog insPos:" + insertPos + " transID:" + tr)
 					tr
 				}
-				else throw new IllegalAccessException("")
+				else throw new IllegalAccessException("SeekPosition <=0 "+sp+" insertPos:"+insertPos)
 			}
 		}
 	}
@@ -83,6 +83,7 @@ object TransLogHandler {
    */
 	def increaseTransID():Unit={
     transID+=1
+		println("Increate TransID to"+transID)
     theFile.seek(getSeekPos(insertPos)) 
   } 
 	
@@ -125,17 +126,18 @@ object TransLogHandler {
 
 	def restoreLogFile():Unit= {
 		theFile=new RandomAccessFile(fileName,"rwd")
+		val numRecords=((theFile.length()-4)/recordSize).toInt
 		theFile.seek(0)
-		theFile.writeInt(1)
+		theFile.writeInt(numRecords)
 		transID=1
-		insertPos=0
+		insertPos=numRecords
 	}
 	
 	def readFullIndex():ArrayBuffer[LogIndexSet] = {
 		theFile.seek(4)
     val retList= ArrayBuffer[LogIndexSet]()		
 		val endPos=getSeekPos(insertPos)
-		println("Read index endPos:"+endPos)
+		println("Read index endPos:"+endPos+" fileSize:"+((theFile.length-4)/recordSize))
 		while(theFile.getFilePointer < theFile.length) {
 			theFile.read(readBuffer,0,recordSize)
 			inBufferStream.reset()
@@ -145,6 +147,7 @@ object TransLogHandler {
 			retList+= LogIndexSet(tt,dataInStream.readInt,
 				dataInStream.readInt,dataInStream.readInt,dataInStream.readLong,dataInStream.readInt)
 		}
+		theFile.seek(getSeekPos(insertPos))
 		//readFinished()	
 		retList
 	}	

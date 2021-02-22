@@ -3,8 +3,6 @@
  */
 package server.storage
 
-import java.io._
-
 import definition.data._
 import definition.expression.{CommonFuncMan, FunctionManager}
 import definition.typ.{AllClasses, BlockClass, SystemSettings}
@@ -14,8 +12,10 @@ import server.storage.TransLogHandler.recordSize
 import transaction.handling.{ActionList, TransactionManager}
 import util.Log
 
+import java.io._
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 class CopyFileHandler(fileName:String){
@@ -166,14 +166,14 @@ object StorageManager {
    *  record be stored in the transaction log
    */
 	def writeInstance(data: InstanceData, created: Boolean,writeIndex:Boolean=true): (Long,Int) = fileLock.synchronized {
-		val (pos,size)=dataFileHandler.writeInstance(data)
+		val result@(pos,size)=dataFileHandler.writeInstance(data)
 		if(writeIndex)
 			ixHandler(data.ref.typ).writeData(data.ref.instance, pos, size,created)
-		(pos,size)
+		result
 	}
 
   def writeBlock(data:BlockData,created:Boolean): Unit = {
-		val (pos,size)=blockFileHandler.writeInstance(data)
+		val (pos,_)=blockFileHandler.writeInstance(data)
 		blockHandler(data.ref.typ).writeData(data.ref.instance,pos,created)
 		//(pos,size)
 	}
@@ -191,10 +191,10 @@ object StorageManager {
 
 	def writeInstanceProperties(data: InstanceProperties,writeIndex:Boolean=true):(Long,Int) = fileLock.synchronized {
 		val hasChildren = data.hasChildren
-		val (pos, size) = if (hasChildren) propFileHandler.writeInstance(data)
+		val result@(pos, size) = if (hasChildren) propFileHandler.writeInstance(data)
 		else (0L, 0) // if there are no children, delete this property data set
 		if (writeIndex) ixHandler(data.ref.typ).writePropertiesData(data.ref.instance, pos, size)
-		(pos, size)
+		result
 	}
 
   
@@ -211,9 +211,10 @@ object StorageManager {
   	    }
   }
 
-  def writeReferencingLinks(data: ReferencingLinks,writeIndex:Boolean=true): (Long,Int) = fileLock.synchronized {
-  	val result=linkFileHandler.writeInstance(data)
-    if(writeIndex)ixHandler(data.ref.typ).writeLinksData(data.ref.instance, result._1, result._2)
+  def writeReferencingLinks(data: ReferencingLinks,writeIndex:Boolean=true,writeLog:Boolean=true): (Long,Int) = fileLock.synchronized {
+		val result@(pos, size) =if(data.links.nonEmpty) linkFileHandler.writeInstance(data)
+		else (0L,0)
+    if(writeIndex) ixHandler(data.ref.typ).writeLinksData(data.ref.instance, pos, size,writeLog)
 		result
   }
 
@@ -460,7 +461,7 @@ object StorageManager {
   	val copyLinkFileHandler=new CopyFileHandler("ExternLinks.dat.cpy")
   	val copyCollFuncFileHandler=new CopyFileHandler("collFuncs.dat.cpy")
 
-		var transLogFile=new BufferedOutputStream(new FileOutputStream(TransLogHandler.fileName),32768)
+		val transLogFile=new BufferedOutputStream(new FileOutputStream(TransLogHandler.fileName),32768)
 		transLogFile.write(new Array[Byte](4))
 		val transLogBufferStream= new MyByteStream(recordSize*4)
 		val transLogOutStream=new DataOutputStream(transLogBufferStream)
@@ -544,10 +545,12 @@ object StorageManager {
   	linkFileHandler.takeOverReorgFile(copyLinkFileHandler.file)
   	collFuncFileHandler.takeOverReorgFile(copyCollFuncFileHandler.file)
 		FSPaths.setLastStatTransID(1)
-    util.Log.w("\nReorg complete translog:"+TransLogHandler.getInsertPos+" detail:"+TransDetailLogHandler.getInsertPos)
+		transLogFile.close()
 		TransLogHandler.restoreLogFile()
 		TransDetailLogHandler.flush()
+    util.Log.w("\nReorg complete\n Translog Insert Pos:"+TransLogHandler.getInsertPos+"\n DetailLogHandler Insert Pos:"+TransDetailLogHandler.getInsertPos)
 	}
+
 
 
   def fixInheritance(listener: (Int, String) => Unit): Unit = fileLock.synchronized {
@@ -646,11 +649,11 @@ object StorageManager {
 	  	      ActionList.commitAllData()
 	  	      //System.out.println("delete done ")
 	  	    }
-	  	    else if(newOwners.length<instObj.owners.length||newSUOwners.size<instObj.secondUseOwners.size){
+	  	    else if(newOwners.length<instObj.owners.length||newSUOwners.length<instObj.secondUseOwners.length){
 	  	      var newInst= if(newOwners.length<instObj.owners.length) instObj.changeOwner(newOwners) else instObj
-	  	      if(newSUOwners.size<instObj.secondUseOwners.size) newInst=newInst.changeSecondUseOwners(newSUOwners)
+	  	      if(newSUOwners.length<instObj.secondUseOwners.length) newInst=newInst.changeSecondUseOwners(newSUOwners)
             util.Log.w("change "+newInst)
-	  	      writeInstance(newInst,false)
+	  	      writeInstance(newInst,created = false)
 	  	    }
   	    }
   	  } catch {
@@ -777,6 +780,36 @@ object StorageManager {
       } else util.Log.e("child :"+childRef+" still exists")
 	}
 
+	def removeBrokenLinks(listener: (Int, String) => Unit): Unit = fileLock.synchronized {
+		var lix = 1
+		for (typ <- serverClassList.keysIterator; handler = ixHandler(typ)) {
+			listener(lix, handler.theClass.name)
+			lix+=1
+			val buffer=new ArrayBuffer[ReferencingLinks]()
+			handler.foreachInstance(new RecordListener {
+				override def nextRecord(inst: Int, dataPos: Long, dataLen: Int, propPos: Long, propLen: Int, linkPos: Long, linkLen: Int, collPos: Long, collLen: Int): Unit = {
+          if (dataLen>0 && linkLen >0){
+						val ref=Reference(typ,inst)
+						val refLinks=linkFileHandler.readInstance(ref,linkPos,linkLen )
+						var changed=false
+						val newList= refLinks.links.map { case (field, list) =>
+							(field, list.filter(exLink =>
+								if (!StorageManager.instanceExists(exLink.typ, exLink.inst)) {
+									println("Linktarget does not exist Source:" + ref + " field:" + field + " exLink:" + exLink)
+									changed = true
+									false
+								}
+								else true))
+							}
+						if(changed)	buffer+=new ReferencingLinks(ref,newList)
+					}
+				}
+			})
+			for(b<-buffer)
+				println("Write "+b.ref+" ->"+writeReferencingLinks(b, writeLog = false))
+		}
+		println("Fixing done.")
+	}
 
   
 }

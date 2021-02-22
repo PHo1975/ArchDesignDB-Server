@@ -3,13 +3,12 @@
  */
 package server.comm
 
-import java.io.{DataInputStream, DataOutput}
-
 import definition.comm.{ClientCommands, NotificationType, ServerCommands}
 import definition.data.{BlockData, InstanceData, Reference}
 import server.storage.StorageManager
 import util.Log
 
+import java.io.{DataInputStream, DataOutput}
 import scala.util.control.NonFatal
 
 
@@ -491,7 +490,7 @@ class UserQueryHandler(val userSocket: JavaClientSocket) extends AbstractQueryHa
 	
 	private def stopSubscription(in:DataInputStream):Unit = {
 		val subsID=in.readInt
-		System.out.println("Stop Subscription "+subsID)
+		//System.out.println("Stop Subscription "+subsID)
 		CommonSubscriptionHandler.removeSubscription(subsID)
 	}
 	

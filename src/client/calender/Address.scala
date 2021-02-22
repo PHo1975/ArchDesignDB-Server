@@ -33,7 +33,7 @@ case class Address(ref:Reference,owner:OwnerReference,name:String,prename:String
     phone:String,fax:String,email:String,pers:String) extends AdTreeNode {
   def this(data:InstanceData)= this(data.ref,data.owners(0),data.fieldValue(1).toString,data.fieldValue.head.toString,data.fieldValue(2).toString,data.fieldValue(3).toString,
       data.fieldValue(4).toString,data.fieldValue(5).toString,data.fieldValue(6).toString,data.fieldValue(7).toString,data.fieldValue(8).toString)
-  override def toString: String =prename+" "+name
+  override def toString: String =prename+" "+name.replace('\n','|')
 }
 
 

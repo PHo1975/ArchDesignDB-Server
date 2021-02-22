@@ -19,7 +19,7 @@ import scala.swing._
 import scala.swing.event.{ButtonClicked, TableRowsSelected}
 
 
-/**   
+/**
  * 
  */
 class AutoCreateDialog(w:Window) extends Dialog(w) {

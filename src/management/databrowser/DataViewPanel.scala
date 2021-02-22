@@ -4,50 +4,63 @@
 package management.databrowser
 
 
-import java.awt
-
 import client.ui.ViewConstants
 import definition.comm._
 import definition.data._
 import definition.typ.AllClasses
-import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.{JLabel, JOptionPane, JTable}
 import server.storage._
 import transaction.handling._
 import util.{Log, StrToInt}
 
+import java.awt
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.{JLabel, JOptionPane, JTable}
 import scala.swing._
 import scala.swing.event._
+
+
 
 /** Panel to show the Data of a certain class
  * 
  */
-object DataViewPanel extends BorderPanel 
-{
+object DataViewPanel extends BorderPanel {
 	val ixTable: Table = new Table()	{
 		model=IndexTableModel				
 		selection.intervalMode=Table.IntervalMode.Single
-	}	
+	}
+
+	val tooltipRenderer =new DefaultTableCellRenderer{
+		override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): awt.Component = {
+			val comp=super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column).asInstanceOf[JLabel]
+			comp.setToolTipText(value.toString)
+			comp
+		}
+	}
 	
 	val fieldTable: Table = new Table()	{
 		model=InstFieldTableModel
 		selection.intervalMode=Table.IntervalMode.Single
+		peer.setDefaultRenderer(classOf[String],tooltipRenderer)
 	}
 	
 	val propTable: Table =new Table()	{
 		model=InstPropTableModel
-		this.peer.setDefaultRenderer(classOf[String],new DefaultTableCellRenderer{
-			override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): awt.Component = {
-				val comp=super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column).asInstanceOf[JLabel]
-				comp.setToolTipText(value.toString)
-				comp
-			}
-		})
+		peer.setDefaultRenderer(classOf[String],tooltipRenderer)
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 
 	val refTable: Table =new Table(){
 		model=RefLinksTableModel
+		peer.setDefaultRenderer(classOf[String],new DefaultTableCellRenderer{
+			override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): awt.Component = {
+				val comp=super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+				comp match {
+					case j:JLabel => j.setToolTipText("<html>"+value.toString.replace(", ","<br>")+"</html>")
+						case _ =>
+				}
+				comp
+			}
+		})
 		selection.intervalMode=Table.IntervalMode.Single
 	}
 
@@ -71,10 +84,11 @@ object DataViewPanel extends BorderPanel
 			val checkCollBut=new Button("check CollData")
 			val restoreChildrenBut=new Button("restore Children")
 			val seekStatisticsBut=new Button("Seek Statistics")
+			val removeLinksBut=new Button("Remove non existing link targets")
 			val removeChildBut=new Button("Remove Child from Property")
 			
-			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut+=seekStatisticsBut+=removeChildBut
-			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut,seekStatisticsBut,removeChildBut)
+			contents+=openBut+=createBut+=deleteBut+=checkCollBut+=restoreChildrenBut+=seekStatisticsBut+=removeChildBut+=removeLinksBut
+			listenTo(openBut,createBut,deleteBut,checkCollBut,restoreChildrenBut,seekStatisticsBut,removeChildBut,removeLinksBut)
 			reactions += 	{
 				case ButtonClicked(`openBut`) => openInstance()
 				case ButtonClicked(`createBut`) => createInstance()
@@ -83,6 +97,7 @@ object DataViewPanel extends BorderPanel
 				case ButtonClicked(`restoreChildrenBut`) => restoreChildren()
 				case ButtonClicked(`seekStatisticsBut`) => seekStatistics()
 				case ButtonClicked(`removeChildBut` )=> removeChild()
+					case ButtonClicked(`removeLinksBut`)=> removeLinks()
 			}
 		},BorderPanel.Position.South)
 
@@ -239,6 +254,21 @@ object DataViewPanel extends BorderPanel
 				case _ =>
 			}
 		}
+
+	def removeLinks():Unit = {
+		for (ixRecord <-IndexTableModel.ixList;if (ixRecord.dataLength>0)&&(ixRecord.linkLength>0); inst=ixRecord.inst){
+			val ref=new Reference(InstFieldTableModel.theClass.id,inst)
+			StorageManager.getReferencingLinks(ref) match {
+				case Some(refLinks)=>
+					for((field,list)<-refLinks.links;
+							exLink<-list){
+						   if(!StorageManager.instanceExists(exLink.typ,exLink.inst))
+								 Log.e("Linktarget does not exist Source:"+ref+" field:"+field++" exLink:"+exLink)
+					}
+				case _ =>
+			}
+		}
+	}
 
 
 

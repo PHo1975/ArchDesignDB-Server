@@ -73,8 +73,14 @@ object TransactionManager {
 		//TransLogHandler.resetTransID()
 		running=false
 	 }
+
+
+	def newUndo(connection:ConnectionEntry):Unit = {
+
+	}
 	 
 	 def requestUndoData(connection:ConnectionEntry):Unit = {
+		 println("request undo data")
 		 TransLogHandler.flush()
 		 if(undoUserEntry!=null||running){ // already undoing
 			 connection.thread.denyUndoRequest()
@@ -488,40 +494,45 @@ object TransactionManager {
 	private def notifyDataChangeToReferencingInst(targetFieldRef:ExtFieldRef,sourceRef:Reference,sourceField:Byte,newValue:Constant):Unit = 	{
 		//println("notifyDataChangeToReferencingInst targetRef"+targetFieldRef+" sourceRef:"+sourceRef+" sourceField:"+sourceField+" newValue:"+newValue)
 		val targetRef=targetFieldRef.getReference
-		val targetData=ActionList.getInstanceData(targetRef)
-		val theField=targetData.fieldData(targetFieldRef.field )
-		val oldRemoteValue=try {
-      theField.getValue // result value before changing the cache value
-    } catch {case NonFatal(e)=> util.Log.e("target:"+targetFieldRef+" source:"+sourceRef+
-      " soucreField:"+sourceField+" theField:"+theField.getTerm,e);EMPTY_EX}
-		
-		if(targetFieldRef.isParentRef ) { // parentReference
-			val refList=theField.getElementList[ParentFieldRef](DataType.ParentRefTyp,Nil)
-			for (fRef <-refList){
-				val theParentRef=targetData.owners(fRef.ownerIx ).ownerRef
-				if(theParentRef==sourceRef && fRef.fieldNr==sourceField)
-					fRef.setValue(newValue)
+		if(StorageManager.instanceExists(targetRef.typ,targetRef.instance)) {
+			val targetData = ActionList.getInstanceData(targetRef)
+			val theField = targetData.fieldData(targetFieldRef.field)
+			val oldRemoteValue = try {
+				theField.getValue // result value before changing the cache value
+			} catch {
+				case NonFatal(e) => util.Log.e("target:" + targetFieldRef + " source:" + sourceRef +
+					" soucreField:" + sourceField + " theField:" + theField.getTerm, e);
+					EMPTY_EX
 			}
-		}
-		else { // fieldReference
-			val refList=theField.getElementList[FieldReference](DataType.FieldRefTyp,Nil) // all field references in the term
-			// find the reference(s) that point the the source instance
-			for(fRef <-refList; // check all references in the term
-			if resolveLinkRef(targetRef, fRef) == sourceRef && // if the reference points to the source instance
-				fRef.remField == sourceField) { // and to the source field
-				fRef.setCachedValue(newValue)			
+
+			if (targetFieldRef.isParentRef) { // parentReference
+				val refList = theField.getElementList[ParentFieldRef](DataType.ParentRefTyp, Nil)
+				for (fRef <- refList) {
+					val theParentRef = targetData.owners(fRef.ownerIx).ownerRef
+					if (theParentRef == sourceRef && fRef.fieldNr == sourceField)
+						fRef.setValue(newValue)
+				}
 			}
-		}
-		//targetData.regenFieldCache(targetFieldRef.field)
-		// now calculate the new value of this field
-		//resetFuncExpressions(theField)
-		val newRemoteValue=theField.getValue
-		val newTargetData=targetData.setField(targetFieldRef.field,theField)
-		ActionList.addTransactionData(targetRef, DataChangeAction(Some(newTargetData)))
-		if(newRemoteValue!=oldRemoteValue){ // if the value has changed after the change of the referenced field
-			//pass on the changed value of the target instance to it's targets
-			passOnChangedValue(newTargetData,targetFieldRef.field,oldRemoteValue,newRemoteValue)			
-		}
+			else { // fieldReference
+				val refList = theField.getElementList[FieldReference](DataType.FieldRefTyp, Nil) // all field references in the term
+				// find the reference(s) that point the the source instance
+				for (fRef <- refList; // check all references in the term
+						 if resolveLinkRef(targetRef, fRef) == sourceRef && // if the reference points to the source instance
+							 fRef.remField == sourceField) { // and to the source field
+					fRef.setCachedValue(newValue)
+				}
+			}
+			//targetData.regenFieldCache(targetFieldRef.field)
+			// now calculate the new value of this field
+			//resetFuncExpressions(theField)
+			val newRemoteValue = theField.getValue
+			val newTargetData = targetData.setField(targetFieldRef.field, theField)
+			ActionList.addTransactionData(targetRef, DataChangeAction(Some(newTargetData)))
+			if (newRemoteValue != oldRemoteValue) { // if the value has changed after the change of the referenced field
+				//pass on the changed value of the target instance to it's targets
+				passOnChangedValue(newTargetData, targetFieldRef.field, oldRemoteValue, newRemoteValue)
+			}
+		} else Log.e("Notify DataChange to Referencing Inst cant find instance:"+targetFieldRef)
 		// save the target instance with the new cached value (could be optimized when cachevalue does not change)
 		
 	}
@@ -532,22 +543,26 @@ object TransactionManager {
 	 * @param sourceRef the FielReference pointing to the source. When this reference dont have type or instance
 	 * information, take the targetRef information
 	 */
-	private def resolveLinkRef(targetRef:Reference,sourceRef:FieldReference):Reference ={
-	  if(sourceRef.remType.isEmpty ) 		{
-			if(sourceRef.remInst.isEmpty) targetRef // reference to a fild in THIS instance, so no more action here
-			else new Reference(targetRef.typ,sourceRef.remInst.get)
+	private def resolveLinkRef(targetRef:Reference,sourceRef:FieldReference):Reference =
+		sourceRef.remType match {
+			case Some(remType)=> sourceRef.remInst match {
+				case Some(remInst)=> Reference (remType,remInst)
+				case None => throw new IllegalArgumentException("undefined source Inst in LinkRef "+sourceRef)
+			}
+			case None => sourceRef.remInst match {
+				case Some(remInst)=> Reference(targetRef.typ,remInst)
+				case None => targetRef
+			}
 		}
-		else new Reference(sourceRef.remType.get,sourceRef.remInst.get)
-	}
+
 	
 	/** removes the external target link information from the source instance
 	 *  @param targetRef reference to the target object pointing to the source
 	 *  @param sourceRef the source instance where the target info is to be deleted 
 	 */
-	private def removeLinkRef(targetRef:Reference,sourceRef:FieldReference):Unit ={				
-		val sourceInst=resolveLinkRef(targetRef,sourceRef)
-		removeAnyRef(targetRef,sourceInst,sourceRef.remField )		
-	}
+	private def removeLinkRef(targetRef:Reference,sourceRef:FieldReference):Unit =
+		removeAnyRef(targetRef, resolveLinkRef(targetRef,sourceRef), sourceRef.remField )
+
 	
 	
 	private def removeAnyRef(targetRef:Reference,sourceInst:Reference,sourceField:Byte):Unit = {
@@ -816,20 +831,19 @@ object TransactionManager {
 			ActionList.addTransactionData(ref, DeleteAction(instD))
 
 			// remove link information at external source instances
-			for (afield <- instD.fieldData) // check all fields for FieldReferences
-			{
+			for (afield <- instD.fieldData) { // check all fields for FieldReferences
 				// fieldReferences
-				val refList = afield.getElementList[FieldReference](DataType.FieldRefTyp, Nil) // get all FielReferences from that term
+				val refList: Seq[FieldReference] = afield.getElementList[FieldReference](DataType.FieldRefTyp, Nil) // get all FielReferences from that term
 				for (fref <- refList) // remove all external links
 					removeLinkRef(ref, fref)
 				// parentReferences
-				if (dontNotifyOwner.isEmpty) {
+				//if (dontNotifyOwner.isEmpty) {
 					val prefList = afield.getElementList[ParentFieldRef](DataType.ParentRefTyp, Nil)
 					for (fref <- prefList)
 						removeAnyRef(ref, instD.owners(fref.ownerIx).ownerRef, fref.fieldNr)
-				}
+				//}
 			}
-			// remove link information from external target instances pointing here
+			// remove link information from external target instances having this instance as source
 			ActionList.getReferencingLinks(ref) match {
 				case Some(refLinks) =>
 					for ((fieldNr, list) <- refLinks.links) //  walk through all fields
@@ -1244,7 +1258,7 @@ object TransactionManager {
 	  delayedActionsList+=func
 	}
 
-	def canReorg: Boolean = TransDetailLogHandler.getInsertPos > 0
+	def canReorg: Boolean = TransDetailLogHandler.getInsertPos >= 0
 	
 	/**
 	 *  encapsulates a transaction so that StartTransaction and Finishtransaction/BreakTransaction
@@ -1312,6 +1326,8 @@ object TransactionManager {
 	def doDeleteOrphans(listener: (Int, String) => Unit): Option[Unit] = doFixingJob(listener, StorageManager.deleteOrphans)
 
 	def doFindOrphans(listener: (Int, String) => Unit): Option[Map[OwnerReference, Iterable[Reference]]] = doFixingJob[Map[OwnerReference, Iterable[Reference]]](listener, StorageManager.findOrphans)
+
+	def removeBrokenLinks(listener: (Int, String) => Unit): Option[Unit] =doFixingJob(listener,StorageManager.removeBrokenLinks)
 
 
 	def doUndo(connection: ConnectionEntry): Unit = {

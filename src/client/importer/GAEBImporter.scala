@@ -1,14 +1,13 @@
 package client.importer
 
-import java.awt.Point
-import java.io._
-
 import client.comm.{ClientQueryManager, CreateInstancesBuffer}
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.UnitNumber.ordering
 import definition.expression._
 import util.{Log, StrToInt}
 
+import java.awt.Point
+import java.io._
 import scala.swing.Window
 import scala.util.control.NonFatal
 
@@ -50,7 +49,7 @@ class GAEBImporter extends FileImportDescriptor {
 	 * @param progressListener a function to be called after every import step, and to give the current success of the file import in percent
 	 * @return success of the file import 
 	 */
-	def importFile(file:File,baseObject:Reference,settings:Seq[AnyRef],progressListener:(Int)=>Boolean):Boolean = {
+	def importFile(file:File,baseObject:Reference,settings:Seq[AnyRef],progressListener: Int =>Boolean):Boolean = {
     println("import  file:"+file)
     var reader:BufferedReader=null
 		try {
@@ -183,15 +182,11 @@ class GAEBImporter extends FileImportDescriptor {
 										posArt = if (line.charAt(2 + oberGlen + unterGlen + posLen + 1) == 'A') 1
 										else if (line.charAt(2 + oberGlen + unterGlen + posLen + 2) == 'E') 2
 										else 0
-										val menge = try
-											line.substring(23, 31).toDouble + line.substring(31, 34).toDouble / 1000
-										catch {
-											case e: IllegalArgumentException => 0
-										}
-										val einheit = line.substring(34, 40)
+										val menge = line.substring(23, 31).toDouble + line.substring(31, 34).toDouble / 1000d
+										val einheit = line.substring(34, 40).trim
 										posMenge = new UnitNumber(menge, UnitFraction(collection.immutable.TreeSet[UnitElem](new UnitElem(einheit, 1))(ordering),
 											UnitNumber.emptySet))
-										println("Pos "+posOZ+" menge:"+posMenge)
+										println("Pos " + posOZ + " menge:" + posMenge)
 									}
 
 								case 25 =>

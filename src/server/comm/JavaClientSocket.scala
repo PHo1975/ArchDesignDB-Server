@@ -3,10 +3,6 @@
   */
 package server.comm
 
-import java.io._
-import java.net.{Socket, SocketException}
-import java.util.zip.Deflater
-
 import definition.comm.{ClientCommands, CommandError, ServerCommands}
 import definition.data._
 import definition.expression.{Constant, Expression, IntConstant}
@@ -16,6 +12,9 @@ import server.storage._
 import transaction.handling.{ActionList, TransactionManager}
 import util.{CollUtils, Log, StringUtils}
 
+import java.io._
+import java.net.{Socket, SocketException}
+import java.util.zip.Deflater
 import scala.util.control.NonFatal
 
 /** manages communications with a client
@@ -40,16 +39,16 @@ trait AbstractUserSocket {
   def getConfigFile =new File(FSPaths.configDir+userEntry.name+"_"+appName+".set")
 
   def sendUserSettings(st:DataInputStream):Unit = {
-    val file=getConfigFile
+    val configFile=getConfigFile
     sendData(ServerCommands.sendUserSettings ) {out =>
       out.writeBoolean(userEntry.isEditable)
       out.writeInt(userEntry.id)
       userEntry.startRef.write(out)
-      if(!file.exists||file.length==0) out.writeInt(0)
+      if(!configFile.exists||configFile.length==0) out.writeInt(0)
       else {
         //println("config file "+file)
-        CollUtils.tryWith(new FileInputStream(file))(in=>{
-          val l=file.length.toInt
+        CollUtils.tryWith(new FileInputStream(configFile))(in=>{
+          val l=configFile.length.toInt
           //System.out.println("read Settings: "+l)
           val readBuffer= new Array[Byte](l)
           in.read(readBuffer,0,l)
@@ -190,8 +189,8 @@ class JavaClientSocket(val socket: Socket) extends Thread with AbstractUserSocke
   private def handleCommands(in:DataInputStream,user:UserInfo):Unit = {
 
     try {
-      while(wantRun)
-      {
+      while(wantRun) {
+        //val commandID=in.readByte.toInt
         val command =ClientCommands(in.readByte.toInt)
         //System.out.println("User:"+userEntry.name+" ClientCommand:"+command)
         try {
@@ -641,8 +640,10 @@ class JavaClientSocket(val socket: Socket) extends Thread with AbstractUserSocke
   def writeUserSettings(in:DataInputStream):Unit = {
     val file=getConfigFile
     val length=in.readInt
-    val readBuffer=Array.ofDim[Byte](length)
+    val readBuffer: Array[Byte] =Array.ofDim[Byte](length)
     in.read(readBuffer,0,length)
+    val settingsString=new String(readBuffer,"UTF-8")
+    Log.w("Write user settings:\n|"+settingsString+"|")
     CollUtils.tryWith(new FileOutputStream(file))(out=>out.write(readBuffer,0,length))
 
   }

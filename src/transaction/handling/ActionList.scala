@@ -86,7 +86,7 @@ object ActionList extends DataRetriever {
               case None => (0L,0)
             }
             val (linkPos,linkSize)=linkData match {
-              case Some(l)=>  StorageManager.writeReferencingLinks(l,writeIndex = false)
+              case Some(l)=>  StorageManager.writeReferencingLinks(l,writeIndex = false,writeLog=true)
               case None => (0L,0)
             }
             for(d<-instData)

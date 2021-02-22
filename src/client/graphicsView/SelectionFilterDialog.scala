@@ -1,12 +1,13 @@
 package client.graphicsView
 
-import java.awt.Color
-
+import client.dialog.DefaultObjectSelectListener
 import client.graphicsView.Handlers._
 import definition.data.LineStyle
-import javax.swing.{BorderFactory, JOptionPane}
-import util.StrToInt
+import definition.expression.ObjectReference
+import util.{Log, StrToInt}
 
+import java.awt.Color
+import javax.swing.{BorderFactory, JOptionPane}
 import scala.swing._
 import scala.swing.event.{ButtonClicked, EditDone, MouseClicked}
 
@@ -39,6 +40,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   val prefSize=new Dimension(700,500)
   val okBut=new Button("Filtern")
   val cancelBut=new Button("Abbruch")
+  val colorBut=new Button("Farbe")
   val colorEdit=new TextField("")
   val findTextBut=new Button("Text finden ...")
   val elementPanel=new ListPanel("Zeichen-Elemente",SelectionFilterInfo.elemFilters,ix=>{
@@ -66,7 +68,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
 	  add(new BorderPanel(){
 	    add(Swing.VStrut(15),BorderPanel.Position.North)
 		  add(new BoxPanel(Orientation.Horizontal){
-		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorEdit+=findTextBut+=Swing.HGlue+=cancelBut
+		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorBut+=findTextBut+=Swing.HGlue+=cancelBut
 		  },BorderPanel.Position.Center)	    
 	  },BorderPanel.Position.South)
 	  
@@ -75,7 +77,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   modal=true
   title="Elemente filtern"  
 	contents=mainPanel
-	listenTo(okBut,cancelBut,colorEdit,findTextBut)
+	listenTo(okBut,cancelBut,colorBut,findTextBut)
 	stylePanel.listView.renderer=new ListView.AbstractRenderer[LineStyle,StylePreviewPan](new StylePreviewPan){
   	  def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: LineStyle, index: Int): Unit = {
   		  if(a!=null) {component.setStyle(a.ix);component.peer.setToolTipText(a.name)} else component.setEmpty()  	}
@@ -102,6 +104,18 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
     case EditDone(`colorEdit`)=>
       visible=false
       controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq.empty,Seq.empty,getColor))
+    case ButtonClicked(`colorBut`)=>
+      visible=false
+      controller.askForObjectSelection(new DefaultObjectSelectListener {
+        override def objectsSelected(obj: ObjectReference, editable: Boolean): Unit = {
+          controller.getElementByRef(obj.toObjectReference) match {
+            case Some(l:LinearElement)=>
+              controller.setSelectionFilter(new SelectionFilterInfo(Seq.empty,Seq.empty,Seq.empty,Seq.empty,Some(l.color)))
+            case o=> Log.w("Unknown Element "+o)
+          }
+          controller.cancelModus()
+        }
+      },"40,41,42,43,44,49")
     case ButtonClicked(`findTextBut`)=> JOptionPane.showInputDialog(this.peer,"Suchtext eingeben:") match {
       case null =>
       case text=>
@@ -120,7 +134,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   def getColor: Option[Int] =colorEdit.text.trim match {
     case "" => None
     case StrToInt(color)=>Some(color)
-    case _=> None
+    case o=> Log.e("Unknown Color "+o); None
   }
 	
 	def getInfo:SelectionFilterInfo={

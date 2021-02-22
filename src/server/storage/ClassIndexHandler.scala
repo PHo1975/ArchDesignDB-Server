@@ -3,11 +3,10 @@
  */
 package server.storage
 
-import java.io._
-
 import definition.data.{InstanceData, Reference, TransType}
 import server.config.FSPaths
 
+import java.io._
 import scala.collection.immutable
 
 trait RecordListener {
@@ -143,7 +142,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 
 	def foreachInstance(listener: RecordListener): Unit = {
 		theFile.seek(0)
-		println(" num:"+numRecords)
+		println("foreach instance num records:"+numRecords+" tailspace:"+tailSpace)
 		for (_ <- 0 until numRecords - tailSpace) {
 			theFile.read(readBuffer, 0, staticData.recordSize)
 			inBufferStream.reset()
@@ -152,6 +151,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 			if (dataPos >= 0) listener.nextRecord(inst, dataPos, dataInStream.readInt, dataInStream.readLong, dataInStream.readInt,
 				dataInStream.readLong, dataInStream.readInt, dataInStream.readLong, dataInStream.readInt)
 		}
+		resetLastReadID()
 	}
 
 	def getInstancesRefs: Array[Reference] = readFully().filter(_.dataPos >= 0).map(record => new Reference(theClass.id, record.inst))
@@ -171,6 +171,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 		theFile.read(bulkReadBuffer, 0, staticData.recordSize * (endInst - startInst + 1))
 		//System.out.println("buffer read "+(endInst-startInst+1).toInt)
 		//inBufferStream.reset
+		resetLastReadID()
 		for (i <- startInst to endInst; offset = (i - startInst) * staticData.recordSize + 4;
 				 rPos = getLong(bulkReadBuffer, offset);
 				 rSize = getInt(bulkReadBuffer, offset + 8); if rSize != 0 && rPos >= 0) yield
@@ -187,6 +188,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 		theFile.read(bulkReadBuffer, 0, staticData.recordSize * (endInst - startInst + 1))
 		//System.out.println("buffer push "+(endInst-startInst+1).toInt)
 		//inBufferStream.reset
+		resetLastReadID()
 		for (i <- startInst to endInst) {
 			val offset = (i - startInst) * staticData.recordSize + 4
 			out.writeInt(theClass.id) // reference
@@ -236,6 +238,7 @@ class ClassIndexHandler(val theClass: ServerObjectClass, val extension: String =
 	def readFully(): Array[IndexRecord] = {
 		val retArray = Array.ofDim[IndexRecord](numRecords)
 		theFile.seek(0)
+		resetLastReadID()
 		for (i <- 0 until numRecords) {
 			theFile.read(readBuffer, 0, staticData.recordSize)
 			inBufferStream.reset()

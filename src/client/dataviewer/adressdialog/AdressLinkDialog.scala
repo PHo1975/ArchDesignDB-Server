@@ -1,7 +1,5 @@
 package client.dataviewer.adressdialog
 
-import java.awt.Dimension
-
 import client.calender.{AdTreeNode, Address, Folder}
 import client.comm.ClientQueryManager
 import client.dialog.form.FormButtonListener
@@ -9,10 +7,11 @@ import client.ui.{ClientApp, ViewConstants}
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.StringConstant
 import definition.typ.SystemSettings
+
+import java.awt.Dimension
 import javax.swing.JTree
 import javax.swing.event.{TreeSelectionEvent, TreeSelectionListener}
 import javax.swing.tree.{DefaultMutableTreeNode, TreeNode, TreePath, TreeSelectionModel}
-
 import scala.jdk.CollectionConverters._
 import scala.swing.Table.{ElementMode, IntervalMode}
 import scala.swing.event.{ButtonClicked, EditDone}
@@ -22,11 +21,11 @@ object AdressLinkDialog{
   val letterType=54
   val addressType=100
   val folderType=110
-  val treeWidth=300
+  val treeWidth=500
 }
 
 class AdressLinkDialog (w:Window) extends Dialog(w){
-  val prefSize=new Dimension(750,700)
+  val prefSize=new Dimension(1150,700)
   preferredSize=prefSize
   modal=true
   title="Adresse auswählen"

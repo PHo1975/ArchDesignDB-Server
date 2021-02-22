@@ -3,13 +3,13 @@
  */
 package client.layout
 
-import java.awt.Color
-
 import client.model.TableViewbox
 import client.ui.ViewConstants
 import definition.comm.{IntValue, PropertyGroup, StringValue}
-import javax.swing.BorderFactory
+import util.Log
 
+import java.awt.Color
+import javax.swing.BorderFactory
 import scala.swing.event._
 import scala.swing.{BorderPanel, _}
 import scala.util.control.NonFatal
@@ -158,7 +158,7 @@ class Viewbox(val mainbox:MainBox,val showCloseButton:Boolean,var holder:Viewbox
 	def restoreSettings(groupStack: List[PropertyGroup], readyListener: (List[PropertyGroup]) => Unit): Unit =
 		try {
 			if(groupStack.isEmpty) {
-				//println("groupstack is empty, holder:" + content)
+				Log.w("groupstack is empty, holder:" + content)
 				Thread.dumpStack()
 				val ncontent = createStandardBox()
 				addContent(ncontent)
