@@ -3,15 +3,15 @@
  */
 package client.dataviewer
 
-import java.awt.Color
-
+import client.dataviewer.InstanceRenderer.partUnits
 import client.ui.ViewConstants
 import definition.expression._
 import definition.typ._
-import javax.swing.border.Border
-import javax.swing.{JLabel, UIManager}
 import util.{JavaUtils, Log}
 
+import java.awt.Color
+import javax.swing.border.Border
+import javax.swing.{JLabel, UIManager}
 import scala.swing._
 import scala.util.control.NonFatal
 
@@ -72,7 +72,8 @@ class InstanceRenderer(theClass:AbstractObjectClass) extends RendererLabel {
 						horizontalAlignment=Alignment.Right
 						try {
               val unitAdd=if (value.getType == DataType.UnitNumberTyp) " " + value.toUnitNumber.unitFraction.toString else ""
-              if (fieldFormat.formString.length > 0) fieldFormat.formString.format(value.toDouble) + unitAdd
+							if(partUnits.contains(unitAdd)&& (value.toDouble==Math.round(value.toDouble)) ) value.toInt.toString+unitAdd
+							else if (fieldFormat.formString.length > 0) fieldFormat.formString.format(value.toDouble) + unitAdd
               else value.toDouble.toString+unitAdd
             } catch {
 							case NonFatal(e)=>Log.e("field:"+(col-1)+" formString:"+fieldFormat.formString,e); value.toDouble.toString
@@ -122,4 +123,5 @@ object InstanceRenderer {
 	val emptyColor: Color = ViewConstants.leftPanelColor
 	//Color.lightGray.brighter()
 	val linkColor=new Color(0,150,0)
+	val partUnits: Array[String] =Array(" Stück"," Stck"," Pausch","Sack","Paar")
 }

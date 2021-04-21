@@ -13,12 +13,6 @@ import definition.expression.CommonFuncMan
 
 
 object ServerFuncMan extends CommonFuncMan {
-	
-
-  
-    
-
-	
-	
+  override val onlyIntUnits=Array("Stück","Stck","Pausch","Sack","Paar")
 
 }

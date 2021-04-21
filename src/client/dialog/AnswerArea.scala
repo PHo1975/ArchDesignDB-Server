@@ -67,7 +67,7 @@ class AnswerArea extends BoxPanel(scala.swing.Orientation.Vertical ) {
             case DataType.IntTyp =>  intPool.setupPanel()
             case DataType.LongTyp => intPool.setupPanel()
             case DataType.DoubleTyp => doublePool.setupPanel()
-            case DataType.StringTyp => stringPool.setupPanel()
+            case DataType.StringTyp => if(ans.constraint=="File") new FileAnswerPanel else stringPool.setupPanel()
             case DataType.EnumTyp => optionPool.setupPanel()
             case a =>
               if(customPools.contains(a)) {

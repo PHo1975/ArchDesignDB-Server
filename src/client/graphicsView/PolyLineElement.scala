@@ -26,7 +26,7 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
     case _ => new Area()
   }
 
-  println("poly "+nref+" "+poly.pathList.size)
+  //println("poly "+nref+" "+poly.pathList.size)
 
   /*def loopPoints(trans: (VectorConstant) => VectorConstant, delta: Double): Iterator[VectorConstant] =
     poly.pathList.headOption match {

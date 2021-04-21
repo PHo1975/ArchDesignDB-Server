@@ -3,22 +3,22 @@
  */
 package client.dialog
 
-import java.awt.geom.Rectangle2D
-import java.awt.{Graphics2D, Point}
-
 import client.graphicsView.{ObjectSelectMode, ViewportState, _}
 import client.ui.ViewConstants
 import definition.expression.{Constant, VectorConstant}
 import definition.typ.AllClasses
 import util.Log
+
+import java.awt.geom.Rectangle2D
+import java.awt.{Graphics2D, Point}
 //import client.graphicsView.MeasureMode
 import client.comm.ClientQueryManager
 import client.graphicsView.{AbstractLayer, ElemContainer, GraphElemTransferable}
 import client.ui.ClientApp
 import definition.data.{OwnerReference, Reference}
 import definition.expression.NULLVECTOR
-import javax.swing.TransferHandler
 
+import javax.swing.TransferHandler
 import scala.swing.Swing
 
 
@@ -177,7 +177,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       if(constraintsString.trim.length==0) Seq.empty
       else constraintsString.trim.split(',').map(_.toInt)
     }
-    //println("Ask for ObjectSeleection objSelectClassConstraints:"+objSelectClassConstraints)
+    println("Ask for ObjectSeleection objSelectClassConstraints:"+objSelectClassConstraints+" old state:"+_viewportState)
     if(viewportState==ViewportState.AskPoint) result=true
     changeViewportState(if(_viewportState==ViewportState.AskPoint)ViewportState.AskPointOrObject else ViewportState.ChoseObject,withStopModus)
     result
@@ -185,10 +185,11 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   def askForPointSelection(listener:SelectPointsListener):Unit= if(_viewportState==ViewportState.SelectState&& selectModel.selectionList.nonEmpty){
+    println("ask for point "+listener )
     selectPointsListener=Some(listener)
     pointSelectModel.deselect()
     changeViewportState(ViewportState.SelectPoints)
-  }
+  } else println("Ask for point but not Select state "+listener)
 
   /** gives the ViewController a list of GraphElems als temporary objects. They are shown in the canvas.
    * Each object must have a Reference (0,id). The user can choose one of the temporary objects.
@@ -281,23 +282,24 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   protected def findOnlyMatchingPoint(clickPosX:Double,clickPosY:Double,middleButton:Boolean):Option[VectorConstant] = {
     val matching=getNearestPoint(clickPosX,clickPosY)
         matching.hitBoth match {
-          case pos @ Some(_) => pos
+          case pos @ Some(_) => {/*println("Hit both");*/ pos}
           case None =>
             findCrossPoint(clickPosX,clickPosY) match {
-              case cp @ Some(_)=> cp
-              case None =>
+              case cp @ Some(_)=> {/*println("hit crosspoint");*/cp}
+              case None => if (middleButton)
                 matching match {
-                  case MatchingPoints(None,Some(nearestX),Some(nearestY)) if middleButton =>
+                  case MatchingPoints(None,Some(nearestX),Some(nearestY)) =>
                     //System.out.println("project both")
                   Some(new VectorConstant(nearestX.x,nearestY.y,0))
-                  case MatchingPoints(None,Some(nearestX),None) if middleButton =>
+                  case MatchingPoints(None,Some(nearestX),None) =>
                     //System.out.println("project x")
                   Some(new VectorConstant(nearestX.x,clickPosY,0))
-                  case MatchingPoints(None,None,Some(nearestY)) if middleButton =>
+                  case MatchingPoints(None,None,Some(nearestY))  =>
                     //System.out.println("project y")
                   Some(new VectorConstant(clickPosX,nearestY.y,0))
                   case _ => None
                 }
+                else None
             }
         }
 
@@ -579,10 +581,12 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
         case ViewportState.AskPointOrObject =>
           lastHittedElements = Nil
           findOnlyMatchingPoint(clickPosX, clickPosY, middleButton) match {
-            case Some(mPoint) => internSetPoint(mPoint) // Exact hit
+            case Some(mPoint) => internSetPoint(mPoint);println("hit:"+mPoint) // Exact hit
             case None =>
-              if (!filterEdibleElements(clickPosX, clickPosY))
+              if (!filterEdibleElements(clickPosX, clickPosY)) {
+                println("no edible Elements found")
                 internSetPoint(new VectorConstant(clickPosX, clickPosY, 0))
+              }
           }
         case ViewportState.ChoseObject => if (!middleButton) {
           lastHittedElements = Nil

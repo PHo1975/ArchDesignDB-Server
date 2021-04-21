@@ -3,11 +3,8 @@
  */
 package client.dataviewer
 
-import java.awt.datatransfer._
-import java.io.{File, Serializable}
-
 import client.comm.ClientQueryManager
-import client.dataviewer.export.{ExportModule, GAEB83Module}
+import client.dataviewer.export.{ExportModule, GAEB83Module, RechXTabExportModule}
 import client.dialog.DragDropListener
 import client.graphicsView.GraphElemTransferable
 import client.importer.{FileImportManager, OldDBConvertSettings}
@@ -15,9 +12,11 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression.FieldReference
 import definition.typ.AllClasses
-import javax.swing._
 import util.ExportContainer
 
+import java.awt.datatransfer._
+import java.io.{File, Serializable}
+import javax.swing._
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
@@ -298,5 +297,5 @@ object InstanceSelection {
   }
   def removeOnMoveHandler(id:Int):Unit =onMoveHandlerMap.remove(id)
 
-  val exportModules: Map[Int, ExportModule] =Map[Int,ExportModule]((136,GAEB83Module))
+  val exportModules: Map[Int, ExportModule] =Map[Int,ExportModule]((136,GAEB83Module),(163,RechXTabExportModule))
 }

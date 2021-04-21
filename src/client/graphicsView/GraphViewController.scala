@@ -3,10 +3,6 @@
  */
 package client.graphicsView
 
-import java.awt.MouseInfo
-import java.awt.event.{ComponentAdapter, ComponentEvent}
-import java.awt.geom.Rectangle2D.{Double => Rect2DDouble}
-
 import client.comm.ClientQueryManager
 import client.dataviewer.TitlePopupMenu
 import client.dialog._
@@ -15,9 +11,12 @@ import client.ui.ClientApp
 import definition.data._
 import definition.expression._
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
-import javax.swing.{JComponent, JLayeredPane, SwingUtilities}
 import util.Log
 
+import java.awt.MouseInfo
+import java.awt.event.{ComponentAdapter, ComponentEvent}
+import java.awt.geom.Rectangle2D.{Double => Rect2DDouble}
+import javax.swing.{JComponent, JLayeredPane, SwingUtilities}
 import scala.collection.mutable.ArrayBuffer
 import scala.swing._
 import scala.swing.event._
@@ -179,15 +178,17 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	
 	override def findCrossPoint(clickPosX:Double,clickPosY:Double):Option[VectorConstant]= {
     val lcd=getCurrentLineCatchDistance
+
     val lines: Iterable[GraphElem] =layerModel.filterLayersSelection(onlyEdible = false, el => el.ref.typ==GraphElemConst.lineClassID &&
       el.hits(this,clickPosX,clickPosY,lcd)).flatMap(_._2)
     if (lines.size>1) {
+			//println("Find Cross lines "+clickPosX+","+clickPosY+" lcd: "+lcd+" :\n  "+lines.map(_.asInstanceOf[LineElement].delta).mkString("\n  "))
       val firstLine=lines.head.asInstanceOf[LineElement]
       val firstLineDelta=firstLine.delta
       val iter=lines.iterator
       iter.next()
-      iter.find{case el:LineElement => !el.delta.isLinearyDependentFrom(firstLineDelta);case _ => false } match {
-        case Some(secondLine:LineElement)=> Some(firstLine.toLine3D.intersectionWith(secondLine.toLine3D))
+      iter.find{case el:LineElement => !el.delta.isNearlyLinearyDependentFrom(firstLineDelta,0.0001d);case _ => false } match {
+        case Some(secondLine:LineElement)=>{/*println("Cross \n"+firstLine+" \n"+secondLine);*/ Some(firstLine.toLine3D.intersectionWith(secondLine.toLine3D))}
         case _ => None
       }
     }
@@ -212,34 +213,34 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
   def filterSelection(clickPosX: Double, clickPosY: Double, lcd: Double): Iterable[(AbstractLayer, Iterable[GraphElem])] =
     layerModel.filterLayersSelection(onlyEdible = true, el => el.hits(this, clickPosX, clickPosY, lcd))
 	
-	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit =
-	  //println("processElementClick "+hittedElements.mkString(", "))
-    try
-      objSelectMode match {
-        case ObjectSelectMode.TempObject =>
-          for (o <- objSelectListener) o.tempObjectSelected(hittedElements.head.ref.instance)
-          clearNewElements()
-        case ObjectSelectMode.EdgeAndPoint =>
-          val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
-          for (o <- objSelectListener) o.objectsSelectedWithPoint(ObjectReference(hittedElements.head.ref), hPoint, editable)
-        //Swing.onEDT{changeViewportState(ViewportState.SelectState)} // execute after seconnd question is loaded
-        case ObjectSelectMode.SegmentPart => if (editable) {
-          //println("segment part :"+editable)
-          val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
-          layerModel.getSegmentPart(hittedElements.head, hPoint) match {
-            case Some((p1, p2)) => for (o <- objSelectListener)
-              o.segmentPartSelected(ObjectReference(hittedElements.head.ref), p1, p2)
-            case None => //DialogManager.reset
-          }
-        }
-        case ObjectSelectMode.SingleObject | ObjectSelectMode.SingleObjectNotSelected =>
-          for (o <- objSelectListener) o.objectsSelected(ObjectReference(hittedElements.head.ref), editable)
-      }
-    catch {
-      case NonFatal(e) => ClientQueryManager.printErrorMessage(e.toString)
-      case other: Throwable => println(other); System.exit(0)
-    }
-
+	def processElementClick(clickPosX:Double,clickPosY:Double,hittedElements:Iterable[GraphElem],editable:Boolean):Unit = {
+		println("processElementClick " + hittedElements.mkString(", "))
+		try
+			objSelectMode match {
+				case ObjectSelectMode.TempObject =>
+					for (o <- objSelectListener) o.tempObjectSelected(hittedElements.head.ref.instance)
+					clearNewElements()
+				case ObjectSelectMode.EdgeAndPoint =>
+					val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
+					for (o <- objSelectListener) o.objectsSelectedWithPoint(ObjectReference(hittedElements.head.ref), hPoint, editable)
+				//Swing.onEDT{changeViewportState(ViewportState.SelectState)} // execute after seconnd question is loaded
+				case ObjectSelectMode.SegmentPart => if (editable) {
+					//println("segment part :"+editable)
+					val hPoint = new VectorConstant(clickPosX, clickPosY, 0)
+					layerModel.getSegmentPart(hittedElements.head, hPoint) match {
+						case Some((p1, p2)) => for (o <- objSelectListener)
+							o.segmentPartSelected(ObjectReference(hittedElements.head.ref), p1, p2)
+						case None => //DialogManager.reset
+					}
+				}
+				case ObjectSelectMode.SingleObject | ObjectSelectMode.SingleObjectNotSelected =>
+					for (o <- objSelectListener) o.objectsSelected(ObjectReference(hittedElements.head.ref), editable)
+			}
+		catch {
+			case NonFatal(e) => ClientQueryManager.printErrorMessage(e.toString)
+			case other: Throwable => println(other); System.exit(0)
+		}
+	}
 	
 	
 	def getFirstHittedElement(hittedElements:Iterable[(AbstractLayer,Iterable[GraphElem])]):(AbstractLayer,Iterable[GraphElem])={

@@ -651,7 +651,7 @@ class BitmapModule extends ActionModule with GraphActionModule {
 
   def createBitmapAction = new CreateActionImpl("Bitmap", Some(DialogQuestion("Bitmap erzeugen",
       Seq(new AnswerDefinition("Dateipfad", DataType.StringTyp, Some(
-        DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))))))), doCreateBitmap)
+        DialogQuestion("Bitmap erzeugen", Seq(new AnswerDefinition("Absetzposition", DataType.VectorTyp, None)))),"File")))), doCreateBitmap)
 
 	def doCreateBitmap(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean=
     if(parents.size>1) {Log.e("Multiple parents !");false} else {

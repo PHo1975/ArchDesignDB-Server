@@ -4,8 +4,9 @@
 package server.storage
 
 import definition.data._
-import definition.expression.{CommonFuncMan, FunctionManager}
+import definition.expression.FunctionManager
 import definition.typ.{AllClasses, BlockClass, SystemSettings}
+import runtime.function.ServerFuncMan
 import server.comm.CommonSubscriptionHandler
 import server.config.FSPaths
 import server.storage.TransLogHandler.recordSize
@@ -62,7 +63,7 @@ object StorageManager {
     serverClassList=scl.classList
 		blockClassList=scl.blockClassList
   	if(shuttedDown)	shuttedDown=false
-  	FunctionManager.setManager(new CommonFuncMan)
+  	FunctionManager.setManager(ServerFuncMan)
   }
 
 	def ixHandler(typ:Int): ClassIndexHandler = _ixHandlerList.getOrElseUpdate(typ,new ClassIndexHandler(serverClassList(typ)))
