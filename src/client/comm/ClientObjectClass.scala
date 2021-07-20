@@ -7,9 +7,9 @@ import client.dialog._
 import client.dialog.form.{FormBox, FormCreateContext}
 import client.ui.ClientApp
 import definition.typ._
-import javax.swing.JComponent
 import util.XMLUtils.readOptString
 
+import javax.swing.JComponent
 import scala.util.control.NonFatal
 
 class ClientClasses (node:scala.xml.Node) extends AllClasses [ClientObjectClass] {
@@ -17,7 +17,7 @@ class ClientClasses (node:scala.xml.Node) extends AllClasses [ClientObjectClass]
 	var blockClassList:Map[Int,BlockClass]=blockClassListfromXML(node)
 	
 	def classListfromXML(node: scala.xml.Node):Map[Int,ClientObjectClass] = {
-		val sNode= node \"ClassList"
+		//val sNode= node \"ClassList"
     (for (ac<- node \\ "OClass";oc= ClientObjectClass.fromXML(ac))	yield oc.id -> oc).toMap
 	}
 
@@ -103,7 +103,7 @@ object ClientObjectClass {
 			for(afield <- fieldNode \ "FD") yield FieldDefinition.fromXML(afield),
 			for(afield <- settingsNode \ "FS") yield FieldSetting.fromXML(afield),
 			for(bfield <- propNode \ "PropertyFD") yield PropertyFieldDefinition.fromXML(bfield,CreateChildDefinition.fromXML),
-			for(bpfield <-blockPropNode\ "BlockProperty") yield BlockPropertyFieldDefinition.fromXML((bpfield)),
+			for(bpfield <-blockPropNode\ "BlockProperty") yield BlockPropertyFieldDefinition.fromXML(bpfield),
 		  for(efield <- actionsNode \\ "Action")yield ActionDescription.fromXML(efield),
 		  superClasses,{
 		  	shortForm=InstFormat.read(node \"@shortForm")
@@ -114,8 +114,8 @@ object ClientObjectClass {
 		  	if(lf==NOFORMAT) shortForm else lf
 		  },InstFormat.read(node \"@resForm"),
 		  readFormBox(formNode),
-		  if(instEditorName.length==0)None else Some(instEditorName),
-		  if(importDescriptor.length==0) None else Some(importDescriptor)
+		  if(instEditorName.isEmpty)None else Some(instEditorName),
+		  if(importDescriptor.isEmpty) None else Some(importDescriptor)
 	  )
 	}
 	

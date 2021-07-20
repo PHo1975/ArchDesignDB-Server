@@ -43,6 +43,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   val colorBut=new Button("Farbe")
   val colorEdit=new TextField("")
   val findTextBut=new Button("Text finden ...")
+  val findSymbolBut=new Button("Symbol finden ...")
   val elementPanel=new ListPanel("Zeichen-Elemente",SelectionFilterInfo.elemFilters,ix=>{
    controller.setSelectionFilter(new SelectionFilterInfo(mapElemTypes(Seq(ix)),Seq.empty,Seq.empty,Seq.empty,None))
    visible=false
@@ -68,7 +69,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
 	  add(new BorderPanel(){
 	    add(Swing.VStrut(15),BorderPanel.Position.North)
 		  add(new BoxPanel(Orientation.Horizontal){
-		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorBut+=findTextBut+=Swing.HGlue+=cancelBut
+		    contents+=okBut+=Swing.HGlue+=new Label(" Color:" )+=colorBut+=findTextBut+=findSymbolBut+=Swing.HGlue+=cancelBut
 		  },BorderPanel.Position.Center)	    
 	  },BorderPanel.Position.South)
 	  
@@ -77,7 +78,7 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
   modal=true
   title="Elemente filtern"  
 	contents=mainPanel
-	listenTo(okBut,cancelBut,colorBut,findTextBut)
+	listenTo(okBut,cancelBut,colorBut,findTextBut,findSymbolBut)
 	stylePanel.listView.renderer=new ListView.AbstractRenderer[LineStyle,StylePreviewPan](new StylePreviewPan){
   	  def configure(list: ListView[_], isSelected: Boolean, focused: Boolean, a: LineStyle, index: Int): Unit = {
   		  if(a!=null) {component.setStyle(a.ix);component.peer.setToolTipText(a.name)} else component.setEmpty()  	}
@@ -121,6 +122,12 @@ class SelectionFilterDialog(w:Window,controller:GraphViewController) extends Dia
       case text=>
         visible=false
         controller.findText(text)
+    }
+    case ButtonClicked(`findSymbolBut`)=> JOptionPane.showInputDialog(this.peer,"Symbol-Instanz:") match {
+      case null =>
+      case StrToInt(symbInst) =>
+        visible=false
+        controller.findSymbol(symbInst)
     }
   }
 	

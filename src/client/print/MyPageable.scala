@@ -26,6 +26,7 @@ class APrintScaler(ctx:RenderContext) extends ScaleModel {
   var yoff:Double=0d
 	val intLine=new Line2D.Double
 	val myStroke=new BasicStroke(0.3f)
+	colorsFixed=false
 
 	override def xToScreen(x: Double): Float = ctx.toUnit(x * myScale + xoff)
 

@@ -3,14 +3,13 @@
  */
 package client.dialog
 
-import java.awt.Dimension
-
 import client.ui.ViewConstants
 import definition.data.Referencable
 import definition.typ.{AllClasses, SelectGroup}
-import javax.swing.BorderFactory
 import util.Log
 
+import java.awt.Dimension
+import javax.swing.BorderFactory
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.swing.BoxPanel
@@ -27,8 +26,8 @@ class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with 
 	protected var groupList:Iterable[SelectGroup[_<:Referencable]]= _
 	protected var commonTyp:Int = -1
   protected var currentEditors: ArrayBuffer[FieldEditor] = collection.mutable.ArrayBuffer[FieldEditor]()
-	border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),
-	    BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(8,0,6,0),"Felder:"))
+	val tborder=BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(8,0,6,0),"Felder:")
+	border=BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(8,0,6,0),tborder )
 	xLayoutAlignment=0.5d
 
   def selectionChanged[T <: Referencable](sender: SelectSender, groups: Iterable[SelectGroup[T]], alsoSelected: Iterable[T] = Nil): Unit = {
@@ -41,6 +40,7 @@ class FieldEditorsPanel extends BoxPanel(scala.swing.Orientation.Vertical) with 
 			contents.clear()
 			currentEditors.clear()
 			commonTyp=newCommonTyp
+			if(newCommonTyp==202) tborder.setTitle("Projektziele:") else tborder.setTitle("Felder:")
 			
 			if(newCommonTyp> 0) {
 				//System.out.println("fieldEditorPanel sel changed "+groups+" "+sender+" commonTyp:"+newCommonTyp)

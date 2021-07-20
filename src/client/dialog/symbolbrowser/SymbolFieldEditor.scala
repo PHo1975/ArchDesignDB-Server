@@ -1,11 +1,10 @@
 package client.dialog.symbolbrowser
 
-import java.awt.Dimension
-
 import client.dialog._
-import client.graphicsView.symbol.{SymbolElem, SymbolFiller, SymbolOrient}
+import client.graphicsView.symbol.{SymbolElem, SymbolFiller, SymbolOrient, SymbolStamp}
 import client.ui.ViewConstants
 
+import java.awt.Dimension
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, ButtonGroup, CheckBox, Label, Orientation, RadioButton, Swing}
 
@@ -16,18 +15,24 @@ class SymbolFieldEditor extends FieldEditor {
    
    lazy val angleField=new SidePanelDoubleTextField(Map("SymbolElem"->2,"SymbolFiller"->2),this)
    lazy val scaleField=new SidePanelDoubleTextField(Map("SymbolElem"->3,"SymbolFiller"->3),this)
+   lazy val refField=new SidePanelLabel(Map("SymbolElem"->1,"SymbolFiller"->1),this)
    
    angleField.addSearchLookup{case symb:SymbolElem=>symb.angle;case fill:SymbolFiller=>fill.angle }
    scaleField.addSearchLookup{case symb:SymbolElem=>symb.scale;case fill:SymbolFiller=>fill.scale }
+  def stampToLabel(stamp:Option[SymbolStamp]): String =stamp match {
+    case Some(st)=>st.name+"<br>"+st.ref.instance.toString
+    case None=> "Unknown Stamp"
+  }
+  refField.addSearchLookup({case symb:SymbolElem=>stampToLabel(symb.stamp);case fill:SymbolFiller=>stampToLabel(fill.stamp)})
    
-   lazy val panel=new BoxPanel(Orientation.Vertical){
-     contents+=getPanelPart("Winkel:",angleField)+=getPanelPart("Zoom:",scaleField)
-     maximumSize = new Dimension(Short.MaxValue, 64 * ViewConstants.fontScale / 100)
+   lazy val panel: BoxPanel =new BoxPanel(Orientation.Vertical){
+     contents+=getPanelPart("Winkel:",angleField)+=getPanelPart("Zoom:",scaleField)+=getPanelPart("Symbol:",refField)
+     maximumSize = new Dimension(Short.MaxValue, 134 * ViewConstants.fontScale / 100)
      xLayoutAlignment=0d
      opaque=false
    }
    
-   lazy val fieldComponents=Seq(angleField,scaleField)
+   lazy val fieldComponents=Seq(angleField,scaleField,refField)
 
   def getPanel: BoxPanel = panel
 }
@@ -39,7 +44,7 @@ class SymbolFieldEditor extends FieldEditor {
 class SymbolFillerFieldEditor extends FieldEditor {
    lazy val allowedClassNames=Seq("SymbolFiller")
    
-   lazy val firstField=new SidePanelDoubleTextField(Map("SymbolFiller"->8),this,4) {
+   lazy val firstField: SidePanelDoubleTextField =new SidePanelDoubleTextField(Map("SymbolFiller"->8),this,4) {
      override def filter(st: Double): Boolean = if (fixedCheckBox.selected) st > 1 else true
      addSearchLookup{ case fill:SymbolFiller=>
        numElemsLab.text="Anzahl: "+fill.fillData.elemRange.size.toString
@@ -52,7 +57,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
      }
    }  
    
-   lazy val secondField=new SidePanelDoubleTextField(Map("SymbolFiller"->9),this,4) {     
+   lazy val secondField: SidePanelDoubleTextField =new SidePanelDoubleTextField(Map("SymbolFiller"->9),this,4) {
      addSearchLookup{ case fill:SymbolFiller=> fill.fillData match {
        case b:SymbolFiller#DivideFill=>b.offset
        case c:SymbolFiller#TileFill=>c.startOffset
@@ -60,7 +65,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
      }}
    }
    
-   lazy val codeField=new IntSidePanelComponent {
+   lazy val codeField: IntSidePanelComponent =new IntSidePanelComponent {
      val allowedFields=Map("SymbolFiller"->7.toByte)
      addSearchLookup{ case fill:SymbolFiller=>
        numElemsLab.text="Anzahl: "+fill.fillData.elemRange.size.toString
@@ -97,7 +102,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
   val numElemsLab: Label = ViewConstants.label("..")
    numElemsLab.xLayoutAlignment=0d
    
-   lazy val panel=new BoxPanel(Orientation.Vertical){
+   lazy val panel: BoxPanel =new BoxPanel(Orientation.Vertical){
      contents+=fixedCheckBox+=tileCheckBox+=defDistCheckBox+=circleCheckBox+=Swing.VStrut(10)+=part1+=part2+=
        thirdCheckBox+=Swing.VStrut(15)+=numElemsLab
      maximumSize = new Dimension(Short.MaxValue, 214 * ViewConstants.fontScale / 100)
@@ -128,7 +133,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
 
   def getPanel: BoxPanel = panel
    
-   private def setFillMode(mode:Int)= {
+   private def setFillMode(mode:Int): Unit = {
      val currValue=codeField.currentValue match{
        case Some(v)=>v
        case _=> 0
@@ -136,7 +141,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
      this.storeValue((currValue & -97)+(mode<<5), codeField)
    }
    
-   private def setFixed()={
+   private def setFixed(): Unit ={
      selfSelected=true
      fixedCheckBox.selected=true
      part1.visible=true
@@ -146,7 +151,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
      selfSelected=false
    }
    
-   private def setTile(thirdChecked:Boolean)={
+   private def setTile(thirdChecked:Boolean): Unit ={
      selfSelected=true
      tileCheckBox.selected=true
      part1.visible=true
@@ -160,7 +165,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
    }
    
    
-   private def setDefDist(thirdChecked:Boolean)={
+   private def setDefDist(thirdChecked:Boolean): Unit ={
      selfSelected=true
      defDistCheckBox.selected=true
      part1.visible=true
@@ -173,7 +178,7 @@ class SymbolFillerFieldEditor extends FieldEditor {
      selfSelected=false
    }
    
-   private def setNone()= {
+   private def setNone(): Unit = {
      selfSelected=true
      bGroup.peer.clearSelection()
      part1.visible=false   

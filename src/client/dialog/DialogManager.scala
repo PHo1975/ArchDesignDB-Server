@@ -3,8 +3,6 @@
  */
 package client.dialog
 
-import java.awt.{Color, Dimension}
-
 import client.comm.ClientQueryManager
 import client.dataviewer._
 import client.graphicsView.AbstractSelectModel
@@ -13,9 +11,10 @@ import client.ui.{ClientApp, ViewConstants}
 import definition.data._
 import definition.expression.Constant
 import definition.typ._
-import javax.swing.BorderFactory
 import util.Log
 
+import java.awt.{Color, Dimension}
+import javax.swing.BorderFactory
 import scala.swing._
 import scala.swing.event._
 import scala.util.control.NonFatal
@@ -66,7 +65,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 		preferredSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 70 * ViewConstants.fontScale / 100)
 		maximumSize = new Dimension(ViewConstants.sidePanelWidth + 20 * ViewConstants.fontScale / 100, 70 * ViewConstants.fontScale / 100)
 	  peer.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
-	  border=BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), "  Ausgewählt:")
+	  border=BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), " Ausgewählt:")
 	}
 	
 
@@ -142,7 +141,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 	def reset():Unit= lock.synchronized{
 	 //println("\nReset isactive:"+dialogIsActive+" "+answerList.mkString+" is repeating:"+isQuestionRepeating+" hasRep:"+hasRebound)
 
-    println("reset Dialog")
+    //println("reset Dialog")
 		//println(Thread.currentThread().getStackTrace.slice(1, 16).mkString("\n "))
 	  resetDraggerToast()
 		FollowMouseToast.reset()
@@ -418,7 +417,7 @@ object DialogManager extends SelectListener /*with ActionPanListener*/{
 						case None=>
 		  		}
 		  	case None=> for(ca<-currentAction;group <-actionGroups ) {
-					Log.w("Execute Action "+ca)
+					//Log.w("Execute Action "+ca)
 		  	  ClientQueryManager.executeAction(group.parent,group.children,ca.name,answerList.toSeq)
 				}
 			}

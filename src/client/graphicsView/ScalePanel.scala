@@ -3,18 +3,17 @@
  */
 package client.graphicsView
 
-import java.awt.Color
-import java.awt.geom.{Area, Rectangle2D}
-
 import client.comm.KeyStrokeManager
 import client.dataviewer.TitlePopupMenu
 import client.dialog.{AbstractPanelButton, DialogManager}
 import client.ui.ViewConstants
 import definition.data.{ResultElement, StyleService}
-import definition.expression.{PointList, Polygon, VectorConstant}
+import definition.expression.{PointList, Polygon, PolygonToJavaArea, VectorConstant}
 import definition.typ.{AnswerDefinition, DataType, DialogQuestion}
-import javax.swing.BorderFactory
 
+import java.awt.Color
+import java.awt.geom.Rectangle2D
+import javax.swing.BorderFactory
 import scala.collection.mutable.ArrayBuffer
 import scala.swing._
 import scala.swing.event._
@@ -269,7 +268,7 @@ class ScalePanel(model:ScaleModel,controller:GraphViewController) extends BoxPan
     
     def createPolyShape(spoints:Iterable[VectorConstant])= {
 			val plist = PointList(spoints.toSeq)
-      new Area(new Polygon(Nil,List(plist)).toPathTransformed(transform))
+      PolygonToJavaArea.toPathTransformed(new Polygon(Nil,List(plist)),transform)
     }
         
     DialogManager.startIntermediateQuestion(question, (answerList: Seq[ResultElement]) =>{

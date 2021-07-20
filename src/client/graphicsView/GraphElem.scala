@@ -16,7 +16,7 @@ import util.{Log, StringUtils}
 
 import java.awt.font.{FontRenderContext, TextHitInfo, TextLayout}
 import java.awt.geom.Rectangle2D.{Double => Rect2dDouble, Float => Rect2dFloat}
-import java.awt.geom._
+import java.awt.geom.{AffineTransform, Arc2D, Line2D, Rectangle2D}
 import java.awt.{Color, Font, Graphics2D, GraphicsEnvironment}
 import java.io.DataInput
 import scala.collection.mutable
@@ -406,8 +406,7 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 
   override def draw(g: Graphics2D, sm: Scaler, selectColor: Color = null): Unit = {
 	  val trans=GraphElemConst.transform(sm)_
-	  val newPoly=poly.toPathTransformed(trans)
-	  val theArea=new Area(newPoly)
+	  val theArea=PolygonToJavaArea.toPathTransformed(poly,trans)
 		g.setPaint( StyleService.getAlphaColor(color))
 		g.fill(theArea)
 
@@ -452,9 +451,11 @@ class PolyElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,val fi
 
   private def internDraw(g:Graphics2D,sm:Scaler,selectColor:Color,trans:VectorConstant=>VectorConstant,offSet:VectorConstant): Unit ={
 	  //val trans=transformWithOffset(sm,offSet)_
-	  val newPoly=poly.toPathTransformed(trans)
-	  val theArea=new Area(newPoly)
-
+	  val theArea=new java.awt.geom.Area(PolygonToJavaArea.toPathTransformed(poly,p=>{val n=trans(p)
+      new VectorConstant(sm.xToScreen(n.x),sm.yToScreen(n.y),0)
+    }))
+    g.setPaint( StyleService.getAlphaColor(color))
+    g.fill(theArea)
 		for(hs<-hatchStyle) {
 		  g.setPaint(new Color(color))
 		  HatchHandler.drawHatch(poly,hs,sm,paperScale,g,fillC,startPoint,hatchAngle,offSet)
@@ -595,6 +596,14 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
       GraphElemConst.drawLineFloatStandardStroke(g,mx-rh,my,mx+rh,my)
       GraphElemConst.drawLineFloatStandardStroke(g,mx,my-rh,mx,my+rh)
     }
+    /*val bx=sm.xToScreen(bounds.x)
+    val by=sm.yToScreen(bounds.y)
+    val bx2=sm.xToScreen(bounds.width)
+    val by2=sm.yToScreen(bounds.height)
+    GraphElemConst.drawLineFloatStandardStroke(g,bx,by,bx,by2)
+    GraphElemConst.drawLineFloatStandardStroke(g,bx2,by,bx2,by2)
+    GraphElemConst.drawLineFloatStandardStroke(g,bx,by,bx2,by)
+    GraphElemConst.drawLineFloatStandardStroke(g,bx,by2,bx2,by2)*/
 	}
 
   def angleFromPoint(p: VectorConstant): Double = {
@@ -622,10 +631,11 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 
   def calcArcBounds: Rect2dDouble = {
 		val pointBuffer=collection.mutable.ArrayBuffer[VectorConstant]()+=points.head+=points.tail.head
-		val sa=startAngle%360d
-		var ea=(if(endAngle<sa) endAngle+360d else endAngle)%360d
+		val sa: Double =startAngle%360d
+    var ea: Double =endAngle%360d
+		if(ea<sa) ea=ea+360d
 		if(ea==sa)ea+=360d
-		var nextSegmentAngle=((scala.math.floor(sa/90d)+1d)*90d)%360d
+		var nextSegmentAngle=(scala.math.floor(sa/90d)+1d)*90d
 		//System.out.println("startAngle "+sa+" "+nextSegmentAngle+" ea:"+ea)
 		while (nextSegmentAngle<ea) {
 			val np=pointFromAngle(nextSegmentAngle)
@@ -633,8 +643,9 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
 			pointBuffer+=np
 			nextSegmentAngle+=90d
 		}
-		//println(f"calc bounds $diameter%2.2f "+pointBuffer.mkString("|"))
-		GraphElemConst.getPointsBounds(pointBuffer.toSeq)
+		val b=GraphElemConst.getPointsBounds(pointBuffer.toSeq)
+    //println(f"calc bounds $diameter%2.2f "+pointBuffer.mkString("|")+"\n"+b)
+    b
 	}
 
 	def pointFromAngle(angle:Double) =
@@ -652,6 +663,10 @@ case class ArcElement(nref:Reference,ncolor:Int,nlineWidth:Int,nlineStyle:Int,ce
    formatDXF(centerPoint.x+offset.x)+"\r\n 20\r\n"+formatDXF(centerPoint.y+offset.y)+"\r\n 30\r\n"+formatDXF(centerPoint.z+offset.z)+
    "\r\n 40\r\n"+formatDXF(diameter)+"\r\n100\r\nAcDbArc\r\n 50\r\n"+formatDXF(startAngle)+"\r\n 51\r\n"+formatDXF(endAngle)
   }
+
+  /*override def intersectsRect(cont: ElemContainer, rect: Rect2dDouble): Boolean = {
+
+  }*/
 }
 
 

@@ -3,12 +3,11 @@
  */
 package client.graphicsView
 
-import java.awt.Color
-
 import client.dialog.{FieldEditor, PanelPart, SidePanelComponent}
 import definition.expression.{Constant, Expression, IntConstant}
-import javax.swing.JColorChooser
 
+import java.awt.Color
+import javax.swing.JColorChooser
 import scala.swing.event.ButtonClicked
 import scala.swing.{Button, Color, Panel}
 
@@ -30,7 +29,7 @@ class ColorFieldEditor extends FieldEditor {
 		})
 
     override def setValue(newColor: Option[Color]): Unit = {
-			println("setValue "+newColor)
+			//println("setValue "+newColor)
 		  visible= ColorFieldEditor.showEditor
 		  super.setValue(newColor)
 			newColor match {

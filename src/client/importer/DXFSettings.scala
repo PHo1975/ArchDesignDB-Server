@@ -1,11 +1,10 @@
 package client.importer
 
-import java.io.{BufferedReader, File, FileReader}
-
 import client.graphicsView.Handlers._
 import client.graphicsView.{FontHandler, HatchHandler, HatchStyle}
 import definition.data.LineStyle
 
+import java.io.{BufferedReader, File, FileReader}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
@@ -29,7 +28,7 @@ class HatchStylewithUnknownLS (n:String,a1:Double,ls1:Int,d1:Double,a2:Double,ls
 
 class DXFSettings {
   var drawingScale:Double  =1
-  var textYAdjust=0d
+  var textYAdjust=1d
   var drawingScaleID:Int=0
   var fontScale:Double=1
   val drawingLineStyles: ArrayBuffer[LineStyle] =ArrayBuffer[LineStyle]()
@@ -45,6 +44,8 @@ class DXFSettings {
   var allTextsBlack=true
   var dx:Double=0d
   var dy:Double=0d
+  var explodeBlocks:Boolean=false
+  var globalScale:Double=1.0
   
   def analyzeFile(file:File):Unit = {
      val reader=new BufferedReader(new FileReader(file))

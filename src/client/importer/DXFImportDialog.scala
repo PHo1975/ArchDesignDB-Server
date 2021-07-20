@@ -1,14 +1,13 @@
 package client.importer
 
-import java.awt.{Dimension, Point, Rectangle}
-import java.io.File
-
 import client.graphicsView.Handlers._
 import client.graphicsView._
 import client.ui.ViewConstants
 import definition.typ.SystemSettings
 import util.StrToDouble
 
+import java.awt.{Dimension, Point, Rectangle}
+import java.io.File
 import scala.swing.event.{ButtonClicked, EditDone, SelectionChanged}
 import scala.swing.{BorderPanel, BoxPanel, Button, CheckBox, ComboBox, Dialog, Label, ListView, Orientation, ScrollPane, Swing, TabbedPane, TextField, Window}
 
@@ -45,12 +44,14 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   val dyLab: Label = ViewConstants.label("dy:")
   val dxEdit= new TextField("0")
   val dyEdit=new TextField("0")
+  val scaleEdit= new TextField("1")
   
   val lineCheckBox=new CheckBox("Linien")
   val arcCheckBox=new CheckBox("Kreise")
   val ellCheckBox=new CheckBox("Ellipsen")
   val textCheckBox=new CheckBox("Text")
   val colorPenCouplingBox=new CheckBox("Farb-Stift-Kopplung")
+  val explodeBlocksBox=new CheckBox("Blöcke auflösen")
 
   
   lineCheckBox.selected=true
@@ -83,6 +84,10 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
         contents+=dyLab
         contents+=dyEdit
       }
+      contents+=new BoxPanel(Orientation.Horizontal){
+        contents+=new Label("Skalierungs-Faktor:")
+        contents+=scaleEdit
+      }
       contents+=Swing.VGlue
     }
   }
@@ -98,7 +103,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   
   val elementsPane: BoxPanel =new BoxPanel(Orientation.Vertical){
     contents += ViewConstants.label("Elemente")
-    contents+=colorPenCouplingBox+=lineCheckBox+=arcCheckBox+=ellCheckBox+=textCheckBox
+    contents+=colorPenCouplingBox+=lineCheckBox+=arcCheckBox+=ellCheckBox+=textCheckBox+=explodeBlocksBox
   }
   
   val contentsPane: BoxPanel =new BoxPanel(Orientation.Horizontal){
@@ -208,7 +213,7 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
   }
   
   listenTo(cancelBut,importBut,assignLineStyleBut,scaleCombo.selection,assignFontStyleBut,
-      assignHatchStyleBut,allTextBlackBut,fontScaleEdit,fontAdjustYEdit,dxEdit,dyEdit)
+      assignHatchStyleBut,allTextBlackBut,fontScaleEdit,fontAdjustYEdit,dxEdit,dyEdit,scaleEdit,explodeBlocksBox)
   
   reactions+= {
     case ButtonClicked(`cancelBut`)=> visible=false
@@ -244,21 +249,27 @@ class DXFImportDialog(w:Window,settings:DXFSettings,files:Iterable[File]) extend
         case StrToDouble(value)=>settings.fontScale=value
         case _=>
       }
+
+    case ButtonClicked(`explodeBlocksBox`)=>settings.explodeBlocks=explodeBlocksBox.selected
     
     case EditDone(`fontAdjustYEdit`) =>
       fontAdjustYEdit.text match {
         case StrToDouble(value)=>settings.textYAdjust=value
-        case _=>
+        case _ =>
       }
 
     case EditDone(`dxEdit`)=> dxEdit.text match {
       case StrToDouble(value)=> settings.dx=value
-      case _=>
+      case _ =>
     }
 
     case EditDone(`dyEdit`)=> dyEdit.text match {
       case StrToDouble(value)=> settings.dy=value
-      case _=>
+      case _ =>
+    }
+    case EditDone(`scaleEdit`)=>scaleEdit.text match {
+      case StrToDouble(value)=> settings.globalScale=value
+      case _ =>
     }
   }
   

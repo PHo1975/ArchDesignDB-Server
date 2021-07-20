@@ -10,7 +10,7 @@ import definition.typ._
 import util.{GraphUtils, Log}
 
 import java.awt.Graphics2D
-import java.awt.geom.{AffineTransform, Arc2D, Area}
+import java.awt.geom.{AffineTransform, Arc2D}
 
 
 object GraphCustomQuestionHandler extends CustomQuestionHandler {
@@ -125,23 +125,43 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
   }
 
 
-  def move(gc: GraphViewController): Unit = DialogManager.startIntermediateQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
-		moveStartAnswers) ,answerList=>{
-      answerList.head.result match{
-        case _:DoubleConstant=> DialogManager.startIntermediateQuestion(singleNumberQuestion("Verschieben","Delta Y eingeben:"),
-          _ =>{DialogManager.processResults()})
-        case startP:VectorConstant=>
-           val elements=getSelElements(gc.selectModel)
-        	 gc.setCustomDragger((pos,g)=>{
-             val sm=gc.scaleModel
-             val delta=pos-startP
-             for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
-        	 })
+  def move(gc: GraphViewController): Unit = {
+    def handleDelta(deltaX:Boolean)= {
+      DialogManager.startIntermediateQuestion(singlePointQuestion("Verschieben nur " + (if (deltaX) "X" else "Y"), "'Von Punkt' angeben", None),
+        ans2 => {
+          val elements = getSelElements(gc.selectModel)
+          gc.setCustomDragger((pos, g) => {
+            val sm = gc.scaleModel
+            val firstPoint=ans2.last.result.toVector
+            val delta = new VectorConstant(if(deltaX) pos.x - firstPoint.x else 0,if(deltaX)0 else pos.y-firstPoint.y,0)
+            for (el <- elements) el.drawWithOffset(g, sm, ColorMap.selectColor, delta)
+          })
+          DialogManager.startIntermediateQuestion(singlePointQuestion("Verschieben nur " + (if (deltaX) "X" else "Y"), "'Nach Punkt' angeben", None),
+            _ => DialogManager.processResults())
+        }
+      )
+    }
+    DialogManager.startIntermediateQuestion(DialogQuestion("Verschieben<br>Distanz angeben",
+      moveStartAnswers), answerList => {
+      answerList.head.result match {
+        case _: DoubleConstant => DialogManager.startIntermediateQuestion(singleNumberQuestion("Verschieben", "Delta Y eingeben:"),
+          _ => {
+            DialogManager.processResults()
+          })
+        case startP: VectorConstant =>
+          val elements = getSelElements(gc.selectModel)
+          gc.setCustomDragger((pos, g) => {
+            val sm = gc.scaleModel
+            val delta = pos - startP
+            for (el <- elements) el.drawWithOffset(g, sm, ColorMap.selectColor, delta)
+          })
           DialogManager.startIntermediateQuestion(singlePointQuestion("Verschieben", "'Nach Punkt' angeben", None),
-            _ =>DialogManager.processResults() )
+            _ => DialogManager.processResults())
+        case StringConstant("Nur X") => handleDelta(true)
+        case StringConstant("Nur Y") => handleDelta(false)
       }
-  })
-
+    })
+  }
 
   private def getSelElements(selMod:ViewSelectModel)=
   	if(selMod.numSelected>500) {
@@ -166,33 +186,43 @@ object GraphCustomQuestionHandler extends CustomQuestionHandler {
     DialogManager.processResults()
   }
 
-  def copy(gc:GraphViewController):Unit= {
-  	val selMod=gc.selectModel
 
-  	def secondStep(answerList:Seq[ResultElement],multiple:Boolean): Unit = answerList.last.result match{
-  	  case _:DoubleConstant=> DialogManager.startIntermediateQuestion(singleNumberQuestion("Kopieren","Delta Y eingeben:"),
-        _ =>{finishCopy(gc,multiple)})
-      case startP:VectorConstant=>
-        val elements=getSelElements(selMod)
-        gc.setCustomDragger((pos,g)=>{
-val sm=gc.scaleModel
-val delta=pos-startP
-for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
-        })
-        DialogManager.startIntermediateQuestion(singlePointQuestion("Kopieren", "'Nach Punkt' angeben", None),
-          _ =>{
-              finishCopy(gc,multiple)
-           })
+  def copy(gc: GraphViewController): Unit = {
+    val selMod = gc.selectModel
+
+    def secondStep(answerList: Seq[ResultElement], multiple: Boolean,onlyX:Boolean=false,onlyY:Boolean=false): Unit = {
+      answerList.last.result match {
+        case _: DoubleConstant => DialogManager.startIntermediateQuestion(singleNumberQuestion("Kopieren", "Delta Y eingeben:"),
+          _ => {
+            finishCopy(gc, multiple)
+          })
+        case startP: VectorConstant =>
+          val elements = getSelElements(selMod)
+          gc.setCustomDragger((pos, g) => {
+            val sm = gc.scaleModel
+            val delta = pos - startP
+            val d=if(onlyX) new VectorConstant(delta.x,0,0) else if(onlyY) new VectorConstant(0,delta.y,0) else delta
+            for (el <- elements) el.drawWithOffset(g, sm, ColorMap.selectColor, d)
+          })
+          DialogManager.startIntermediateQuestion(singlePointQuestion("Kopieren", "'Nach Punkt' angeben", None),
+            _ => {
+              finishCopy(gc, multiple)
+            })
+        case StringConstant("Nur X")=>
+          DialogManager.startIntermediateQuestion(singlePointQuestion("Kopieren nur X","StartPunkt angeben",None),ans2=>secondStep(ans2,multiple,true,false))
+        case StringConstant("Nur Y")=>
+          DialogManager.startIntermediateQuestion(singlePointQuestion("Kopieren nur Y","StartPunkt angeben",None),ans2=>secondStep(ans2,multiple,false,true))
+      }
     }
-  	//println("copy numSel:"+selMod.numSelected)
+    //println("copy numSel:"+selMod.numSelected)
     DialogManager.startIntermediateQuestion(DialogQuestion("Kopieren<br>",
       new AnswerDefinition("wie Oft", DataType.IntTyp, None, AnswerDefinition.NonNullConstraint) +: moveStartAnswers), answerList => {
       gc.setCustomDragger(null)
-      answerList.head.result match{
+      answerList.head.result match {
         case _: IntConstant => DialogManager.startIntermediateQuestion(
           DialogQuestion("Kopieren<br>Distanz angeben", moveStartAnswers),
-            nanswerList=>secondStep(nanswerList,multiple = true))
-        case _=> secondStep(answerList,multiple = false)
+          nanswerList => secondStep(nanswerList, multiple = true))
+        case _ => secondStep(answerList,multiple = false)
       }
     })
   }
@@ -532,8 +562,8 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
 
     def polyDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
-      val newPoly = new Polygon(Nil, List(PointList(lastPoints :+ pos))).toPathTransformed(v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
-      val theArea = new Area(newPoly)
+      val theArea = PolygonToJavaArea.toPathTransformed(new Polygon(Nil, List(PointList(lastPoints :+ pos))),
+        v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
       g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB))
       g.setStroke(sm.getStroke(1f * ViewConstants.fontScale / 100f, 0))
       g.fill(theArea)
@@ -566,8 +596,8 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
     }*/
     def polyDragger(pos: VectorConstant, g: Graphics2D): Unit = {
       val sm = gc.scaleModel
-      val newPoly = new Polygon(Nil, List(PointList(lastPoints :+ pos))).
-        toLinePathTransformed(v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
+      val newPoly = PolygonToJavaArea.toLinePathTransformed(new Polygon(Nil, List(PointList(lastPoints :+ pos))),
+        v => new VectorConstant(sm.xToScreen(v.x), sm.yToScreen(v.y), 0))
       g.setPaint(StyleService.getAlphaColor(ColorMap.tempColor.getRGB))
       g.setStroke(ViewConstants.polyStroke)
       g.draw(newPoly)
@@ -923,13 +953,13 @@ for(el<-elements) el.drawWithOffset(g, sm, ColorMap.selectColor,delta)
   	DialogManager.answerArea.reset()
   	//println("CustomQuestion Start IPE")
   	gc.startIPEMode(textEl,Some( text=>{
-  		if(text.length>0) {
-  			println("CustomQuestion text:"+text)
+  		if(text.nonEmpty) {
+  			//println("CustomQuestion text:"+text)
         DialogManager.addAnswer(new AnswerDefinition("Text", DataType.StringTyp, None), StringConstant(text))
   			gc.clearNewElements()
-        println("Text process Results")
+        //println("Text process Results")
   			DialogManager.processResults()
-        println("Done")
+        //println("Done")
 
   		} else Log.e("Text length == 0")
   	}))

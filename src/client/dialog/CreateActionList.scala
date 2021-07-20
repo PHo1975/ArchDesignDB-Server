@@ -7,8 +7,8 @@ import client.comm.{ClientObjectClass, ClientQueryManager, KeyStrokeManager}
 import definition.data.Reference
 import definition.typ.AllClasses
 
-import scala.swing.Reactor
-import scala.swing.event.ButtonClicked
+import scala.swing.event.{ButtonClicked, KeyPressed}
+import scala.swing.{Component, Reactor}
 
 /** area where "New panels" are placed
  * 
@@ -38,6 +38,8 @@ object CreateActionList extends Reactor  {
         ClientQueryManager.executeCreateAction(owner.ref,theBut.ccd.childClassID,theBut.propField,"*",Seq(),formatValues)
       }
     }
+    case KeyPressed(source:Component, key : scala.swing.event.Key.Value,  modifiers : scala.swing.event.Key.Modifiers, location : scala.swing.event.Key.Location.Value)=>
+      System.out.println("keypressed "+source+" key:"+key)
   }
 
   def containerFocused(container:FocusContainer, propField:Int):Unit = {

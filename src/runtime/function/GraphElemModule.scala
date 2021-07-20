@@ -97,6 +97,13 @@ object GraphElemModule{
       new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion)
     )))
 
+  def mvAnswerDefs(aName: String,strict:Boolean=true)=Seq(new AnswerDefinition("'von Punkt' angeben", DataType.VectorTyp,
+    Some(DialogQuestion(aName + "<br>Distanz",
+      Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None,if (strict) "" else AnswerPanelsData.NOSTRICT_HIT)))),
+    if (strict) "" else AnswerPanelsData.NOSTRICT_HIT),
+    new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion)
+  )
+
 
   lazy val dyQuestion: Option[DialogQuestion] = Some(DialogQuestion("Eingabe Distanzwert",
     Seq(new AnswerDefinition("delta Y eingeben:", DataType.DoubleTyp, None))))
@@ -286,27 +293,47 @@ class GraphElemModule extends ActionModule {
 
 
   def doMove(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], param: Iterable[(String, Constant)]): Boolean = {
-		if(param.size==2) {
-			val delta = param.head._2 match {
+    val delta = if(param.size==2)
+			 param.head._2 match {
 			  case startPoint:VectorConstant=>
 					val endPoint=param.last._2.toVector
 					endPoint-startPoint
 				case deltaX:DoubleConstant if param.last._2.getType == DataType.DoubleTyp =>
 					new VectorConstant (deltaX.toDouble,param.last._2.toDouble,0)
 			  case _=> throw new IllegalArgumentException("Falscher Parametertyp verschieben "+param.head._2)
-			}
+			} else if(param.size==3){
+        val paraSeq=param.toSeq
+        val d=paraSeq(2)._2.toVector-paraSeq(1)._2.toVector
+        param.head._2 match {
+          case StringConstant("Nur X")=> new VectorConstant(d.x,0,0)
+          case StringConstant("Nur Y")=> new VectorConstant(0,d.y,0)
+          case _=> throw new IllegalArgumentException("falscher Parameter "+param.mkString("|"))
+        }
+      } else throw new IllegalArgumentException("Falsche Anzahl Parameter "+param.mkString("|"))
 			//System.out.println("move delta:"+delta)
       for (d <- data)
         TypeInfos.moduleMap(d.ref.typ).moveElement(d, delta)
 			true
-		}
-		else false
 	}
 
   def doCopy(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
-		if(para.size==3||para.size==2) {
+		if(para.size<5&&para.size>1) {
       val param=para.toSeq
-		  val (offset,numCopy)=if(param.head._2.getType==DataType.IntTyp)(1,param.head._2.toInt) else (0,1)
+      var offset:Int=0
+      var numCopy:Int=1
+      var onlyX:Boolean=false
+      var onlyY:Boolean=false
+      param.head._2 match {
+        case IntConstant(num)=>numCopy=num;offset+=1
+          param(1)._2 match {
+            case StringConstant("Nur X")=>offset+=1;onlyX=true
+            case StringConstant("Nur Y")=>offset+=1;onlyY=true
+            case _=>
+          }
+        case StringConstant("Nur X")=>offset+=1;onlyX=true
+        case StringConstant("Nur Y")=>offset+=1;onlyY=true
+        case _ =>
+      }
 			val delta = if(param(0+offset)._2.getType==DataType.VectorTyp )	{
 					val startPoint=param(0+offset)._2.toVector
 					val endPoint=param(1+offset)._2.toVector
@@ -314,8 +341,9 @@ class GraphElemModule extends ActionModule {
 				}
 				else if(param(0+offset)._2.getType==DataType.DoubleTyp )
 					new VectorConstant (param(0+offset)._2.toDouble,param(1+offset)._2.toDouble,0)
-				else throw new IllegalArgumentException(" move wrong parametertype ")
-		  for(i<-1 to numCopy;theDelta=delta*i;d <-data) {
+				else throw new IllegalArgumentException(" copy wrong parametertype "+para.mkString(" , "))
+      var d=if(onlyX)new VectorConstant(delta.x,0,0) else if (onlyY)new VectorConstant(0,delta.y,0) else delta
+		  for(i<-1 to numCopy;theDelta=d*i;d <-data) {
 				val createInst=TransactionManager.tryCreateInstance(d.ref.typ,d.owners,notifyRefandColl = false)
 				var newInst=d.clone(createInst.ref,d.owners,Array.empty)
 				newInst=TypeInfos.moduleMap(d.ref.typ).copyElement(newInst,theDelta)
@@ -323,7 +351,7 @@ class GraphElemModule extends ActionModule {
 			}
 			true
 		}
-		else false
+		else {println("Wrong number of Arguments"+para.mkString(" , "));false}
 	}
 
 
@@ -487,6 +515,12 @@ class TextModule extends ActionModule with GraphActionModule {
 	   TransactionManager.tryWriteInstanceField(elem.ref,2,rotator(elem.fieldValue(2).toVector))
 	  TransactionManager.tryWriteInstanceField(elem.ref,7,new DoubleConstant(elem.fieldValue(7).toDouble+angle*180d/math.Pi))
 	}
+
+  override def scale(elem:InstanceData,refPoint:VectorConstant,sx:Double,sy:Double):Unit= {
+    TransactionManager.tryWriteInstanceField(elem.ref,2,scalePoint(elem.fieldValue(2).toVector,refPoint,sx,sy))
+    TransactionManager.tryWriteInstanceField(elem.ref,4,DoubleConstant(elem.fieldValue(4).toDouble*(sx+sy)/2))
+  }
+
 
   def createTextAction = new CreateActionImpl("Text", Some(CommandQuestion(ModuleType.Graph,
       "CreateText")), doCreateText)
@@ -1605,10 +1639,12 @@ class PolygonModule extends ActionModule with GraphActionModule {
   override def pointMod(elem: InstanceData, delta: VectorConstant, chPoints: Set[VectorConstant]): Unit =
     TransactionManager.tryWriteInstanceField(elem.ref, 3, elem.fieldValue(3).toPolygon.translatePoints(chPoints, delta))
 
+  override def scale(elem:InstanceData,refPoint:VectorConstant,sx:Double,sy:Double):Unit= {
+    TransactionManager.tryWriteInstanceField(elem.ref,3,elem.fieldValue(3).toPolygon.transform(scalePoint(_,refPoint,sx,sy)))
+  }
+
   def createPolyAction = new CreateActionImpl("Füllfläche", Some(CommandQuestion(ModuleType.Graph,
       "PolyTo")), doCreatePoly)
-
-
 
 
 	def doCreatePoly(u:AbstractUserSocket,parents:Iterable[InstanceData],param:Seq[(String,Constant)],newTyp:Int,formFields:Seq[(Int,Constant)]):Boolean= {

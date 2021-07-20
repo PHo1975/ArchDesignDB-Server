@@ -7,9 +7,9 @@ import client.comm.{UserSettings, _}
 import client.dialog.{ComboBoxEditor, EditorFactory}
 import client.ui.ViewConstants
 import definition.typ._
+
 import javax.swing.JComboBox
 import javax.swing.table._
-
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -58,7 +58,7 @@ object TableHeaderMap {
 						newCol.setWidth(cs._2)
 						newCol.setPreferredWidth(cs._2)
 						theClass.enumFields get(cs._1-1) match {
-						  case Some(enumData)=> newCol.setCellEditor(new ComboBoxEditor(new JComboBox(enumData.javaVect)))
+						  case Some(enumData)=> newCol.setCellEditor(new ComboBoxEditor(new JComboBox(enumData.mapValues.toArray)))
 						  case None =>
 						}					
 						val ed=fs.editor

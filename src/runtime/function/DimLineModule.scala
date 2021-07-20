@@ -117,22 +117,25 @@ class DimLineModule extends ActionModule with GraphActionModule {
   
   def doChangeHelpLines(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =
     if(param.size<2) false else {
-    val helpPolyPoints=param map (_._2.toVector)
-    val polyEdges=(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
+    val helpPolyPoints: Iterable[VectorConstant] =param map (_._2.toVector)
+    val polyEdges: Seq[Edge] =(for(Seq(a,b)<-helpPolyPoints.sliding(2)) yield new Edge(a,b)).toSeq
     //println("Change Helplines "+polyEdges.mkString(" \n "))
     updateDimList(data,(ref,position,mainLineVect,hdirVect,dimList)=>{
       val mline=Line3D(position, mainLineVect)
-      val intersectionEdges=dimList.map(p=>new Edge(p.refPoint,mline.intersectionWith(Line3D(p.refPoint, hdirVect))))
-      for(i<-dimList.indices; edge=intersectionEdges(i)) yield {
-       	var curLen=0d
-       	for(poly<-polyEdges) edge.getIntersectionWith(poly) match {
-        	case Some(v)=>
-						val crossPos=(v-edge.p1).toDouble
-						//println("cross:"+crossPos+" i:"+i+" edge:"+edge+ " poly:"+poly)
-						if(crossPos>curLen) curLen=crossPos
+      //val intersectionEdges=dimList.map(p=>new Edge(p.refPoint,p.refPoint+hdirVect))
+      for(dimPoint<-dimList) {
+       	var curLen=Double.MinValue
+       	for(poly: Edge <-polyEdges) poly.getIntersectionWith(dimPoint.refPoint,dimPoint.refPoint+hdirVect) match {
+        	case Seq((_,v))=>
+            val ip=VectorConstant.intersection2D(mline.pos,mline.pos+mline.dir,dimPoint.refPoint,dimPoint.refPoint+hdirVect).head
+            val d1=ip-dimPoint.refPoint
+            val d2=v-dimPoint.refPoint
+						val crossLen=(v-dimPoint.refPoint).toDouble*Math.signum(d1.getScaleTo(d2))
+						//println("cross:"+crossLen+" i:"+i+" edge:"+edge+ " poly:"+poly)
+						if(crossLen>curLen) curLen=crossLen
 					case _=>
         }
-        if(curLen>0) dimList(i).helpLineLength=curLen
+        if(curLen!=Double.MinValue) dimPoint.helpLineLength=curLen
        }
        //println("\n result list"+dimList.mkString("\n"))
        val newBlob=DimensionPoint.createBlob(dimList)
@@ -254,7 +257,7 @@ class DimLineModule extends ActionModule with GraphActionModule {
 	}
   
   
-  /**
+  /** loops over all Instances in Data
    * @param func  a function(ObjReference,StartPoint,MainDir,HelpDir,DimList)
    * 
    */

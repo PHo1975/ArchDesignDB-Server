@@ -62,8 +62,7 @@ class PolyLineElement(nref: Reference, ncolor: Int, nlineWidth: Int, nlineStyle:
 
   private def internDraw(g: Graphics2D, sm: Scaler, selectColor: Color, trans: VectorConstant => VectorConstant, offSet: VectorConstant): Unit = {
     //val trans=transformWithOffset(sm,offSet)_
-    val newPoly = poly.toPathTransformed(trans)
-    val theArea = new Area(newPoly)
+    val theArea = PolygonToJavaArea.toPathTransformed(poly,trans)
 
     if (lineWidth > 0 || selectColor != null) {
       g.setPaint(if (selectColor == null) ColorMap.getColor(color) else selectColor)

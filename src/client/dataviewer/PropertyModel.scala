@@ -3,19 +3,18 @@
  */
 package client.dataviewer
 
-import java.awt.Color
-import java.awt.event.InputEvent
-
 import client.comm._
 import client.dialog.{CreateActionList, CreateActionMenuButton, CreateMenuButton, DialogManager}
 import client.ui.ViewConstants
 import definition.comm._
 import definition.data._
 import definition.typ._
+
+import java.awt.Color
+import java.awt.event.{InputEvent, KeyAdapter}
 import javax.swing.border._
 import javax.swing.event.{AncestorEvent, AncestorListener}
-import javax.swing.{BorderFactory, JComponent, JPopupMenu}
-
+import javax.swing._
 import scala.collection.mutable
 import scala.swing._
 import scala.swing.event._
@@ -51,7 +50,7 @@ class TitlePopupMenu(title:String) extends Component {
     //peer.setPopupSize(new Dimension(200,cList.size*33))
 	  cList.indices.foreach(i=>{
       val but=cList(i)
-      val sep= i!=cList.size-1
+      val sep= i != cList.size-1
       but  match {
     		case e:CreateMenuButton=> add(e,sep)
     		case e:CreateActionMenuButton=> add(e,sep)
@@ -224,12 +223,15 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 	
 	class ClickComp(propMod:PropertyModel) extends BoxPanel(Orientation.Horizontal) {
 		val popup=new TitlePopupMenu("Erzeugen:")
+		popup.focusable = true
+
 		val standBorder: Border = BorderFactory.createEmptyBorder
 		//createLineBorder(Color.lightGray)
 		val selectBorder: Border = BorderFactory.createLineBorder(Color.blue, 2)
 		focusable=true
 		val theClass: PropertyModel = propMod
-		peer.setTransferHandler(new PropAreaTransferHandler(propMod))		
+		peer.setTransferHandler(new PropAreaTransferHandler(propMod))
+
 		val addBut=new Button("Tabelle erzeugen...")
 		addBut.peer.putClientProperty("JComponent.sizeVariant", "small")
 		addBut.font = ViewConstants.tableFont
@@ -239,6 +241,25 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 		contents+=addBut
 		protected var buttonList: Seq[CreateMenuButton] = Seq.empty
 
+		popup.peer.addKeyListener(new  KeyAdapter {
+			override def keyTyped(keyEvent: java.awt.event.KeyEvent): Unit = {
+				MenuSelectionManager.defaultManager().getSelectedPath.last match {
+					case j:JMenuItem=>
+						val keys=j.getActionMap.allKeys()
+						if(keys.nonEmpty){
+							val a=j.getActionMap.get(keys.head)
+							val event=new java.awt.event.ActionEvent(j,1,j.getActionCommand)
+							a.actionPerformed(event)
+						}
+
+					case o=>
+				}
+			}
+		})
+
+
+
+
     listenTo(mouse.clicks,this,addBut,keys)
 		reactions+= {			
 			case e:MouseReleased =>
@@ -247,22 +268,27 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 				focusGained(None)
 			case _: FocusGained => border = selectBorder; repaint()
 			case _: FocusLost => border = standBorder; repaint()
-			case ButtonClicked(`addBut`) =>
-				CreateActionList.listenToButtons(buttonList)
-				requestFocusInWindow()
-				if (buttonList.size == 1) {
-          focusGained(None)
-          buttonList.head.strokeHit()
-        } else {
-          showCreatePopup()
-        }
+			case ButtonClicked(`addBut`) => addButtClicked(false)
+
 			case e:KeyPressed => e.key match {
 			  case Key.Up if (e.peer.getModifiersEx()&InputEvent.CTRL_DOWN_MASK)>0 => propMod.mainController.viewBox.goUp()
+				//case Key.Enter if(e.peer.getModifiersEx()&InputEvent.CTRL_DOWN_MASK)>0 => addButtClicked()
+				case Key.Space =>	addButtClicked(true)
+
 			  case _=>
 			}
 		}
 
-		private def showCreatePopup(): Unit = {
+		private def addButtClicked(listenKeys:Boolean):Unit = {
+			CreateActionList.listenToButtons(buttonList)
+			requestFocusInWindow()
+			if (buttonList.size == 1) {
+				focusGained(None)
+				buttonList.head.strokeHit()
+			} else showCreatePopup(listenKeys)
+		}
+
+		private def showCreatePopup(listenKeys:Boolean): Unit = {
 	    requestFocus()
 			focusGained(None)
 			Swing.onEDT{
@@ -270,7 +296,12 @@ class PropertyModel(val propIx:Int,val mainController:DataViewController) {
 					popup.peer.removeAll()
 					//println("ButtonsList:"+NewButtonsList.buttonList.map(_.text).mkString(","))
 					popup.addButtons(buttonList)
+					if(listenKeys){
+
+					}
 					popup.show(addBut.peer)
+
+					popup.requestFocusInWindow()
 	      }
 		  }				
 		}

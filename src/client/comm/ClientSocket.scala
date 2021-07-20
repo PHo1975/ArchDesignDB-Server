@@ -173,17 +173,22 @@ class ClientSocket(serverAddress: InetAddress,port:Int,name:String,password:Stri
 		// save changes in user settings
 		ClientQueryManager.notifyStoreSettingsListeners()		
 		// store user settings
-		System.out.println("writing settings")
 		sendData(ClientCommands.writeUserSettings ) {out =>
-			val buffer =UserSettings.writeProperties.getBytes("UTF-8")
+			val settingsString=UserSettings.writeProperties
+			val buffer: Array[Byte] =settingsString.getBytes("UTF-8")
+			//util.Log.w("Write Settings:\n"+buffer.length+"\n"+settingsString)
 			out.writeInt(buffer.length)
 			out.write(buffer,0,buffer.length)
 		}
 		// logout
     util.Log.w("Logging out")
 		wantRun=false
+		Thread.`yield`()
 		sendData(ClientCommands.logOut ) {_ =>}
-		System.exit(0)
+		Thread.`yield`()
+		outStreamLock synchronized {
+			System.exit(0)
+		}
 	}
 
 	def sendData(command: ClientCommands.Value)(func: DataOutputStream => Unit): Unit = {

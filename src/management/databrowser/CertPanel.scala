@@ -150,7 +150,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
     challenge
   }
 
-  def authorize(auth: Authorization): Unit = if(FSPaths.certRootFolder.length>0){
+  def authorize(auth: Authorization): Unit = if(FSPaths.certRootFolder.nonEmpty){
     val challenge= prepareChallenge(auth)
     val domain=auth.getIdentifier.getDomain
     Log.w("authorize "+domain)
@@ -171,7 +171,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
           } catch {
             case re: AcmeRetryAfterException =>
               val when = re.getRetryAfter
-              val now = new java.util.Date()
+              //val now = new java.util.Date()
               println("retry at:" + when)
               Thread.sleep(2000L)
           }
@@ -263,7 +263,7 @@ class CertPanel extends BoxPanel(Orientation.Vertical) {
         val domainKeyPair = createOrLoadKeys(domainKeyFile)
         val certs = loadCertChain()
         if (certs.length > 1) {
-          keyStore.setKeyEntry("1", domainKeyPair.getPrivate, pwCA, certs.asInstanceOf[Array[Certificate]])
+          keyStore.setKeyEntry("1", domainKeyPair.getPrivate, pwCA, certs)
           CollUtils.tryWith(new FileOutputStream(ksf)) { fos =>
             keyStore.store(fos, pwCA)
             fos.close()

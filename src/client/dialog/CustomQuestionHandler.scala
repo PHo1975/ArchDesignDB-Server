@@ -36,6 +36,12 @@ trait CustomQuestionHandler {
     Seq(new AnswerDefinition(questionText, DataType.IntTyp, None, AnswerDefinition.NonNullConstraint)), repeat)
   
   lazy val moveStartAnswers=Seq(new AnswerDefinition("'von Punkt' angeben",DataType.VectorTyp, None ),
-			  new AnswerDefinition("Delta X eingeben:",DataType.DoubleTyp,None)
-			) 
+			  new AnswerDefinition("Delta X eingeben:",DataType.DoubleTyp,None),
+    new AnswerDefinition("",DataType.EnumTyp,None,"Nur X"),
+    new AnswerDefinition("",DataType.EnumTyp,None,"Nur Y")
+			)
+
+  lazy val moveStartAnswers2=Seq(new AnswerDefinition("'von Punkt' angeben",DataType.VectorTyp, None ),
+    new AnswerDefinition("Delta X eingeben:",DataType.DoubleTyp,None)
+  )
 }

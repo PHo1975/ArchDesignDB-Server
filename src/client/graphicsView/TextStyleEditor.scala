@@ -1,11 +1,10 @@
 package client.graphicsView
 
-import java.awt.{Color, Dimension, Font, Graphics2D}
-
 import client.dialog._
 import client.ui.ViewConstants
 import definition.expression.{Constant, Expression, IntConstant, StringConstant}
 
+import java.awt.{Color, Dimension, Font, Graphics2D}
 import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, ButtonGroup, GridPanel, Orientation, RadioButton, ToggleButton}
 
@@ -168,7 +167,7 @@ class TextStyleEditor extends FieldEditor {
         case GraphElemConst.roundBorderSyle => roundFrameBut.selected = true
         case GraphElemConst.squareBorderSyle => squareFrameBut.selected = true
       }
-    		resetSearchValue()
+      resetSearchValue()
     }
   }
   

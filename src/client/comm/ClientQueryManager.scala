@@ -3,9 +3,6 @@
  */
 package client.comm
 
-import java.io._
-import java.util.concurrent._
-
 import client.dialog.DialogManager
 import client.search.{AbstractSearchResult, SearchFinished, SearchResult}
 import definition.comm._
@@ -14,6 +11,8 @@ import definition.expression._
 import definition.typ._
 import util.Log
 
+import java.io._
+import java.util.concurrent._
 import scala.swing.Swing
 import scala.util.control.NonFatal
 
@@ -499,7 +498,7 @@ object ClientQueryManager {
 	
 	private def handleSubsNotifications(in:DataInputStream ) = {
 		val substID=in.readInt
-		println("subs notification "+substID)
+		//println("subs notification "+substID)
 		if(!subscriptionMap.containsKey(substID)) {
 			Log.e("Handle Subs Notification subsID "+substID+" not found")
 			NotificationType(in.readInt) match {

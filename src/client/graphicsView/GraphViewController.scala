@@ -6,6 +6,7 @@ package client.graphicsView
 import client.comm.ClientQueryManager
 import client.dataviewer.TitlePopupMenu
 import client.dialog._
+import client.graphicsView.symbol.SymbolElem
 import client.spreadsheet.{CellTuple, SpreadSheetTransferable}
 import client.ui.ClientApp
 import definition.data._
@@ -550,7 +551,19 @@ class GraphViewController extends AbstractViewController[(AbstractLayer, Iterabl
 	def findText(text:String): Unit ={
 		selectModel.filter {
 			case t: TextElement => t.text == text
-			case o => false
+			case _ => false
+		}
+		canvas.repaint()
+		scalePanel.filterBut.selected=false
+	}
+
+	def findSymbol(symbInst:Int):Unit= {
+		selectModel.filter {
+			case s:SymbolElem=>s.stamp match {
+			case Some(stamp)=> stamp.ref.instance==symbInst
+					case None => false
+			}
+			case _=> false
 		}
 		canvas.repaint()
 		scalePanel.filterBut.selected=false

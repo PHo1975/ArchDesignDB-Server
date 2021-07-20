@@ -16,7 +16,7 @@ import definition.comm.{PropertyGroup, PropertyValue}
 import definition.typ.{AllClasses, DataType}
 import javafx.application.Platform
 
-import java.awt.{Color, Font}
+import java.awt.{BorderLayout, Color, Font}
 import java.net._
 import javax.swing.{Scrollable, _}
 import scala.swing._
@@ -54,6 +54,7 @@ object ClientApp extends App {
   val fontEditBut = new Button("F")
   val consoleBut = new Button("Co")
   val normBack = strokeEditBut.background
+  val switchSideBarBut= new Button("<<")
   KeyStrokeManager.bindigsEnabledListener = Some((b: Boolean) => strokeEditBut.background = if (b) normBack else Color.green)
   hideBut.focusable = false
   hideBut.tooltip = "Versteckte Daten anzeigen"
@@ -64,8 +65,13 @@ object ClientApp extends App {
   consoleBut.focusable = false
   consoleBut.tooltip = "Fehler-Konsole"
   undoBut.focusable = false
+  switchSideBarBut.focusable = false
+  switchSideBarBut.tooltip = "Seitenleiste einklappen"
+  switchSideBarBut.font=ViewConstants.smallFont
+  switchSideBarBut.margin=new Insets(0,0,0,0)
   val workplaceBut = new IconableButton("Workplaces", "MainWindow", "Fensteranordnung speichern / laden")
   workplaceBut.text = "Arbeitsflächen ..."
+
 
   lazy val undoDialog = new UndoDialog(top)
   lazy val workplaceDialog = new WorkplaceDialog(top)
@@ -119,20 +125,29 @@ object ClientApp extends App {
     peer.setBorder(null)
   }
 
-  lazy val mainPanel = new BorderPanel() {
-    add(mainBox, BorderPanel.Position.Center)
-    add(new BoxPanel(scala.swing.Orientation.Vertical) {
-      border = BorderFactory.createEmptyBorder(5, 5, 5, 10)
-      workplaceBut.xLayoutAlignment = 0.5d
-      undoBut.xLayoutAlignment = 0.5d
-      opaque = true
-      background = ViewConstants.leftPanelColor
-      contents += Swing.VStrut(10) += DialogManager.selectLabScroller +=
-        middleScroller += DialogManager.errorScroller += undoBut += Swing.VStrut(10) += workplaceBut += Swing.VStrut(15) += new BoxPanel(Orientation.Horizontal) {
+  lazy val switchButtonBar =new BoxPanel(Orientation.Horizontal){
+    contents+=Swing.HGlue+=switchSideBarBut
+    background = ViewConstants.leftPanelColor
+  }
+
+  lazy val sidePanel=new BoxPanel(scala.swing.Orientation.Vertical) {
+    border = BorderFactory.createEmptyBorder(5, 5, 5, 10)
+    workplaceBut.xLayoutAlignment = 0.5d
+    undoBut.xLayoutAlignment = 0.5d
+    opaque = true
+    background = ViewConstants.leftPanelColor
+    contents +=  switchButtonBar +=
+      DialogManager.selectLabScroller += middleScroller += DialogManager.errorScroller +=
+      undoBut += Swing.VStrut(10) += workplaceBut += Swing.VStrut(15) +=
+      new BoxPanel(Orientation.Horizontal) {
         contents += hideBut += strokeEditBut += fontEditBut += consoleBut += infoBut
       }
-    }, BorderPanel.Position.West)
-    listenTo(undoBut, hideBut, strokeEditBut, fontEditBut, workplaceBut, consoleBut, infoBut)
+  }
+
+  lazy val mainPanel = new BorderPanel() {
+    add(mainBox, BorderPanel.Position.Center)
+    add(sidePanel, BorderPanel.Position.West)
+    listenTo(undoBut, hideBut, strokeEditBut, fontEditBut, workplaceBut, consoleBut, infoBut,switchSideBarBut)
     reactions += {
       case ButtonClicked(`undoBut`) => requestUndoData()
       case ButtonClicked(`hideBut`) => setHide(hideBut.selected)
@@ -141,12 +156,29 @@ object ClientApp extends App {
       case ButtonClicked(`fontEditBut`) => showFontDialog()
       case ButtonClicked(`consoleBut`) => showConsole()
       case ButtonClicked(`infoBut`) => showInfo()
+      case ButtonClicked(`switchSideBarBut`)=> switchSidebar()
     }
   }
 
   def updateSidePanel(): Unit = {
     middleBox.peer.invalidate()
     middleBox.revalidate()
+  }
+
+  def switchSidebar():Unit={
+    if(switchSideBarBut.text=="<<") {
+      switchSideBarBut.text=">>"
+      switchSideBarBut.tooltip = "Seitenleiste aufklappen"
+      mainPanel.peer.remove(sidePanel.peer)
+      mainPanel.peer.add(switchSideBarBut.peer,BorderLayout.WEST)
+    }
+    else {
+      switchSideBarBut.text="<<"
+      switchSideBarBut.tooltip = "Seitenleiste einklappen"
+      mainPanel.peer.remove(switchSideBarBut.peer)
+      mainPanel.peer.add(sidePanel.peer,BorderLayout.WEST)
+      switchButtonBar.contents+=switchSideBarBut
+    }
   }
 
 
@@ -221,6 +253,7 @@ object ClientApp extends App {
     UserSettings.setIntProperty("Draw", "showHitPoints",ViewConstants.showToast)
     UserSettings.setIntProperty("Draw","selectBorderWidth",ViewConstants.selectBorderWidth)
     UserSettings.setIntProperty("Draw","backgroundLayerTrans",ViewConstants.backgroundLayerTrans)
+    UserSettings.setIntProperty("Draw","sidePanelWidth",ViewConstants.sidePanelWidth)
     //UserSettings.setIntProperty("Draw","hatchLineWidth",ViewConstants.hatchLineWidth)
       UserSettings.setStringProperty("WindowSettings", "imagePath",ViewConstants.imagePath)
     UserSettings.setIntProperty("Draw", "stopFX", ViewConstants.stopFX)
@@ -298,6 +331,7 @@ object ClientApp extends App {
       ViewConstants.imagePath= UserSettings.getStringProperty("WindowSettings", "imagePath", "")
       ViewConstants.selectBorderWidth=UserSettings.getIntProperty("Draw", "selectBorderWidth", 1)
       ViewConstants.backgroundLayerTrans=UserSettings.getIntProperty("Draw","backgroundLayerTrans",40)
+      ViewConstants.sidePanelWidth=UserSettings.getIntProperty("Draw","sidePanelWidth",195)
 //      ViewConstants.hatchLineWidth=UserSettings.getIntProperty("Draw", "hatchLineWidth", 3)
       import javax.swing.{UIDefaults, UIManager}
       UIManager.setLookAndFeel(new javax.swing.plaf.nimbus.NimbusLookAndFeel() {

@@ -1,7 +1,7 @@
 package runtime.function
 
-import definition.data.{InstanceData, OwnerReference}
-import definition.expression.{Constant, VectorConstant}
+import definition.data.{InstanceData, OwnerReference, Reference}
+import definition.expression.{Constant, IntConstant, VectorConstant}
 import definition.typ._
 import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule, CreateActionImpl, StorageManager}
@@ -133,4 +133,27 @@ class SymbolElemModule extends ActionModule with GraphActionModule {
   } else false
   
   
+}
+
+class SymbolDefModule extends ActionModule {
+  val checkUsageAction=new ActionIterator("Verwendung",None,doCheckUsage)
+
+  def doCheckUsage(u:AbstractUserSocket,owner:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean =  {
+    val usageMap=collection.mutable.HashMap[Int,Int]()
+    for(d<-data) usageMap(d.ref.instance)=0
+    StorageManager.ixHandler(45).foreachInstance(elemRef=>if(StorageManager.instanceExists(elemRef.typ,elemRef.instance)){
+      val elem=StorageManager.getInstanceData(elemRef)
+      val inst=elem.fieldValue(1).toObjectReference.instance
+      if(usageMap.keySet.contains(inst))
+        usageMap(inst)=usageMap(inst)+1
+    })
+    for((d,num)<-usageMap){
+      TransactionManager.tryWriteInstanceField(Reference(411,d),1,IntConstant(num))
+    }
+    true
+  }
+
+  override def actions: Iterable[ActionTrait] = List(checkUsageAction)
+
+  override def setObjectType(typeID: Int): Unit = {}
 }

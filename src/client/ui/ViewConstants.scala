@@ -1,9 +1,7 @@
 package client.ui
 
 import java.awt._
-
 import javax.swing.UIDefaults
-
 import scala.swing.Label
 
 object ViewConstants {
@@ -30,6 +28,7 @@ object ViewConstants {
   var imagePath=""
   var selectBorderWidth=1
   var backgroundLayerTrans=40
+  var sidePanelWidth: Int = 195 * ViewConstants.fontScale / 100
 
 
   lazy val polyStroke =new BasicStroke(1f * ViewConstants.polyLineTo.toFloat)
@@ -47,7 +46,7 @@ object ViewConstants {
 
   val leftPanelColor = new Color(247, 247, 252)
   val eitherColor = new Color(225, 225, 225)
-  lazy val sidePanelWidth: Int = 195 * ViewConstants.fontScale / 100
+
 
   lazy val buttonDefaults: UIDefaults = {
     val res = new UIDefaults()

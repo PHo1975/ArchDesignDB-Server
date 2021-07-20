@@ -3,15 +3,15 @@
   */
 package client.print
 
-import java.awt.Toolkit
-import java.awt.event.{ActionEvent, KeyEvent, MouseAdapter, MouseWheelEvent}
-
 import client.dialog.DialogManager
 import client.ui.{ClientApp, ViewConstants}
 import definition.data.{FontStyleList, Reference, RenderContext}
+import util.Log
+
+import java.awt.Toolkit
+import java.awt.event.{ActionEvent, KeyEvent, MouseAdapter, MouseWheelEvent}
 import javax.print.attribute.standard.PageRanges
 import javax.swing.{AbstractAction, BorderFactory, JComponent, KeyStroke}
-
 import scala.swing.event._
 import scala.swing.{ListView, _}
 import scala.util.control.NonFatal
@@ -31,7 +31,8 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   var thePageable:APageable=_
 
   var archiveListModel=new ArchiveListModel()
-  preferredSize=new Dimension(1000,800)
+  //private val ssize=Toolkit.getDefaultToolkit.getScreenSize
+  //preferredSize=new Dimension(ssize.width/2,ssize.height-60)
   maximize()
   var dotPitch:Double=0.25
 
@@ -225,7 +226,7 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
   def printToOutput(): Unit = {
     //thePageable.context =MyContext
     for(r<-currentPrintReceiver) {
-      val (pagesList,copies,receiverList)= PrintOutDialog.dialog.showPrintOutDialog(mainPanel,thePageable,currentPage,r.printerName,r.mediaName)
+      val (pagesList,copies,_)= PrintOutDialog.dialog.showPrintOutDialog(mainPanel,thePageable,currentPage,r.printerName,r.mediaName)
       if(pagesList!=null){
         r.printOut(thePageable,copies,pagesList)
         close()
@@ -250,7 +251,7 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
     setCurrentData(nPageable)
     setCurrentPage(1)
     visible=true
-
+    setToPageHeight()
   }
 
   protected def showAll(): Unit = {
@@ -286,8 +287,9 @@ class PreviewWindow(w:Window/*,preDialog:NewOutdefDialog*/)  extends Dialog(w){
     val config = ClientApp.top.peer.getGraphicsConfiguration
     val insets =Toolkit.getDefaultToolkit.getScreenInsets(config)
     val screenSize = Toolkit.getDefaultToolkit.getScreenSize
+    Log.w("Screensize:"+screenSize+" insets:"+insets)
     val w = screenSize.width/2// - insets.left - insets.right;
-    val h = screenSize.height - insets.top - insets.bottom
+    val h = screenSize.height - insets.top - insets.bottom-10
     //println("max: "+w+" "+h)
     preferredSize=new Dimension(w,h)
     peer.setBounds(insets.left+w/2,insets.top,w,h)

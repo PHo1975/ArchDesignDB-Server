@@ -3,17 +3,16 @@
  */
 package client.dialog
 
-import java.awt.Dimension
-
 import client.comm.ClientQueryManager
 import client.ui.{ClientApp, ViewConstants}
 import definition.data._
 import definition.expression._
 import definition.typ.{AllClasses, DataType, SelectGroup}
+
+import java.awt.Dimension
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.table.TableCellEditor
 import javax.swing.{JSpinner, SpinnerNumberModel}
-
 import scala.swing.event.{EditDone, SelectionChanged}
 import scala.swing.{Alignment, BorderPanel, ComboBox, Component, Label, ListView, Panel, Swing, Table, TextArea, TextComponent, TextField}
 
@@ -95,7 +94,7 @@ class PanelPart(lname:String,partComp:Component) extends BorderPanel {
   val label: Label = getLabel(lname)
 	add(label,BorderPanel.Position.West)
 	add(partComp,BorderPanel.Position.Center)	  
-	maximumSize=FieldEditor.panelSize
+	//maximumSize=FieldEditor.panelSize
 	xLayoutAlignment=0
 
   def getLabel(lname: String): Label = {
@@ -425,6 +424,7 @@ class MultiLineLabel extends Label() {
   override def text_=(st: String): Unit = {
     super.text_=("<HTML><Center>"+st+"</html>")
     maximumSize = new Dimension(ViewConstants.sidePanelWidth - 30, preferredSize.height)
+    tooltip = text
   }
   font=ViewConstants.questionFont
   //preferredSize=new Dimension(DialogManager.sidePanelWidth-30,40)

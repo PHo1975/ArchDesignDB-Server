@@ -269,7 +269,7 @@ object FontHandler extends AbstractSettingHandler  {
    else null
   }
   
-  def getFontInfo(fontName:String):FontInfo= if(fontName.length==0) defaultFont
+   def getFontInfo(fontName:String):FontInfo= if(fontName.isEmpty) defaultFont
   else {
     for(f<-fontList)
       if(fontName.equalsIgnoreCase(f.name)) return f

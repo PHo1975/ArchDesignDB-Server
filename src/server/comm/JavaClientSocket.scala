@@ -640,12 +640,17 @@ class JavaClientSocket(val socket: Socket) extends Thread with AbstractUserSocke
   def writeUserSettings(in:DataInputStream):Unit = {
     val file=getConfigFile
     val length=in.readInt
+    Log.w("Write user settings, file:"+file.toString+" size:"+length)
     val readBuffer: Array[Byte] =Array.ofDim[Byte](length)
-    in.read(readBuffer,0,length)
-    val settingsString=new String(readBuffer,"UTF-8")
-    Log.w("Write user settings:\n|"+settingsString+"|")
-    CollUtils.tryWith(new FileOutputStream(file))(out=>out.write(readBuffer,0,length))
-
+    val bytesRead=in.read(readBuffer,0,length)
+    if(bytesRead!=length) Log.e("Write userSettings not enought bytes read:"+bytesRead+" should be:"+length)
+    else {
+      val settingsString = new String(readBuffer, "UTF-8")
+      Log.w("Write user settings: |" + settingsString.last + "|")
+      val test= '}'
+      if(settingsString.last !=test) Log.e("Write userSettings wrong settings string:\n"+settingsString)
+      else CollUtils.tryWith(new FileOutputStream(file))(out => out.write(readBuffer, 0, length))
+    }
   }
 
   def writeKeyStrokes(in:DataInputStream):Unit = {

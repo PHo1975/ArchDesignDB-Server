@@ -1,12 +1,12 @@
 package client.graphicsView.symbol
 
-import java.awt.geom.Rectangle2D
-import java.awt.{Color, Graphics2D}
-
 import client.graphicsView.{ElemContainer, GraphElem, Scaler}
 import client.plotdesign.LayerRef
 import definition.data.Reference
 import definition.expression._
+
+import java.awt.geom.Rectangle2D
+import java.awt.{Color, Graphics2D}
 
 object SymbolOrient extends Enumeration {
   val Undefined=Value("Undefined")
@@ -85,10 +85,10 @@ case class SymbolFiller(nref:Reference,ncolor:Int,stampRef:Reference, angle:Doub
     lazy val dist: Double =(delta.toDouble-singleSymbolBounds.width*numElems)/(numElems+(if(borderGap)1d else -1d))
     val unit: VectorConstant =delta.unit
     def posForElem(i:Int): VectorConstant = point1+unit*((if(borderGap)dist else 0d)+i*(dist+singleSymbolBounds.width))
-    override def drawRotated(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,rotator:VectorConstant=>VectorConstant): Unit ={
+    /*override def drawRotated(g:Graphics2D,sm:Scaler,selectColor:Color,rangle:Double,rotator:VectorConstant=>VectorConstant): Unit ={
       super.drawRotated(g,sm,selectColor,rangle,rotator)
       //println("divide mindist:"+minDist+" delta:"+delta.toDouble+" numelems:"+numElems+" dist:"+dist+" symbounds:"+singleSymbolBounds.width)
-    }
+    }*/
   }
   
   case class CircleFill(deltaAngle:Double, numSymbols:Int,rotateSymbols:Boolean) extends FillMode {

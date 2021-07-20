@@ -177,7 +177,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
       if(constraintsString.trim.length==0) Seq.empty
       else constraintsString.trim.split(',').map(_.toInt)
     }
-    println("Ask for ObjectSeleection objSelectClassConstraints:"+objSelectClassConstraints+" old state:"+_viewportState)
+    //println("Ask for ObjectSeleection objSelectClassConstraints:"+objSelectClassConstraints+" old state:"+_viewportState)
     if(viewportState==ViewportState.AskPoint) result=true
     changeViewportState(if(_viewportState==ViewportState.AskPoint)ViewportState.AskPointOrObject else ViewportState.ChoseObject,withStopModus)
     result
@@ -185,7 +185,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
 
 
   def askForPointSelection(listener:SelectPointsListener):Unit= if(_viewportState==ViewportState.SelectState&& selectModel.selectionList.nonEmpty){
-    println("ask for point "+listener )
+    //println("ask for point "+listener )
     selectPointsListener=Some(listener)
     pointSelectModel.deselect()
     changeViewportState(ViewportState.SelectPoints)
@@ -497,7 +497,7 @@ trait AbstractViewController[A,ResType] extends FocusContainer with ElemContaine
   }
 
   override def actionStopped():Unit= {
-    println("ViewController actionStopped "+_viewportState)
+    //println("ViewController actionStopped "+_viewportState)
     checkIPEMode()
     resetCustomDragger()
     clearNewElements()

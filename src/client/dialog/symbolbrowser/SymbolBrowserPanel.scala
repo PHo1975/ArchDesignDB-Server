@@ -1,7 +1,5 @@
 package client.dialog.symbolbrowser
 
-import java.awt.Dimension
-
 import client.comm.{ClientQueryManager, InstanceDataListModel, ListDataModel}
 import client.dialog.DialogManager
 import client.graphicsView.symbol.SymbolStamp
@@ -10,6 +8,8 @@ import client.ui.ViewConstants
 import definition.data.{InstanceData, OwnerReference, Reference}
 import definition.expression.{ObjectReference, StringConstant}
 import definition.typ.CustomPanel
+
+import java.awt.Dimension
 //import scala.swing.ListView
 
 import scala.swing.event.{ButtonClicked, ListSelectionChanged}
@@ -90,7 +90,7 @@ class SymbolBrowserPanel extends BoxPanel(Orientation.Vertical) with CustomPanel
   listenTo(folderList.selection)
   symbolList.listenTo(symbolList.selection)
   symbolList.reactions += {
-    case ListSelectionChanged(view,range,live)=> if(!live && !range.isEmpty&& symbolList.selection.items.nonEmpty){
+    case ListSelectionChanged(view,range,live)=> if(!live && range.nonEmpty&& symbolList.selection.items.nonEmpty){
       selectedStamp=Some(symbolList.selection.items(0))
       DialogManager.answerGiven(SymbolBrowserController.answer, new ObjectReference(symbolModel.theList(symbolList.selection.indices.head).ref))
     }

@@ -43,7 +43,9 @@ class SymbolStamp (stampData:InstanceData) extends Referencable {
       }
       ex.getValue
     }
-    templates.flatMap(StampPool.generateElement(_,angle,translateElements,rotator))
+    val ret=templates.flatMap(StampPool.generateElement(_,angle,translateElements,rotator))
+    //println("generate Stamp Elements:\n"+ret.mkString("\n"))
+    ret
   }
 }
 
@@ -56,9 +58,11 @@ object StampPool {
   }
   
   lazy val generatorMap:Map[Int,(InstanceData,Double,Expression=>Constant,VectorConstant=>VectorConstant)=>GraphElem]=Map(
-      GraphElemConst.lineClassID->createLine _,
-      GraphElemConst.arcClassID->createArc _,
-      GraphElemConst.ellipseClassID->createEllipse _)
+      GraphElemConst.lineClassID->createLine,
+      GraphElemConst.arcClassID->createArc,
+      GraphElemConst.ellipseClassID->createEllipse,
+    GraphElemConst.polyClassID->createPolygon,
+    GraphElemConst.textClassID->createText)
   
   val poolList: mutable.LinkedHashMap[Reference, Option[SymbolStamp]] = mutable.LinkedHashMap[Reference,Option[SymbolStamp]]()
   def getStamp(stampRef:Reference):Option[SymbolStamp] = {
@@ -90,7 +94,26 @@ object StampPool {
       translator(data.fieldData(2)).toInt, rotator(translator(data.fieldData(3)).toVector), translator(data.fieldData(4)).toDouble,
       translator(data.fieldData(5)).toDouble, translator(data.fieldData(6)).toDouble + angle, translator(data.fieldData(7)).toDouble,
       translator(data.fieldData(8)).toDouble)
-  } 
+  }
+
+  def createPolygon(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant):PolyElement= {
+    new PolyElement(data.ref,
+      translator(data.fieldData(0)).toInt,
+      translator(data.fieldData(1)).toInt,
+      translator(data.fieldData(2)).toInt,
+      translator(data.fieldData(4)).toInt,
+      HatchHandler.getHatch(translator(data.fieldData(4)).toInt),
+      translator(data.fieldData(4)).toInt<0,
+      translator(data.fieldData(3)).toPolygon.transform(rotator),
+      rotator(translator(data.fieldData(6)).toVector),
+      translator(data.fieldData(7)).toDouble+angle)
+  }
+
+  def createText(data:InstanceData,angle:Double,translator: Expression=>Constant,rotator:VectorConstant=>VectorConstant):TextElement= {
+    new TextElement(data.ref,translator(data.fieldData(0)).toInt,translator(data.fieldData(1)).toString,rotator(translator(data.fieldData(2)).toVector),
+      translator(data.fieldData(3)).toString,translator(data.fieldData(4)).toDouble,translator(data.fieldData(5)).toDouble,
+      translator(data.fieldData(6)).toInt,translator(data.fieldData(7)).toDouble+angle,translator(data.fieldData(8)).toDouble,translator(data.fieldData(9)).toDouble)
+  }
   
   //private def getNone(data:InstanceData,translator:Expression=>Constant)= None
   

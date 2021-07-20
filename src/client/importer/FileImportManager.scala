@@ -1,12 +1,11 @@
 package client.importer
+import definition.data.{InstanceData, OwnerReference}
+import definition.typ.AllClasses
+
 import java.awt.{Point, Toolkit}
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.File
-
-import definition.data.{InstanceData, OwnerReference}
-import definition.typ.AllClasses
 import javax.swing.SwingWorker
-
 import scala.collection.Map
 import scala.collection.mutable._
 import scala.swing.Window
@@ -34,7 +33,7 @@ object FileImportManager {
    */
   def canImport(fileNames:Seq[File], targetType:Int, droppedTarget:Option[InstanceData], ownerRef:OwnerReference):Boolean = {
     if(descriptorMap.contains(targetType)) {
-      println("canimport "+targetType)
+      //println("canimport "+targetType)
       val descriptor=descriptorMap(targetType).descriptor
       descriptor.canImport(fileNames,droppedTarget,ownerRef)
     }
