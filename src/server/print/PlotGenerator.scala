@@ -106,23 +106,23 @@ class PlotGenerator extends CustomGenerator {
            }
            def createPoly(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
              val points = data.fieldValue(3).toPolygon.transform(vectorToVector)
-             val fillColor = new Color(data.fieldValue(4).toInt)
+             val hatchColor = new Color(data.fieldValue(4).toInt)
              val hatch = data.fieldValue(5).toInt
              val startPoint = data.fieldValue(6).toVector
              val angle = data.fieldValue(7).toDouble
-             PolyPrintElement(lineWidth.toFloat, lineStyle.toByte, color, fillColor, points,
+             PolyPrintElement(lineWidth, lineStyle.toByte, color, hatchColor, points,
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle)
            }
            def createAreaPoly(data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
              val area=data.fieldValue(4).toPolygon
              val points = area.transform(vectorToVector)
-             val fillColor = new Color(data.fieldValue(5).toInt)
+             val hatchColor = new Color(data.fieldValue(5).toInt)
              val hatch = data.fieldValue(6).toInt
              val startPoint = data.fieldValue(7).toVector
              val angle = data.fieldValue(8).toDouble
              val name = data.fieldValue(9).getValue.toString
              //System.out.println("create Area "+name)
-             PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
+             PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), hatchColor, points,
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle,
                name+"\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")
            }
@@ -130,14 +130,14 @@ class PlotGenerator extends CustomGenerator {
            def createWohnflaeche (data: InstanceData, color: Color, lineWidth: Float, lineStyle: Int) = {
              val area=data.fieldValue(4).toPolygon
              val points = area.transform(vectorToVector)
-             val fillColor = new Color(data.fieldValue(5).toInt)
+             val hatchColor = new Color(data.fieldValue(5).toInt)
              val hatch = data.fieldValue(6).toInt
              val startPoint = data.fieldValue(7).toVector
              val angle = data.fieldValue(8).toDouble
              val name = data.fieldValue(9).getValue.toString
              val nr: Double =data.fieldValue(12).getValue.toDouble
 
-             PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), fillColor, points,
+             PolyPrintElement(textScale.toFloat, data.fieldValue(3).toInt.toByte, new Color(data.fieldValue(1).toInt), hatchColor, points,
                if (hatch == 0) None else Some(math.abs(hatch)), hatch < 0, layerScale.toFloat, vectorToPoint(startPoint), angle,
                (if(nr==0d) name else (if(nr==Math.round(nr)) nr.formatted("%.0f") else nr.toString) + ". "+name)+
                "\nF: "+area.getAreaValue.formatted(numberFormat)+" m2"+"\nU: "+area.getUmfangValue.formatted(numberFormat)+" m")

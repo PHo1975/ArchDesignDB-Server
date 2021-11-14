@@ -98,7 +98,7 @@ object HatchHandler extends AbstractSettingHandler {
   }
   
   def drawHatch(poly:Polygon,hs:HatchStyle,sm:Scaler,paperScale:Boolean,g:Graphics2D,c:Color=Color.black,startPoint:VectorConstant,hatchAngle:Double,aOffset:VectorConstant): Unit = {
-  		g.setColor(c)		  
+  		g.setColor(c)
   		drawHatches(hs.angle1+hatchAngle,hs.distance1,hs.lineStyle1,hs.thickness,offset = false)
   		if(hs.lineStyle2> -1) 
   			drawHatches(hs.angle2+hatchAngle,hs.distance2,hs.lineStyle2,hs.thickness,hs.angle2==hs.angle1)
@@ -110,7 +110,7 @@ object HatchHandler extends AbstractSettingHandler {
   				g.setStroke(stroke)
   				val a1=angle*math.Pi/180d
   				val dir1=new VectorConstant(scala.math.cos(a1),scala.math.sin(a1),0)
-  				val dist=if(paperScale) (distance/10)*sm.thicknessScale/sm.scale else distance
+  				val dist=if(paperScale) (distance/10d)*sm.thicknessScale/sm.scale else distance
   				val n1=new VectorConstant(-dir1.y*dist,dir1.x*dist,0)		 
   				//println("dir :"+dir1+" n1:"+n1)
   				val (minh: Double,maxh: Double)=poly.findMinMaxHatchDistances(dir1,n1,startPoint)
@@ -125,9 +125,9 @@ object HatchHandler extends AbstractSettingHandler {
   				for(i <-startIx to endIx) {
   					val sp1: VectorConstant =startPoint+n1*(i.toDouble +(if(offset)0.5 else 0))
   					val sp2: VectorConstant =sp1+dir1
-  					val inters = poly.intersectionsWith(sp1,sp2).grouped(2)
+  					val inters = poly.intersectionsWith(sp1,sp2).grouped(2).toSeq
   					//println("Intersections sp1:"+sp1+" sp2:"+sp2+" "+inters.mkString(" | "))
-  					for(li<-inters;if li.size==2)
+  					for(li: Seq[(Double, VectorConstant)] <-inters; if li.size==2)
   					  	drawLine(li.head._2,li(1)._2)
   				}	
   		}

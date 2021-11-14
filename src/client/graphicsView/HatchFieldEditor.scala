@@ -1,13 +1,13 @@
 package client.graphicsView
 
-import java.awt.Dimension
-
 import client.dialog._
 import client.graphicsView.Handlers._
 import client.ui.ViewConstants
 import definition.data.Material
 import definition.expression.{Expression, IntConstant}
 
+import java.awt.{Color, Dimension}
+import javax.swing.JColorChooser
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 import scala.swing.{Alignment, BorderPanel, BoxPanel, CheckBox, Label, Panel}
 
@@ -22,6 +22,12 @@ class HatchFieldEditor extends FieldEditor {
   angleEdit.addSearchLookup({
     case c:PolyElement => c.hatchAngle      
   })
+  val hatchColorBut=new ActiveColorButton {
+    val allowedFields: Map[String, Byte] = Map((tcn,4),(apn,5),(wof,5))
+    addSearchLookup({
+      case c: PolyElement => new Color(c.hatchColor)
+    })
+  }
 	  
   lazy val hatchPanel=new BorderPanel with SidePanelComponent[Int] {
     opaque=false
@@ -36,12 +42,20 @@ class HatchFieldEditor extends FieldEditor {
     
     add(styleCombo,BorderPanel.Position.Center)
     add( paperScaleBut,BorderPanel.Position.South)
-    listenTo(styleCombo.selection,paperScaleBut)
+    listenTo(styleCombo.selection,paperScaleBut,hatchColorBut)
     reactions+={			
 			case SelectionChanged(`styleCombo`)=> if(selfStyleSelected) selfStyleSelected=false
 				else intSetValues() 
 			case ButtonClicked(`paperScaleBut`) =>				
-				intSetValues()						
+				intSetValues()
+      case ButtonClicked(`hatchColorBut`)=>
+        if(dataList!=null){
+          val color=JColorChooser.showDialog(this.peer,"Farbe auswählen",hatchColorBut.currentValue.getOrElse(hatchColorBut.defaultValue))
+          if(color!=null) {
+            storeValue(color,hatchColorBut)
+            hatchColorBut.background=color
+          }
+        }
 		}
     
     addSearchLookup({
@@ -59,7 +73,7 @@ class HatchFieldEditor extends FieldEditor {
     	storeValue(hValue,this)    	
     }
 
-    def getConstant(value: Int) = IntConstant(value)
+    def getConstant(value: Int): IntConstant = IntConstant(value)
 
     def valueFromConstant(c: Expression): Int = c.getValue.toInt
 
@@ -85,13 +99,14 @@ class HatchFieldEditor extends FieldEditor {
 		}    
   }
   
-  lazy val fieldComponents=Seq(hatchPanel,angleEdit)
+  lazy val fieldComponents=Seq(hatchPanel,angleEdit,hatchColorBut)
   
 	lazy val panel= new BoxPanel(scala.swing.Orientation.Vertical) {
     opaque=false
     val topPan=new PanelPart("Schraff:",hatchPanel)
     topPan.maximumSize=new Dimension(FieldEditor.panelSize.width,FieldEditor.panelSize.height*2)
 		contents +=topPan
+    contents += new PanelPart("S-Farbe:",hatchColorBut)
 		contents += new PanelPart("Winkel:",angleEdit)
     preferredSize = new Dimension(70, 100 * ViewConstants.fontScale / 100)
     maximumSize = new Dimension(Short.MaxValue, 100 * ViewConstants.fontScale / 100)

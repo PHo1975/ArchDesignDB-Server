@@ -94,7 +94,9 @@ object GraphElemModule{
       Some(DialogQuestion(aName + "<br>Distanz",
         Seq(new AnswerDefinition("'nach Punkt' angeben", DataType.VectorTyp, None,if (strict) "" else AnswerPanelsData.NOSTRICT_HIT)))),
       if (strict) "" else AnswerPanelsData.NOSTRICT_HIT),
-      new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion)
+      new AnswerDefinition("Delta X eingeben:", DataType.DoubleTyp, dyQuestion),
+      new AnswerDefinition("",DataType.EnumTyp,Some(DialogQuestion(aName+"<br> Distanz angeben",mvAnswerDefs(aName,strict))),"Nur X"),
+      new AnswerDefinition("",DataType.EnumTyp,Some(DialogQuestion(aName+"<br> Distanz angeben",mvAnswerDefs(aName,strict))),"Nur Y")
     )))
 
   def mvAnswerDefs(aName: String,strict:Boolean=true)=Seq(new AnswerDefinition("'von Punkt' angeben", DataType.VectorTyp,
@@ -437,14 +439,24 @@ class GraphElemModule extends ActionModule {
 
   def doPointMod(u: AbstractUserSocket, owner: OwnerReference, data: Iterable[InstanceData], para: Iterable[(String, Constant)]): Boolean = {
      val param=para.toSeq
-	   val delta = if(param(1)._2.getType==DataType.VectorTyp ){
-					val startPoint=param(1)._2.toVector
-					val endPoint=param(2)._2.toVector
-					endPoint-startPoint
-				}
-				else if(param(1)._2.getType==DataType.DoubleTyp )
-					new VectorConstant (param(1)._2.toDouble,param(2)._2.toDouble,0)
-				else throw new IllegalArgumentException(" move param:"+param(1)._1+" wrong parametertype "+param(1)._2.getType)
+	   val delta =  param(1)._2 match {
+       case startPoint:VectorConstant=>
+         val endPoint=param(2)._2.toVector
+         endPoint-startPoint
+       case dx:DoubleConstant=>
+         val dy: Double =param(2)._2.toDouble
+           new VectorConstant(dx.toDouble,dy,0)
+       case st:StringConstant=>
+         val d=param(3)._2.toVector-param(2)._2.toVector
+         st.toString() match {
+           case "Nur X" => VectorConstant(d.x,0,0)
+           case "Nur Y" => VectorConstant(0,d.y,0)
+           case _ => throw new IllegalArgumentException(" move wrong param:"+param.mkString(" , "))
+         }
+
+       case _ => throw new IllegalArgumentException(" move param:"+param(1)._1+" wrong parametertype "+param(1)._2.getType)
+    }
+
 	  param.head._2 match {
 	    case b:BlobConstant =>
 				val inStream=new DataInputStream(new ByteArrayInputStream(b.data))
@@ -1707,7 +1719,7 @@ class PolygonModule extends ActionModule with GraphActionModule {
       val oInst=StorageManager.getInstanceData(otherRef)
       val fieldOffset=if(otherRef.typ==TypeInfos.polyElemType)0 else 1
       for(elem<-data;if allowedClasses.contains(elem.ref.typ)){
-        for(i<-5 to 7)
+        for(i<-4 to 7)
           TransactionManager.tryWriteInstanceField(elem.ref,(i+(if(elem.ref.typ==TypeInfos.polyElemType)0 else 1)).toByte,oInst.fieldValue(i+fieldOffset))
         TransactionManager.tryWriteInstanceField(elem.ref, (if (elem.ref.typ == TypeInfos.polyElemType) 0 else 1).toByte,oInst.fieldValue(fieldOffset))
       }
