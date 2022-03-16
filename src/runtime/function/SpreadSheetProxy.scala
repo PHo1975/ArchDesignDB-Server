@@ -222,23 +222,24 @@ object SpreadSheetProxy {
   lazy val nullString= StringConstant("")
   
   def deleteSpreadSheetCells(data:Iterable[InstanceData]):Unit= {
-    if(data.isEmpty) return
-    // assumption that all data are in the same spread sheet    
-    val proxy=new SpreadSheetProxy(data.head.owners.head.ownerRef)
-    val collFuncList=proxy.collFuncRefs.toSeq.flatten.map(proxy.getInst)
-    for(inst <-data){      
-      // delete collFuncData that shows to this cell      
-      collFuncList.filter(_.fieldValue.head.toObjectReference==inst.ref).foreach(i=>TransactionManager.tryDeleteInstance(i.ref,None,None))
-      // check if there are ReferencingLinks to this cell
-      if(ActionList.getReferencingLinks(inst.ref) match {			
-	  		case Some(refLinks) => refLinks.links.exists(_._2.exists(!_.isParentRef))  		
-	  		case None => false
-      }) {
-        TransactionManager.tryWriteInstanceField(inst.ref, 2.toByte,nullString)
+    if(data.nonEmpty) {
+      // assumption that all data are in the same spread sheet
+      val proxy = new SpreadSheetProxy(data.head.owners.head.ownerRef)
+      val collFuncList: Seq[InstanceData] = proxy.collFuncRefs.toSeq.flatten.map(proxy.getInst)
+      for (inst <- data) {
+        // delete collFuncData that shows to this cell
+        collFuncList.filter(_.fieldValue.head.toObjectReference == inst.ref).foreach(i => TransactionManager.tryDeleteInstance(i.ref, None, None))
+        // check if there are ReferencingLinks to this cell
+        if (ActionList.getReferencingLinks(inst.ref) match {
+          case Some(refLinks) => refLinks.links.exists(_._2.exists(!_.isParentRef))
+          case None => false
+        }) {
+          TransactionManager.tryWriteInstanceField(inst.ref, 2.toByte, nullString)
+        }
+        // delete also second uses of the selected cells
+        else TransactionManager.tryDeleteInstance(inst.ref, None, None)
       }
-  		// delete also second uses of the selected cells
-      else TransactionManager.tryDeleteInstance(inst.ref,None,None)
-  	} 
+    }
   }
   
 }

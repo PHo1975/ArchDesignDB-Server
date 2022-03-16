@@ -2,10 +2,11 @@ package runtime.function
 
 import client.spreadsheet._
 import definition.data.{InstanceData, OwnerReference, Reference}
-import definition.expression.{Constant, FieldReference, IntConstant, StringConstant}
+import definition.expression.{Constant, EMPTY_EX, FieldReference, IntConstant, StringConstant}
 import server.comm.AbstractUserSocket
 import server.storage.{ActionIterator, ActionModule}
 import transaction.handling.{ActionList, TransactionManager}
+import util.Log
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
@@ -24,9 +25,10 @@ class SpreadSheetModule extends ActionModule{
   val removeRowsAction=new MyActionIterator("removeRows",doRemoveRows)
   val insertCellsAction=new MyActionIterator("insertCells",doInsertCells)
   val setResultCellAction=new MyActionIterator("setResultCell",doSetResultCell)
+  val cleanupAction=new ActionIterator("Aufräumen",None,doCleanUp)
   var theTypeID:Int= -1
-   val actions = List(deleteCellsAction,addColumnsAction,removeColumnsAction,addRowsAction,removeRowsAction,insertCellsAction,
-       setResultCellAction) 
+   val actions = List(cleanupAction,deleteCellsAction,addColumnsAction,removeColumnsAction,addRowsAction,removeRowsAction,insertCellsAction,
+       setResultCellAction)
   
   def doDelete(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = {
     SpreadSheetProxy.deleteSpreadSheetCells(data)
@@ -198,6 +200,7 @@ class SpreadSheetModule extends ActionModule{
       if(asCol)ChangeCols(range)else ChangeRows(range)
     }
     else NoChange
+
    protected def removeRange(oldRange:Range,newRange:Range,asCol:Boolean):RangeIteratorResult=if(oldRange.end >=newRange.start) {
     //print("RemoveRange oldRange:"+oldRange+" newRange:"+newRange+" asCol:"+asCol)
     val range=if(oldRange.end<newRange.end){
@@ -207,7 +210,26 @@ class SpreadSheetModule extends ActionModule{
     else if(oldRange.start<newRange.start) {Range(oldRange.start,oldRange.end-newRange.size)}
     else {Range(if(oldRange.start<newRange.end)newRange.start else oldRange.start-newRange.size,oldRange.end-newRange.size)}
     if(asCol)ChangeCols(range)else ChangeRows(range)  
-  } else NoChange 
+  } else NoChange
+
+
+  def doCleanUp(u:AbstractUserSocket,parent:OwnerReference,data:Iterable[InstanceData],param:Iterable[(String,Constant)]):Boolean = {
+    val proxy=new SpreadSheetProxy(data.head.ref)
+    Log.e("cleanup:")
+    for(cr<-proxy.cellRefs;cellRef<-cr){
+      ActionList.getReferencingLinks(cellRef) match {
+        case None =>
+        case Some(rl) =>
+          val cell = proxy.getInst(cellRef)
+          if(rl.links.size==1 && rl.links.head._2.isEmpty) {
+            Log.e("Empty Cell " + cellRef + " " + cell.fieldValue(0).toInt + "," + cell.fieldValue(1).toInt + " > " + cell.fieldData(2)+" rl:"+rl.links.mkString("| "))
+            TransactionManager.tryDeleteInstance(cellRef,None,None)
+          }
+
+      }
+    }
+    true
+  }
 }
 
 
